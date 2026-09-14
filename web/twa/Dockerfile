@@ -10,6 +10,7 @@
 # ---------- 1) build ----------
 FROM node:22-alpine AS build
 WORKDIR /app
+# NODE_ENV=development faqat npm ci (devDependencies) uchun; vite build quyida NODE_ENV=production bilan.
 ENV CI=true \
     NODE_ENV=development
 
@@ -30,7 +31,7 @@ ARG VITE_API_URL=""
 ENV VITE_API_URL=$VITE_API_URL \
     VITE_USE_MOCKS=false
 
-RUN npm run build -w twa \
+RUN NODE_ENV=production npm run build -w twa \
     # Source map va MSW service worker prod image'ga kirmaydi.
     && find twa/dist -name '*.map' -delete \
     && rm -f twa/dist/mockServiceWorker.js
