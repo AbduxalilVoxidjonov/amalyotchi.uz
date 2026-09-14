@@ -1,0 +1,28 @@
+{
+  "name": "amaliyotchi-web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Amaliyotchi frontend workspace: dashboard (admin + tyutor), twa (talaba Telegram Web App), shared (umumiy api/auth mantiqi)",
+  "workspaces": [
+    "shared",
+    "dashboard",
+    "twa"
+  ],
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "dev": "npm run dev -w dashboard",
+    "dev:twa": "npm run dev -w twa",
+    "typecheck": "npm run -ws typecheck",
+    "lint": "npm run -ws lint",
+    "test": "npm run -ws test",
+    "build": "npm run -ws build",
+    "format": "npm run -ws format",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.6"
+  }
+}

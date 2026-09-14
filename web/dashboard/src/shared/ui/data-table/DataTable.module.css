@@ -1,0 +1,173 @@
+/* SPEC-TOKENS 4.4 — Table (CSS grid, <table> emas)
+ * Butun jadval BITTA grid (`.grid`): head/qatorlar `display: contents`, shuning uchun
+ * ustunlar barcha qatorlarda avtomatik tekislanadi (`auto` kenglikli actions ustuni ham).
+ * Qator fon/border/padding — katak darajasida (row box yo'q). */
+.table {
+  background: var(--color-surface);
+  border: var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  --row-pad: var(--row-pad-comfortable);
+  /* --table-head-pad (10px 18px) ning vertikal qismi; gorizontal — first/last katak padding'i */
+  --table-head-pad-y: 10px;
+}
+.table[data-density='compact'] {
+  --row-pad: var(--row-pad-compact);
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: var(--section-head-pad);
+  border-bottom: var(--border-inner);
+  flex-wrap: wrap;
+}
+.scroll {
+  overflow-x: auto;
+}
+.grid {
+  display: grid;
+  grid-template-columns: var(--cols);
+  /* Ustunlar orasi (12px) — katak padding'i orqali (gap emas): head foni va qator chizig'i uzilmasin */
+  --col-gap: 12px;
+  align-items: center;
+  min-width: var(--min-w, 0);
+}
+.head,
+.row,
+.empty {
+  display: contents;
+}
+/* Head kataklari */
+.headCell {
+  padding: var(--table-head-pad-y) var(--col-gap) var(--table-head-pad-y) 0;
+  background: var(--color-surface-2);
+  border-bottom: var(--border-inner);
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+/* Qator kataklari */
+.cell {
+  min-width: 0;
+  padding: var(--row-pad) var(--col-gap) var(--row-pad) 0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  border-bottom: var(--border-row);
+  font-size: var(--fs-md);
+  color: var(--color-text-2);
+  transition: background-color 0.1s ease;
+}
+.cell > .cellText {
+  min-width: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Chap/o'ng chekka padding — birinchi/oxirgi katakka (qator padding-x o'rnini bosadi). */
+.headCell:first-child,
+.cell:first-child {
+  padding-left: var(--row-pad-x);
+}
+.headCell:last-child,
+.cell:last-child {
+  padding-right: var(--row-pad-x);
+}
+.row:last-child > .cell {
+  border-bottom: 0;
+}
+.row:hover > .cell,
+.row[data-selected='true'] > .cell {
+  background: var(--color-surface-2);
+}
+.row[data-clickable='true'] > .cell {
+  cursor: pointer;
+}
+.row:has(> .cell:focus-visible) > .cell {
+  background: var(--color-surface-2);
+}
+.cell:focus-visible {
+  outline: none;
+  box-shadow: inset 2px 0 0 var(--color-accent);
+}
+.cell[data-align='right'],
+.headCell[data-align='right'] {
+  justify-content: flex-end;
+  text-align: right;
+}
+.cell[data-mono='true'] {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm2);
+}
+.cell[data-strong='true'] {
+  font-weight: var(--fw-semibold);
+}
+.cell[data-dim='true'] {
+  color: var(--color-text-faint);
+}
+.cell[data-wrap='true'] > .cellText {
+  white-space: normal;
+}
+.actions {
+  justify-content: flex-end;
+  gap: 7px;
+}
+.actions > .cellText {
+  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  overflow: visible;
+}
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: var(--table-foot-pad);
+  font-size: var(--fs-sm2);
+  color: var(--color-text-dim);
+  border-top: var(--border-row);
+}
+.emptyCell {
+  grid-column: 1 / -1;
+  padding: 36px 18px;
+  text-align: center;
+  font-size: var(--fs-md2);
+  color: var(--color-text-faint);
+}
+/* Avatar katak (Bugun/Talabalar): avatar + ism */
+.person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.personText {
+  min-width: 0;
+}
+.personName {
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-medium);
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.personSub {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  margin-top: 1px;
+}

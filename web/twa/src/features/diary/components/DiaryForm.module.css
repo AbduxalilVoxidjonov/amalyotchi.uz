@@ -1,0 +1,67 @@
+.form {
+  display: block;
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.title {
+  margin: 0;
+  font-size: var(--fs-base2);
+  font-weight: var(--fw-semibold);
+}
+.headRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.count {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}
+.textarea {
+  margin-top: 12px;
+}
+.learned {
+  margin-top: 9px;
+}
+.files {
+  margin-top: 10px;
+}
+.removeFile {
+  border: 0;
+  background: transparent;
+  padding: 0 0 0 2px;
+  color: var(--color-text-faint);
+  font-size: var(--fs-base);
+  line-height: 1;
+}
+.removeFile:hover {
+  color: var(--color-bad-strong);
+}
+.fieldError,
+.formError {
+  margin-top: 8px;
+  font-size: var(--fs-xs2);
+  color: var(--color-bad-fg);
+  line-height: var(--lh-note);
+}
+.row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 12px;
+}
+.submit {
+  margin-left: auto;
+}
+.success {
+  margin-top: 10px;
+  font-size: var(--fs-md);
+  color: var(--color-ok-fg);
+}

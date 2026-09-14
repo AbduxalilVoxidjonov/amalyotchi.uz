@@ -1,0 +1,70 @@
+/* SPEC-SCREENS §6 — kundalik kartasi */
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.person {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+.name {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+}
+.meta {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  margin-top: 2px;
+}
+.text {
+  margin: 13px 0 0;
+  font-size: var(--fs-md2);
+  line-height: var(--lh-prose);
+  color: var(--color-text-2);
+  text-wrap: pretty;
+}
+.files {
+  margin-top: 13px;
+}
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 15px;
+  padding-top: 14px;
+  border-top: var(--border-row);
+  flex-wrap: wrap;
+}
+.scoreLabel {
+  font-size: var(--fs-sm2);
+  color: var(--color-text-dim);
+  margin-left: 6px;
+}
+.scores {
+  display: inline-flex;
+  gap: 5px;
+}
+.learned,
+.tutorComment {
+  margin: 10px 0 0;
+  font-size: var(--fs-sm2);
+  line-height: var(--lh-prose);
+  color: var(--color-text-2);
+}
+.learnedLabel {
+  color: var(--color-text-dim);
+}
+.commentField {
+  margin-top: 13px;
+}
+.error {
+  margin-left: auto;
+  font-size: var(--fs-sm);
+  color: var(--color-bad-fg);
+}

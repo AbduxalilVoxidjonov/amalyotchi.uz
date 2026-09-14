@@ -1,0 +1,3 @@
+.pending[data-late='true'] {
+  color: var(--color-bad-fg);
+}

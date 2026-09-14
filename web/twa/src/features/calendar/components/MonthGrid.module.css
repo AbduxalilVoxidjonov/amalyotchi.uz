@@ -1,0 +1,134 @@
+.card[data-fetching='true'] .grid {
+  opacity: 0.6;
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  padding: var(--section-head-pad);
+  border-bottom: var(--border-inner);
+}
+.headText {
+  min-width: 0;
+}
+.title {
+  margin: 0;
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-semibold);
+}
+.sub {
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  margin-top: 2px;
+}
+.nav {
+  display: flex;
+  gap: 7px;
+  flex-shrink: 0;
+}
+.weekdays,
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+.weekdays {
+  padding: 12px 14px 6px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--color-text-dim);
+  text-align: center;
+}
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0 14px 6px;
+}
+.pad {
+  min-height: 44px;
+}
+.cell {
+  min-height: 44px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-family: var(--font-mono);
+  background: var(--cal-bg);
+  color: var(--cal-fg);
+}
+.dayNum {
+  font-size: var(--fs-2xs);
+  opacity: 0.8;
+}
+.glyph {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  line-height: 1;
+  min-height: 12px;
+}
+/* SPEC-TOKENS 1.5 — katak ranglari (CalendarDayStatus enum) */
+.cell[data-status='present'],
+.swatch[data-status='present'] {
+  --cal-bg: var(--color-ok-cal);
+  --cal-fg: var(--color-ok-fg);
+}
+.cell[data-status='late'],
+.swatch[data-status='late'] {
+  --cal-bg: var(--color-late-cal);
+  --cal-fg: var(--color-late-fg);
+}
+.cell[data-status='absent'],
+.swatch[data-status='absent'] {
+  --cal-bg: var(--color-bad-cal);
+  --cal-fg: var(--color-bad-fg);
+}
+.cell[data-status='excused'],
+.swatch[data-status='excused'] {
+  --cal-bg: var(--color-info-cal);
+  --cal-fg: var(--color-info-fg);
+}
+.cell[data-status='dayOff'],
+.swatch[data-status='dayOff'] {
+  --cal-bg: var(--color-surface-muted);
+  --cal-fg: var(--color-text-faint);
+}
+.cell[data-status='pending'],
+.swatch[data-status='pending'] {
+  --cal-bg: var(--color-surface-2);
+  --cal-fg: var(--color-text-muted);
+  outline: 1px dashed var(--color-text-faint);
+  outline-offset: -1px;
+}
+.cell[data-status='future'],
+.swatch[data-status='future'] {
+  --cal-bg: var(--color-surface-3);
+  --cal-fg: var(--color-text-ghost);
+}
+.legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin: 8px 0 0;
+  padding: 14px 18px 16px;
+  border-top: var(--border-row);
+}
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+.swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-xs);
+  background: var(--cal-bg);
+  border: var(--border);
+}

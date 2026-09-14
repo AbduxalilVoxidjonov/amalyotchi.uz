@@ -1,0 +1,46 @@
+/* SPEC-SCREENS §2 — isApp shell: 250px sticky dark sidebar + main (header sticky + content) */
+.root {
+  display: flex;
+  align-items: stretch;
+  min-height: 100vh;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.content {
+  padding: var(--content-pad);
+  display: flex;
+  flex-direction: column;
+  gap: var(--content-gap);
+  flex: 1;
+}
+/* Topbar o'ng slot — TopbarActions portal manzili */
+.actionsSlot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.actionsSlot:empty {
+  display: none;
+}
+/* ❓ Responsive — dizaynda yo'q. ≤900px: sidebar drawer (fixed), backdrop. */
+.backdrop {
+  display: none;
+}
+@media (max-width: 900px) {
+  .content {
+    padding: 18px 20px 48px;
+  }
+  .backdrop[data-open='true'] {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(16, 21, 18, 0.45);
+    z-index: calc(var(--z-drawer) - 1);
+  }
+}

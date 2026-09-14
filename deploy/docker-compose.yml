@@ -1,0 +1,160 @@
+# Amaliyotchi — to'liq stack (lokal demo / stend). Ishga tushirish: deploy/README.md
+#   docker compose -f deploy/docker-compose.yml up -d --build
+# Maxfiy qiymatlar deploy/.env dan olinadi (namuna: deploy/.env.example).
+name: amaliyotchi
+
+services:
+  # ---------- Infratuzilma ----------
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: amaliyotchi-postgres
+    environment:
+      POSTGRES_DB: amaliyotchi
+      POSTGRES_USER: amaliyotchi
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-amaliyotchi}
+      TZ: UTC
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - amaliyotchi
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U amaliyotchi -d amaliyotchi"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: amaliyotchi-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: amaliyotchi
+      MINIO_ROOT_PASSWORD: amaliyotchi123
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # veb-konsol
+    volumes:
+      - minio-data:/data
+    networks:
+      - amaliyotchi
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: amaliyotchi-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - amaliyotchi
+    restart: unless-stopped
+
+  seq:
+    image: datalust/seq:latest
+    container_name: amaliyotchi-seq
+    environment:
+      ACCEPT_EULA: "Y"
+      # Yangi Seq versiyalari autentifikatsiyasiz ishga tushmaydi — lokal stend uchun o'chirilgan
+      # (production: SEQ_FIRSTRUN_ADMINPASSWORD bering va portni tashqariga ochmang).
+      SEQ_FIRSTRUN_NOAUTHENTICATION: "True"
+    ports:
+      - "5341:80"     # UI: http://localhost:5341 (konteyner ichida ingestion 5341, UI 80)
+    volumes:
+      - seq-data:/data
+    networks:
+      - amaliyotchi
+    restart: unless-stopped
+
+  # ---------- API ----------
+  api:
+    build:
+      context: ..                              # loyiha ildizi (slnx, Directory.*.props, src/)
+      dockerfile: src/Amaliyotchi.Api/Dockerfile
+    image: amaliyotchi-api:local
+    container_name: amaliyotchi-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=amaliyotchi;Username=amaliyotchi;Password=${POSTGRES_PASSWORD:-amaliyotchi}
+      # Kamida 32 belgi — .env da majburiy (bo'sh bo'lsa compose xato beradi).
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?JWT_SIGNING_KEY deploy/.env da berilishi shart (openssl rand -base64 48)}
+      Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
+      # Startup'da migratsiya + seed. Demo ma'lumot — faqat demo/stend uchun (production: SEED_DEMO=false).
+      Seed__Enabled: "true"
+      Seed__Demo: ${SEED_DEMO:-true}
+      Seed__AdminPhone: ${ADMIN_PHONE:-+998901234567}
+      Seed__AdminPassword: ${ADMIN_PASSWORD:-admin12345}
+      Storage__RootPath: /app/data/files
+      # nginx (dashboard/twa) X-Forwarded-For/Proto yuboradi; konteyner IP lari o'zgaruvchan — butun compose tarmog'i ishonchli.
+      ForwardedHeaders__KnownNetworks__0: ${DOCKER_SUBNET:-172.30.0.0/16}
+      # Loglar: Console (appsettings) + Seq.
+      Serilog__WriteTo__1__Name: Seq
+      Serilog__WriteTo__1__Args__serverUrl: http://seq:5341
+      RateLimiting__AuthPerMinute: ${RATE_LIMIT_AUTH_PER_MINUTE:-10}
+      RateLimiting__RefreshPerMinute: ${RATE_LIMIT_REFRESH_PER_MINUTE:-60}
+      # Brauzerdan to'g'ridan-to'g'ri 5080 ga murojaat uchun (dev server); nginx orqali /api/ same-origin — CORS kerak emas.
+      Cors__Origins__0: ${CORS_ORIGIN:-http://localhost:5173}
+    ports:
+      - "5080:8080"   # to'g'ridan-to'g'ri debug: http://localhost:5080/health
+    volumes:
+      - api-data:/app/data
+    networks:
+      - amaliyotchi
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 90s
+      retries: 5
+    restart: unless-stopped
+
+  # ---------- Web (nginx:80, /api/ → http://api:8080) ----------
+  dashboard:
+    build:
+      context: ../web
+      dockerfile: dashboard/Dockerfile
+    image: amaliyotchi-dashboard:local
+    container_name: amaliyotchi-dashboard
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "8080:80"     # http://localhost:8080
+    networks:
+      - amaliyotchi
+    restart: unless-stopped
+
+  twa:
+    build:
+      context: ../web
+      dockerfile: twa/Dockerfile
+    image: amaliyotchi-twa:local
+    container_name: amaliyotchi-twa
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "8081:80"     # http://localhost:8081 (Telegram uchun HTTPS tunnel — README)
+    networks:
+      - amaliyotchi
+    restart: unless-stopped
+
+networks:
+  # Aniq subnet — API ForwardedHeaders:KnownNetworks shu qiymatga tayanadi. Hostda band bo'lsa
+  # .env da DOCKER_SUBNET ni o'zgartiring (ikkalasi ham shu o'zgaruvchidan oladi).
+  amaliyotchi:
+    name: amaliyotchi
+    ipam:
+      config:
+        - subnet: ${DOCKER_SUBNET:-172.30.0.0/16}
+
+volumes:
+  postgres-data:
+  minio-data:
+  seq-data:
+  api-data:

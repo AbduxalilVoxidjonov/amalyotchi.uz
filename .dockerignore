@@ -1,0 +1,22 @@
+# Docker build context (loyiha ildizi) — faqat src/ va build fayllari kerak.
+**/bin/
+**/obj/
+**/TestResults/
+**/node_modules/
+**/dist/
+**/.vs/
+**/.vscode/
+**/.idea/
+**/*.user
+**/.DS_Store
+.git/
+.gitignore
+web/
+tests/
+docs/
+deploy/
+scratchpad/
+*.md
+*.zip
+**/appsettings.*.local.json
+**/.env

@@ -1,0 +1,120 @@
+/* SPEC-SCREENS §10 — kalendar */
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: var(--section-head-pad);
+  border-bottom: var(--border-inner);
+}
+.title {
+  margin: 0;
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-semibold);
+}
+.nav {
+  display: flex;
+  gap: 6px;
+}
+/* ❓ 200px + 12 ustun ≈ 600px; overflow-x qo'shildi */
+.scroll {
+  overflow-x: auto;
+}
+.dayHead,
+.row {
+  display: grid;
+  grid-template-columns: 200px repeat(var(--cal-cols, 12), minmax(0, 1fr));
+  gap: 4px;
+  min-width: 600px;
+}
+.dayHead {
+  padding: 12px 18px 6px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--color-text-dim);
+}
+.dayHead > div {
+  text-align: center;
+}
+.dayHead > div:first-child {
+  text-align: left;
+}
+.row {
+  padding: 4px 18px;
+  align-items: center;
+}
+.name {
+  font-size: var(--fs-md);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cell {
+  height: 30px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+}
+/* SPEC-TOKENS 1.5 */
+.cell[data-code='k'],
+.legendSwatch[data-code='k'] {
+  background: var(--color-ok-cal);
+  color: var(--color-ok-fg);
+}
+.cell[data-code='l'],
+.legendSwatch[data-code='l'] {
+  background: var(--color-late-cal);
+  color: var(--color-late-fg);
+}
+.cell[data-code='a'],
+.legendSwatch[data-code='a'] {
+  background: var(--color-bad-cal);
+  color: var(--color-bad-fg);
+}
+.cell[data-code='s'],
+.legendSwatch[data-code='s'] {
+  background: var(--color-info-cal);
+  color: var(--color-info-fg);
+}
+.cell[data-code='d'],
+.legendSwatch[data-code='d'] {
+  background: var(--color-surface-muted);
+  color: var(--color-text-faint);
+}
+.cell[data-code='n'],
+.legendSwatch[data-code='n'] {
+  background: var(--color-surface-3);
+  color: var(--color-text-ghost);
+}
+.empty {
+  padding: 28px 18px;
+  text-align: center;
+  font-size: var(--fs-md);
+  color: var(--color-text-faint);
+}
+.legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 18px 16px;
+  margin-top: 8px;
+  border-top: var(--border-row);
+}
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+.legendSwatch {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-xs);
+  border: var(--border);
+}

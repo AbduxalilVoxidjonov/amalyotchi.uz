@@ -1,0 +1,18 @@
+bin/
+obj/
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+appsettings.*.local.json
+.env
+node_modules/
+dist/
+TestResults/
+*.received.*
+.DS_Store
+
+# Lokal fayl xotirasi (Storage:RootPath) va Docker ma'lumotlari
+data/
+scratchpad/

@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Amaliyotchi.Api/Amaliyotchi.Api.csproj" />
+    <Project Path="src/Amaliyotchi.Application/Amaliyotchi.Application.csproj" />
+    <Project Path="src/Amaliyotchi.Domain/Amaliyotchi.Domain.csproj" />
+    <Project Path="src/Amaliyotchi.Infrastructure/Amaliyotchi.Infrastructure.csproj" />
+    <Project Path="src/Amaliyotchi.Worker/Amaliyotchi.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Amaliyotchi.IntegrationTests/Amaliyotchi.IntegrationTests.csproj" />
+    <Project Path="tests/Amaliyotchi.UnitTests/Amaliyotchi.UnitTests.csproj" />
+  </Folder>
+</Solution>

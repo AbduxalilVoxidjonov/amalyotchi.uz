@@ -1,0 +1,108 @@
+/* SPEC-SCREENS §13 — auto-fit minmax(320px) gap16, max 1050 */
+.root {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--section-grid-gap);
+  align-items: start;
+  max-width: 1050px;
+}
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-grid-gap);
+}
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+/* Sozlama qatori: flex space-between gap14; 13px 18px; bb */
+.settingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 18px;
+  border-bottom: var(--border-row);
+}
+.settingText {
+  min-width: 0;
+}
+.settingName {
+  display: block;
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-medium);
+}
+.settingNote {
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  margin-top: 3px;
+  line-height: var(--lh-body);
+}
+.settingField {
+  flex-shrink: 0;
+  width: 196px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.settingField > * {
+  min-width: 0;
+  flex: 1;
+}
+.settingInput {
+  text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.settingInput::-webkit-outer-spin-button,
+.settingInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+/* Birlik ("m", "daqiqa") — input yonida, faint; kengligi doimiy — inputlar (150px) tekis turadi */
+.unit {
+  flex: 0 0 40px;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  white-space: nowrap;
+}
+.error {
+  padding: 13px 18px;
+  border-bottom: var(--border-row);
+}
+.saved {
+  font-size: var(--fs-sm2);
+  color: var(--color-ok-fg);
+  margin-left: auto;
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+/* Bayram qatori: 11px 18px; 13px #2a2e29 */
+.holidayRow {
+  padding: 11px 18px;
+  border-bottom: var(--border-row);
+  font-size: var(--fs-md);
+  color: var(--color-text-2);
+}
+.addRow {
+  padding: 13px 18px;
+}
+/* Shablon qatori: 13px 18px; 13px */
+.templateRow {
+  padding: 13px 18px;
+  border-bottom: var(--border-row);
+  font-size: var(--fs-md);
+}
+.templateRow:last-child {
+  border-bottom: 0;
+}
+.file {
+  color: var(--color-text-faint);
+  text-decoration: none;
+}
+a.file:hover {
+  text-decoration: underline;
+}

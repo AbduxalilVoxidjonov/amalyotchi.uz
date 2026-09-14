@@ -1,0 +1,44 @@
+/* SPEC-TOKENS 4.3 — Badge / status chip */
+.badge {
+  display: inline-block;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  line-height: 1.4;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--st-bg);
+  color: var(--st-fg);
+  white-space: nowrap;
+}
+.badge[data-status='ok'] {
+  --st-bg: var(--color-ok-bg);
+  --st-fg: var(--color-ok-fg);
+}
+.badge[data-status='late'] {
+  --st-bg: var(--color-late-bg);
+  --st-fg: var(--color-late-fg);
+}
+.badge[data-status='bad'] {
+  --st-bg: var(--color-bad-bg);
+  --st-fg: var(--color-bad-fg);
+}
+.badge[data-status='neu'] {
+  --st-bg: var(--color-neu-bg);
+  --st-fg: var(--color-neu-fg);
+}
+.badge[data-status='info'] {
+  --st-bg: var(--color-info-bg);
+  --st-fg: var(--color-info-fg);
+}
+.badge[data-size='sm'] {
+  font-size: var(--fs-xs2);
+  padding: 2px 8px;
+}
+.badge[data-size='md'] {
+  padding: 4px 10px;
+}
+.badge[data-size='lg'] {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  padding: 5px 14px;
+}

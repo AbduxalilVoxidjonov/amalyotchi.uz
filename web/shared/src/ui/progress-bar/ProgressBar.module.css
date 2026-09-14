@@ -1,0 +1,28 @@
+/* SPEC-TOKENS 4.6 — ProgressBar */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.track {
+  flex: 1;
+  height: 6px;
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.fill {
+  height: 100%;
+  width: var(--pct);
+  background: var(--pct-color);
+  transition: width 0.25s ease;
+}
+.val {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm2);
+  font-weight: var(--fw-medium);
+  width: 38px;
+  text-align: right;
+  flex-shrink: 0;
+}

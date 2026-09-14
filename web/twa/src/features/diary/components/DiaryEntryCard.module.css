@@ -1,0 +1,64 @@
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+}
+.person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.personText {
+  min-width: 0;
+}
+.name {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+}
+.meta {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  margin-top: 2px;
+}
+.text {
+  margin: 13px 0 0;
+  font-size: var(--fs-md2);
+  line-height: var(--lh-prose);
+  color: var(--color-text-2);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.learned {
+  margin-top: 8px;
+  font-size: var(--fs-md);
+  line-height: var(--lh-note);
+  color: var(--color-text-4);
+}
+.learnedLabel {
+  color: var(--color-text-faint);
+}
+.files {
+  margin-top: 13px;
+}
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 15px;
+  padding-top: 14px;
+  border-top: var(--border-row);
+  font-size: var(--fs-sm2);
+  color: var(--color-text-dim);
+}
+.score b {
+  font-family: var(--font-mono);
+  color: var(--color-text);
+}
+.comment {
+  color: var(--color-late-fg);
+  line-height: var(--lh-note);
+}

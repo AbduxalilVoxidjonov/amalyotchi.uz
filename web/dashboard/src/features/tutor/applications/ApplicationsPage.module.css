@@ -1,0 +1,36 @@
+/* SPEC-SCREENS §4 — wrapper flex col gap16; grid minmax(0,320px) minmax(0,1fr) */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-grid-gap);
+}
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  gap: var(--section-grid-gap);
+  align-items: start;
+}
+.detail {
+  min-width: 0;
+  /* Tor ekranda scrollIntoView — sticky header ostida qolmasin */
+  scroll-margin-top: 12px;
+}
+/* "← Ro'yxatga" — faqat 1 ustunli (tor) rejimda */
+.back {
+  display: none;
+  margin-bottom: 8px;
+}
+/* ❓ dizaynda media query yo'q; tor ekranda 1 ustun */
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .back {
+    display: inline-flex;
+  }
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

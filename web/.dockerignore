@@ -1,0 +1,22 @@
+# Docker build context (web/) — Dockerfile'lar: dashboard/Dockerfile, twa/Dockerfile
+node_modules
+**/node_modules
+dist
+**/dist
+coverage
+**/coverage
+.env
+.env.*
+**/.env
+**/.env.*
+*.log
+**/*.log
+*.tsbuildinfo
+.vite
+**/.vite
+.DS_Store
+**/.DS_Store
+Dockerfile
+**/Dockerfile
+README.md
+API-CONTRACT.md

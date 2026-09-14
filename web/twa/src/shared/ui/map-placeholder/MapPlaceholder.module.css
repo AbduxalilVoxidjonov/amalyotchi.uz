@@ -1,0 +1,24 @@
+/* SPEC-TOKENS 4.15 — Map placeholder */
+.map {
+  border: var(--border-dashed);
+  border-radius: var(--radius-lg);
+  background: var(--color-map-ph);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--color-text-faint);
+  min-height: var(--map-h, 150px);
+  padding: 16px;
+  text-align: center;
+}
+.title {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  color: var(--color-text-muted);
+}
+.coords {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+}

@@ -1,0 +1,67 @@
+/* SPEC-SCREENS §4 — detail panel */
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: var(--card-pad);
+  border-bottom: var(--border-inner);
+}
+.headLeft {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.name {
+  margin: 0;
+  font-size: var(--fs-xl2);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-snug);
+}
+.meta {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--color-text-dim);
+  margin-top: 3px;
+}
+/* FactGrid detail: chegarasiz, radiussiz — card ichida */
+.facts {
+  border: 0;
+  border-radius: 0;
+}
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  padding: var(--card-pad);
+  border-top: var(--border-inner);
+}
+@media (max-width: 720px) {
+  .columns {
+    grid-template-columns: 1fr;
+  }
+}
+.file {
+  margin-top: 14px;
+}
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 16px 18px;
+  border-top: var(--border-inner);
+  background: var(--color-surface-2);
+  flex-wrap: wrap;
+}
+.note {
+  margin-left: auto;
+  font-size: var(--fs-sm);
+  color: var(--color-text-faint);
+}
+.note[data-error='true'] {
+  color: var(--color-bad-fg);
+}
+.comment {
+  padding: 0 var(--card-pad) 16px;
+}

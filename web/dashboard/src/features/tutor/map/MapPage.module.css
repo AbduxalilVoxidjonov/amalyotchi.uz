@@ -1,0 +1,22 @@
+/* SPEC-SCREENS §11 — grid minmax(0,1fr) minmax(0,330px) gap16 */
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 330px);
+  gap: var(--section-grid-gap);
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+.map {
+  border-radius: var(--radius-xl);
+}
+.note {
+  display: block;
+  max-width: 320px;
+  font-size: var(--fs-sm2);
+  line-height: var(--lh-note);
+  text-align: center;
+}

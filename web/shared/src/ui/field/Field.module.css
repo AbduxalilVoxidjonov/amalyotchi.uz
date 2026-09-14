@@ -1,0 +1,132 @@
+/* SPEC-TOKENS 4.8 — Input / Textarea / Select / Checkbox */
+.field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.label {
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}
+.labelEnd {
+  font-size: var(--fs-xs2);
+}
+.hint {
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  line-height: var(--lh-note);
+  margin-top: 6px;
+}
+.error {
+  font-size: var(--fs-xs2);
+  color: var(--color-bad-fg);
+  line-height: var(--lh-note);
+  margin-top: 6px;
+}
+
+/* ---- control ---- */
+.control {
+  width: 100%;
+  border: var(--border-input);
+  border-radius: var(--radius-lg);
+  padding: 12px 13px;
+  font-family: inherit;
+  font-size: var(--fs-base);
+  line-height: 1.3;
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition: border-color 0.12s ease;
+}
+.control::placeholder {
+  color: var(--color-text-disabled);
+}
+.control:focus {
+  border-color: var(--color-dark-bg);
+  outline: none;
+}
+.control[aria-invalid='true'] {
+  border-color: var(--color-bad-strong);
+}
+.control:disabled {
+  background: var(--color-surface-2);
+  color: var(--color-text-faint);
+  cursor: not-allowed;
+}
+.control[data-mono='true'] {
+  font-family: var(--font-mono);
+}
+/* form (ruxsat sanalari): r8, 10×12, 13px, #fdfdfb */
+.control[data-variant='form'] {
+  border-radius: var(--radius-md2);
+  padding: 10px 12px;
+  font-size: var(--fs-md);
+  background: var(--color-surface-input);
+}
+/* diary: r9, 11×13, 13.5px */
+.control[data-variant='diary'] {
+  padding: 11px 13px;
+  font-size: var(--fs-md2);
+  background: var(--color-surface-input);
+}
+/* search (jadval toolbar): r7, 7×12, 13px, 230px */
+.control[data-variant='search'] {
+  border-radius: var(--radius-md);
+  padding: 7px 12px;
+  font-size: var(--fs-md);
+  background: var(--color-surface-input);
+  width: 230px;
+  max-width: 100%;
+}
+/* readonly-value (sozlama qiymati, hisobot filtr): mono 13px, r7, 7×12 */
+.control[data-variant='readonly'] {
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  border-radius: var(--radius-md);
+  padding: 7px 12px;
+  background: var(--color-surface-input);
+  white-space: nowrap;
+}
+
+.textarea {
+  min-height: 132px;
+  resize: vertical;
+  font-size: var(--fs-md2);
+  line-height: var(--lh-textarea);
+  background: var(--color-surface-input);
+}
+.textarea[data-variant='form'] {
+  min-height: 104px;
+}
+
+.select {
+  appearance: none;
+  padding-right: 34px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path fill='none' stroke='%237d8078' stroke-width='1.5' d='M2.5 4.5 6 8l3.5-3.5'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+}
+
+/* ---- checkbox ---- */
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: var(--fs-md);
+  color: var(--color-text-4);
+  cursor: pointer;
+}
+.checkInput {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}

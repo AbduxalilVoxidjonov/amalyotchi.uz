@@ -1,0 +1,89 @@
+/* SPEC-TOKENS 4.11 — Topbar (header) */
+.topbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: var(--topbar-pad);
+  background: var(--color-bg);
+  border-bottom: var(--border);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-topbar);
+}
+.left {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  min-width: 0;
+}
+.titles {
+  min-width: 0;
+}
+.crumb {
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-caps-xl);
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.title {
+  margin: 5px 0 0;
+  font-size: var(--fs-h1-app);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-tight);
+  line-height: 1.15;
+}
+.right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.clock {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+  background: var(--color-surface-hover);
+  border: var(--border);
+  padding: 7px 11px;
+  border-radius: var(--radius-md);
+  white-space: nowrap;
+}
+/* ❓ Hamburger — dizaynda yo'q, faqat ≤900px */
+.menu {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: var(--border-input);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}
+.menu:hover {
+  background: var(--color-surface-hover);
+}
+@media (max-width: 900px) {
+  .topbar {
+    padding: 18px 20px 14px;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .title {
+    font-size: var(--fs-3xl);
+  }
+  .menu {
+    display: inline-flex;
+  }
+  .clock {
+    display: none;
+  }
+}

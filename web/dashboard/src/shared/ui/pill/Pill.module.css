@@ -1,0 +1,65 @@
+/* SPEC-TOKENS 4.2 — Pill / toggle-tab (aktiv/passiv) */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-family: inherit;
+  font-size: var(--fs-sm2);
+  font-weight: var(--fw-medium);
+  line-height: 1.25;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  border: var(--border-input);
+  background: var(--color-surface);
+  color: var(--color-text-4);
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+.pill:hover {
+  background: var(--color-surface-hover);
+  text-decoration: none;
+}
+.pill:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.pill[aria-pressed='true'],
+.pill[aria-selected='true'],
+.pill[aria-current='page'],
+.pill[data-active='true'] {
+  background: var(--color-dark-bg);
+  color: var(--color-text-on-accent);
+  border-color: var(--color-dark-bg);
+}
+.pill[data-shape='square'] {
+  border-radius: var(--radius-sm);
+}
+.pill[data-shape='tab'] {
+  font-size: var(--fs-md);
+  padding: 7px 13px;
+  border-radius: var(--radius-md);
+}
+.pill[data-shape='wide'] {
+  flex: 1;
+  font-size: var(--fs-md);
+  padding: 9px 0;
+  border-radius: var(--radius-md);
+}
+.count {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs2);
+  opacity: 0.7;
+}
+.group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pill-gap);
+}
+.group[data-stretch='true'] > * {
+  flex: 1;
+}

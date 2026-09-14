@@ -1,0 +1,56 @@
+@import './tokens.css';
+
+/*
+ * TWA — mobil. Dizayn tokenlari dashboard bilan bir xil (SPEC-TOKENS 2.1).
+ * ❓ Telegram tema o'zgaruvchilari (var(--tg-theme-*)) hozircha ishlatilmaydi — dizayn oq/yashil palitrada.
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  line-height: var(--lh-body);
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+::selection {
+  background: var(--color-accent-soft);
+}
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+#root {
+  isolation: isolate;
+  min-height: 100dvh;
+}

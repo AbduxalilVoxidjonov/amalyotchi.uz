@@ -1,0 +1,64 @@
+/* SPEC-SCREENS §4 — ariza kartasi */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  border: var(--border);
+  background: var(--color-surface-3);
+  border-radius: var(--radius-xl);
+  padding: 14px 15px;
+  cursor: pointer;
+  transition:
+    border-color 0.12s ease,
+    background-color 0.12s ease;
+}
+.card:hover {
+  border-color: var(--color-border-hover);
+}
+.card:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.card[aria-pressed='true'] {
+  background: var(--color-surface);
+  border-color: var(--color-dark-bg);
+}
+.top,
+.bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.name {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.group {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs2);
+  color: var(--color-text-dim);
+  flex-shrink: 0;
+}
+.company {
+  font-size: var(--fs-md);
+  color: var(--color-text-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bottom {
+  justify-content: flex-start;
+}
+.waited {
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}

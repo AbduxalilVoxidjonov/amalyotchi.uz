@@ -1,0 +1,16 @@
+/* SPEC-TOKENS 4.4 toolbar: actions o'ngda, gap 7, wrap */
+.actions {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.pager {
+  display: flex;
+  gap: 7px;
+}
+/* Jadval ichidagi bo'sh holat — tashqi chegarasiz (jadvalning o'zi kartochka) */
+.empty[data-tone] {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}

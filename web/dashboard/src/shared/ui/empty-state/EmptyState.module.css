@@ -1,0 +1,32 @@
+/* ❓ SPEC-TOKENS 4.18 — dizaynda yo'q; map-placeholder uslubida (dashed, #f2f1ec) */
+.empty {
+  border: var(--border-dashed);
+  border-radius: var(--radius-xl);
+  background: var(--color-map-ph);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 36px 20px;
+  text-align: center;
+  color: var(--color-text-faint);
+}
+.empty[data-tone='plain'] {
+  border-style: solid;
+  border-color: var(--color-border);
+  background: var(--color-surface);
+}
+.title {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-muted);
+}
+.desc {
+  font-size: var(--fs-md);
+  line-height: var(--lh-note);
+  max-width: 420px;
+}
+.action {
+  margin-top: 8px;
+}

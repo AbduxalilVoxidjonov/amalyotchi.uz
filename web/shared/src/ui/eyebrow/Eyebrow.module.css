@@ -1,0 +1,18 @@
+/* SPEC-TOKENS 4.16 — section eyebrow (uppercase kichik sarlavha) */
+.eyebrow {
+  margin: 0 0 10px;
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-caps-lg);
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  font-weight: var(--fw-semibold);
+}
+.eyebrow[data-spacing='wide'] {
+  letter-spacing: var(--ls-caps-xl);
+}
+.eyebrow[data-tone='alert'] {
+  color: var(--color-alert-accent);
+}
+.eyebrow[data-margin='none'] {
+  margin-bottom: 0;
+}

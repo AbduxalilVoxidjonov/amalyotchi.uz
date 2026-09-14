@@ -1,0 +1,128 @@
+/* SPEC-SCREENS §7 — Admin · Umumiy dashboard */
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--content-gap);
+}
+.twoCol {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--section-grid-gap);
+  align-items: start;
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.list > li {
+  border-bottom: var(--border-row);
+}
+.list > li:last-child {
+  border-bottom: 0;
+}
+/* Fakultet qatori: 12px 18px; flex gap14 */
+.facultyRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px;
+}
+.facultyMain {
+  flex: 1;
+  min-width: 0;
+}
+.facultyName {
+  font-size: var(--fs-md2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.facultyBar {
+  margin-top: 7px;
+}
+.right {
+  text-align: right;
+  flex-shrink: 0;
+}
+.right[data-nowrap] {
+  white-space: nowrap;
+}
+.facultyPct {
+  font-family: var(--font-mono);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+}
+.faint {
+  font-size: var(--fs-xs);
+  color: var(--color-text-faint);
+}
+/* Tyutor qatori: space-between */
+.tutorRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 18px;
+}
+.tutorMain {
+  min-width: 0;
+}
+.tutorName {
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-medium);
+}
+.tutorScope {
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  margin-top: 2px;
+}
+.tutorPending {
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+}
+.tutorPending[data-kind='ok'] {
+  color: var(--color-ok-fg);
+}
+.tutorPending[data-kind='late'] {
+  color: var(--color-late-fg);
+}
+.tutorPending[data-kind='bad'] {
+  color: var(--color-bad-fg);
+}
+/* Audit: grid 150px 1fr 200px; 11px 18px */
+.auditRow {
+  display: grid;
+  grid-template-columns: 150px 1fr 200px;
+  gap: 14px;
+  align-items: center;
+  padding: 11px 18px;
+}
+.auditTime {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--color-text-dim);
+}
+.auditText {
+  font-size: var(--fs-md);
+  color: var(--color-text-2);
+  min-width: 0;
+}
+.auditWho {
+  font-size: var(--fs-sm2);
+  color: var(--color-text-muted);
+  text-align: right;
+}
+.link {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-regular);
+}
+@media (max-width: 700px) {
+  .auditRow {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .auditWho {
+    text-align: left;
+  }
+}

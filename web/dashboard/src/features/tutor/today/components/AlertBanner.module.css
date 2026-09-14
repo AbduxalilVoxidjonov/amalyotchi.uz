@@ -1,0 +1,23 @@
+.alert {
+  position: relative;
+}
+.close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--color-alert-accent);
+  font-size: var(--fs-xl2);
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+.close:hover {
+  background: var(--color-alert-btn-hov);
+}
+.close:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

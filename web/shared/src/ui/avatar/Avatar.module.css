@@ -1,0 +1,34 @@
+/* SPEC-TOKENS 4.13 — Avatar */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background: var(--color-avatar-bg);
+  color: var(--color-avatar-fg);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0;
+  user-select: none;
+}
+.avatar[data-variant='card'] {
+  width: 32px;
+  height: 32px;
+  font-size: var(--fs-xs2);
+}
+.avatar[data-variant='detail'] {
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius-xl);
+  font-size: var(--fs-lg);
+}
+.avatar[data-variant='sidebar'] {
+  width: 32px;
+  height: 32px;
+  background: var(--color-dark-avatar);
+  color: var(--color-accent-soft);
+  font-size: var(--fs-sm);
+}

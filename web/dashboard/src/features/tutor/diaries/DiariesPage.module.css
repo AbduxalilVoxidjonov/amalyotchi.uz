@@ -1,0 +1,7 @@
+/* SPEC-SCREENS §6 — grid 1 ustun, gap12, max-width 900 */
+.list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  max-width: 900px;
+}

@@ -1,0 +1,56 @@
+/* SPEC-TOKENS 4.1 — stepper */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.label {
+  font-size: var(--fs-sm2);
+  color: var(--color-text-muted);
+}
+.stepper {
+  display: inline-flex;
+  align-items: stretch;
+  border: var(--border-input);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.btn {
+  border: 0;
+  background: var(--color-bg);
+  width: 28px;
+  height: 28px;
+  font-size: var(--fs-base);
+  color: var(--color-text-4);
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+.btn:disabled {
+  cursor: not-allowed;
+  color: var(--color-text-disabled);
+}
+.btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  padding: 0 12px;
+  min-width: 62px;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface);
+}
+.hint {
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  margin-left: auto;
+}

@@ -1,0 +1,5 @@
+/*
+ * Dizayn tokenlari — manba: @amaliyotchi/shared/src/styles/tokens.css (SPEC-TOKENS.md).
+ * TWA'ga xos override (masalan Telegram tema ranglari) kerak bo'lsa pastga `:root { ... }` qo'shing.
+ */
+@import '@amaliyotchi/shared/styles/tokens.css';

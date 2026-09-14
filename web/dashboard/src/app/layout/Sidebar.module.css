@@ -1,0 +1,105 @@
+/* SPEC-TOKENS 4.10 — Sidebar (aside) + user block */
+.sidebar {
+  width: var(--sidebar-w);
+  flex: 0 0 var(--sidebar-w);
+  background: var(--color-dark-bg);
+  color: var(--color-dark-fg);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+}
+.brand {
+  padding: var(--sidebar-brand-pad);
+  border-bottom: var(--border-w) solid var(--color-dark-line);
+}
+.logo {
+  font-size: var(--fs-xl2);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-snug);
+  color: inherit;
+  text-decoration: none;
+  display: block;
+}
+.logo:hover {
+  color: inherit;
+  text-decoration: none;
+}
+.sub {
+  font-size: var(--fs-xs2);
+  color: var(--color-dark-muted);
+  margin-top: 3px;
+  font-family: var(--font-mono);
+}
+.nav {
+  padding: var(--sidebar-nav-pad);
+  overflow-y: auto;
+}
+.user {
+  margin-top: auto;
+  padding: var(--sidebar-user-pad);
+  border-top: var(--border-w) solid var(--color-dark-line);
+  /* avatar | matn; "Chiqish" — matn ustunida ikkinchi qatorda (rol matni to'liq sig'sin) */
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 8px;
+  align-items: center;
+}
+.userText {
+  min-width: 0;
+}
+.logout {
+  grid-column: 2;
+  justify-self: start;
+}
+.name {
+  font-size: var(--fs-sm2);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.role {
+  font-size: var(--fs-xs);
+  color: var(--color-dark-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.close {
+  display: none;
+}
+/* ❓ Drawer rejimi (≤900px) — dizaynda yo'q */
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: var(--z-drawer);
+    transform: translateX(-100%);
+    transition: transform 0.18s ease;
+  }
+  .sidebar[data-open='true'] {
+    transform: translateX(0);
+  }
+  .close {
+    display: inline-flex;
+    position: absolute;
+    top: 14px;
+    right: 12px;
+    width: 30px;
+    height: 30px;
+    align-items: center;
+    justify-content: center;
+    border: var(--border-w) solid var(--color-dark-btn-bd);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-dark-link);
+    font-size: var(--fs-lg);
+    line-height: 1;
+  }
+}

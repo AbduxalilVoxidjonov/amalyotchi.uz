@@ -1,0 +1,9 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.item {
+  color: var(--color-text-2);
+  align-items: flex-start;
+}

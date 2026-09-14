@@ -1,0 +1,58 @@
+/* SPEC-TOKENS 4.14 — Chip (fayl / format) + FileBox */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chip[data-variant='file'] {
+  border: var(--border);
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+  padding: 6px 11px;
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+.chip[data-variant='fmt'] {
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+  background: var(--color-surface-muted);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.fileBox {
+  border: var(--border);
+  border-radius: var(--radius-md2);
+  padding: 12px 13px;
+  background: var(--color-surface-2);
+  min-width: 0;
+}
+.fileName {
+  font-size: var(--fs-sm2);
+  font-weight: var(--fw-medium);
+  color: var(--color-text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fileMeta {
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  margin-top: 3px;
+}
+
+/* Chip ichidagi havola (kundalik fayli) — chip rangida, faqat tagchiziq. */
+.chip a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

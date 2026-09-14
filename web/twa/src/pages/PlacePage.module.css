@@ -1,0 +1,51 @@
+.fields {
+  margin: 0;
+}
+.field {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 18px;
+  border-bottom: var(--border-row);
+}
+.k {
+  font-size: var(--fs-sm2);
+  color: var(--color-text-faint);
+  flex-shrink: 0;
+}
+.v {
+  margin: 0;
+  font-size: var(--fs-md2);
+  color: var(--color-text-2);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.note {
+  padding: 14px 18px;
+  font-size: var(--fs-sm);
+  color: var(--color-text-faint);
+  line-height: var(--lh-note);
+}
+.fileBox {
+  margin-top: 12px;
+}
+.approved {
+  margin-top: 11px;
+  font-size: var(--fs-sm2);
+  color: var(--color-ok-fg);
+}
+.pendingNote {
+  margin-top: 11px;
+  font-size: var(--fs-sm2);
+  color: var(--color-late-fg);
+}
+.template {
+  margin-top: 13px;
+}
+.emptyContract {
+  margin-top: 12px;
+}
+.map {
+  margin-top: 12px;
+}

@@ -1,0 +1,58 @@
+/* SPEC-TOKENS 4.11 Topbar — mobil variant: 16px yon, kichikroq h1 */
+.shell {
+  --tabbar-h: 56px;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+  padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+}
+.header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-topbar);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 12px;
+  background: var(--color-bg);
+  border-bottom: var(--border);
+}
+.headerText {
+  min-width: 0;
+}
+.crumb {
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-caps-xl);
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.title {
+  margin: 4px 0 0;
+  font-size: var(--fs-3xl);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-tight);
+  line-height: 1.2;
+}
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-grid-gap);
+  padding: 16px 16px 24px;
+  min-width: 0;
+}
+/* Kengroq ekranda (planshet/desktop brauzer) kontent o'rtada, dizayndagi max-width */
+@media (min-width: 720px) {
+  .content {
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: var(--content-pad);
+  }
+}

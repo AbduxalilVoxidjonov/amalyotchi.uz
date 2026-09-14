@@ -1,0 +1,53 @@
+/* SPEC-TOKENS 4.7 — StatTile + StatGrid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--stat-min, 170px), 1fr));
+  gap: var(--stat-grid-gap);
+}
+.stat {
+  background: var(--color-surface);
+  border: var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--stat-pad);
+  min-width: 0;
+}
+.label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted-2);
+  font-weight: var(--fw-medium);
+}
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--dot);
+  flex-shrink: 0;
+}
+.value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-stat);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-tight);
+  line-height: 1.15;
+  margin-top: 8px;
+}
+.note {
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  margin-top: 2px;
+}
+.note[data-tone='ok'] {
+  color: var(--color-ok-fg);
+}
+.note[data-tone='late'] {
+  color: var(--color-late-fg);
+}
+.note[data-tone='bad'] {
+  color: var(--color-bad-fg);
+}
+.note[data-tone='info'] {
+  color: var(--color-info-fg);
+}

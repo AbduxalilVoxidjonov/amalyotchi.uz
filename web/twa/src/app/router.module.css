@@ -1,0 +1,19 @@
+.gate {
+  min-height: 100dvh;
+  padding: 32px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  background: var(--color-bg);
+}
+.gateTitle {
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-tight);
+}
+.gateText {
+  font-size: var(--fs-base);
+  color: var(--color-text-muted);
+  line-height: var(--lh-note);
+}

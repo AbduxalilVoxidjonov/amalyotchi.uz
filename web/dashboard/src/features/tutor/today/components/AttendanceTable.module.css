@@ -1,0 +1,26 @@
+/* SPEC-SCREENS §3 — katak rang qoidalari (inFg / outFg / diaryFg / distFg) */
+.tone[data-tone='text'] {
+  color: var(--color-text-2);
+}
+.tone[data-tone='late'] {
+  color: var(--color-late-fg);
+}
+.tone[data-tone='empty'] {
+  color: var(--color-text-disabled);
+}
+.tone[data-tone='ok'] {
+  color: var(--color-ok-fg);
+}
+.tone[data-tone='out'] {
+  color: var(--color-bad-fg);
+}
+.tone[data-tone='muted'] {
+  color: var(--color-text-muted);
+}
+.company {
+  color: var(--color-text-3);
+}
+.pager {
+  display: flex;
+  gap: 7px;
+}

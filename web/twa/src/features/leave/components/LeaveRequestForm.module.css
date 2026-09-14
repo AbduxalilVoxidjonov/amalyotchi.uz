@@ -1,0 +1,49 @@
+.title {
+  margin: 0;
+  font-size: var(--fs-base2);
+  font-weight: var(--fw-semibold);
+}
+.dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+.reason {
+  margin-top: 13px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 13px;
+}
+.submit {
+  margin-left: auto;
+}
+.removeFile {
+  border: 0;
+  background: transparent;
+  padding: 0 0 0 2px;
+  color: var(--color-text-faint);
+  font-size: var(--fs-base);
+  line-height: 1;
+}
+.formError {
+  margin-top: 10px;
+  font-size: var(--fs-xs2);
+  color: var(--color-bad-fg);
+  line-height: var(--lh-note);
+}
+.success {
+  margin-top: 10px;
+  font-size: var(--fs-md);
+  color: var(--color-ok-fg);
+}
+.note {
+  margin-top: 12px;
+  font-size: var(--fs-sm);
+  color: var(--color-text-faint);
+  line-height: var(--lh-note);
+}

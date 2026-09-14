@@ -1,0 +1,69 @@
+/* ❓ SPEC-TOKENS 4.18 — dizaynda yo'q; map-placeholder uslubida (dashed, map-ph fon) */
+.box {
+  border: var(--border-dashed);
+  border-radius: var(--radius-xl);
+  background: var(--color-map-ph);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--color-text-faint);
+}
+.box[data-tone='error'] {
+  border-style: solid;
+  border-color: var(--color-bad-border);
+  background: var(--color-bad-bg);
+  color: var(--color-bad-fg);
+}
+.title {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-muted);
+}
+.box[data-tone='error'] .title {
+  color: var(--color-bad-fg);
+}
+.desc {
+  font-size: var(--fs-md);
+  line-height: var(--lh-note);
+  max-width: 420px;
+}
+.action {
+  margin-top: 8px;
+}
+.loading {
+  border: var(--border);
+  border-radius: var(--radius-2xl);
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 0%,
+    var(--color-surface-2) 50%,
+    var(--color-surface) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading {
+    animation: none;
+  }
+}
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

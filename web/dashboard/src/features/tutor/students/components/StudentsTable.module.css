@@ -1,0 +1,11 @@
+.company {
+  color: var(--color-text-3);
+}
+.days {
+  font-size: var(--fs-xs);
+  color: var(--color-text-faint);
+  margin-top: 4px;
+}
+.diary {
+  color: var(--color-text-muted);
+}

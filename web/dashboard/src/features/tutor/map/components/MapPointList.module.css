@@ -1,0 +1,80 @@
+/* SPEC-SCREENS §11 — nuqtalar ro'yxati */
+.head {
+  padding: var(--section-head-pad);
+  border-bottom: var(--border-inner);
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-semibold);
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 13px 18px;
+  border-bottom: var(--border-row);
+}
+.item:last-child {
+  border-bottom: 0;
+}
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-full);
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.dot[data-kind='ok'] {
+  background: var(--color-ok-strong);
+}
+.dot[data-kind='late'] {
+  background: var(--color-late-strong);
+}
+.dot[data-kind='bad'] {
+  background: var(--color-bad-strong);
+}
+.body {
+  flex: 1;
+  min-width: 0;
+}
+.name {
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-medium);
+}
+.company {
+  font-size: var(--fs-sm);
+  color: var(--color-text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+.dist {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  margin-top: 4px;
+}
+.dist[data-kind='ok'] {
+  color: var(--color-ok-fg);
+}
+.dist[data-kind='late'] {
+  color: var(--color-late-fg);
+}
+.dist[data-kind='bad'] {
+  color: var(--color-bad-fg);
+}
+.time {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--color-text-dim);
+  flex-shrink: 0;
+}
+.empty {
+  padding: 28px 18px;
+  text-align: center;
+  font-size: var(--fs-md);
+  color: var(--color-text-faint);
+}

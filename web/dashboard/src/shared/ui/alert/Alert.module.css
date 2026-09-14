@@ -1,0 +1,45 @@
+/* SPEC-TOKENS 4.12 — Alert banner (amber) */
+.alert {
+  background: var(--color-alert-bg);
+  border: var(--border-w) solid var(--color-alert-border);
+  border-left: 3px solid var(--color-alert-accent);
+  border-radius: var(--radius-xl);
+  padding: 16px 18px;
+}
+.title {
+  margin: 0;
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-caps-xl);
+  text-transform: uppercase;
+  color: var(--color-alert-accent);
+  font-weight: var(--fw-semibold);
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 8px;
+  border-bottom: var(--border-w) solid var(--color-alert-row);
+}
+.row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.text {
+  font-size: var(--fs-md2);
+  min-width: 0;
+}
+.action {
+  flex-shrink: 0;
+}
+.body {
+  margin-top: 8px;
+  font-size: var(--fs-md2);
+}

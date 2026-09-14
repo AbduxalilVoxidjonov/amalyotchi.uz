@@ -1,0 +1,12 @@
+.loading {
+  padding: 36px 20px;
+  text-align: center;
+  font-size: var(--fs-md2);
+  color: var(--color-text-faint);
+}
+/* Jadval/kartochka ichida — tashqi chegarasiz */
+.inline[data-tone] {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
