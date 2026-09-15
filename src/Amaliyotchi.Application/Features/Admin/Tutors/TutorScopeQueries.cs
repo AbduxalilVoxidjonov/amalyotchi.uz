@@ -4,7 +4,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Admin.Tutors;
 
-/// <summary>Fakultetdagi FAOL guruh (yo'nalish → kafedra zanjiri bilan) — ko'lam hisob-kitoblari uchun umumiy qator.</summary>
+/// <summary>Tyutor fakultetlaridagi FAOL guruh (yo'nalish → kafedra → fakultet zanjiri bilan) — ko'lam hisob-kitoblari
+/// uchun umumiy qator.</summary>
 internal sealed record FacultyGroupRow(
     Guid Id,
     string Name,
@@ -13,6 +14,7 @@ internal sealed record FacultyGroupRow(
     string DirectionName,
     Guid DepartmentId,
     string DepartmentName,
+    Guid FacultyId,
     int Students);
 
 /// <summary>Tanlangan tugunning nomi va ota yo'li (<c>"Fakultet › Kafedra"</c>).</summary>
@@ -41,16 +43,16 @@ internal static class TutorScopeQueries
         _ => "guruh"
     };
 
-    /// <summary>Fakultetdagi barcha faol (<c>StudentGroup.IsActive</c>) guruhlar — materializatsiya va hisoblar
+    /// <summary>Berilgan fakultetlardagi barcha faol (<c>StudentGroup.IsActive</c>) guruhlar — materializatsiya va hisoblar
     /// aynan shu to'plamga tayanadi. Kafedra/yo'nalishning faol emasligi guruhni chiqarib tashlamaydi.</summary>
     public static Task<List<FacultyGroupRow>> LoadActiveGroupsAsync(
-        IApplicationDbContext db, Guid facultyId, CancellationToken cancellationToken)
+        IApplicationDbContext db, IReadOnlyCollection<Guid> facultyIds, CancellationToken cancellationToken)
         => (from g in db.StudentGroups.AsNoTracking()
             join d in db.Directions on g.DirectionId equals d.Id
             join dept in db.Departments on d.DepartmentId equals dept.Id
-            where dept.FacultyId == facultyId && g.IsActive
+            where facultyIds.Contains(dept.FacultyId) && g.IsActive
             select new FacultyGroupRow(
-                g.Id, g.Name, g.Course, d.Id, d.Name, dept.Id, dept.Name,
+                g.Id, g.Name, g.Course, d.Id, d.Name, dept.Id, dept.Name, dept.FacultyId,
                 db.StudentProfiles.Count(p => p.StudentGroupId == g.Id)))
             .ToListAsync(cancellationToken);
 
@@ -99,7 +101,7 @@ internal static class TutorScopeQueries
     }
 
     /// <summary>Faol ko'lamlar → <see cref="TutorScopeDto"/> (daraja → nom bo'yicha tartib). <paramref name="facultyGroups"/> —
-    /// tyutor fakultetining faol guruhlari (<see cref="LoadActiveGroupsAsync"/>).</summary>
+    /// tyutor fakultetlarining faol guruhlari (<see cref="LoadActiveGroupsAsync"/>).</summary>
     public static async Task<IReadOnlyList<TutorScopeDto>> ToDtosAsync(
         IApplicationDbContext db,
         IReadOnlyCollection<TutorScope> scopes,
@@ -114,7 +116,7 @@ internal static class TutorScopeQueries
         return scopes
             .Select(s =>
             {
-                var covered = facultyGroups.Where(g => s.CoversGroup(s.FacultyId, g.DepartmentId, g.DirectionId, g.Id)).ToList();
+                var covered = facultyGroups.Where(g => s.CoversGroup(g.FacultyId, g.DepartmentId, g.DirectionId, g.Id)).ToList();
                 var name = names[s.Id];
                 return new TutorScopeDto(
                     s.Id, s.Level, s.FacultyId, s.DepartmentId, s.DirectionId, s.StudentGroupId,

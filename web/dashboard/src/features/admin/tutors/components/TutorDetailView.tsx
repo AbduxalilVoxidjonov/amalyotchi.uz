@@ -90,7 +90,8 @@ export function TutorDetailView({
           title={tutor.fullName}
           subtitle={
             <span className={styles.sub}>
-              <span className={styles.mono}>{tutor.hemisId}</span> · {tutor.facultyName}
+              <span className={styles.mono}>{tutor.hemisId}</span> ·{' '}
+              {tutor.faculties.map((f) => f.name).join(', ')}
             </span>
           }
           actions={
@@ -118,7 +119,21 @@ export function TutorDetailView({
             items={[
               { k: 'HEMIS ID', v: <span className={styles.mono}>{tutor.hemisId}</span> },
               { k: 'Telefon', v: <span className={styles.mono}>{formatPhone(tutor.phone)}</span> },
-              { k: 'Fakultet', v: `${tutor.facultyCode} · ${tutor.facultyName}` },
+              {
+                k: 'Fakultetlar',
+                v: (
+                  <ul className={styles.facultyList} aria-label="Fakultetlar">
+                    {tutor.faculties.map((f) => (
+                      <li key={f.id} className={styles.faculty}>
+                        <Badge status="info" size="sm">
+                          {f.code}
+                        </Badge>
+                        <span>{f.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ),
+              },
               {
                 k: 'Holat',
                 v: tutor.isActive ? (

@@ -24,6 +24,6 @@ public sealed class CreateTutorCommandValidator : AbstractValidator<CreateTutorC
             .NotEmpty().WithMessage(TutorValidationRules.PasswordRequiredMessage)
             .Must(TutorValidationRules.IsValidPassword).WithMessage(TutorValidationRules.PasswordLengthMessage);
 
-        RuleFor(x => x.FacultyId).NotEmpty().WithMessage(TutorValidationRules.FacultyRequiredMessage);
+        TutorValidationRules.FacultyIds(RuleFor(x => x.FacultyIds));
     }
 }

@@ -34,6 +34,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<StudentProfile> StudentProfiles => Set<StudentProfile>();
     public DbSet<TutorAssignment> TutorAssignments => Set<TutorAssignment>();
     public DbSet<TutorScope> TutorScopes => Set<TutorScope>();
+    public DbSet<TutorFaculty> TutorFaculties => Set<TutorFaculty>();
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<PracticePeriod> PracticePeriods => Set<PracticePeriod>();
     public DbSet<PracticePeriodGroup> PracticePeriodGroups => Set<PracticePeriodGroup>();

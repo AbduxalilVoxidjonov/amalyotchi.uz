@@ -5,6 +5,7 @@ import { paginateMock } from '../shared/paginate';
 import { TUTORS_ENDPOINT } from './api';
 import {
   SCOPE_LEVEL_LABEL,
+  type FacultyRef,
   type ScopeTreeDepartment,
   type ScopeTreeDirection,
   type ScopeTreeGroup,
@@ -31,7 +32,8 @@ interface TutorSeed {
   fullName: string;
   hemisId: string;
   phone: string | null;
-  facultyId: string;
+  /** Bir nechta fakultet bo'lishi mumkin (javobda nom tartibida). */
+  facultyIds: string[];
   isActive: boolean;
   lastLoginAt: string | null;
   createdAt: string;
@@ -73,14 +75,17 @@ interface ScopeSeed {
 /** Faol o'quv yili (barcha biriktirmalar shu yilga tegishli). */
 const ACADEMIC_YEAR = '2026-2027';
 
-/** Backend `TutorRow` shaklida (SPEC-SCREENS §9.5 raqamlari); `t5` — `t1` bilan bir fakultetda (band tugun sinovi). */
+/**
+ * Backend `TutorRow` shaklida (SPEC-SCREENS §9.5 raqamlari); `t5` — `t1` bilan bir fakultetda (band tugun
+ * sinovi). `t1` — ikki fakultetli (f1 + f2): ro'yxatda "AT, IM", ko'lam tanlashda ikki daraxt.
+ */
 const TUTOR_SEED: TutorSeed[] = [
   {
     id: 't1',
     fullName: 'Nodira Saidova',
     hemisId: '100000000002',
     phone: '+998901112233',
-    facultyId: 'f1',
+    facultyIds: ['f1', 'f2'],
     isActive: true,
     lastLoginAt: '2026-10-12T04:31:00+00:00',
     createdAt: '2026-08-20T09:00:00+00:00',
@@ -94,7 +99,7 @@ const TUTOR_SEED: TutorSeed[] = [
     fullName: 'Baxtiyor Rasulov',
     hemisId: '100000000003',
     phone: '+998912445102',
-    facultyId: 'f2',
+    facultyIds: ['f2'],
     isActive: true,
     lastLoginAt: '2026-10-11T13:10:00+00:00',
     createdAt: '2026-08-20T09:05:00+00:00',
@@ -108,7 +113,7 @@ const TUTOR_SEED: TutorSeed[] = [
     fullName: 'Dilshod Ergashev',
     hemisId: '100000000004',
     phone: '+998937001845',
-    facultyId: 'f3',
+    facultyIds: ['f3'],
     isActive: true,
     lastLoginAt: '2026-10-12T03:00:00+00:00',
     createdAt: '2026-08-21T10:00:00+00:00',
@@ -122,7 +127,7 @@ const TUTOR_SEED: TutorSeed[] = [
     fullName: "Gulnora Yo'ldosheva",
     hemisId: '100000000005',
     phone: '+998975126330',
-    facultyId: 'f4',
+    facultyIds: ['f4'],
     isActive: true,
     lastLoginAt: null,
     createdAt: '2026-09-01T08:30:00+00:00',
@@ -136,7 +141,7 @@ const TUTOR_SEED: TutorSeed[] = [
     fullName: 'Sardor Karimov',
     hemisId: '100000000006',
     phone: null,
-    facultyId: 'f1',
+    facultyIds: ['f1'],
     isActive: true,
     lastLoginAt: '2026-10-10T07:45:00+00:00',
     createdAt: '2026-09-03T11:00:00+00:00',
@@ -150,12 +155,14 @@ const TUTOR_SEED: TutorSeed[] = [
 /**
  * Ierarxiya katalogi (`scope-tree`). f1 — 3 kafedra: `d1` (2 yo'nalish), `d2` (1 yo'nalish, `g-441-22`
  * faol emas — daraxtga chiqmaydi), `d5` (Sardor Karimovga to'liq biriktirilgan — kafedra darajasidagi band tugun).
+ * f2 — 2 kafedra: `d3` (Baxtiyor Rasulovniki), `d8` (erkin — t1 ikkinchi fakultetida tanlashi mumkin).
  */
 const DEPARTMENT_SEED: DepartmentSeed[] = [
   { id: 'd1', facultyId: 'f1', name: 'Kompyuter injiniringi kafedrasi' },
   { id: 'd2', facultyId: 'f1', name: 'Axborot xavfsizligi kafedrasi' },
   { id: 'd5', facultyId: 'f1', name: "Sun'iy intellekt kafedrasi" },
   { id: 'd3', facultyId: 'f2', name: 'Moliya kafedrasi' },
+  { id: 'd8', facultyId: 'f2', name: 'Buxgalteriya hisobi kafedrasi' },
   { id: 'd6', facultyId: 'f3', name: 'Arxitektura kafedrasi' },
   { id: 'd7', facultyId: 'f4', name: "O'zbek tili kafedrasi" },
 ];
@@ -167,6 +174,7 @@ const DIRECTION_SEED: DirectionSeed[] = [
   { id: 'dir6', departmentId: 'd5', name: "Sun'iy intellekt" },
   { id: 'dir3', departmentId: 'd3', name: 'Bank ishi' },
   { id: 'dir4', departmentId: 'd3', name: 'Moliyaviy menejment' },
+  { id: 'dir9', departmentId: 'd8', name: 'Buxgalteriya hisobi' },
   { id: 'dir7', departmentId: 'd6', name: 'Arxitektura' },
   { id: 'dir8', departmentId: 'd7', name: "O'zbek filologiyasi" },
 ];
@@ -196,6 +204,8 @@ const GROUP_SEED: GroupSeed[] = [
   group('dir3', '223-23', 2, 22),
   group('dir4', '321-22', 3, 25),
   group('dir4', '322-22', 3, 24),
+  group('dir9', '231-23', 2, 20),
+  group('dir9', '232-23', 2, 19),
   group('dir7', '318-21', 4, 22),
   group('dir7', '319-21', 4, 21),
   group('dir7', '320-21', 4, 21),
@@ -206,12 +216,12 @@ const GROUP_SEED: GroupSeed[] = [
 ];
 
 /**
- * Ko'lam urug'i: t1 — `dir1` yo'nalishi (412-22, 413-22); t2 — butun `f2`; t3 — `d6` kafedrasi;
- * t4 — butun `f4`; t5 — `d5` kafedrasi (band kafedra) + `g-431-22` guruhi (band guruh).
+ * Ko'lam urug'i: t1 — `dir1` yo'nalishi (412-22, 413-22); t2 — `d3` kafedrasi (f2 dagi 5 guruh);
+ * t3 — `d6` kafedrasi; t4 — butun `f4`; t5 — `d5` kafedrasi (band kafedra) + `g-431-22` guruhi (band guruh).
  */
 const SCOPE_SEED: ScopeSeed[] = [
   { id: 's1', tutorId: 't1', level: 'direction', nodeId: 'dir1' },
-  { id: 's2', tutorId: 't2', level: 'faculty', nodeId: 'f2' },
+  { id: 's2', tutorId: 't2', level: 'department', nodeId: 'd3' },
   { id: 's3', tutorId: 't3', level: 'department', nodeId: 'd6' },
   { id: 's4', tutorId: 't4', level: 'faculty', nodeId: 'f4' },
   { id: 's5', tutorId: 't5', level: 'department', nodeId: 'd5' },
@@ -235,6 +245,15 @@ export function resetTutorsMock() {
 
 function facultyOf(facultyId: string) {
   return mockFaculties.find((f) => f.id === facultyId);
+}
+
+/** Tyutor fakultetlari — `FacultyRef[]`, nom tartibida (kontrakt). */
+function facultiesOf(facultyIds: readonly string[]): FacultyRef[] {
+  return facultyIds
+    .map(facultyOf)
+    .filter((f): f is NonNullable<typeof f> => f !== undefined)
+    .map((f) => ({ id: f.id, code: f.code, name: f.name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** Tugunning ajdodlar zanjiri (fakultetgacha) — `level:id` kalitlar to'plami. */
@@ -340,15 +359,12 @@ function groupsOf(tutorId: string): { scope: ScopeSeed; group: GroupSeed }[] {
 }
 
 function toRow(t: TutorSeed): Tutor {
-  const faculty = facultyOf(t.facultyId);
   const groups = groupsOf(t.id);
   return {
     id: t.id,
     fullName: t.fullName,
     phone: t.phone,
-    facultyId: t.facultyId,
-    facultyCode: faculty?.code ?? null,
-    facultyName: faculty?.name ?? null,
+    faculties: facultiesOf(t.facultyIds),
     groups: groups.map((g) => g.group.name),
     students: groups.reduce((sum, g) => sum + g.group.students, 0),
     pending: t.pending,
@@ -361,7 +377,6 @@ function toRow(t: TutorSeed): Tutor {
 }
 
 function toDetail(t: TutorSeed): TutorDetail {
-  const faculty = facultyOf(t.facultyId);
   const groups: TutorGroup[] = groupsOf(t.id).map(({ scope, group: g }) => ({
     assignmentId: `${scope.id}:${g.id}`,
     groupId: g.id,
@@ -377,9 +392,7 @@ function toDetail(t: TutorSeed): TutorDetail {
     fullName: t.fullName,
     hemisId: t.hemisId,
     phone: t.phone,
-    facultyId: t.facultyId,
-    facultyCode: faculty?.code ?? '',
-    facultyName: faculty?.name ?? '',
+    faculties: facultiesOf(t.facultyIds),
     isActive: t.isActive,
     lastLoginAt: t.lastLoginAt,
     createdAt: t.createdAt,
@@ -440,8 +453,24 @@ function validateCommon(body: Partial<TutorUpdateInput>, errors: Record<string, 
   if (!fullName) errors['FullName'] = ['FISH ni kiriting.'];
   else if (fullName.length < 2 || fullName.length > 150)
     errors['FullName'] = ["FISH 2–150 belgi bo'lishi kerak."];
-  if (!body.facultyId) errors['FacultyId'] = ['Fakultetni tanlang.'];
-  else if (!facultyOf(body.facultyId)) errors['FacultyId'] = ['Fakultet topilmadi.'];
+  if (!Array.isArray(body.facultyIds) || body.facultyIds.length === 0)
+    errors['FacultyIds'] = ['Kamida bitta fakultet tanlang.'];
+}
+
+/**
+ * `facultyIds` (takrorlar olib tashlanadi): 404 — topilmasa, 409 — faol emas. Muvaffaqiyatda noyob id'lar.
+ * `validateCommon` dan keyin chaqiriladi (bo'sh ro'yxat u yerda 400).
+ */
+function resolveFacultyIds(raw: readonly string[]): string[] | Response {
+  const ids = [...new Set(raw.map(String))];
+  for (const id of ids) {
+    const faculty = facultyOf(id);
+    if (!faculty) return problemResponse(404, 'Topilmadi', 'Fakultet topilmadi.');
+    if (!faculty.isActive) {
+      return problemResponse(409, 'Ziddiyat', `Fakultet faol emas: ${faculty.name}`);
+    }
+  }
+  return ids;
 }
 
 function validationProblem(errors: Record<string, string[]>) {
@@ -457,9 +486,14 @@ function notFound() {
 export const tutorsHandlers: HttpHandler[] = [
   http.get(TUTORS_ENDPOINT, ({ request }) => {
     const facultyId = new URL(request.url).searchParams.get('facultyId');
-    const rows = tutors.filter((t) => !facultyId || t.facultyId === facultyId).map(toRow);
+    // Filtr: tyutor fakultetlaridan biri mos kelsa.
+    const rows = tutors.filter((t) => !facultyId || t.facultyIds.includes(facultyId)).map(toRow);
     return HttpResponse.json(
-      paginateMock(request.url, rows, (t) => [t.fullName, t.phone, t.facultyCode, t.facultyName]),
+      paginateMock(request.url, rows, (t) => [
+        t.fullName,
+        t.phone,
+        ...t.faculties.flatMap((f) => [f.code, f.name]),
+      ]),
     );
   }),
 
@@ -483,6 +517,8 @@ export const tutorsHandlers: HttpHandler[] = [
     const phone = normalizePhone(body.phone, errors);
     if (Object.keys(errors).length > 0) return validationProblem(errors);
 
+    const facultyIds = resolveFacultyIds(body.facultyIds!);
+    if (facultyIds instanceof Response) return facultyIds;
     if (tutors.some((t) => t.hemisId === hemisId)) {
       return problemResponse(409, 'Ziddiyat', 'Bu HEMIS ID bilan foydalanuvchi mavjud.');
     }
@@ -491,7 +527,7 @@ export const tutorsHandlers: HttpHandler[] = [
       fullName: body.fullName!.trim(),
       hemisId,
       phone,
-      facultyId: body.facultyId!,
+      facultyIds,
       isActive: true,
       lastLoginAt: null,
       createdAt: new Date().toISOString(),
@@ -515,18 +551,28 @@ export const tutorsHandlers: HttpHandler[] = [
     const phone = normalizePhone(body.phone, errors);
     if (Object.keys(errors).length > 0) return validationProblem(errors);
 
-    if (body.facultyId !== existing.facultyId && scopes.some((s) => s.tutorId === id)) {
-      return problemResponse(
-        409,
-        'Ziddiyat',
-        "Tyutorga ko'lam biriktirilgan — avval uni ajrating.",
+    const facultyIds = resolveFacultyIds(body.facultyIds!);
+    if (facultyIds instanceof Response) return facultyIds;
+
+    // Olib tashlanayotgan fakultetda tyutor ko'lami bo'lsa — 409 (SCOPE_SEED asosida).
+    const removed = existing.facultyIds.filter((f) => !facultyIds.includes(f));
+    for (const facultyId of removed) {
+      const hasScope = scopes.some(
+        (s) => s.tutorId === id && lineage({ level: s.level, id: s.nodeId })?.[0]?.id === facultyId,
       );
+      if (hasScope) {
+        return problemResponse(
+          409,
+          'Ziddiyat',
+          `${facultyOf(facultyId)?.name ?? facultyId} fakultetida tyutorga ko'lam biriktirilgan — avval uni ajrating.`,
+        );
+      }
     }
     const updated: TutorSeed = {
       ...existing,
       fullName: body.fullName!.trim(),
       phone,
-      facultyId: body.facultyId!,
+      facultyIds,
     };
     tutors = tutors.map((t) => (t.id === id ? updated : t));
     return HttpResponse.json(toDetail(updated));
@@ -556,8 +602,12 @@ export const tutorsHandlers: HttpHandler[] = [
   http.get(`${TUTORS_ENDPOINT}/:id/scope-tree`, ({ params }) => {
     const existing = tutors.find((t) => t.id === String(params['id']));
     if (!existing) return notFound();
-    const tree = toScopeTree(existing.facultyId);
-    return tree ? HttpResponse.json(tree) : notFound();
+    // Har fakultet uchun bitta daraxt, nom tartibida.
+    const trees = existing.facultyIds
+      .map(toScopeTree)
+      .filter((t): t is TutorScopeTree => t !== null)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    return HttpResponse.json(trees);
   }),
 
   http.put(`${TUTORS_ENDPOINT}/:id/scopes`, async ({ request, params }) => {
@@ -583,12 +633,12 @@ export const tutorsHandlers: HttpHandler[] = [
       }
     }
 
-    // Har bir tugun tyutor fakultetida bo'lishi kerak.
+    // Har bir tugun tyutor fakultetlaridan birida bo'lishi kerak.
     const chains = new Map<string, NodeRef[]>();
     for (const r of requested) {
       const chain = lineage(r);
       const inactive = r.level === 'group' && !GROUP_SEED.find((g) => g.id === r.id)?.isActive;
-      if (!chain || chain[0]!.id !== existing.facultyId || inactive) {
+      if (!chain || !existing.facultyIds.includes(chain[0]!.id) || inactive) {
         return problemResponse(
           400,
           "Ma'lumotlar noto'g'ri",

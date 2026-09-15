@@ -14,3 +14,58 @@
   font-size: var(--fs-sm2);
   color: var(--color-ok-fg);
 }
+.hint {
+  margin: 6px 0 0;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  line-height: var(--lh-note);
+}
+/* Fakultetlar — ko'p tanlov (checkbox ro'yxati), Field label/hint/error ritmi bilan */
+.fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}
+.facultyList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+  border: var(--border-input);
+  border-radius: var(--radius-md2);
+  background: var(--color-surface-input);
+  padding: 6px 4px;
+}
+.fieldset[aria-invalid='true'] .facultyList {
+  border-color: var(--color-bad-strong);
+}
+.facultyRow {
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-md);
+}
+.facultyRow:hover {
+  background: var(--color-surface-hover);
+}
+.facultyCode {
+  font-family: var(--font-mono);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+}
+.facultyNote {
+  color: var(--color-text-faint);
+}
+.facultyStatus {
+  margin: 0;
+  padding: 4px 8px;
+  font-size: var(--fs-md);
+  color: var(--color-text-faint);
+}

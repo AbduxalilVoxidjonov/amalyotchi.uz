@@ -3,14 +3,20 @@ import type { ListParams } from '../shared/types';
 /** Kontrakt v2 `Tutor` (backend `TutorRow`). Holat: Faol (ok) · Kechikmoqda (bad) — ariza 3 kundan ortiq kutmoqda. */
 export type TutorStatus = 'active' | 'late';
 
+/** Tyutor biriktirilgan fakultet (`Tutor.faculties[]` / `TutorDetail.faculties[]`, nom tartibida). */
+export interface FacultyRef {
+  id: string;
+  code: string;
+  name: string;
+}
+
 export interface Tutor {
   id: string;
   fullName: string;
   /** E.164 "+998901234567" (UI: "+998 90 123-45-67"); null bo'lishi mumkin. */
   phone: string | null;
-  facultyId: string | null;
-  facultyCode: string | null;
-  facultyName: string | null;
+  /** Tyutor bir nechta fakultetga bog'lanishi mumkin (nom tartibida). */
+  faculties: FacultyRef[];
   /** Guruh kodlari. */
   groups: string[];
   students: number;
@@ -30,7 +36,7 @@ export const TUTOR_STATUS_LABEL: Record<TutorStatus, { label: string; kind: 'ok'
   late: { label: 'Kechikmoqda', kind: 'bad' },
 };
 
-/** `GET /api/admin/tutors?q&facultyId&page&pageSize` — `facultyId` filtri ixtiyoriy. */
+/** `GET /api/admin/tutors?q&facultyId&page&pageSize` — `facultyId` ixtiyoriy: tyutor fakultetlaridan biri mos kelsa. */
 export interface TutorListParams extends ListParams {
   facultyId?: string;
 }
@@ -86,9 +92,8 @@ export interface TutorDetail {
   fullName: string;
   hemisId: string;
   phone: string | null;
-  facultyId: string;
-  facultyCode: string;
-  facultyName: string;
+  /** Nom tartibida. `scopes` har biri shu fakultetlardan birida. */
+  faculties: FacultyRef[];
   isActive: boolean;
   lastLoginAt: string | null;
   createdAt: string;
@@ -96,20 +101,26 @@ export interface TutorDetail {
   groups: TutorGroup[];
 }
 
-/** `POST /api/admin/tutors` body'si. */
+/**
+ * `POST /api/admin/tutors` body'si. `facultyIds` — kamida bittasi (400 bo'sh; 404 topilmasa;
+ * 409 "Fakultet faol emas: <nom>").
+ */
 export interface TutorCreateInput {
   fullName: string;
   hemisId: string;
   phone?: string | null;
   password: string;
-  facultyId: string;
+  facultyIds: string[];
 }
 
-/** `PUT /api/admin/tutors/{id}` body'si (parol alohida endpoint). */
+/**
+ * `PUT /api/admin/tutors/{id}` body'si (parol alohida endpoint). Ko'lami bor fakultet olib tashlansa —
+ * 409 "<Fakultet> fakultetida tyutorga ko'lam biriktirilgan — avval uni ajrating."
+ */
 export interface TutorUpdateInput {
   fullName: string;
   phone?: string | null;
-  facultyId: string;
+  facultyIds: string[];
 }
 
 /** AYNAN shu tugunda ko'lami bor tyutor (joriy tyutorning o'zi ham bo'lishi mumkin); yo'q — null. */
@@ -137,7 +148,10 @@ export interface ScopeTreeDepartment extends ScopeNodeOwner {
   directions: ScopeTreeDirection[];
 }
 
-/** `GET /api/admin/tutors/{id}/scope-tree` — tyutor fakulteti daraxti (faol tugunlar). */
+/**
+ * `GET /api/admin/tutors/{id}/scope-tree` → `TutorScopeTree[]` — tyutorning har bir fakulteti uchun
+ * bitta daraxt (nom tartibida; faol tugunlar).
+ */
 export interface TutorScopeTree extends ScopeNodeOwner {
   id: string;
   name: string;

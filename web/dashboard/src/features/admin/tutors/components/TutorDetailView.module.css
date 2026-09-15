@@ -34,6 +34,21 @@
   font-size: var(--fs-xs2);
   color: var(--color-text-faint);
 }
+/* Fakultetlar fakti: har biri "KOD badge + nom", bir nechta bo'lsa qatorma-qator */
+.facultyList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.faculty {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
 /* Jadval ichidagi bo'sh holat — tashqi chegarasiz (jadvalning o'zi kartochka) */
 .empty[data-tone] {
   border: 0;

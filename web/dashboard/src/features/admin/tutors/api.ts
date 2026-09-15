@@ -21,9 +21,12 @@ export const tutorsApi = {
     }),
   /** GET /{id} → TutorDetail. 404. */
   get: (id: string) => api.get<TutorDetail>(`${TUTORS_ENDPOINT}/${id}`),
-  /** POST → 201 TutorDetail. 400 validatsiya; 409 "Bu HEMIS ID bilan foydalanuvchi mavjud." */
+  /**
+   * POST → 201 TutorDetail. 400 validatsiya (bo'sh `facultyIds` ham); 404 fakultet topilmasa;
+   * 409 "Bu HEMIS ID bilan foydalanuvchi mavjud." / "Fakultet faol emas: <nom>".
+   */
   create: (body: TutorCreateInput) => api.post<TutorDetail>(TUTORS_ENDPOINT, body),
-  /** PUT /{id} → 200 TutorDetail. 409 fakultet o'zgartirilganda ko'lam biriktirilgan bo'lsa. */
+  /** PUT /{id} → 200 TutorDetail. 409 ko'lami bor fakultet `facultyIds` dan olib tashlansa. */
   update: (id: string, body: TutorUpdateInput) =>
     api.put<TutorDetail>(`${TUTORS_ENDPOINT}/${id}`, body),
   /** PATCH /{id}/status → 204. */
@@ -38,6 +41,6 @@ export const tutorsApi = {
    */
   setScopes: (id: string, scopes: TutorScopeInput[]) =>
     api.put<TutorDetail>(`${TUTORS_ENDPOINT}/${id}/scopes`, { scopes }),
-  /** GET /{id}/scope-tree → TutorScopeTree (tyutor fakulteti: kafedra → yo'nalish → guruh, egalari bilan). */
-  scopeTree: (id: string) => api.get<TutorScopeTree>(`${TUTORS_ENDPOINT}/${id}/scope-tree`),
+  /** GET /{id}/scope-tree → TutorScopeTree[] (har fakultet uchun: kafedra → yo'nalish → guruh, egalari bilan). */
+  scopeTree: (id: string) => api.get<TutorScopeTree[]>(`${TUTORS_ENDPOINT}/${id}/scope-tree`),
 };

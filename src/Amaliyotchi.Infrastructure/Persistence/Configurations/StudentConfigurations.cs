@@ -65,6 +65,25 @@ public sealed class TutorAssignmentConfiguration : IEntityTypeConfiguration<Tuto
     }
 }
 
+public sealed class TutorFacultyConfiguration : IEntityTypeConfiguration<TutorFaculty>
+{
+    public void Configure(EntityTypeBuilder<TutorFaculty> builder)
+    {
+        builder.ToTable("tutor_faculties");
+        builder.HasKey(x => x.Id);
+
+        // User tomoni UserConfiguration'da (HasMany + backing field). Fakultet o'chsa bog'lanish ham o'chadi.
+        builder.HasOne<Faculty>()
+            .WithMany()
+            .HasForeignKey(x => x.FacultyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(x => new { x.TutorUserId, x.FacultyId }).IsUnique();
+        // Fakultet bo'yicha tyutorlar (ro'yxat filtri, dashboard, fakultetni o'chirish tekshiruvi).
+        builder.HasIndex(x => x.FacultyId);
+    }
+}
+
 public sealed class TutorScopeConfiguration : IEntityTypeConfiguration<TutorScope>
 {
     public void Configure(EntityTypeBuilder<TutorScope> builder)

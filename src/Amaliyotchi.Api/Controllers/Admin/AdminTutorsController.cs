@@ -26,7 +26,7 @@ public sealed class AdminTutorsController(ISender sender) : ControllerBase
     public async Task<ActionResult<TutorDetail>> Get(Guid id, CancellationToken cancellationToken)
         => Ok(await sender.Send(new GetTutorQuery(id), cancellationToken));
 
-    /// <summary><c>{ fullName, hemisId, phone?, password, facultyId }</c> → 201 + Location. Fakultet topilmasa → 404;
+    /// <summary><c>{ fullName, hemisId, phone?, password, facultyIds[] }</c> → 201 + Location. Fakultetlardan biri topilmasa → 404;
     /// fakultet faol emas, HEMIS ID yoki telefon band → 409.</summary>
     [HttpPost]
     [ProducesResponseType<TutorDetail>(StatusCodes.Status201Created)]
@@ -39,8 +39,8 @@ public sealed class AdminTutorsController(ISender sender) : ControllerBase
         return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
     }
 
-    /// <summary><c>{ fullName, phone?, facultyId }</c> → 200. <c>id</c> route'dan; body'da bo'lmaydi.
-    /// Fakultet o'zgarsa-yu faol ko'lamlar bo'lsa → 409.</summary>
+    /// <summary><c>{ fullName, phone?, facultyIds[] }</c> → 200. <c>id</c> route'dan; body'da bo'lmaydi.
+    /// Olib tashlanayotgan fakultetda faol ko'lam bo'lsa → 409.</summary>
     [HttpPut("{id:guid}")]
     [ProducesResponseType<TutorDetail>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -85,10 +85,11 @@ public sealed class AdminTutorsController(ISender sender) : ControllerBase
         Guid id, SetTutorScopesCommand command, CancellationToken cancellationToken)
         => Ok(await sender.Send(command with { Id = id }, cancellationToken));
 
-    /// <summary>Tyutor fakultetining daraxti (faol kafedra → yo'nalish → guruh) + har tugunda faol ko'lam egasi — biriktirish oynasi uchun.</summary>
+    /// <summary>Tyutorning har bir fakulteti uchun daraxt (faol kafedra → yo'nalish → guruh) + har tugunda faol ko'lam egasi —
+    /// biriktirish oynasi uchun. Fakultet nomi bo'yicha tartib.</summary>
     [HttpGet("{id:guid}/scope-tree")]
-    [ProducesResponseType<TutorScopeTree>(StatusCodes.Status200OK)]
+    [ProducesResponseType<IReadOnlyList<TutorScopeTree>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<TutorScopeTree>> ScopeTree(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<TutorScopeTree>>> ScopeTree(Guid id, CancellationToken cancellationToken)
         => Ok(await sender.Send(new GetTutorScopeTreeQuery(id), cancellationToken));
 }

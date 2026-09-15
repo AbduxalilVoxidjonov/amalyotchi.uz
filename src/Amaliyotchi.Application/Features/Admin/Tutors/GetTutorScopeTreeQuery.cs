@@ -7,27 +7,31 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Admin.Tutors;
 
-/// <summary><c>GET /api/admin/tutors/{id}/scope-tree</c> → tyutor fakultetining daraxti: faqat FAOL kafedra/yo'nalish/guruhlar,
-/// nom bo'yicha tartib (guruh: kurs, nom). Har tugunda AYNAN shu tugunda faol ko'lami bor tyutor (so'ralayotganning o'zi ham),
-/// yo'q bo'lsa null. Tyutor topilmasa → 404.</summary>
-public sealed record GetTutorScopeTreeQuery(Guid Id) : IRequest<TutorScopeTree>;
+/// <summary><c>GET /api/admin/tutors/{id}/scope-tree</c> → tyutorning HAR BIR fakulteti uchun bittadan daraxt (fakultet nomi
+/// bo'yicha tartib): faqat FAOL kafedra/yo'nalish/guruhlar, nom bo'yicha tartib (guruh: kurs, nom). Har tugunda AYNAN shu
+/// tugunda faol ko'lami bor tyutor (so'ralayotganning o'zi ham), yo'q bo'lsa null. Tyutor topilmasa → 404.</summary>
+public sealed record GetTutorScopeTreeQuery(Guid Id) : IRequest<IReadOnlyList<TutorScopeTree>>;
 
 internal sealed class GetTutorScopeTreeQueryHandler(IApplicationDbContext db)
-    : IRequestHandler<GetTutorScopeTreeQuery, TutorScopeTree>
+    : IRequestHandler<GetTutorScopeTreeQuery, IReadOnlyList<TutorScopeTree>>
 {
-    public async Task<TutorScopeTree> Handle(GetTutorScopeTreeQuery request, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<TutorScopeTree>> Handle(GetTutorScopeTreeQuery request, CancellationToken cancellationToken)
     {
-        var faculty = await (from u in db.Users.AsNoTracking()
-                             join f in db.Faculties on u.FacultyId equals f.Id
-                             where u.Id == request.Id && u.Role == UserRole.Tutor
-                             select new { f.Id, f.Name, f.Code })
-            .FirstOrDefaultAsync(cancellationToken)
-            ?? throw new NotFoundException(TutorDetailQueries.NotFoundMessage);
+        var exists = await db.Users.AsNoTracking()
+            .AnyAsync(u => u.Id == request.Id && u.Role == UserRole.Tutor, cancellationToken);
+        if (!exists)
+            throw new NotFoundException(TutorDetailQueries.NotFoundMessage);
+
+        var faculties = await TutorFacultyQueries.LoadRefsAsync(db, request.Id, cancellationToken);
+        if (faculties.Count == 0)
+            return [];
+
+        var facultyIds = faculties.Select(f => f.Id).ToList();
 
         var departments = await db.Departments.AsNoTracking()
-            .Where(d => d.FacultyId == faculty.Id && d.IsActive)
+            .Where(d => facultyIds.Contains(d.FacultyId) && d.IsActive)
             .OrderBy(d => d.Name)
-            .Select(d => new { d.Id, d.Name })
+            .Select(d => new { d.Id, d.Name, d.FacultyId })
             .ToListAsync(cancellationToken);
 
         var departmentIds = departments.Select(d => d.Id).ToList();
@@ -51,10 +55,10 @@ internal sealed class GetTutorScopeTreeQueryHandler(IApplicationDbContext db)
             })
             .ToListAsync(cancellationToken);
 
-        // Fakultetdagi barcha faol ko'lamlar (tyutor kim bo'lishidan qat'i nazar) → tugun bo'yicha egasi.
+        // Tyutor fakultetlaridagi barcha faol ko'lamlar (tyutor kim bo'lishidan qat'i nazar) → tugun bo'yicha egasi.
         var owners = await (from s in db.TutorScopes.AsNoTracking()
                             join u in db.Users on s.TutorUserId equals u.Id
-                            where s.IsActive && s.FacultyId == faculty.Id
+                            where s.IsActive && facultyIds.Contains(s.FacultyId)
                             orderby s.CreatedAt
                             select new { s.Level, s.FacultyId, s.DepartmentId, s.DirectionId, s.StudentGroupId, u.Id, u.FullName })
             .ToListAsync(cancellationToken);
@@ -75,31 +79,37 @@ internal sealed class GetTutorScopeTreeQueryHandler(IApplicationDbContext db)
         (Guid? Id, string? Name) Owner(TutorScopeLevel level, Guid nodeId)
             => byNode.TryGetValue((level, nodeId), out var owner) ? (owner.Id, owner.Name) : (null, null);
 
-        var tree = departments
-            .Select(dept =>
+        return faculties
+            .Select(faculty =>
             {
-                var (deptTutorId, deptTutorName) = Owner(TutorScopeLevel.Department, dept.Id);
-                var dirs = directions
-                    .Where(d => d.DepartmentId == dept.Id)
-                    .Select(d =>
+                var tree = departments
+                    .Where(dept => dept.FacultyId == faculty.Id)
+                    .Select(dept =>
                     {
-                        var (dirTutorId, dirTutorName) = Owner(TutorScopeLevel.Direction, d.Id);
-                        var grs = groups
-                            .Where(g => g.DirectionId == d.Id)
-                            .Select(g =>
+                        var (deptTutorId, deptTutorName) = Owner(TutorScopeLevel.Department, dept.Id);
+                        var dirs = directions
+                            .Where(d => d.DepartmentId == dept.Id)
+                            .Select(d =>
                             {
-                                var (gTutorId, gTutorName) = Owner(TutorScopeLevel.Group, g.Id);
-                                return new TutorScopeTreeGroup(g.Id, g.Name, g.Course, g.Students, gTutorId, gTutorName);
+                                var (dirTutorId, dirTutorName) = Owner(TutorScopeLevel.Direction, d.Id);
+                                var grs = groups
+                                    .Where(g => g.DirectionId == d.Id)
+                                    .Select(g =>
+                                    {
+                                        var (gTutorId, gTutorName) = Owner(TutorScopeLevel.Group, g.Id);
+                                        return new TutorScopeTreeGroup(g.Id, g.Name, g.Course, g.Students, gTutorId, gTutorName);
+                                    })
+                                    .ToList();
+                                return new TutorScopeTreeDirection(d.Id, d.Name, dirTutorId, dirTutorName, grs);
                             })
                             .ToList();
-                        return new TutorScopeTreeDirection(d.Id, d.Name, dirTutorId, dirTutorName, grs);
+                        return new TutorScopeTreeDepartment(dept.Id, dept.Name, deptTutorId, deptTutorName, dirs);
                     })
                     .ToList();
-                return new TutorScopeTreeDepartment(dept.Id, dept.Name, deptTutorId, deptTutorName, dirs);
+
+                var (facultyTutorId, facultyTutorName) = Owner(TutorScopeLevel.Faculty, faculty.Id);
+                return new TutorScopeTree(faculty.Id, faculty.Name, faculty.Code, facultyTutorId, facultyTutorName, tree);
             })
             .ToList();
-
-        var (facultyTutorId, facultyTutorName) = Owner(TutorScopeLevel.Faculty, faculty.Id);
-        return new TutorScopeTree(faculty.Id, faculty.Name, faculty.Code, facultyTutorId, facultyTutorName, tree);
     }
 }

@@ -1,4 +1,5 @@
 using Amaliyotchi.Domain.ValueObjects;
+using FluentValidation;
 
 namespace Amaliyotchi.Application.Features.Admin.Tutors;
 
@@ -18,7 +19,17 @@ internal static class TutorValidationRules
     public const string PasswordRequiredMessage = "Parolni kiriting.";
     public static readonly string PasswordLengthMessage =
         $"Parol {PasswordMinLength}–{PasswordMaxLength} ta belgidan iborat bo'lishi kerak.";
-    public const string FacultyRequiredMessage = "Fakultet ko'rsatilmagan.";
+    public const string FacultyRequiredMessage = "Kamida bitta fakultet tanlang.";
+    public const string FacultyEmptyIdMessage = "Fakultet ko'rsatilmagan.";
+    public const string FacultyDuplicateMessage = "Fakultet takrorlangan.";
+
+    /// <summary><c>facultyIds</c>: bo'sh emas, har biri bo'sh guid emas, takror yo'q (<c>errors.FacultyIds</c>).</summary>
+    public static void FacultyIds<T>(IRuleBuilderInitial<T, IReadOnlyList<Guid>> rule)
+        => rule
+            .Cascade(CascadeMode.Stop)
+            .NotEmpty().WithMessage(FacultyRequiredMessage)
+            .Must(ids => ids.All(id => id != Guid.Empty)).WithMessage(FacultyEmptyIdMessage)
+            .Must(ids => ids.Distinct().Count() == ids.Count).WithMessage(FacultyDuplicateMessage);
 
     public static bool IsValidFullName(string fullName) => fullName.Trim().Length is >= 2 and <= 150;
 

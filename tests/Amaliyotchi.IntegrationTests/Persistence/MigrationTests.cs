@@ -95,6 +95,34 @@ public sealed class MigrationTests(ApiFixture fixture)
     }
 
     [Fact]
+    public async Task TutorFaculties_Backfill_UsersFacultyIdDanKochadi_Idempotent()
+    {
+        // Eski uslub: tyutor faqat users.faculty_id bilan, tutor_faculties qatori yo'q (backfill'dan oldingi holat).
+        var tutor = await Factory.CreateTutorAsync();
+        var admin = await Factory.CreateAdminAsync();
+        var deletedTutor = await Factory.CreateTutorAsync();
+        await Factory.WithDbAsync(async db =>
+        {
+            await db.TutorFaculties.Where(tf => tf.TutorUserId == tutor.Id || tf.TutorUserId == deletedTutor.Id).ExecuteDeleteAsync();
+            var user = await db.Users.SingleAsync(u => u.Id == deletedTutor.Id);
+            user.IsDeleted = true;
+            user.DeletedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync();
+        });
+
+        await Factory.WithDbAsync(async db =>
+        {
+            await db.Database.ExecuteSqlRawAsync(TutorFaculties.BackfillTutorFacultiesSql);
+            await db.Database.ExecuteSqlRawAsync(TutorFaculties.BackfillTutorFacultiesSql); // ikkinchi marta — takror yaratmaydi
+
+            var rows = await db.TutorFaculties.Where(tf => tf.TutorUserId == tutor.Id).ToListAsync();
+            rows.Should().ContainSingle().Which.FacultyId.Should().Be(tutor.FacultyId!.Value);
+            (await db.TutorFaculties.AnyAsync(tf => tf.TutorUserId == admin.Id)).Should().BeFalse("admin — fakultetsiz, rol tyutor emas");
+            (await db.TutorFaculties.AnyAsync(tf => tf.TutorUserId == deletedTutor.Id)).Should().BeFalse("o'chirilgan tyutor ko'chirilmaydi");
+        });
+    }
+
+    [Fact]
     public async Task Nomlar_SnakeCase_VaPrefikslarButun()
     {
         await Factory.WithDbAsync(async db =>
@@ -103,7 +131,7 @@ public sealed class MigrationTests(ApiFixture fixture)
                 .SqlQueryRaw<string>("SELECT tablename AS \"Value\" FROM pg_tables WHERE schemaname = 'public'")
                 .ToListAsync();
 
-            tables.Should().Contain(["users", "student_profiles", "tutor_assignments", "tutor_scopes", "companies", "practice_periods",
+            tables.Should().Contain(["users", "student_profiles", "tutor_assignments", "tutor_scopes", "tutor_faculties", "companies", "practice_periods",
                 "practice_period_groups", "practice_applications", "daily_attendances", "attendance_events",
                 "diary_entries", "diary_attachments", "leave_requests", "practice_grades", "app_settings",
                 "holidays", "document_templates", "stored_files", "__migrations"]);

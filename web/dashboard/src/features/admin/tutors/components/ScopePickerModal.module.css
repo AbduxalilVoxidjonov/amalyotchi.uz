@@ -117,3 +117,9 @@
   font-size: var(--fs-sm2);
   color: var(--color-text-dim);
 }
+/* Bir nechta fakultet daraxti — ildizlar orasida ajratgich */
+.tree > .node + .node {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: var(--border-inner);
+}

@@ -49,8 +49,8 @@ function metaOf(node: ScopeNode): string {
 }
 
 /**
- * "Guruhlarni biriktirish" — tyutor fakulteti daraxti (fakultet → kafedra → yo'nalish → guruh), har
- * tugunda checkbox. Tanlangan tugun avlodlarini qamrab oladi (ular tanlovdan chiqadi — normalizatsiya);
+ * "Guruhlarni biriktirish" — tyutorning har bir fakulteti uchun daraxt (fakultet → kafedra → yo'nalish →
+ * guruh), har tugunda checkbox; bitta fakultet bo'lsa — bitta ildiz. Tanlangan tugun avlodlarini qamrab oladi (ular tanlovdan chiqadi — normalizatsiya);
  * boshqa tyutor tuguni, uning avlodlari va ajdodlari tanlab bo'lmaydi (kesishuv).
  * Saqlash → `PUT /tutors/{id}/scopes` (to'plam almashadi).
  */
@@ -79,6 +79,8 @@ export function ScopePickerModal({
   }, [open, tutorId]);
 
   const nodes = useMemo(() => (query.data ? flattenScopeTree(query.data) : []), [query.data]);
+  const byKey = useMemo(() => new Map(nodes.map((n) => [n.key, n])), [nodes]);
+  const roots = useMemo(() => nodes.filter((n) => n.parentKey === null), [nodes]);
   const states = useMemo(
     () => computeNodeStates(nodes, selected, tutorId),
     [nodes, selected, tutorId],
@@ -147,7 +149,7 @@ export function ScopePickerModal({
     const hasChildren = node.childKeys.length > 0;
     // Qidiruvda hamma ko'rinadigan tugunlar ochiq.
     const expanded = hasChildren && (searching || !collapsed.has(node.key));
-    const childNodes = node.childKeys.map((k) => nodes.find((n) => n.key === k)!);
+    const childNodes = node.childKeys.map((k) => byKey.get(k)!);
     const noteId = note ? `${uid}-${node.key}` : undefined;
 
     return (
@@ -193,14 +195,14 @@ export function ScopePickerModal({
     );
   }
 
-  const root = nodes[0];
+  const hasTree = roots.length > 0;
 
   let body: ReactNode;
   if (query.isPending) {
     body = <LoadingState />;
   } else if (query.isError) {
     body = <ErrorState inline error={query.error} onRetry={() => void query.refetch()} />;
-  } else if (!root) {
+  } else if (!hasTree) {
     body = <EmptyState tone="plain" title="Fakultet daraxti bo'sh" />;
   } else if (visible && visible.size === 0) {
     body = (
@@ -211,7 +213,11 @@ export function ScopePickerModal({
       />
     );
   } else {
-    body = <ul className={styles.tree}>{renderNode(root)}</ul>;
+    body = (
+      <ul className={styles.tree} aria-label="Ko'lam daraxti">
+        {roots.map(renderNode)}
+      </ul>
+    );
   }
 
   return (
@@ -244,11 +250,11 @@ export function ScopePickerModal({
         <Input
           variant="search"
           type="search"
-          placeholder="Kafedra, yo'nalish yoki guruh…"
+          placeholder="Fakultet, kafedra, yo'nalish yoki guruh…"
           aria-label="Tugun qidirish"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          disabled={!root}
+          disabled={!hasTree}
         />
         <div className={styles.scroll}>{body}</div>
         {mutation.isError && (

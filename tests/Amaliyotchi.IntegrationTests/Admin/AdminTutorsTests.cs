@@ -49,8 +49,10 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         var row = page.Items.Single();
         row.Id.Should().Be(tutor.Id);
         row.FullName.Should().Be("Kechikkan Tyutor");
-        row.FacultyId.Should().Be(groupA.FacultyId);
-        row.FacultyCode.Should().NotBeNullOrEmpty();
+        var rowFaculty = row.Faculties.Should().ContainSingle().Subject;
+        rowFaculty.Id.Should().Be(groupA.FacultyId);
+        rowFaculty.Code.Should().NotBeNullOrEmpty();
+        rowFaculty.Name.Should().NotBeNullOrEmpty();
         row.Groups.Should().BeEquivalentTo([groupA.GroupName, groupB.GroupName]);
         row.Students.Should().Be(2);
         row.Pending.Should().Be(2);
@@ -84,7 +86,7 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         var client = await Factory.LoginAsTutorAsync();
 
         (await client.GetAsync("/api/admin/tutors")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await client.PostJsonAsync("/api/admin/tutors", new { fullName = "X Y", hemisId = "123456789012", password = "Parol-12345", facultyId = Guid.CreateVersion7() }))
+        (await client.PostJsonAsync("/api/admin/tutors", new { fullName = "X Y", hemisId = "123456789012", password = "Parol-12345", facultyIds = new[] { Guid.CreateVersion7() } }))
             .StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
@@ -129,9 +131,10 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         detail.Id.Should().Be(tutor.Id);
         detail.FullName.Should().Be("Karta Tyutor");
         detail.Phone.Should().Be(tutor.PhoneNumber);
-        detail.FacultyId.Should().Be(group.FacultyId);
-        detail.FacultyCode.Should().NotBeNullOrEmpty();
-        detail.FacultyName.Should().NotBeNullOrEmpty();
+        var faculty = detail.Faculties.Should().ContainSingle().Subject;
+        faculty.Id.Should().Be(group.FacultyId);
+        faculty.Code.Should().NotBeNullOrEmpty();
+        faculty.Name.Should().NotBeNullOrEmpty();
         detail.IsActive.Should().BeTrue();
         detail.LastLoginAt.Should().BeNull();
         detail.CreatedAt.Should().BeAfter(DateTimeOffset.MinValue);
@@ -183,7 +186,7 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
             hemisId = $" {hemisId} ",
             phone = phone[4..].Insert(2, " "), // "90 1234567" — normallashadi
             password = "Yangi-Parol-1",
-            facultyId
+            facultyIds = new[] { facultyId }
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
@@ -192,7 +195,7 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         detail.FullName.Should().Be("Yangi Tyutor");
         detail.HemisId.Should().Be(hemisId);
         detail.Phone.Should().Be(phone);
-        detail.FacultyId.Should().Be(facultyId);
+        detail.Faculties.Select(f => f.Id).Should().Equal(facultyId);
         detail.IsActive.Should().BeTrue();
         detail.Scopes.Should().BeEmpty();
         detail.Groups.Should().BeEmpty();
@@ -204,8 +207,9 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         page.Items.Should().ContainSingle(t => t.Id == detail.Id);
 
         var audit = await Factory.WithDbAsync(db =>
-            db.AuditLogs.AnyAsync(a => a.Action == AuditAction.TutorCreated && a.EntityId == detail.Id.ToString()));
-        audit.Should().BeTrue();
+            db.AuditLogs.Where(a => a.Action == AuditAction.TutorCreated && a.EntityId == detail.Id.ToString())
+                .Select(a => a.Changes).SingleAsync());
+        audit.Should().Contain(facultyId.ToString(), "tafsilotda facultyIds");
     }
 
     [Fact]
@@ -216,7 +220,7 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
 
         var response = await client.PostJsonAsync("/api/admin/tutors", new
         {
-            fullName = "Telefonsiz Tyutor", hemisId = TestClients.RandomHemisId(), password = "Parol-12345", facultyId
+            fullName = "Telefonsiz Tyutor", hemisId = TestClients.RandomHemisId(), password = "Parol-12345", facultyIds = new[] { facultyId }
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
@@ -232,7 +236,7 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
 
         var response = await client.PostJsonAsync("/api/admin/tutors", new
         {
-            fullName = "Takror Tyutor", hemisId = existing.HemisId, password = "Parol-12345", facultyId
+            fullName = "Takror Tyutor", hemisId = existing.HemisId, password = "Parol-12345", facultyIds = new[] { facultyId }
         });
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await Detail(response)).Should().Be("Bu HEMIS ID bilan foydalanuvchi mavjud.");
@@ -249,7 +253,7 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
 
         var again = await client.PostJsonAsync("/api/admin/tutors", new
         {
-            fullName = "Takror Tyutor", hemisId = deleted.HemisId, password = "Parol-12345", facultyId
+            fullName = "Takror Tyutor", hemisId = deleted.HemisId, password = "Parol-12345", facultyIds = new[] { facultyId }
         });
         again.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
@@ -264,7 +268,7 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         var response = await client.PostJsonAsync("/api/admin/tutors", new
         {
             fullName = "Telefon Takror", hemisId = TestClients.RandomHemisId(), phone = existing.PhoneNumber,
-            password = "Parol-12345", facultyId
+            password = "Parol-12345", facultyIds = new[] { facultyId }
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -278,7 +282,7 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
 
         var response = await client.PostJsonAsync("/api/admin/tutors", new
         {
-            fullName = "A", hemisId = "12ab", phone = "12345", password = "qisqa", facultyId
+            fullName = "A", hemisId = "12ab", phone = "12345", password = "qisqa", facultyIds = new[] { facultyId }
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -289,11 +293,31 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         errors.TryGetProperty("Phone", out _).Should().BeTrue();
         errors.TryGetProperty("Password", out _).Should().BeTrue();
 
+        var emptyId = await client.PostJsonAsync("/api/admin/tutors", new
+        {
+            fullName = "To'g'ri Ism", hemisId = TestClients.RandomHemisId(), password = "Parol-12345", facultyIds = new[] { Guid.Empty }
+        });
+        emptyId.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
         var noFaculty = await client.PostJsonAsync("/api/admin/tutors", new
         {
-            fullName = "To'g'ri Ism", hemisId = TestClients.RandomHemisId(), password = "Parol-12345", facultyId = Guid.Empty
+            fullName = "To'g'ri Ism", hemisId = TestClients.RandomHemisId(), password = "Parol-12345", facultyIds = Array.Empty<Guid>()
         });
         noFaculty.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Errors(noFaculty)).TryGetProperty("FacultyIds", out _).Should().BeTrue();
+
+        var missingList = await client.PostJsonAsync("/api/admin/tutors", new
+        {
+            fullName = "To'g'ri Ism", hemisId = TestClients.RandomHemisId(), password = "Parol-12345"
+        });
+        missingList.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var duplicate = await client.PostJsonAsync("/api/admin/tutors", new
+        {
+            fullName = "To'g'ri Ism", hemisId = TestClients.RandomHemisId(), password = "Parol-12345", facultyIds = new[] { facultyId, facultyId }
+        });
+        duplicate.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Errors(duplicate)).TryGetProperty("FacultyIds", out _).Should().BeTrue();
     }
 
     [Fact]
@@ -303,20 +327,22 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
 
         var missing = await client.PostJsonAsync("/api/admin/tutors", new
         {
-            fullName = "Fakultetsiz", hemisId = TestClients.RandomHemisId(), password = "Parol-12345", facultyId = Guid.CreateVersion7()
+            fullName = "Fakultetsiz", hemisId = TestClients.RandomHemisId(), password = "Parol-12345", facultyIds = new[] { Guid.CreateVersion7() }
         });
         missing.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Detail(missing)).Should().Be("Fakultet topilmadi.");
 
         var facultyId = await Factory.CreateFacultyAsync("Faol Emas Fakultet");
         (await client.PatchAsJsonAsync($"/api/admin/faculties/{facultyId}/status", new { isActive = false }))
             .StatusCode.Should().Be(HttpStatusCode.OK);
 
+        var activeFacultyId = await Factory.CreateFacultyAsync();
         var inactive = await client.PostJsonAsync("/api/admin/tutors", new
         {
-            fullName = "Faol Emas", hemisId = TestClients.RandomHemisId(), password = "Parol-12345", facultyId
+            fullName = "Faol Emas", hemisId = TestClients.RandomHemisId(), password = "Parol-12345", facultyIds = new[] { activeFacultyId, facultyId }
         });
         inactive.StatusCode.Should().Be(HttpStatusCode.Conflict);
-        (await Detail(inactive)).Should().Be("Fakultet faol emas.");
+        (await Detail(inactive)).Should().Be("Fakultet faol emas: Faol Emas Fakultet");
     }
 
     // ---------- PUT {id} ----------
@@ -331,47 +357,71 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
 
         var response = await client.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}", new
         {
-            fullName = "Yangi Ism", phone, facultyId = group.FacultyId
+            fullName = "Yangi Ism", phone, facultyIds = new[] { group.FacultyId }
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
         var detail = (await response.Content.ReadAsync<TutorDetail>())!;
         detail.FullName.Should().Be("Yangi Ism");
         detail.Phone.Should().Be(phone);
-        detail.FacultyId.Should().Be(group.FacultyId);
+        detail.Faculties.Select(f => f.Id).Should().Equal(group.FacultyId);
         detail.Groups.Should().ContainSingle(g => g.GroupId == group.GroupId, "fakultet o'zgarmadi — biriktiruv saqlanadi");
 
         var cleared = await client.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}", new
         {
-            fullName = "Yangi Ism", phone = (string?)null, facultyId = group.FacultyId
+            fullName = "Yangi Ism", phone = (string?)null, facultyIds = new[] { group.FacultyId }
         });
         cleared.StatusCode.Should().Be(HttpStatusCode.OK);
         (await cleared.Content.ReadAsync<TutorDetail>())!.Phone.Should().BeNull();
     }
 
     [Fact]
-    public async Task Yangilash_FakultetOzgarsa_KolamBorsa_409()
+    public async Task Yangilash_KolamiBorFakultetniOlibTashlash_409_QoshishErkin_AjratgachOlibTashlanadi()
     {
-        var tutor = await Factory.CreateTutorAsync();
-        var otherFacultyId = await Factory.CreateFacultyAsync();
+        var tutor = await Factory.CreateTutorAsync(); // guruh darajasidagi ko'lam — o'z fakultetida
+        var otherFacultyId = await Factory.CreateFacultyAsync("Qo'shimcha Fakultet");
         var client = await Factory.LoginAsAdminAsync();
+        var facultyName = (await client.GetFromJsonAsync<TutorDetail>($"/api/admin/tutors/{tutor.Id}"))!.Faculties.Single().Name;
 
+        // Ko'lami bor fakultetni olib tashlash (almashtirish) — 409, aniq xabar
         var response = await client.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}", new
         {
-            fullName = tutor.FullName, phone = tutor.PhoneNumber, facultyId = otherFacultyId
+            fullName = tutor.FullName, phone = tutor.PhoneNumber, facultyIds = new[] { otherFacultyId }
         });
-
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
-        (await Detail(response)).Should().Be("Tyutorga ko'lam biriktirilgan — avval uni ajrating.");
+        (await Detail(response)).Should().Be($"{facultyName} fakultetida tyutorga ko'lam biriktirilgan — avval uni ajrating.");
+        (await client.GetFromJsonAsync<TutorDetail>($"/api/admin/tutors/{tutor.Id}"))!.Faculties.Select(f => f.Id)
+            .Should().Equal([tutor.FacultyId!.Value], "409 hech narsani o'zgartirmaydi");
 
-        // Ko'lam ajratilgach — fakultet o'zgaradi
+        // Fakultet qo'shish — erkin; ko'lam/biriktiruvlar saqlanadi
+        var added = await client.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}", new
+        {
+            fullName = tutor.FullName, phone = tutor.PhoneNumber, facultyIds = new[] { tutor.FacultyId, otherFacultyId }
+        });
+        added.StatusCode.Should().Be(HttpStatusCode.OK, await added.Content.ReadAsStringAsync());
+        var addedDetail = (await added.Content.ReadAsync<TutorDetail>())!;
+        addedDetail.Faculties.Select(f => f.Id).Should().BeEquivalentTo([tutor.FacultyId!.Value, otherFacultyId]);
+        addedDetail.Faculties.Should().BeInAscendingOrder(f => f.Name, StringComparer.Ordinal);
+        addedDetail.Groups.Should().ContainSingle(g => g.GroupId == tutor.GroupId);
+        addedDetail.Scopes.Should().ContainSingle();
+
+        // Ko'lam ajratilgach — eski fakultet olib tashlanadi, faqat yangisi qoladi
         (await client.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes", new { scopes = Array.Empty<object>() })).EnsureSuccessStatusCode();
         var moved = await client.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}", new
         {
-            fullName = tutor.FullName, phone = tutor.PhoneNumber, facultyId = otherFacultyId
+            fullName = tutor.FullName, phone = tutor.PhoneNumber, facultyIds = new[] { otherFacultyId }
         });
         moved.StatusCode.Should().Be(HttpStatusCode.OK, await moved.Content.ReadAsStringAsync());
-        (await moved.Content.ReadAsync<TutorDetail>())!.FacultyId.Should().Be(otherFacultyId);
+        (await moved.Content.ReadAsync<TutorDetail>())!.Faculties.Select(f => f.Id).Should().Equal(otherFacultyId);
+
+        var primary = await Factory.WithDbAsync(db => db.Users.Where(u => u.Id == tutor.Id).Select(u => u.FacultyId).SingleAsync());
+        primary.Should().Be(otherFacultyId, "asosiy fakultet — ro'yxatning birinchisi");
+        (await Factory.WithDbAsync(db => db.TutorFaculties.CountAsync(tf => tf.TutorUserId == tutor.Id))).Should().Be(1);
+
+        var audit = await Factory.WithDbAsync(db =>
+            db.AuditLogs.Where(a => a.Action == AuditAction.TutorUpdated && a.EntityId == tutor.Id.ToString())
+                .Select(a => a.Changes).ToListAsync());
+        audit.Should().HaveCount(2).And.OnlyContain(c => c!.Contains(otherFacultyId.ToString()), "tafsilotda facultyIds");
     }
 
     [Fact]
@@ -384,11 +434,35 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
 
         var response = await client.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}", new
         {
-            fullName = tutor.FullName, phone = tutor.Phone, facultyId = otherFacultyId
+            fullName = tutor.FullName, phone = tutor.Phone, facultyIds = new[] { otherFacultyId }
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
-        (await response.Content.ReadAsync<TutorDetail>())!.FacultyId.Should().Be(otherFacultyId);
+        (await response.Content.ReadAsync<TutorDetail>())!.Faculties.Select(f => f.Id).Should().Equal(otherFacultyId);
+    }
+
+    [Fact]
+    public async Task Yangilash_BoshFakultetlar_400_FaolEmasFakultet_409()
+    {
+        var client = await Factory.LoginAsAdminAsync();
+        var facultyId = await Factory.CreateFacultyAsync();
+        var tutor = await CreateTutorViaApiAsync(client, facultyId);
+
+        var empty = await client.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}", new
+        {
+            fullName = tutor.FullName, phone = tutor.Phone, facultyIds = Array.Empty<Guid>()
+        });
+        empty.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Errors(empty)).TryGetProperty("FacultyIds", out _).Should().BeTrue();
+
+        var inactiveId = await Factory.CreateFacultyAsync("Yopiq Fakultet");
+        (await client.PatchAsJsonAsync($"/api/admin/faculties/{inactiveId}/status", new { isActive = false })).EnsureSuccessStatusCode();
+        var inactive = await client.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}", new
+        {
+            fullName = tutor.FullName, phone = tutor.Phone, facultyIds = new[] { facultyId, inactiveId }
+        });
+        inactive.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await Detail(inactive)).Should().Be("Fakultet faol emas: Yopiq Fakultet");
     }
 
     [Fact]
@@ -399,16 +473,17 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
 
         var missing = await client.PutAsJsonAsync($"/api/admin/tutors/{Guid.CreateVersion7()}", new
         {
-            fullName = "Yoq", phone = (string?)null, facultyId
+            fullName = "Yoq", phone = (string?)null, facultyIds = new[] { facultyId }
         });
         missing.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         var tutor = await CreateTutorViaApiAsync(client, facultyId);
         var badFaculty = await client.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}", new
         {
-            fullName = tutor.FullName, phone = (string?)null, facultyId = Guid.CreateVersion7()
+            fullName = tutor.FullName, phone = (string?)null, facultyIds = new[] { facultyId, Guid.CreateVersion7() }
         });
         badFaculty.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Detail(badFaculty)).Should().Be("Fakultet topilmadi.");
     }
 
     // ---------- PATCH {id}/status ----------
@@ -505,7 +580,7 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         scope.DepartmentId.Should().BeNull();
         scope.DirectionId.Should().BeNull();
         scope.GroupId.Should().BeNull();
-        scope.Name.Should().Be(detail.FacultyName);
+        scope.Name.Should().Be(detail.Faculties.Single().Name);
         scope.Path.Should().BeEmpty();
         scope.Groups.Should().Be(2, "faol emas guruh qamralmaydi");
         scope.Students.Should().Be(2);
@@ -533,7 +608,7 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         var dir21 = await Factory.CreateDirectionAsync(dept2, "Ikkinchi yo'nalish");
         var g211 = await CreateGroupViaApiAsync(admin, dir21);
         var tutor = await CreateTutorViaApiAsync(admin, g111.FacultyId);
-        var facultyName = (await admin.GetFromJsonAsync<TutorDetail>($"/api/admin/tutors/{tutor.Id}"))!.FacultyName;
+        var facultyName = (await admin.GetFromJsonAsync<TutorDetail>($"/api/admin/tutors/{tutor.Id}"))!.Faculties.Single().Name;
 
         // Kafedra darajasi → kafedra1 ning barcha guruhlari
         var dept = await Put(admin, tutor.Id, new { level = "department", id = g111.DepartmentId });
@@ -661,7 +736,7 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         var owner = await Factory.CreateTutorAsync(group, "Egasi Tyutor"); // guruh darajasi
         var admin = await Factory.LoginAsAdminAsync();
         var tutor = await CreateTutorViaApiAsync(admin, group.FacultyId);
-        var facultyName = (await admin.GetFromJsonAsync<TutorDetail>($"/api/admin/tutors/{tutor.Id}"))!.FacultyName;
+        var facultyName = (await admin.GetFromJsonAsync<TutorDetail>($"/api/admin/tutors/{tutor.Id}"))!.Faculties.Single().Name;
 
         // Fakultet vs guruh
         var faculty = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes",
@@ -736,7 +811,7 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         var foreign = await Factory.CreateGroupAsync();
         var admin = await Factory.LoginAsAdminAsync();
         var foreignFacultyName = (await admin.GetFromJsonAsync<TutorDetail>(
-            $"/api/admin/tutors/{(await Factory.CreateTutorAsync(foreign)).Id}"))!.FacultyName;
+            $"/api/admin/tutors/{(await Factory.CreateTutorAsync(foreign)).Id}"))!.Faculties.Single().Name;
 
         var group = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes",
             new { scopes = new[] { new { level = "group", id = foreign.GroupId } } });
@@ -851,7 +926,8 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         var deptOwner = await CreateTutorViaApiAsync(admin, groupA.FacultyId);
         await Put(admin, deptOwner.Id, new { level = "department", id = dept2 });
 
-        var tree = (await admin.GetFromJsonAsync<TutorScopeTree>($"/api/admin/tutors/{tutor.Id}/scope-tree"))!;
+        var tree = (await admin.GetFromJsonAsync<List<TutorScopeTree>>($"/api/admin/tutors/{tutor.Id}/scope-tree"))!
+            .Should().ContainSingle("bitta fakultet — bitta daraxt").Subject;
 
         tree.Id.Should().Be(groupA.FacultyId);
         tree.Name.Should().NotBeNullOrEmpty();
@@ -893,12 +969,127 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         (await admin.PutAsJsonAsync($"/api/admin/tutors/{other.Id}/scopes", new { scopes = Array.Empty<object>() })).EnsureSuccessStatusCode();
         (await admin.PutAsJsonAsync($"/api/admin/tutors/{deptOwner.Id}/scopes", new { scopes = Array.Empty<object>() })).EnsureSuccessStatusCode();
         await Put(admin, tutor.Id, new { level = "faculty", id = groupA.FacultyId });
-        tree = (await admin.GetFromJsonAsync<TutorScopeTree>($"/api/admin/tutors/{tutor.Id}/scope-tree"))!;
+        tree = (await admin.GetFromJsonAsync<List<TutorScopeTree>>($"/api/admin/tutors/{tutor.Id}/scope-tree"))!.Single();
         tree.TutorId.Should().Be(tutor.Id);
         tree.TutorName.Should().Be("Ozi Tyutor");
         tree.Departments.SelectMany(d => d.Directions).SelectMany(d => d.Groups).Should().OnlyContain(g => g.TutorId == null);
 
         (await admin.GetAsync($"/api/admin/tutors/{Guid.CreateVersion7()}/scope-tree")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // ---------- ko'p fakultet ----------
+
+    [Fact]
+    public async Task KopFakultet_Yaratish_KartaNomTartibida_FiltrHarIkkalasidaTopadi_AsosiyBirinchisi()
+    {
+        var facultyB = await Factory.CreateFacultyAsync("B Fakultet " + Guid.NewGuid().ToString("N")[..4]);
+        var facultyA = await Factory.CreateFacultyAsync("A Fakultet " + Guid.NewGuid().ToString("N")[..4]);
+        var admin = await Factory.LoginAsAdminAsync();
+
+        var tutor = await CreateTutorViaApiAsync(admin, facultyB, facultyA); // so'rovda B birinchi
+
+        tutor.Faculties.Select(f => f.Id).Should().Equal(facultyA, facultyB);
+        tutor.Faculties.Should().BeInAscendingOrder(f => f.Name, StringComparer.Ordinal);
+        tutor.Faculties.Should().OnlyContain(f => f.Code.Length > 0 && f.Name.Length > 0);
+
+        var detail = (await admin.GetFromJsonAsync<TutorDetail>($"/api/admin/tutors/{tutor.Id}"))!;
+        detail.Faculties.Select(f => f.Id).Should().Equal(facultyA, facultyB);
+
+        var primary = await Factory.WithDbAsync(db => db.Users.Where(u => u.Id == tutor.Id).Select(u => u.FacultyId).SingleAsync());
+        primary.Should().Be(facultyB, "asosiy fakultet — so'rov ro'yxatining birinchisi");
+        (await Factory.WithDbAsync(db => db.TutorFaculties.CountAsync(tf => tf.TutorUserId == tutor.Id))).Should().Be(2);
+
+        foreach (var facultyId in new[] { facultyA, facultyB })
+        {
+            var page = await admin.GetPagedAsync<TutorRow>($"/api/admin/tutors?facultyId={facultyId}&q={tutor.Phone}");
+            var row = page.Items.Should().ContainSingle(t => t.Id == tutor.Id, $"{facultyId} filtri topishi kerak").Subject;
+            row.Faculties.Select(f => f.Id).Should().Equal(facultyA, facultyB);
+        }
+
+        var unrelated = await Factory.CreateFacultyAsync();
+        (await admin.GetPagedAsync<TutorRow>($"/api/admin/tutors?facultyId={unrelated}&q={tutor.Phone}")).Items.Should().BeEmpty();
+
+        // Qidiruv — ikkinchi fakultet nomi bo'yicha ham topadi
+        var byName = await admin.GetPagedAsync<TutorRow>($"/api/admin/tutors?q={Uri.EscapeDataString(tutor.Faculties[1].Name)}");
+        byName.Items.Should().Contain(t => t.Id == tutor.Id);
+
+        // Kirganda JWT'dagi fakultet — asosiy
+        var login = await Factory.CreateClient().PostJsonAsync("/api/auth/login", new { tutor.HemisId, password = TestClients.DefaultPassword });
+        login.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var json = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
+        json.RootElement.GetProperty("user").GetProperty("facultyId").GetGuid().Should().Be(facultyB);
+    }
+
+    [Fact]
+    public async Task KopFakultet_ScopeTreeIkkiDaraxt_IkkinchiFakultetGuruhigaKolam_Materializatsiya()
+    {
+        var groupA = await Factory.CreateGroupAsync();
+        var groupB = await Factory.CreateGroupAsync();
+        var groupB2 = await Factory.CreateGroupAsync(groupB.FacultyId);
+        await Factory.CreateStudentAsync(group: groupB);
+        var admin = await Factory.LoginAsAdminAsync();
+        var tutor = await CreateTutorViaApiAsync(admin, groupA.FacultyId, groupB.FacultyId);
+
+        var trees = (await admin.GetFromJsonAsync<List<TutorScopeTree>>($"/api/admin/tutors/{tutor.Id}/scope-tree"))!;
+        trees.Should().HaveCount(2);
+        trees.Select(t => t.Id).Should().BeEquivalentTo([groupA.FacultyId, groupB.FacultyId]);
+        trees.Should().BeInAscendingOrder(t => t.Name, StringComparer.Ordinal);
+        trees.Single(t => t.Id == groupA.FacultyId).Departments.SelectMany(d => d.Directions).SelectMany(d => d.Groups)
+            .Select(g => g.Id).Should().Equal(groupA.GroupId);
+        trees.Single(t => t.Id == groupB.FacultyId).Departments.SelectMany(d => d.Directions).SelectMany(d => d.Groups)
+            .Select(g => g.Id).Should().BeEquivalentTo([groupB.GroupId, groupB2.GroupId]);
+
+        // Har ikkala fakultetdan ko'lam: A — guruh, B — fakultet darajasi
+        var detail = await Put(admin, tutor.Id,
+            new { level = "group", id = groupA.GroupId }, new { level = "faculty", id = groupB.FacultyId });
+        detail.Scopes.Should().HaveCount(2);
+        var facultyScope = detail.Scopes.Single(x => x.Level == TutorScopeLevel.Faculty);
+        facultyScope.FacultyId.Should().Be(groupB.FacultyId);
+        facultyScope.Groups.Should().Be(2, "faqat B fakultetining guruhlari — A guruhi qamralmaydi");
+        facultyScope.Students.Should().Be(1);
+        detail.Scopes.Single(x => x.Level == TutorScopeLevel.Group).Groups.Should().Be(1);
+        detail.Groups.Select(g => g.GroupId).Should().BeEquivalentTo([groupA.GroupId, groupB.GroupId, groupB2.GroupId]);
+
+        trees = (await admin.GetFromJsonAsync<List<TutorScopeTree>>($"/api/admin/tutors/{tutor.Id}/scope-tree"))!;
+        trees.Single(t => t.Id == groupB.FacultyId).TutorId.Should().Be(tutor.Id);
+        trees.Single(t => t.Id == groupA.FacultyId).TutorId.Should().BeNull();
+
+        // Boshqa tyutor B fakultetida — kesishuv 409 (tekshiruv barcha tyutor fakultetlari bo'yicha)
+        var other = await CreateTutorViaApiAsync(admin, groupB.FacultyId);
+        var clash = await admin.PutAsJsonAsync($"/api/admin/tutors/{other.Id}/scopes",
+            new { scopes = new[] { new { level = "group", id = groupB2.GroupId } } });
+        clash.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+        // Ro'yxat guruhlari — ikkala fakultetdan
+        var page = await admin.GetPagedAsync<TutorRow>($"/api/admin/tutors?q={tutor.Phone}");
+        page.Items.Single().Groups.Should().BeEquivalentTo([groupA.GroupName, groupB.GroupName, groupB2.GroupName]);
+
+        // Dashboard — ikkala fakultet kodi
+        var dashboard = await admin.GetFromJsonAsync<JsonElement>("/api/admin/dashboard");
+        var row = dashboard.GetProperty("tutors").EnumerateArray().Single(t => t.GetProperty("id").GetGuid() == tutor.Id);
+        var codes = row.GetProperty("facultyCode").GetString()!.Split(", ");
+        codes.Should().BeEquivalentTo(detail.Faculties.Select(f => f.Code));
+    }
+
+    [Fact]
+    public async Task KopFakultet_FakultetniOchirish_TyutorBoglanganBolsa_409()
+    {
+        var facultyA = await Factory.CreateFacultyAsync();
+        var facultyB = await Factory.CreateFacultyAsync();
+        var admin = await Factory.LoginAsAdminAsync();
+        var tutor = await CreateTutorViaApiAsync(admin, facultyA, facultyB); // asosiy — A; B faqat tutor_faculties orqali
+
+        var response = await admin.DeleteAsync($"/api/admin/faculties/{facultyB}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await Detail(response)).Should().Contain("tyutorlar");
+
+        // B olib tashlangach — o'chiriladi
+        (await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}", new
+        {
+            fullName = tutor.FullName, phone = tutor.Phone, facultyIds = new[] { facultyA }
+        })).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await admin.DeleteAsync($"/api/admin/faculties/{facultyB}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
     // ---------- yordamchilar ----------
@@ -907,6 +1098,13 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
     {
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return json.RootElement.GetProperty("detail").GetString();
+    }
+
+    /// <summary>400 javobidagi <c>errors</c> obyekti (ProblemDetails).</summary>
+    private static async Task<JsonElement> Errors(HttpResponseMessage response)
+    {
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return json.RootElement.GetProperty("errors").Clone();
     }
 
     /// <summary><c>PUT .../scopes</c> → 200 <see cref="TutorDetail"/>; muvaffaqiyatsiz bo'lsa tanadagi xabar bilan yiqiladi.</summary>
@@ -926,13 +1124,13 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         return (await response.Content.ReadAsync<GroupDto>())!;
     }
 
-    /// <summary>API orqali ko'lamsiz tyutor (fakultet o'zgartirish / ko'lam ssenariylari uchun).</summary>
-    private static async Task<TutorDetail> CreateTutorViaApiAsync(HttpClient admin, Guid facultyId)
+    /// <summary>API orqali ko'lamsiz tyutor (fakultet o'zgartirish / ko'lam ssenariylari uchun) — bir yoki bir nechta fakultet.</summary>
+    private static async Task<TutorDetail> CreateTutorViaApiAsync(HttpClient admin, params Guid[] facultyIds)
     {
         var response = await admin.PostJsonAsync("/api/admin/tutors", new
         {
             fullName = "API Tyutor", hemisId = TestClients.RandomHemisId(), phone = TestClients.RandomPhone(),
-            password = TestClients.DefaultPassword, facultyId
+            password = TestClients.DefaultPassword, facultyIds
         });
         response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
         return (await response.Content.ReadAsync<TutorDetail>())!;

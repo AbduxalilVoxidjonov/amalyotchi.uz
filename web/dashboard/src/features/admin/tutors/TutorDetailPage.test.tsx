@@ -24,8 +24,8 @@ function groupsTable() {
 }
 
 async function openScopePicker(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole('button', { name: "Guruhlarni biriktirish" }));
-  const dialog = await screen.findByRole('dialog', { name: "Guruhlarni biriktirish" });
+  await user.click(screen.getByRole('button', { name: 'Guruhlarni biriktirish' }));
+  const dialog = await screen.findByRole('dialog', { name: 'Guruhlarni biriktirish' });
   // Daraxt yuklanguncha.
   await within(dialog).findByRole('checkbox', { name: 'Axborot texnologiyalari (Fakultet)' });
   return dialog;
@@ -52,7 +52,14 @@ describe('TutorDetailPage', () => {
 
     const facts = within(screen.getByRole('region', { name: "Tyutor ma'lumotlari" }));
     expect(facts.getByText('+998 90 111-22-33')).toBeInTheDocument();
-    expect(facts.getByText('AT · Axborot texnologiyalari')).toBeInTheDocument();
+    // "Fakultetlar" fakti: har biri kod badge + nom (nom tartibida), ikkita.
+    const faculties = within(facts.getByRole('list', { name: 'Fakultetlar' }));
+    const items = faculties.getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent('AT');
+    expect(items[0]).toHaveTextContent('Axborot texnologiyalari');
+    expect(items[1]).toHaveTextContent('IM');
+    expect(items[1]).toHaveTextContent('Iqtisodiyot va moliya');
     expect(facts.getByText('Faol')).toBeInTheDocument();
     expect(facts.getByText('20.08.2026 14:00')).toBeInTheDocument();
 
@@ -81,9 +88,7 @@ describe('TutorDetailPage', () => {
           fullName: "Ko'lamsiz Tyutor",
           hemisId: '100000000077',
           phone: null,
-          facultyId: 'f1',
-          facultyCode: 'AT',
-          facultyName: 'Axborot texnologiyalari',
+          faculties: [{ id: 'f1', code: 'AT', name: 'Axborot texnologiyalari' }],
           isActive: true,
           lastLoginAt: null,
           createdAt: '2026-09-01T00:00:00+00:00',
@@ -104,6 +109,23 @@ describe('TutorDetailPage', () => {
     await screen.findByRole('heading', { name: 'Nodira Saidova' });
     const dialog = await openScopePicker(user);
     const box = (name: string) => within(dialog).getByRole('checkbox', { name });
+
+    // Ikki fakultet — ikki ildiz (nom tartibida); ikkinchisida Baxtiyor Rasulov kafedrasi band.
+    const tree = within(dialog).getByRole('list', { name: "Ko'lam daraxti" });
+    expect(
+      within(tree)
+        .getAllByRole('checkbox')
+        .filter((c) => /\(Fakultet\)$/.test(c.getAttribute('aria-label') ?? ''))
+        .map((c) => c.getAttribute('aria-label')),
+    ).toEqual(['Axborot texnologiyalari (Fakultet)', 'Iqtisodiyot va moliya (Fakultet)']);
+    expect(box('Iqtisodiyot va moliya (Fakultet)')).toBeDisabled();
+    expect(box('Iqtisodiyot va moliya (Fakultet)')).toHaveAccessibleDescription(
+      'ichida Baxtiyor Rasulov biriktirilgan',
+    );
+    expect(box('Moliya kafedrasi (Kafedra)')).toBeDisabled();
+    expect(box('Moliya kafedrasi (Kafedra)')).toHaveAccessibleDescription('— Baxtiyor Rasulov');
+    expect(box('221-23 (Guruh)')).toHaveAccessibleDescription('— Baxtiyor Rasulov orqali');
+    expect(box('Buxgalteriya hisobi kafedrasi (Kafedra)')).toBeEnabled();
 
     // Boshlang'ich tanlov — `detail.scopes` (dir1); avlodlari "ota orqali" qamrab olingan.
     expect(box("Kompyuter injiniringi (Yo'nalish)")).toBeChecked();
@@ -163,10 +185,13 @@ describe('TutorDetailPage', () => {
     );
     expect(box("Kompyuter injiniringi (Yo'nalish)")).toBeInTheDocument();
 
-    // Qidiruv: mos tugun va ajdodlari qoladi.
+    // Qidiruv: mos tugun va ajdodlari qoladi (boshqa daraxt butunlay yashirinadi).
     await user.type(within(dialog).getByLabelText('Tugun qidirish'), '432');
     expect(
       within(dialog).queryByRole('checkbox', { name: '412-22 (Guruh)' }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole('checkbox', { name: 'Iqtisodiyot va moliya (Fakultet)' }),
     ).not.toBeInTheDocument();
     expect(box('Axborot xavfsizligi kafedrasi (Kafedra)')).toBeInTheDocument();
     await user.click(box('432-22 (Guruh)'));
@@ -175,25 +200,37 @@ describe('TutorDetailPage', () => {
     expect(box('432-22 (Guruh)')).toBeChecked();
     expect(within(dialog).getByText("Tanlangan: 2 ta ko'lam · ~5 guruh")).toBeInTheDocument();
 
+    // Ikkinchi fakultet daraxtidan guruh — hisob barcha daraxtlar bo'yicha.
+    await user.click(box('231-23 (Guruh)'));
+    expect(box('231-23 (Guruh)')).toBeChecked();
+    expect(within(dialog).getByText("Tanlangan: 3 ta ko'lam · ~6 guruh")).toBeInTheDocument();
+
     await user.click(within(dialog).getByRole('button', { name: 'Saqlash' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
-    // Jadval yangilandi: faqat aniq tanlangan tugunlar (kafedra + guruh), guruhlar yoyilgan.
+    // Jadval yangilandi: faqat aniq tanlangan tugunlar (kafedra + 2 guruh), guruhlar yoyilgan.
     const scopes = scopesTable();
     expect(await scopes.findByText('Kompyuter injiniringi kafedrasi')).toBeInTheDocument();
     expect(scopes.getByText('Kafedra')).toBeInTheDocument();
     expect(scopes.getByText('432-22')).toBeInTheDocument();
-    expect(scopes.getByText('Guruh')).toBeInTheDocument();
+    expect(scopes.getByText('231-23')).toBeInTheDocument();
+    expect(scopes.getAllByText('Guruh')).toHaveLength(2);
     expect(
       scopes.getByText(
         'Axborot texnologiyalari › Axborot xavfsizligi kafedrasi › Axborot xavfsizligi',
       ),
     ).toBeInTheDocument();
+    expect(
+      scopes.getByText(
+        'Iqtisodiyot va moliya › Buxgalteriya hisobi kafedrasi › Buxgalteriya hisobi',
+      ),
+    ).toBeInTheDocument();
     expect(scopes.queryByText("Yo'nalish")).not.toBeInTheDocument();
-    expect(scopes.getByText("2 ko'lam · 5 guruh · 73 talaba")).toBeInTheDocument();
-    expect(screen.getByText('Qamrab olingan guruhlar (5)')).toBeInTheDocument();
+    expect(scopes.getByText("3 ko'lam · 6 guruh · 93 talaba")).toBeInTheDocument();
+    expect(screen.getByText('Qamrab olingan guruhlar (6)')).toBeInTheDocument();
     expect(groupsTable().getByText('422-23')).toBeInTheDocument();
     expect(groupsTable().getByText('432-22')).toBeInTheDocument();
+    expect(groupsTable().getByText('231-23')).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent("Ko'lam saqlandi.");
   });
 
@@ -282,13 +319,44 @@ describe('TutorDetailPage', () => {
     await user.click(screen.getByRole('button', { name: 'Tahrirlash' }));
     const dialog = await screen.findByRole('dialog', { name: 'Tyutorni tahrirlash' });
     expect(within(dialog).getByLabelText('FISH')).toHaveValue('Nodira Saidova');
-    await waitFor(() => expect(within(dialog).getByLabelText('Fakultet')).toHaveValue('f1'));
+    expect(
+      await within(dialog).findByRole('checkbox', { name: 'AT — Axborot texnologiyalari' }),
+    ).toBeChecked();
+    expect(
+      within(dialog).getByRole('checkbox', { name: 'IM — Iqtisodiyot va moliya' }),
+    ).toBeChecked();
     await user.clear(within(dialog).getByLabelText('Telefon'));
     await user.type(within(dialog).getByLabelText('Telefon'), '+998 90 999-88-77');
     await user.click(within(dialog).getByRole('button', { name: 'Saqlash' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(await screen.findByText('+998 90 999-88-77')).toBeInTheDocument();
+  });
+
+  it("tahrirlash: ko'lami bor fakultetni olib tashlash → 409 xabari modal ichida (role=alert)", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole('heading', { name: 'Nodira Saidova' });
+
+    await user.click(screen.getByRole('button', { name: 'Tahrirlash' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Tyutorni tahrirlash' });
+    const at = await within(dialog).findByRole('checkbox', {
+      name: 'AT — Axborot texnologiyalari',
+    });
+    expect(at).toBeChecked();
+    await user.click(at);
+    expect(at).not.toBeChecked();
+    await user.click(within(dialog).getByRole('button', { name: 'Saqlash' }));
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      "Axborot texnologiyalari fakultetida tyutorga ko'lam biriktirilgan — avval uni ajrating.",
+    );
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    // Kartada hali ham ikkala fakultet.
+    const facts = within(screen.getByRole('region', { name: "Tyutor ma'lumotlari" }));
+    expect(
+      within(facts.getByRole('list', { name: 'Fakultetlar' })).getAllByRole('listitem'),
+    ).toHaveLength(2);
   });
 
   it("404: tyutor topilmasa — 'topilmadi' holati + ro'yxatga qaytish", async () => {
@@ -303,6 +371,59 @@ describe('TutorDetailPage', () => {
 
 describe('tutors mock: PUT /scopes', () => {
   afterEach(() => resetTutorsMock());
+
+  it('scope-tree: har fakultet uchun bitta daraxt (nom tartibida), bitta fakultetli tyutorda bitta', async () => {
+    const trees = await tutorsApi.scopeTree('t1');
+    expect(trees.map((t) => t.code)).toEqual(['AT', 'IM']);
+    expect(trees[1]!.departments.map((d) => d.name)).toEqual([
+      'Moliya kafedrasi',
+      'Buxgalteriya hisobi kafedrasi',
+    ]);
+    expect(trees[1]!.departments[0]).toMatchObject({
+      tutorId: 't2',
+      tutorName: 'Baxtiyor Rasulov',
+    });
+    expect((await tutorsApi.scopeTree('t5')).map((t) => t.code)).toEqual(['AT']);
+  });
+
+  it("POST/PUT facultyIds: bo'sh → 400 (FacultyIds), noma'lum → 404, ko'lamsiz fakultetni olib tashlash → 200", async () => {
+    await expect(
+      tutorsApi.create({
+        fullName: 'Test Tyutor',
+        hemisId: '100000000555',
+        password: 'parol12345',
+        facultyIds: [],
+      }),
+    ).rejects.toMatchObject({ status: 400, fieldErrors: { FacultyIds: expect.any(Array) } });
+    await expect(
+      tutorsApi.create({
+        fullName: 'Test Tyutor',
+        hemisId: '100000000555',
+        password: 'parol12345',
+        facultyIds: ['f-yoq'],
+      }),
+    ).rejects.toMatchObject({ status: 404 });
+    const created = await tutorsApi.create({
+      fullName: 'Test Tyutor',
+      hemisId: '100000000555',
+      password: 'parol12345',
+      facultyIds: ['f3', 'f1', 'f1'],
+    });
+    expect(created.faculties.map((f) => f.code)).toEqual(['AT', 'QA']);
+
+    const updated = await tutorsApi.update('t1', {
+      fullName: 'Nodira Saidova',
+      facultyIds: ['f1'],
+    });
+    expect(updated.faculties.map((f) => f.code)).toEqual(['AT']);
+    await expect(
+      tutorsApi.update('t1', { fullName: 'Nodira Saidova', facultyIds: ['f2'] }),
+    ).rejects.toMatchObject({
+      status: 409,
+      message:
+        "Axborot texnologiyalari fakultetida tyutorga ko'lam biriktirilgan — avval uni ajrating.",
+    });
+  });
 
   it('kesishuv 409: boshqa tyutor tugunining ajdodi yoki avlodi tanlansa', async () => {
     // d2 ichida Sardor Karimovning g-431-22 guruhi bor.
@@ -332,9 +453,13 @@ describe('tutors mock: PUT /scopes', () => {
     ]);
     expect(detail.groups.map((g) => g.groupName)).toEqual(['412-22', '413-22', '421-23', '422-23']);
 
+    // Boshqa (tyutorga bog'lanmagan) fakultet tuguni — 400; ikkinchi fakultetdagi erkin guruh — OK.
     await expect(
-      tutorsApi.setScopes('t1', [{ level: 'group', id: 'g-221-23' }]),
+      tutorsApi.setScopes('t1', [{ level: 'group', id: 'g-318-21' }]),
     ).rejects.toMatchObject({ status: 400 });
+    const second = await tutorsApi.setScopes('t1', [{ level: 'group', id: 'g-232-23' }]);
+    expect(second.scopes.map((s) => `${s.level}:${s.groupId}`)).toEqual(['group:g-232-23']);
+    expect(second.scopes[0]!.facultyId).toBe('f2');
     await expect(
       tutorsApi.setScopes('t1', [{ level: 'group', id: NO_ACADEMIC_YEAR_SCOPE_ID }]),
     ).rejects.toMatchObject({ status: 409, message: "Faol o'quv yili yo'q." });

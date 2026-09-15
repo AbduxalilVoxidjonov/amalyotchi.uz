@@ -25,7 +25,10 @@ internal sealed class DeleteFacultyCommandHandler(IApplicationDbContext db, IAud
         if (hasDepartments)
             throw new ConflictException("Fakultetda kafedralar bor — avval ularni o'chiring.");
 
-        var hasUsers = await db.Users.AnyAsync(u => u.FacultyId == request.Id, cancellationToken);
+        // Talaba/tyutorning asosiy fakulteti yoki tyutorning qo'shimcha fakulteti (tutor_faculties) bo'lsa — 409.
+        var hasUsers = await db.Users.AnyAsync(u => u.FacultyId == request.Id, cancellationToken)
+                       || await db.TutorFaculties.AnyAsync(tf => tf.FacultyId == request.Id
+                                                                 && db.Users.Any(u => u.Id == tf.TutorUserId), cancellationToken);
         if (hasUsers)
             throw new ConflictException(
                 "Fakultetga guruhlar, tyutorlar yoki talabalar biriktirilgan — avval ularni boshqa fakultetga ko'chiring.");

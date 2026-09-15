@@ -1,5 +1,11 @@
 import type { TutorScopeTree } from '../types';
-import { computeNodeStates, flattenScopeTree, scopeKeysOf, visibleKeys } from './scopeTree';
+import {
+  computeNodeStates,
+  descendantKeys,
+  flattenScopeTree,
+  scopeKeysOf,
+  visibleKeys,
+} from './scopeTree';
 
 const free = { tutorId: null, tutorName: null };
 const other = { tutorId: 't9', tutorName: 'Boshqa Tyutor' };
@@ -65,7 +71,33 @@ const TREE: TutorScopeTree = {
   ],
 };
 
-const nodes = flattenScopeTree(TREE);
+/** Ikkinchi fakultet daraxti: f2(d9: dir9: g7,g8) — ko'p fakultetli tyutor. */
+const TREE2: TutorScopeTree = {
+  id: 'f2',
+  name: 'Ikkinchi fakultet',
+  code: 'F2',
+  ...free,
+  departments: [
+    {
+      id: 'd9',
+      name: 'Kafedra 9',
+      ...free,
+      directions: [
+        {
+          id: 'dir9',
+          name: "Yo'nalish 9",
+          ...free,
+          groups: [
+            { id: 'g7', name: '901', course: 1, students: 11, ...free },
+            { id: 'g8', name: '902', course: 1, students: 13, ...other },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+const nodes = flattenScopeTree([TREE]);
 const kind = (states: ReturnType<typeof computeNodeStates>, key: string) => states.get(key)?.kind;
 
 describe('flattenScopeTree', () => {
@@ -91,6 +123,27 @@ describe('flattenScopeTree', () => {
     expect(byKey.get('department:d1')).toMatchObject({ groups: 3, students: 30 });
     expect(byKey.get('direction:dir1')).toMatchObject({ groups: 2, students: 22 });
     expect(byKey.get('group:g1')).toMatchObject({ groups: 1, students: 10, course: 1, depth: 3 });
+    expect(nodes.every((n) => n.facultyId === 'f')).toBe(true);
+  });
+
+  it("bir nechta daraxt: ildizlar ketma-ket, har tugun o'z fakultet id'si bilan; bo'sh massiv — bo'sh", () => {
+    const multi = flattenScopeTree([TREE, TREE2]);
+    expect(multi.filter((n) => n.parentKey === null).map((n) => n.key)).toEqual([
+      'faculty:f',
+      'faculty:f2',
+    ]);
+    expect(multi.slice(nodes.length).map((n) => n.key)).toEqual([
+      'faculty:f2',
+      'department:d9',
+      'direction:dir9',
+      'group:g7',
+      'group:g8',
+    ]);
+    const byKey = new Map(multi.map((n) => [n.key, n]));
+    expect(byKey.get('faculty:f2')).toMatchObject({ groups: 2, students: 24, facultyId: 'f2' });
+    expect(byKey.get('group:g7')).toMatchObject({ facultyId: 'f2', depth: 3 });
+    expect(byKey.get('faculty:f')).toMatchObject({ groups: 6, students: 51 });
+    expect(flattenScopeTree([])).toEqual([]);
   });
 });
 
@@ -111,16 +164,37 @@ describe('computeNodeStates', () => {
   });
 
   it("tanlangan tugun avlodlari 'covered' (ota nomi bilan); joriy tyutorning o'z tuguni taken emas", () => {
-    const own = flattenScopeTree({
-      ...TREE,
-      departments: TREE.departments.map((d) =>
-        d.id === 'd1' ? { ...d, tutorId: 't1', tutorName: 'Men' } : d,
-      ),
-    });
+    const own = flattenScopeTree([
+      {
+        ...TREE,
+        departments: TREE.departments.map((d) =>
+          d.id === 'd1' ? { ...d, tutorId: 't1', tutorName: 'Men' } : d,
+        ),
+      },
+    ]);
     const states = computeNodeStates(own, new Set(['department:d1']), 't1');
     expect(kind(states, 'department:d1')).toBe('selected');
     expect(states.get('direction:dir1')).toEqual({ kind: 'covered', byName: 'Kafedra 1' });
     expect(states.get('group:g3')).toEqual({ kind: 'covered', byName: 'Kafedra 1' });
+  });
+
+  it("bir nechta daraxt: holatlar daraxtlar aro oqib o'tmaydi, avlod kalitlari o'z daraxtida", () => {
+    const multi = flattenScopeTree([TREE, TREE2]);
+    const states = computeNodeStates(multi, new Set(['department:d1']), 't1');
+    // Birinchi daraxt tanlovi ikkinchi daraxtga ta'sir qilmaydi.
+    expect(kind(states, 'department:d1')).toBe('selected');
+    expect(kind(states, 'group:g7')).toBe('free');
+    // Ikkinchi daraxtdagi band guruh faqat o'z ajdodlarini "takenInside" qiladi.
+    expect(kind(states, 'group:g8')).toBe('taken');
+    expect(kind(states, 'direction:dir9')).toBe('takenInside');
+    expect(kind(states, 'department:d9')).toBe('takenInside');
+    expect(kind(states, 'faculty:f2')).toBe('takenInside');
+    expect(kind(states, 'faculty:f')).toBe('takenInside');
+    expect(states.get('faculty:f')).toMatchObject({ tutorName: 'Boshqa Tyutor' });
+    expect(descendantKeys(multi, 'faculty:f2').sort()).toEqual(
+      ['department:d9', 'direction:dir9', 'group:g7', 'group:g8'].sort(),
+    );
+    expect(descendantKeys(multi, 'faculty:f')).not.toContain('group:g7');
   });
 });
 
@@ -165,5 +239,16 @@ describe('scopeKeysOf / visibleKeys', () => {
       'group:g6',
     ]);
     expect(visibleKeys(nodes, "yo'q")!.size).toBe(0);
+  });
+
+  it("qidiruv bir nechta daraxt bo'ylab: mos tugun o'z ildizini ko'rsatadi, boshqa daraxt yo'q", () => {
+    const multi = flattenScopeTree([TREE, TREE2]);
+    expect([...visibleKeys(multi, '90')!]).toEqual([
+      'group:g7',
+      'direction:dir9',
+      'department:d9',
+      'faculty:f2',
+      'group:g8',
+    ]);
   });
 });

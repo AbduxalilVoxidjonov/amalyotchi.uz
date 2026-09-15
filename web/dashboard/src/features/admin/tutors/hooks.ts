@@ -23,7 +23,7 @@ export function useTutorQuery(id: string) {
   });
 }
 
-/** Tyutor fakulteti daraxti (egalari bilan) — `ScopePickerModal`. Faqat modal ochiq bo'lganda so'raladi. */
+/** Tyutor fakultetlari daraxtlari (egalari bilan) — `ScopePickerModal`. Faqat modal ochiq bo'lganda so'raladi. */
 export function useTutorScopeTreeQuery(id: string, enabled: boolean) {
   return useQuery({
     queryKey: adminKeys.tutorScopeTree(id),
@@ -94,12 +94,21 @@ export function useSetTutorScopes() {
   });
 }
 
-/** Fakultet select'i uchun variantlar (yangi endpoint yo'q — `facultiesApi.list`, 100 tagacha). */
+/** Fakultet varianti: filtr `Select` uchun `value/label`, forma checkbox'lari uchun `code/isActive` ham. */
+export interface FacultyOption {
+  value: string;
+  label: string;
+  code: string;
+  isActive: boolean;
+}
+
+/** Fakultet filtri/checkbox ro'yxati uchun variantlar (yangi endpoint yo'q — `facultiesApi.list`, 100 tagacha). */
 export function useFacultyOptions() {
   return useQuery({
     queryKey: adminKeys.faculties(FACULTY_OPTIONS_PARAMS),
     queryFn: () => facultiesApi.list(FACULTY_OPTIONS_PARAMS),
-    select: (data) => data.items.map((f) => ({ value: f.id, label: f.name })),
+    select: (data): FacultyOption[] =>
+      data.items.map((f) => ({ value: f.id, label: f.name, code: f.code, isActive: f.isActive })),
     staleTime: 60_000,
   });
 }

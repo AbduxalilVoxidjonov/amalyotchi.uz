@@ -27,9 +27,10 @@ const passwordField = z
   .string()
   .min(1, 'Parolni kiriting.')
   .min(8, "Parol kamida 8 ta belgidan iborat bo'lishi kerak.")
-  .max(128, "Parol 128 ta belgidan oshmasligi kerak.");
+  .max(128, 'Parol 128 ta belgidan oshmasligi kerak.');
 
-const facultyIdField = z.string().min(1, 'Fakultetni tanlang.');
+/** Ko'p tanlov: kamida bitta fakultet. */
+const facultyIdsField = z.array(z.string()).min(1, 'Kamida bitta fakultet tanlang');
 
 /** "Yangi tyutor" formasi — POST body'siga mos (parol ham shu yerda). */
 export const tutorCreateSchema = z.object({
@@ -37,14 +38,14 @@ export const tutorCreateSchema = z.object({
   hemisId: hemisIdField,
   phone: phoneField,
   password: passwordField,
-  facultyId: facultyIdField,
+  facultyIds: facultyIdsField,
 });
 
 /** "Tyutorni tahrirlash" — PUT body'si (HEMIS ID va parol o'zgartirilmaydi). */
 export const tutorEditSchema = z.object({
   fullName: fullNameField,
   phone: phoneField,
-  facultyId: facultyIdField,
+  facultyIds: facultyIdsField,
 });
 
 /** "Parolni tiklash" — yangi parol + tasdiq. */

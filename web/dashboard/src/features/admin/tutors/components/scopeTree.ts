@@ -2,11 +2,13 @@ import type { TutorScope, TutorScopeInput, TutorScopeLevel, TutorScopeTree } fro
 
 /** `scope-tree` daraxtining yassilangan tuguni — `ScopePickerModal` uchun. */
 export interface ScopeNode {
-  /** `level:id` — tanlov to'plami kaliti. */
+  /** `level:id` — tanlov to'plami kaliti (id'lar global noyob, daraxtlar aro takrorlanmaydi). */
   key: string;
   level: TutorScopeLevel;
   id: string;
   name: string;
+  /** Tugun qaysi fakultet daraxtida (ildiz fakultet id'si). */
+  facultyId: string;
   parentKey: string | null;
   /** Kelish tartibida (fakultet → kafedra → yo'nalish → guruh, chuqurlik-birinchi). */
   depth: number;
@@ -44,8 +46,15 @@ export function scopeKeysOf(scopes: readonly TutorScope[]): Set<string> {
   return keys;
 }
 
-/** Daraxtni yassilaydi (chuqurlik-birinchi) va har tugun uchun guruh/talaba yig'indisini hisoblaydi. */
-export function flattenScopeTree(tree: TutorScopeTree): ScopeNode[] {
+/**
+ * Daraxtlarni (har fakultet uchun bittadan, kelish tartibida) yassilaydi — chuqurlik-birinchi, ildizlar
+ * `parentKey === null` — va har tugun uchun guruh/talaba yig'indisini hisoblaydi.
+ */
+export function flattenScopeTree(trees: readonly TutorScopeTree[]): ScopeNode[] {
+  return trees.flatMap(flattenOne);
+}
+
+function flattenOne(tree: TutorScopeTree): ScopeNode[] {
   const nodes: ScopeNode[] = [];
   const facultyKey = scopeKey('faculty', tree.id);
   const faculty: ScopeNode = {
@@ -53,6 +62,7 @@ export function flattenScopeTree(tree: TutorScopeTree): ScopeNode[] {
     level: 'faculty',
     id: tree.id,
     name: tree.name,
+    facultyId: tree.id,
     parentKey: null,
     depth: 0,
     tutorId: tree.tutorId,
@@ -69,6 +79,7 @@ export function flattenScopeTree(tree: TutorScopeTree): ScopeNode[] {
       level: 'department',
       id: d.id,
       name: d.name,
+      facultyId: tree.id,
       parentKey: facultyKey,
       depth: 1,
       tutorId: d.tutorId,
@@ -86,6 +97,7 @@ export function flattenScopeTree(tree: TutorScopeTree): ScopeNode[] {
         level: 'direction',
         id: dir.id,
         name: dir.name,
+        facultyId: tree.id,
         parentKey: department.key,
         depth: 2,
         tutorId: dir.tutorId,
@@ -103,6 +115,7 @@ export function flattenScopeTree(tree: TutorScopeTree): ScopeNode[] {
           level: 'group',
           id: g.id,
           name: g.name,
+          facultyId: tree.id,
           parentKey: direction.key,
           depth: 3,
           tutorId: g.tutorId,
@@ -140,7 +153,8 @@ export type ScopeNodeState =
   | { kind: 'takenInside'; tutorName: string };
 
 /**
- * Har tugun holatini hisoblaydi. Ustuvorlik: taken → takenViaAncestor → takenInside → selected → covered → free.
+ * Har tugun holatini hisoblaydi (bir nechta daraxt — bitta yassi ro'yxat, har daraxt o'z ildizidan
+ * mustaqil). Ustuvorlik: taken → takenViaAncestor → takenInside → selected → covered → free.
  * `tutorId` — joriy tyutor (o'z ko'lami "taken" emas).
  */
 export function computeNodeStates(
@@ -151,7 +165,7 @@ export function computeNodeStates(
   const byKey = new Map(nodes.map((n) => [n.key, n]));
   const otherOwner = (n: ScopeNode) => n.tutorId !== null && n.tutorId !== tutorId;
 
-  // Avlodlar orasida boshqa tyutor bormi — pastdan yuqoriga (nodes chuqurlik-birinchi, teskari yurish).
+  // Avlodlar orasida boshqa tyutor bormi — pastdan yuqoriga (nodes har daraxtda chuqurlik-birinchi, teskari yurish).
   const insideOther = new Map<string, string | null>();
   for (let i = nodes.length - 1; i >= 0; i -= 1) {
     const n = nodes[i]!;

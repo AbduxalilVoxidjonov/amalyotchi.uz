@@ -14,21 +14,22 @@ internal static class TutorAssignmentSync
     public const string NoActiveAcademicYearMessage = "Faol o'quv yili yo'q.";
 
     /// <summary><paramref name="activeScopes"/> — xotiradagi (hali saqlanmagan bo'lishi mumkin) faol ko'lamlar;
-    /// kerakli guruhlar = fakultetning faol guruhlari ichida ko'lamlardan biri qamrab olganlari.</summary>
+    /// kerakli guruhlar = tyutor fakultetlarining (<paramref name="facultyIds"/>) faol guruhlari ichida ko'lamlardan biri
+    /// (har biri o'z fakulteti bo'yicha) qamrab olganlari.</summary>
     public static async Task SyncAsync(
         IApplicationDbContext db,
         Guid tutorId,
-        Guid facultyId,
+        IReadOnlyCollection<Guid> facultyIds,
         IReadOnlyCollection<TutorScope> activeScopes,
         CancellationToken cancellationToken)
     {
         var wanted = new HashSet<Guid>();
         if (activeScopes.Count > 0)
         {
-            var groups = await TutorScopeQueries.LoadActiveGroupsAsync(db, facultyId, cancellationToken);
+            var groups = await TutorScopeQueries.LoadActiveGroupsAsync(db, facultyIds, cancellationToken);
             foreach (var group in groups)
             {
-                if (activeScopes.Any(s => s.CoversGroup(facultyId, group.DepartmentId, group.DirectionId, group.Id)))
+                if (activeScopes.Any(s => s.CoversGroup(group.FacultyId, group.DepartmentId, group.DirectionId, group.Id)))
                     wanted.Add(group.Id);
             }
         }

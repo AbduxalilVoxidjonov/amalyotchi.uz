@@ -1,14 +1,15 @@
 import { useEffect, useId, useState, type ChangeEvent, type FormEvent } from 'react';
 import { errorMessage, isApiError } from '@/shared/api';
-import { Button, Input, Modal, Select } from '@/shared/ui';
+import { Button, Checkbox, Input, Modal } from '@/shared/ui';
 import { formatPhone } from '../../shared/format';
-import { useCreateTutor, useFacultyOptions, useUpdateTutor } from '../hooks';
+import { useCreateTutor, useFacultyOptions, useUpdateTutor, type FacultyOption } from '../hooks';
 import {
   firstIssues,
   tutorCreateSchema,
   tutorEditSchema,
   type TutorCreateFormValues,
 } from '../schema';
+import type { FacultyRef } from '../types';
 import styles from './TutorForms.module.css';
 
 /** `Tutor` (ro'yxat qatori) va `TutorDetail` ikkalasi ham shu shaklga mos. */
@@ -16,7 +17,7 @@ export interface TutorFormInitial {
   id: string;
   fullName: string;
   phone: string | null;
-  facultyId: string | null;
+  faculties: readonly FacultyRef[];
 }
 
 export interface TutorFormModalProps {
@@ -34,12 +35,13 @@ const EMPTY_VALUES: TutorCreateFormValues = {
   hemisId: '',
   phone: '',
   password: '',
-  facultyId: '',
+  facultyIds: [],
 };
 
 /**
  * "Yangi tyutor" / "Tyutorni tahrirlash" — `mode` bo'yicha POST yoki PUT.
  * Tahrirlashda HEMIS ID va parol maydonlari yo'q (parol — alohida "Parolni tiklash").
+ * Fakultetlar — ko'p tanlov (checkbox), kamida bittasi majburiy.
  */
 export function TutorFormModal({ open, mode, initial, onClose }: TutorFormModalProps) {
   const formId = useId();
@@ -60,7 +62,7 @@ export function TutorFormModal({ open, mode, initial, onClose }: TutorFormModalP
             ...EMPTY_VALUES,
             fullName: initial.fullName,
             phone: initial.phone ? formatPhone(initial.phone) : '',
-            facultyId: initial.facultyId ?? '',
+            facultyIds: initial.faculties.map((f) => f.id),
           }
         : EMPTY_VALUES,
     );
@@ -75,9 +77,20 @@ export function TutorFormModal({ open, mode, initial, onClose }: TutorFormModalP
     onClose();
   }
 
-  function field(key: FieldKey) {
-    return (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+  function field(key: Exclude<FieldKey, 'facultyIds'>) {
+    return (e: ChangeEvent<HTMLInputElement>) =>
       setValues((v) => ({ ...v, [key]: e.target.value }));
+  }
+
+  function toggleFaculty(id: string, checked: boolean) {
+    setValues((v) => ({
+      ...v,
+      facultyIds: checked
+        ? v.facultyIds.includes(id)
+          ? v.facultyIds
+          : [...v.facultyIds, id]
+        : v.facultyIds.filter((x) => x !== id),
+    }));
   }
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -89,9 +102,9 @@ export function TutorFormModal({ open, mode, initial, onClose }: TutorFormModalP
         return;
       }
       setFieldErrors({});
-      const { fullName, phone, facultyId } = parsed.data;
+      const { fullName, phone, facultyIds } = parsed.data;
       updateTutor.mutate(
-        { id: initial.id, body: { fullName, phone: phone || null, facultyId } },
+        { id: initial.id, body: { fullName, phone: phone || null, facultyIds } },
         { onSuccess: onClose },
       );
       return;
@@ -102,9 +115,9 @@ export function TutorFormModal({ open, mode, initial, onClose }: TutorFormModalP
       return;
     }
     setFieldErrors({});
-    const { fullName, hemisId, phone, password, facultyId } = parsed.data;
+    const { fullName, hemisId, phone, password, facultyIds } = parsed.data;
     createTutor.mutate(
-      { fullName, hemisId, phone: phone || null, password, facultyId },
+      { fullName, hemisId, phone: phone || null, password, facultyIds },
       { onSuccess: onClose },
     );
   }
@@ -116,7 +129,7 @@ export function TutorFormModal({ open, mode, initial, onClose }: TutorFormModalP
     hemisId: mode === 'create' ? errorFor('hemisId') : undefined,
     phone: errorFor('phone'),
     password: mode === 'create' ? errorFor('password') : undefined,
-    facultyId: errorFor('facultyId'),
+    facultyIds: errorFor('facultyIds'),
   };
   const hasFieldError = Object.values(shownErrors).some(Boolean);
   // Validatsiya xatosi maydonlarda ko'rsatiladi; qolgan holatlar (404/409/tarmoq) — umumiy banner.
@@ -124,11 +137,35 @@ export function TutorFormModal({ open, mode, initial, onClose }: TutorFormModalP
     mutation.isError && !hasFieldError ? errorMessage(mutation.error) : undefined;
 
   const facultyOptions = faculties.data ?? [];
-  const facultyPlaceholder = faculties.isPending
-    ? 'Yuklanmoqda…'
-    : faculties.isError
-      ? "Fakultetlarni yuklab bo'lmadi"
-      : 'Tanlang';
+  const facultiesErrorId = `${formId}-faculties-error`;
+  const facultiesHintId = `${formId}-faculties-hint`;
+  const facultiesHint =
+    mode === 'edit'
+      ? "Ko'lami biriktirilgan fakultetni olib tashlab bo'lmaydi — avval ko'lamni ajrating."
+      : undefined;
+
+  /** Faol emas fakultet faqat allaqachon tanlangan bo'lsa (tahrirlash) ko'rinadi — olib tashlash uchun. */
+  function facultyRow(f: FacultyOption) {
+    const checked = values.facultyIds.includes(f.value);
+    if (!f.isActive && !checked) return null;
+    return (
+      <Checkbox
+        key={f.value}
+        name="facultyIds"
+        value={f.value}
+        wrapperClassName={styles.facultyRow}
+        checked={checked}
+        disabled={mutation.isPending}
+        onChange={(e) => toggleFaculty(f.value, e.target.checked)}
+        label={
+          <>
+            <span className={styles.facultyCode}>{f.code}</span> — {f.label}
+            {!f.isActive && <span className={styles.facultyNote}> (faol emas)</span>}
+          </>
+        }
+      />
+    );
+  }
 
   return (
     <Modal
@@ -200,22 +237,36 @@ export function TutorFormModal({ open, mode, initial, onClose }: TutorFormModalP
             disabled={mutation.isPending}
           />
         )}
-        <Select
-          id="tutor-faculty"
-          label="Fakultet"
-          variant="form"
-          placeholder={facultyPlaceholder}
-          options={facultyOptions}
-          hint={
-            mode === 'edit'
-              ? "Guruhlar biriktirilgan bo'lsa fakultetni o'zgartirib bo'lmaydi."
-              : undefined
+        <fieldset
+          className={styles.fieldset}
+          aria-invalid={shownErrors.facultyIds ? true : undefined}
+          aria-describedby={
+            shownErrors.facultyIds ? facultiesErrorId : facultiesHint ? facultiesHintId : undefined
           }
-          value={values.facultyId}
-          onChange={field('facultyId')}
-          error={shownErrors.facultyId}
-          disabled={mutation.isPending || faculties.isPending}
-        />
+        >
+          <legend className={styles.legend}>Fakultetlar</legend>
+          <div className={styles.facultyList}>
+            {faculties.isPending ? (
+              <p className={styles.facultyStatus}>Yuklanmoqda…</p>
+            ) : faculties.isError ? (
+              <p className={styles.facultyStatus}>Fakultetlarni yuklab bo'lmadi</p>
+            ) : facultyOptions.length === 0 ? (
+              <p className={styles.facultyStatus}>Fakultetlar yo'q</p>
+            ) : (
+              facultyOptions.map(facultyRow)
+            )}
+          </div>
+          {facultiesHint && !shownErrors.facultyIds && (
+            <p id={facultiesHintId} className={styles.hint}>
+              {facultiesHint}
+            </p>
+          )}
+          {shownErrors.facultyIds && (
+            <p id={facultiesErrorId} role="alert" className={styles.error}>
+              {shownErrors.facultyIds}
+            </p>
+          )}
+        </fieldset>
         {generalError && (
           <p role="alert" className={styles.error}>
             {generalError}

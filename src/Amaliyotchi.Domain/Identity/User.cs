@@ -12,6 +12,7 @@ namespace Amaliyotchi.Domain.Identity;
 public sealed class User : AuditableEntity, ISoftDeletable
 {
     private readonly List<RefreshToken> _refreshTokens = [];
+    private readonly List<TutorFaculty> _faculties = [];
 
     private User() { }
 
@@ -37,8 +38,9 @@ public sealed class User : AuditableEntity, ISoftDeletable
     /// <summary>Talaba uchun — Telegram hisobi. Admin/tyutorda bo'lmasligi mumkin.</summary>
     public long? TelegramUserId { get; private set; }
 
-    /// <summary>Tyutor va talabaning ma'lumot ko'lami shu maydonga tayanadi.
-    /// Admin uchun null — u barcha fakultetni ko'radi.</summary>
+    /// <summary>Talabaning fakulteti; tyutor uchun — ASOSIY fakultet (<see cref="Faculties"/> ro'yxatining birinchisi,
+    /// auth/JWT mosligi uchun). Admin uchun null — u barcha fakultetni ko'radi. Tyutorning to'liq fakultetlar to'plami —
+    /// <see cref="Faculties"/>; admin-tyutor mantig'i o'shanga tayanadi.</summary>
     public Guid? FacultyId { get; private set; }
 
     public DateTimeOffset? LastLoginAt { get; private set; }
@@ -47,30 +49,47 @@ public sealed class User : AuditableEntity, ISoftDeletable
 
     public IReadOnlyCollection<RefreshToken> RefreshTokens => _refreshTokens.AsReadOnly();
 
+    /// <summary>Tyutor biriktirilgan fakultetlar (kamida bittasi). Admin/talabada bo'sh. Faqat <see cref="SetFaculties"/>
+    /// orqali o'zgaradi; chaqiruvchi <c>Include(u => u.Faculties)</c> bilan yuklashi shart — aks holda olib tashlash
+    /// bazaga yetib bormaydi.</summary>
+    public IReadOnlyCollection<TutorFaculty> Faculties => _faculties.AsReadOnly();
+
     /// <summary>Talaba uchun akademik profil (1:1, FK <c>StudentProfile.UserId</c>). Admin/tyutorda null.</summary>
     public StudentProfile? StudentProfile { get; private set; }
 
     public bool IsStudent => Role == UserRole.Student;
 
     /// <summary>Parol bilan kiradigan foydalanuvchi (admin yoki tyutor). Login identifikatori — HEMIS ID
-    /// (<paramref name="hemisId"/>), majburiy. Telefon raqami faqat aloqa uchun — ixtiyoriy.</summary>
+    /// (<paramref name="hemisId"/>), majburiy. Telefon raqami faqat aloqa uchun — ixtiyoriy. Tyutor uchun
+    /// <paramref name="facultyId"/> — yagona fakultet (ko'p fakultet: boshqa overload yoki <see cref="SetFaculties"/>).</summary>
     public static User CreateWithPassword(
         string fullName, string hemisId, string? phoneNumber, string passwordHash, UserRole role, Guid? facultyId = null)
+        => CreateWithPassword(fullName, hemisId, phoneNumber, passwordHash, role, facultyId is { } id ? [id] : []);
+
+    /// <summary>Parol bilan kiradigan foydalanuvchi; tyutor uchun <paramref name="facultyIds"/> — biriktiriladigan
+    /// fakultetlar (kamida bittasi, birinchisi asosiy — <see cref="FacultyId"/>). Admin uchun ro'yxat bo'sh bo'lishi kerak.</summary>
+    public static User CreateWithPassword(
+        string fullName, string hemisId, string? phoneNumber, string passwordHash, UserRole role, IReadOnlyCollection<Guid> facultyIds)
     {
         if (role == UserRole.Student)
             throw new DomainException("Talaba parol bilan yaratilmaydi — u Telegram orqali kiradi.");
         if (string.IsNullOrWhiteSpace(passwordHash))
             throw new DomainException("Parol xeshi bo'sh bo'lishi mumkin emas.");
-        if (role == UserRole.Tutor && facultyId is null)
-            throw new DomainException("Tyutor fakultetga biriktirilishi shart.");
+        if (role == UserRole.Tutor && facultyIds.Count == 0)
+            throw new DomainException(FacultyRequiredMessage);
+        if (role == UserRole.Admin && facultyIds.Count > 0)
+            throw new DomainException("Admin fakultetga biriktirilmaydi — u barcha fakultetni ko'radi.");
 
-        return new User(fullName, role)
+        var user = new User(fullName, role)
         {
             HemisId = Hemis.Normalize(hemisId),
             PhoneNumber = phoneNumber is null ? null : Phone.Normalize(phoneNumber),
-            PasswordHash = passwordHash,
-            FacultyId = facultyId
+            PasswordHash = passwordHash
         };
+        if (role == UserRole.Tutor)
+            user.SetFaculties(facultyIds);
+
+        return user;
     }
 
     /// <summary>Talaba hisobi. Tyutor oldindan yaratadi, talaba keyin Telegram bilan bog'laydi.</summary>
@@ -114,7 +133,40 @@ public sealed class User : AuditableEntity, ISoftDeletable
         PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : Phone.Normalize(phoneNumber);
     }
 
-    public void AssignToFaculty(Guid facultyId) => FacultyId = facultyId;
+    /// <summary>Talabaning fakultetini o'zgartiradi (guruh ko'chirilganda). Tyutor uchun — <see cref="SetFaculties"/>.</summary>
+    public void AssignToFaculty(Guid facultyId)
+    {
+        if (Role != UserRole.Student)
+            throw new DomainException("Tyutor fakultetlari SetFaculties orqali o'zgartiriladi.");
+        FacultyId = facultyId;
+    }
+
+    public const string FacultyRequiredMessage = "Tyutor kamida bitta fakultetga biriktirilishi shart.";
+
+    /// <summary>Tyutorning fakultetlar to'plamini ALMASHTIRADI: ro'yxatda yo'qlari olib tashlanadi, yangilari
+    /// qo'shiladi (mavjudlari saqlanadi — yozuv Id'si o'zgarmaydi), takrorlar bittaga keltiriladi; ro'yxatning
+    /// birinchisi <see cref="FacultyId"/> (asosiy fakultet) bo'ladi. Faqat tyutor uchun; bo'sh ro'yxat → xato.
+    /// Chaqiruvchi <see cref="Faculties"/> ni yuklagan bo'lishi shart (<c>Include</c>).</summary>
+    public void SetFaculties(IReadOnlyCollection<Guid> facultyIds)
+    {
+        if (Role != UserRole.Tutor)
+            throw new DomainException("Fakultetlar to'plami faqat tyutorga biriktiriladi.");
+        if (facultyIds.Any(id => id == Guid.Empty))
+            throw new DomainException("Fakultet ko'rsatilmagan.");
+
+        var wanted = facultyIds.Distinct().ToList();
+        if (wanted.Count == 0)
+            throw new DomainException(FacultyRequiredMessage);
+
+        _faculties.RemoveAll(f => !wanted.Contains(f.FacultyId));
+        foreach (var facultyId in wanted)
+        {
+            if (_faculties.All(f => f.FacultyId != facultyId))
+                _faculties.Add(TutorFaculty.Create(Id, facultyId));
+        }
+
+        FacultyId = wanted[0];
+    }
 
     public void MarkLogin(DateTimeOffset at) => LastLoginAt = at;
 

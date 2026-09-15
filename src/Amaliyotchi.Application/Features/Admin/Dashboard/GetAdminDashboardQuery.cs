@@ -249,25 +249,29 @@ internal sealed class GetAdminDashboardQueryHandler(IApplicationDbContext db, IC
 
     private async Task<List<TutorActivityDto>> LoadTutorsAsync(DateTimeOffset now, CancellationToken cancellationToken)
     {
-        var tutors = await (from u in db.Users.AsNoTracking()
-                            join f in db.Faculties on u.FacultyId equals f.Id into faculties
-                            from f in faculties.DefaultIfEmpty()
-                            where u.Role == UserRole.Tutor && u.IsActive
-                            orderby u.FullName
-                            select new { u.Id, u.FullName, FacultyCode = f != null ? f.Code : null, u.LastLoginAt })
+        var tutors = await db.Users.AsNoTracking()
+            .Where(u => u.Role == UserRole.Tutor && u.IsActive)
+            .OrderBy(u => u.FullName)
+            .Select(u => new { u.Id, u.FullName, u.LastLoginAt })
             .ToListAsync(cancellationToken);
 
         if (tutors.Count == 0)
             return [];
 
-        var stats = await TutorStatsLoader.LoadAsync(db, tutors.Select(t => t.Id).ToList(), now, cancellationToken);
+        var ids = tutors.Select(t => t.Id).ToList();
+        var stats = await TutorStatsLoader.LoadAsync(db, ids, now, cancellationToken);
+        // Tyutor bir nechta fakultetga biriktirilishi mumkin — kodlar vergul bilan ("AT, IM"), nom bo'yicha tartib.
+        var faculties = await TutorFacultyQueries.LoadRefsAsync(db, ids, cancellationToken);
 
         return tutors
             .Select(t =>
             {
                 var s = stats.GetValueOrDefault(t.Id) ?? TutorStats.Empty;
+                var facultyCode = faculties.TryGetValue(t.Id, out var refs)
+                    ? string.Join(", ", refs.Select(f => f.Code))
+                    : null;
                 return new TutorActivityDto(
-                    t.Id, t.FullName, t.FacultyCode, s.Groups, s.StudentCount, s.PendingCount, s.OldestPendingAt,
+                    t.Id, t.FullName, facultyCode, s.Groups, s.StudentCount, s.PendingCount, s.OldestPendingAt,
                     s.AvgDecisionHours, GetTutorsQueryHandler.Latest(t.LastLoginAt, s.LastAuditAt), s.Status(now));
             })
             .OrderByDescending(t => t.Status == TutorStatus.Late)

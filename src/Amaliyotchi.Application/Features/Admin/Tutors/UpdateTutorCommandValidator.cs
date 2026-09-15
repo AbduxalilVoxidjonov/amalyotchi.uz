@@ -16,6 +16,6 @@ public sealed class UpdateTutorCommandValidator : AbstractValidator<UpdateTutorC
         RuleFor(x => x.Phone)
             .Must(TutorValidationRules.IsValidOptionalPhone).WithMessage(TutorValidationRules.PhoneFormatMessage);
 
-        RuleFor(x => x.FacultyId).NotEmpty().WithMessage(TutorValidationRules.FacultyRequiredMessage);
+        TutorValidationRules.FacultyIds(RuleFor(x => x.FacultyIds));
     }
 }

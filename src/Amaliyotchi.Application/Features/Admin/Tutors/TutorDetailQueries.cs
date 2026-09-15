@@ -13,24 +13,13 @@ internal static class TutorDetailQueries
 
     public static async Task<TutorDetail> LoadAsync(IApplicationDbContext db, Guid tutorId, CancellationToken cancellationToken)
     {
-        var tutor = await (from u in db.Users.AsNoTracking()
-                           join f in db.Faculties.AsNoTracking() on u.FacultyId equals f.Id
-                           where u.Id == tutorId && u.Role == UserRole.Tutor
-                           select new
-                           {
-                               u.Id,
-                               u.FullName,
-                               u.HemisId,
-                               u.PhoneNumber,
-                               FacultyId = f.Id,
-                               FacultyCode = f.Code,
-                               FacultyName = f.Name,
-                               u.IsActive,
-                               u.LastLoginAt,
-                               u.CreatedAt
-                           })
+        var tutor = await db.Users.AsNoTracking()
+            .Where(u => u.Id == tutorId && u.Role == UserRole.Tutor)
+            .Select(u => new { u.Id, u.FullName, u.HemisId, u.PhoneNumber, u.IsActive, u.LastLoginAt, u.CreatedAt })
             .FirstOrDefaultAsync(cancellationToken)
             ?? throw new NotFoundException(NotFoundMessage);
+
+        var faculties = await TutorFacultyQueries.LoadRefsAsync(db, tutorId, cancellationToken);
 
         var groups = await (from a in db.TutorAssignments.AsNoTracking()
                             join g in db.StudentGroups on a.StudentGroupId equals g.Id
@@ -49,12 +38,11 @@ internal static class TutorDetailQueries
             .ToListAsync(cancellationToken);
         var facultyGroups = scopes.Count == 0
             ? []
-            : await TutorScopeQueries.LoadActiveGroupsAsync(db, tutor.FacultyId, cancellationToken);
+            : await TutorScopeQueries.LoadActiveGroupsAsync(db, faculties.Select(f => f.Id).ToList(), cancellationToken);
         var scopeDtos = await TutorScopeQueries.ToDtosAsync(db, scopes, facultyGroups, cancellationToken);
 
         return new TutorDetail(
-            tutor.Id, tutor.FullName, tutor.HemisId ?? string.Empty, tutor.PhoneNumber,
-            tutor.FacultyId, tutor.FacultyCode, tutor.FacultyName,
+            tutor.Id, tutor.FullName, tutor.HemisId ?? string.Empty, tutor.PhoneNumber, faculties,
             tutor.IsActive, tutor.LastLoginAt, tutor.CreatedAt, scopeDtos, groups);
     }
 }

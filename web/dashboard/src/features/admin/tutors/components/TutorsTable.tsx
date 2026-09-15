@@ -1,11 +1,14 @@
 import { Badge, Button, Select, type DataTableColumn, type SelectOption } from '@/shared/ui';
 import { AdminTable, type TableStateProps } from '../../components/AdminTable';
 import { RowLink } from '../../components/RowLink';
-import { formatPhone, formatScope } from '../../shared/format';
+import { DASH, formatPhone, formatScope } from '../../shared/format';
 import { TUTOR_STATUS_LABEL, type Tutor } from '../types';
 import styles from './TutorsTable.module.css';
 
-/** SPEC §9.5 ustunlari. Kutayotgan — kechikayotgan tyutorda qizil (`fg #9c3227`). Ism — detail sahifasiga havola. */
+/**
+ * SPEC §9.5 ustunlari. Kutayotgan — kechikayotgan tyutorda qizil (`fg #9c3227`). Ism — detail sahifasiga
+ * havola. Fakultet — kodlar `", "` bilan (to'liq nomlar `title`da), guruhlar alohida ustunda.
+ */
 const COLUMNS: DataTableColumn<Tutor>[] = [
   {
     key: 'fullName',
@@ -23,10 +26,24 @@ const COLUMNS: DataTableColumn<Tutor>[] = [
     render: (r) => formatPhone(r.phone),
   },
   {
-    key: 'assigned',
-    header: 'Biriktirilgan',
-    width: 'minmax(180px,1.6fr)',
-    render: (r) => formatScope(r.facultyCode, r.groups),
+    key: 'faculties',
+    header: 'Fakultet',
+    width: 'minmax(90px,.9fr)',
+    mono: true,
+    render: (r) =>
+      r.faculties.length === 0 ? (
+        DASH
+      ) : (
+        <span title={r.faculties.map((f) => f.name).join(', ')}>
+          {r.faculties.map((f) => f.code).join(', ')}
+        </span>
+      ),
+  },
+  {
+    key: 'groups',
+    header: 'Guruhlar',
+    width: 'minmax(150px,1.4fr)',
+    render: (r) => formatScope(null, r.groups),
   },
   { key: 'students', header: 'Talaba', width: 'minmax(80px,.9fr)', mono: true },
   {

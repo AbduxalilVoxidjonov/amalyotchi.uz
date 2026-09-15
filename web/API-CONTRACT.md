@@ -156,7 +156,7 @@ interface UserSummaryDto {
   id: string;
   fullName: string;
   role: 'admin' | 'tutor' | 'student'; // camelCase (JWT claim'da "Admin")
-  facultyId: string | null; // tyutor — majburiy; admin/talaba null bo'lishi mumkin
+  facultyId: string | null; // tyutor — ASOSIY fakulteti (bir nechta bo'lsa `faculties[0]`, §2.3.3); admin/talaba null bo'lishi mumkin
   phoneNumber: string | null; // E.164 xom: "+998901234567" (ma'lumot maydoni, login uchun emas; talabada null bo'lishi mumkin)
   groupId: string | null;
   groupName: string | null;
@@ -259,7 +259,7 @@ interface FacultyAttendanceDto {
 interface TutorActivityDto {
   id: string;
   name: string;
-  facultyCode: string | null;
+  facultyCode: string | null; /*tyutor fakultetlarining kodlari nom tartibida, ", " bilan: "AT, IM"*/
   groups: string[];
   studentCount: number;
   pendingCount: number;
@@ -463,8 +463,10 @@ interface GroupRow {
 ### 2.3.3 Tyutorlar — `AdminTutorsController` (`/api/admin/tutors`)
 
 Hammasi `AdminOnly`. O'chirish (DELETE) endpoint'i **yo'q** — tyutor faqat faol emas qilinadi (`PATCH .../status`).
-Semantika: tyutor **ierarxik ko'lam** bilan biriktiriladi (`TutorScope`) — fakultet, kafedra, yo'nalish yoki guruh
-darajasida, bir tyutorda bir nechta ko'lam bo'lishi mumkin (masalan 2 ta kafedra + 1 ta guruh). Ko'lam guruhlarga
+Semantika: tyutor **bir yoki bir nechta fakultetga** biriktiriladi (`faculties[]`, `TutorFaculty`; ro'yxatning
+birinchisi — "asosiy" fakultet, u `User.facultyId` sifatida auth javobida/JWT'da qoladi) va o'z fakultetlari ichida
+**ierarxik ko'lam** bilan biriktiriladi (`TutorScope`) — fakultet, kafedra, yo'nalish yoki guruh
+darajasida, bir tyutorda bir nechta ko'lam bo'lishi mumkin (masalan 2 ta kafedra + 1 ta guruh, turli fakultetlardan ham). Ko'lam guruhlarga
 **materializatsiya** qilinadi (`TutorAssignment` — `groups`): fakultet → fakultetdagi barcha faol guruhlar, kafedra →
 undagi barcha yo'nalish/guruhlar, yo'nalish → undagi guruhlar, guruh → o'zi. Ko'lam ichida **keyin yaratilgan** guruh
 avtomatik qamrab olinadi. **Kesishmaslik qoidasi:** ikki xil tyutorning faol ko'lamlari kesishmaydi (teng, ota yoki
@@ -472,17 +474,20 @@ bola — masalan A fakultetga, B shu fakultetdagi guruhga bo'lolmaydi) → 409. 
 tanlangan bo'lsa bolalari jimgina tashlab yuboriladi. Tarix saqlanadi (ajratilganda ko'lam ham, biriktiruv ham
 o'chirilmaydi, faolsizlantiriladi).
 
-#### GET `/api/admin/tutors` — `q`: ism, telefon, fakultet kodi/nomi; `&facultyId=<guid>` (ixtiyoriy filtr)
+#### GET `/api/admin/tutors` — `q`: ism, telefon, fakultetlaridan birining kodi/nomi; `&facultyId=<guid>` (ixtiyoriy filtr — tyutor fakultetlaridan **biri** mos bo'lsa)
 
 ```ts
+interface FacultyRef {
+  id: string;
+  code: string;
+  name: string;
+}
 interface TutorRow {
   id: string;
   fullName: string;
   phone: string | null /*E.164 xom*/;
-  facultyId: string | null;
-  facultyCode: string | null;
-  facultyName: string | null;
-  groups: string[]; /*faol biriktiruvlar — guruh nomlari*/
+  faculties: FacultyRef[]; /*biriktirilgan fakultetlar (kamida 1), nom bo'yicha tartib*/
+  groups: string[]; /*faol biriktiruvlar — guruh nomlari (barcha fakultetlardan)*/
   students: number;
   pending: number;
   oldestPendingAt: string | null;
@@ -503,9 +508,7 @@ interface TutorDetail {
   fullName: string;
   hemisId: string; /*login identifikatori*/
   phone: string | null /*E.164*/;
-  facultyId: string;
-  facultyCode: string;
-  facultyName: string;
+  faculties: FacultyRef[]; /*biriktirilgan fakultetlar (kamida 1), nom bo'yicha tartib*/
   isActive: boolean;
   lastLoginAt: string | null /*ISO*/;
   createdAt: string /*ISO*/;
@@ -516,7 +519,7 @@ type TutorScopeLevel = 'faculty' | 'department' | 'direction' | 'group';
 interface TutorScopeDto {
   id: string; /*TutorScope.Id*/
   level: TutorScopeLevel;
-  facultyId: string; /*doim — tyutor fakulteti*/
+  facultyId: string; /*doim — ko'lam tugunining fakulteti (tyutor fakultetlaridan biri)*/
   departmentId: string | null; /*department/direction/group darajasida*/
   directionId: string | null; /*direction/group darajasida*/
   groupId: string | null; /*faqat group darajasida*/
@@ -545,20 +548,24 @@ interface TutorGroupDto {
 | `hemisId`   | string         | ha       | trim, 5–20 ta raqam (`HemisId` VO); unikal — **o'chirilgan hisoblar ham**   |
 | `phone`     | string \| null | yo'q     | bo'sh → null; aks holda O'zbekiston raqami (`+998901234567`, `901234567`, bo'shliqli variantlar → E.164 ga normallashadi); faol hisoblar orasida unikal |
 | `password`  | string         | ha       | 8–128 belgi                                                                 |
-| `facultyId` | guid           | ha       | mavjud va faol fakultet                                                     |
+| `facultyIds`| guid[]         | ha       | bo'sh emas, har biri bo'sh guid emas, takror yo'q (`errors.FacultyIds`); hammasi mavjud va faol; **birinchisi — asosiy** fakultet |
 
-Response 201 `TutorDetail` (`scopes: []`, `groups: []`). Xatolar: 400 `errors.FullName`/`errors.HemisId`/`errors.Phone`/
-`errors.Password`/`errors.FacultyId`; **404** (`detail`: "Fakultet topilmadi."); **409** — HEMIS ID band (`detail`: "Bu
-HEMIS ID bilan foydalanuvchi mavjud."), telefon band (`detail`: "Bu telefon raqami bilan foydalanuvchi mavjud."),
-fakultet faol emas (`detail`: "Fakultet faol emas."). Yangi tyutor darhol `POST /api/auth/login` (hemisId + password)
-bilan kira oladi.
+Response 201 `TutorDetail` (`scopes: []`, `groups: []`; `faculties` — nom bo'yicha tartib). Xatolar: 400
+`errors.FullName`/`errors.HemisId`/`errors.Phone`/`errors.Password`/`errors.FacultyIds` (bo'sh ro'yxat: "Kamida bitta
+fakultet tanlang."; bo'sh guid: "Fakultet ko'rsatilmagan."; takror: "Fakultet takrorlangan."); **404** (`detail`:
+"Fakultet topilmadi." — ro'yxatdagi birortasi yo'q/o'chirilgan); **409** — HEMIS ID band (`detail`: "Bu HEMIS ID bilan
+foydalanuvchi mavjud."), telefon band (`detail`: "Bu telefon raqami bilan foydalanuvchi mavjud."), fakultet faol emas
+(`detail`: "Fakultet faol emas: {nom}" — ro'yxat tartibida birinchi uchragani). Yangi tyutor darhol
+`POST /api/auth/login` (hemisId + password) bilan kira oladi; auth javobidagi `user.facultyId` — asosiy fakultet.
 
 #### PUT `/api/admin/tutors/{id}` · 200
 
-Body `{ fullName, phone?, facultyId }` (validatsiya — POST bilan bir xil; `hemisId` va parol bu yerdan
-o'zgartirilmaydi). Response 200 `TutorDetail`. Xatolar: 400; **404** (tyutor yoki yangi fakultet topilmadi); **409** —
-fakultet o'zgartirilmoqda-yu tyutorda faol ko'lamlar bor (`detail`: "Tyutorga ko'lam biriktirilgan — avval uni
-ajrating."), yangi fakultet faol emas, telefon band. Fakultet o'zgarmasa ko'lam/biriktiruvlarga tegilmaydi.
+Body `{ fullName, phone?, facultyIds }` (validatsiya — POST bilan bir xil; `hemisId` va parol bu yerdan
+o'zgartirilmaydi). Fakultetlar to'plami **almashtiriladi**: qo'shish erkin (ko'lam/biriktiruvlarga tegilmaydi),
+olib tashlash — faqat o'sha fakultetda tyutorning faol ko'lami bo'lmasa. Response 200 `TutorDetail`. Xatolar: 400;
+**404** (tyutor yoki fakultetlardan biri topilmadi); **409** — olib tashlanayotgan fakultetda faol ko'lam bor (`detail`:
+"{Fakultet nomi} fakultetida tyutorga ko'lam biriktirilgan — avval uni ajrating."), fakultet faol emas (`detail`:
+"Fakultet faol emas: {nom}"), telefon band. Xato bo'lsa hech narsa yozilmaydi.
 
 #### PATCH `/api/admin/tutors/{id}/status` · 204
 
@@ -575,8 +582,8 @@ Xatolar: 400; **404**.
 #### PUT `/api/admin/tutors/{id}/scopes` · 200
 
 Body `{ scopes: { level: TutorScopeLevel; id: string }[] }` (takrorlar e'tiborsiz; `[]` → hammasi ajratiladi; `id` —
-shu darajadagi tugun: fakultet/kafedra/yo'nalish/guruh id'si; `faculty` darajasida `id` tyutorning o'z fakulteti
-bo'lishi shart). Faol ko'lamlar to'plamini **almashtiradi**: ro'yxatda bo'lmaganlar faolsizlantiriladi (yozuv qoladi),
+shu darajadagi tugun: fakultet/kafedra/yo'nalish/guruh id'si; tugun **tyutor fakultetlaridan biriga** tegishli bo'lishi
+shart — `faculty` darajasida `id` `faculties[]` dan biri; turli fakultetlardan ko'lamlar aralash bo'lishi mumkin). Faol ko'lamlar to'plamini **almashtiradi**: ro'yxatda bo'lmaganlar faolsizlantiriladi (yozuv qoladi),
 ilgari ajratilgan tugun qaytsa — o'sha yozuv qayta faollashadi (`scopes[].id` o'zgarmaydi), yangilari yaratiladi. So'ng
 guruh biriktiruvlari sinxronlanadi (`groups`): yangilari **faol `AcademicYear`** bilan yaratiladi, qaytganlari qayta
 faollashadi (`assignmentId` o'zgarmaydi), ortiqchalari faolsizlantiriladi. Ota tanlangan bo'lsa bolalari jimgina
@@ -586,8 +593,9 @@ tashlanadi (masalan `[direction X, group X.1]` → faqat `direction X`). Tyutor 
 Xatolar (birinchi uchragani): **404** tyutor (`detail`: "Tyutor topilmadi."); **400** `errors.Scopes[i].Id` (bo'sh guid) /
 `errors.Scopes[i].Level` yoki `DomainException` — tugun topilmadi (`detail`: "{Daraja} topilmadi." — daraja: `Fakultet`/
 `Kafedra`/`Yo'nalish`/`Guruh`; o'chirilgan tugun ham "topilmadi"), faol emas (`detail`: "{Daraja} faol emas: {nom}"),
-tyutor fakultetiga tegishli emas (`detail`: "{Daraja} tyutor fakultetiga tegishli emas: {nom}"; zanjir
-Group → Direction → Department → Faculty); **409** — boshqa tyutorning faol ko'lami bilan kesishadi (`detail`:
+tyutor fakultetlaridan biriga tegishli emas (`detail`: "{Daraja} tyutor fakultetiga tegishli emas: {nom}"; zanjir
+Group → Direction → Department → Faculty); **409** — boshqa tyutorning faol ko'lami bilan kesishadi (tekshiruv tyutorning
+barcha fakultetlari bo'yicha; `detail`:
 "{nom} ({daraja}) {tyutor FISH} tyutoriga biriktirilgan." — `nom`/`daraja` kesishgan **boshqa** tyutor ko'lamining nomi
 va darajasi kichik harf bilan: `fakultet`/`kafedra`/`yo'nalish`/`guruh`, masalan "412-22 (guruh) Nodira Saidova tyutoriga
 biriktirilgan."), yangi biriktiruv kerak-u faol o'quv yili yo'q (`detail`: "Faol o'quv yili yo'q."; faqat ajratish bo'lsa
@@ -595,12 +603,14 @@ o'quv yili talab qilinmaydi). Xato bo'lsa hech narsa yozilmaydi.
 
 #### GET `/api/admin/tutors/{id}/scope-tree` · 200
 
-Response `TutorScopeTree` — tyutor fakultetining daraxti, faqat **faol** kafedra/yo'nalish/guruhlar, nom bo'yicha
-tartib (guruh: kurs, nom). **404** tyutor topilmasa.
+Response `TutorScopeTree[]` — tyutorning **har bir fakulteti** uchun bittadan daraxt (`faculties[]` bilan bir xil
+tartib — fakultet nomi bo'yicha), har birida faqat **faol** kafedra/yo'nalish/guruhlar, nom bo'yicha tartib (guruh: kurs,
+nom). **404** tyutor topilmasa.
 
 ```ts
+type TutorScopeTreeResponse = TutorScopeTree[];
 interface TutorScopeTree {
-  id: string; /*fakultet*/
+  id: string; /*fakultet — faculties[i].id*/
   name: string;
   code: string;
   tutorId: string | null; /*AYNAN shu tugunda faol ko'lami bor tyutor — so'ralayotgan tyutorning o'zi ham; yo'q bo'lsa null*/
@@ -1398,7 +1408,7 @@ Har qator: **v1 shakl → v2 haqiqiy shakl → nima qilish kerak**. Ustun "Qayer
 | A4  | dashboard `audit[]`          | `{id,at,text,who}`                                                                                                  | `AuditEntryDto` (xom: `action`, `entityName`, `userName`, `userRole`, `reason`, `changes`)                                                                            | matnni `action`+`entityName` dan yasang; + `date` maydoni                           |
 | A5  | `Faculty`                    | `{…, directions, groups, students, attendancePct, status}`                                                          | + `code`, `tutors`                                                                                                                                                    | qo'shing                                                                            |
 | A6  | `Group`                      | `tutor:"N. Saidova"`                                                                                                | `tutorId: string\|null`, `tutor: string\|null` (to'liq FISH); + `faculty`, `facultyCode`, `period{…}\|null`                                                           | qisqartirishni frontend qilsin; `null` holatini ko'rsating                          |
-| A7  | `Tutor`                      | `phone:"+998 90 111 22 33"`, `assigned:"AT · 412-22, 413-22"`                                                       | `phone: string\|null` (E.164 xom), `facultyCode`, `groups: string[]`; + `facultyId`, `facultyName`, `oldestPendingAt`, `avgDecisionHours`, `lastActiveAt`, `isActive` | formatlashni frontend qilsin                                                        |
+| A7  | `Tutor`                      | `phone:"+998 90 111 22 33"`, `assigned:"AT · 412-22, 413-22"`                                                       | `phone: string\|null` (E.164 xom), `faculties: FacultyRef[]` (`{id,code,name}`, nom bo'yicha), `groups: string[]`; + `oldestPendingAt`, `avgDecisionHours`, `lastActiveAt`, `isActive` | formatlashni frontend qilsin (kodlar: `faculties.map(f => f.code).join(', ')`)   |
 | A8  | `Student`                    | `{id,fullName,group,faculty,company,attendancePct,status}`                                                          | + `hemisId`, `groupId`, `course`, `suspiciousDays`, `telegramLinked`                                                                                                  | qo'shing                                                                            |
 | A9  | `Company`                    | `tin:"304 512 889"`, `flag:'large-radius'\|'suspicious'\|null`                                                      | `tin` 9 raqam xom; **`flag:'largeRadius'\|'suspicious'\|null`**; + `activity`, `suspiciousDays`, `isActive`                                                           | enum qiymatini `largeRadius` ga o'zgartiring; STIR formatini frontend qilsin        |
 | A10 | `AuditEntry` / `AuditAction` | `{id,at,action,detail,who}`; `manual-checkin\|radius-changed\|application-rejected\|status-changed\|grade-reverted` | `AuditEntryDto`; **18 ta camelCase** qiymat (`manualCheckIn`, `radiusChanged`, `settingsChanged`…)                                                                    | enum'ni to'liq almashtiring; `?action=` ishlaydi                                    |

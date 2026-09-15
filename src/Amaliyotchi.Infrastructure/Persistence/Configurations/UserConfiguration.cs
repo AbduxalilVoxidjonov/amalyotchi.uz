@@ -43,6 +43,14 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Navigation(u => u.RefreshTokens).UsePropertyAccessMode(PropertyAccessMode.Field);
 
+        // Tyutor ↔ fakultetlar (ko'p-ko'pga). Oddiy qatorlar: foydalanuvchi bilan birga o'chadi.
+        builder.HasMany(u => u.Faculties)
+            .WithOne()
+            .HasForeignKey(f => f.TutorUserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(u => u.Faculties).UsePropertyAccessMode(PropertyAccessMode.Field);
+
         builder.Property<uint>("xmin").IsRowVersion();
     }
 }

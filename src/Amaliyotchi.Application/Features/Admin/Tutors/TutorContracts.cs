@@ -2,7 +2,11 @@ using Amaliyotchi.Domain.Students;
 
 namespace Amaliyotchi.Application.Features.Admin.Tutors;
 
+/// <summary>Tyutor biriktirilgan fakultet — ro'yxat va kartada (<c>faculties[]</c>, nom bo'yicha tartib).</summary>
+public sealed record FacultyRef(Guid Id, string Code, string Name);
+
 /// <summary>Tyutor kartasi — yaratish/tahrirlash/ko'lam biriktirish amallarining yagona javob shakli.
+/// <paramref name="Faculties"/> — biriktirilgan fakultetlar (kamida bittasi, nom bo'yicha);
 /// <paramref name="Scopes"/> — admin tanlagan faol ko'lamlar (fakultet/kafedra/yo'nalish/guruh);
 /// <paramref name="Groups"/> — ulardan materializatsiya qilingan faol guruh biriktiruvlari.</summary>
 public sealed record TutorDetail(
@@ -10,9 +14,7 @@ public sealed record TutorDetail(
     string FullName,
     string HemisId,
     string? Phone,
-    Guid FacultyId,
-    string FacultyCode,
-    string FacultyName,
+    IReadOnlyList<FacultyRef> Faculties,
     bool IsActive,
     DateTimeOffset? LastLoginAt,
     DateTimeOffset CreatedAt,
@@ -49,8 +51,9 @@ public sealed record TutorScopeDto(
 /// <summary><c>PUT .../scopes</c> body elementi: daraja + shu darajadagi tugun id'si.</summary>
 public sealed record TutorScopeInput(TutorScopeLevel Level, Guid Id);
 
-/// <summary>Tyutor fakultetining daraxti (faqat faol tugunlar) — biriktirish oynasi uchun. Har tugunda
-/// <c>TutorId</c>/<c>TutorName</c> — AYNAN shu tugunda faol ko'lami bor tyutor (so'ralayotganning o'zi ham), yo'q bo'lsa null.</summary>
+/// <summary>Tyutor fakultetlaridan birining daraxti (faqat faol tugunlar) — biriktirish oynasi uchun; <c>GET .../scope-tree</c>
+/// har fakultet uchun bittadan massiv qaytaradi. Har tugunda <c>TutorId</c>/<c>TutorName</c> — AYNAN shu tugunda faol
+/// ko'lami bor tyutor (so'ralayotganning o'zi ham), yo'q bo'lsa null.</summary>
 public sealed record TutorScopeTree(
     Guid Id,
     string Name,
