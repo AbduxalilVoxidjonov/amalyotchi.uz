@@ -20,7 +20,7 @@ public sealed class ApiFactory(string connectionString) : WebApplicationFactory<
     public const string JwtSigningKey = "integration-tests-signing-key-kamida-32-belgi-!!";
 
     /// <summary><c>DbSeeder</c> yaratadigan birinchi admin (Testing muhitida konfigdan olinadi).</summary>
-    public const string SeedAdminPhone = "+998900000001";
+    public const string SeedAdminHemisId = "900000000001";
     public const string SeedAdminPassword = "Seed-Admin-12345";
 
     public string StorageRoot { get; } =
@@ -42,7 +42,7 @@ public sealed class ApiFactory(string connectionString) : WebApplicationFactory<
         builder.UseSetting("Storage:RootPath", StorageRoot);
         builder.UseSetting("Seed:Enabled", "false");
         builder.UseSetting("Seed:Demo", "false");
-        builder.UseSetting("Seed:AdminPhone", SeedAdminPhone);
+        builder.UseSetting("Seed:AdminHemisId", SeedAdminHemisId);
         builder.UseSetting("Seed:AdminPassword", SeedAdminPassword);
         builder.UseSetting("RateLimiting:AuthPerMinute", "100000");
         builder.UseSetting("RateLimiting:RefreshPerMinute", "100000");

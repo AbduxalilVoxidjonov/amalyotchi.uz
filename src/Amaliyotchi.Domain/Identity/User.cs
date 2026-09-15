@@ -2,12 +2,13 @@ using Amaliyotchi.Domain.Common;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Domain.Exceptions;
 using Amaliyotchi.Domain.Students;
+using Hemis = Amaliyotchi.Domain.ValueObjects.HemisId;
 using Phone = Amaliyotchi.Domain.ValueObjects.PhoneNumber;
 
 namespace Amaliyotchi.Domain.Identity;
 
 /// <summary>Tizimning har qanday foydalanuvchisi: admin, tyutor yoki talaba.
-/// Admin va tyutor parol bilan, talaba Telegram orqali kiradi.</summary>
+/// Admin va tyutor HEMIS ID + parol bilan, talaba Telegram orqali kiradi.</summary>
 public sealed class User : AuditableEntity, ISoftDeletable
 {
     private readonly List<RefreshToken> _refreshTokens = [];
@@ -28,6 +29,11 @@ public sealed class User : AuditableEntity, ISoftDeletable
     public UserRole Role { get; private set; }
     public bool IsActive { get; private set; }
 
+    /// <summary>Xodim (admin/tyutor) uchun login identifikatori — HEMIS ID. Faqat parol bilan
+    /// yaratilgan hisoblarda to'ldiriladi; talabada null (uning HEMIS ID'si <see cref="Students.StudentProfile.HemisId"/>
+    /// da, login sifatida ishlatilmaydi — talaba Telegram orqali kiradi).</summary>
+    public string? HemisId { get; private set; }
+
     /// <summary>Talaba uchun — Telegram hisobi. Admin/tyutorda bo'lmasligi mumkin.</summary>
     public long? TelegramUserId { get; private set; }
 
@@ -46,9 +52,10 @@ public sealed class User : AuditableEntity, ISoftDeletable
 
     public bool IsStudent => Role == UserRole.Student;
 
-    /// <summary>Parol bilan kiradigan foydalanuvchi (admin yoki tyutor).</summary>
+    /// <summary>Parol bilan kiradigan foydalanuvchi (admin yoki tyutor). Login identifikatori — HEMIS ID
+    /// (<paramref name="hemisId"/>), majburiy. Telefon raqami faqat aloqa uchun — ixtiyoriy.</summary>
     public static User CreateWithPassword(
-        string fullName, string phoneNumber, string passwordHash, UserRole role, Guid? facultyId = null)
+        string fullName, string hemisId, string? phoneNumber, string passwordHash, UserRole role, Guid? facultyId = null)
     {
         if (role == UserRole.Student)
             throw new DomainException("Talaba parol bilan yaratilmaydi — u Telegram orqali kiradi.");
@@ -59,7 +66,8 @@ public sealed class User : AuditableEntity, ISoftDeletable
 
         return new User(fullName, role)
         {
-            PhoneNumber = Phone.Normalize(phoneNumber),
+            HemisId = Hemis.Normalize(hemisId),
+            PhoneNumber = phoneNumber is null ? null : Phone.Normalize(phoneNumber),
             PasswordHash = passwordHash,
             FacultyId = facultyId
         };

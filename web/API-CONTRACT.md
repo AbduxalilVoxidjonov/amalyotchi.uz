@@ -133,11 +133,11 @@ Response — TypeScript uslubida. Enum qiymatlari §3 da.
 
 | Maydon | Tip | Majburiy | Validatsiya |
 |---|---|---|---|
-| `phoneNumber` | string | ha | bo'sh emas. Format tekshirilmaydi (validator'da) — noto'g'ri raqam 403 beradi (raqam borligi oshkor qilinmaydi). Qabul: `+998901234567`, `998901234567`, `901234567` (9 raqam) |
+| `hemisId` | string | ha | bo'sh emas, faqat raqamlar, 5–20 xonali (odatda 12 xonali). Noto'g'ri qiymat 403 beradi (mavjudligi oshkor qilinmaydi) |
 | `password` | string | ha | ≥ 8 belgi |
 
-Response 200 `AuthResultDto`. Xatolar: 400 `errors.PhoneNumber` / `errors.Password`; **403** — raqam/parol noto'g'ri,
-talaba hisobi, parolsiz hisob (`detail`: "Telefon raqami yoki parol noto'g'ri.") yoki hisob faol emas
+Response 200 `AuthResultDto`. Xatolar: 400 `errors.HemisId` / `errors.Password`; **403** — HEMIS ID/parol noto'g'ri,
+talaba hisobi, parolsiz hisob (`detail`: "HEMIS ID yoki parol noto'g'ri.") yoki hisob faol emas
 ("Hisobingiz faol emas. Administratorga murojaat qiling."); 429.
 
 ```ts
@@ -146,10 +146,14 @@ interface UserSummaryDto {
   id: string; fullName: string;
   role: 'admin' | 'tutor' | 'student';      // camelCase (JWT claim'da "Admin")
   facultyId: string | null;                 // tyutor — majburiy; admin/talaba null bo'lishi mumkin
-  phoneNumber: string | null;               // E.164 xom: "+998901234567" (talabada null bo'lishi mumkin)
-  groupId: string | null; groupName: string | null; course: number | null; hemisId: string | null; // faqat talaba
+  phoneNumber: string | null;               // E.164 xom: "+998901234567" (ma'lumot maydoni, login uchun emas; talabada null bo'lishi mumkin)
+  groupId: string | null; groupName: string | null; course: number | null;
+  hemisId: string | null;                   // login identifikatori — admin/tyutor/talaba barchasida bo'lishi mumkin
 }
 ```
+
+**Mock/seed HEMIS ID'lar** (dev): admin `100000000001`; tyutorlar — Nodira Saidova `100000000002`,
+Baxtiyor Rasulov `100000000003`, Dilshod Ergashev `100000000004`.
 
 #### POST `/api/auth/telegram` · AllowAnonymous · rate `auth` 10/min
 

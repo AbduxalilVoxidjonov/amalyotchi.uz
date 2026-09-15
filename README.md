@@ -92,7 +92,7 @@ npm run dev:twa    # twa       → http://localhost:5174
 npm run check      # typecheck + lint + test + build
 ```
 
-Mock rejimida barcha ekranlar MSW handler'lari bilan ishlaydi (kirish: `+998901234567 / admin12345`,
+Mock rejimida barcha ekranlar MSW handler'lari bilan ishlaydi (kirish: `100000000001 / admin12345`,
 `+998907654321 / tutor12345`). Backend'da hozircha faqat `AuthController` bor — frontend kutayotgan
 qolgan 34 endpoint'ning aniq spetsifikatsiyasi [`web/API-CONTRACT.md`](web/API-CONTRACT.md) da
 (backend modullarini qurishda manba). Batafsil: [`web/README.md`](web/README.md).
@@ -120,7 +120,7 @@ qolgan 34 endpoint'ning aniq spetsifikatsiyasi [`web/API-CONTRACT.md`](web/API-C
 
 | Metod | Manzil | Kim | Tavsif |
 |---|---|---|---|
-| POST | `/api/auth/login` | hamma | Telefon + parol (admin, tyutor) |
+| POST | `/api/auth/login` | hamma | HEMIS ID + parol (admin, tyutor) |
 | POST | `/api/auth/refresh` | hamma | Token yangilash (rotatsiya bilan) |
 | POST | `/api/auth/logout` | avtorizatsiyalangan | Refresh tokenni bekor qilish |
 | GET | `/api/auth/me` | avtorizatsiyalangan | Joriy foydalanuvchi |

@@ -4,12 +4,12 @@ using Amaliyotchi.Domain.Exceptions;
 using Amaliyotchi.Domain.Identity;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Phone = Amaliyotchi.Domain.ValueObjects.PhoneNumber;
+using Hemis = Amaliyotchi.Domain.ValueObjects.HemisId;
 
 namespace Amaliyotchi.Application.Features.Auth.Login;
 
-/// <summary>Admin va tyutor uchun parol bilan kirish. Talaba bu yo'ldan kirmaydi.</summary>
-public sealed record LoginCommand(string PhoneNumber, string Password) : IRequest<AuthResultDto>;
+/// <summary>Admin va tyutor uchun HEMIS ID + parol bilan kirish. Talaba bu yo'ldan kirmaydi.</summary>
+public sealed record LoginCommand(string HemisId, string Password) : IRequest<AuthResultDto>;
 
 internal sealed class LoginCommandHandler(
     IApplicationDbContext db,
@@ -22,9 +22,9 @@ internal sealed class LoginCommandHandler(
 {
     public async Task<AuthResultDto> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        // Raqam noto'g'ri formatda bo'lsa ham javob bir xil bo'ladi —
-        // "bu raqam ro'yxatda bormi" degan ma'lumotni tashqariga chiqarmaslik uchun.
-        if (!Phone.TryNormalize(request.PhoneNumber, out var phone))
+        // HEMIS ID noto'g'ri formatda bo'lsa ham javob bir xil bo'ladi —
+        // "bu ID ro'yxatda bormi" degan ma'lumotni tashqariga chiqarmaslik uchun.
+        if (!Hemis.TryNormalize(request.HemisId, out var hemisId))
             throw new ForbiddenException(InvalidCredentials);
 
         var now = clock.UtcNow;
@@ -33,7 +33,7 @@ internal sealed class LoginCommandHandler(
         var user = await db.Users
             .WithSummary()
             .Include(u => u.RefreshTokens.Where(t => t.ExpiresAt <= now))
-            .FirstOrDefaultAsync(u => u.PhoneNumber == phone, cancellationToken);
+            .FirstOrDefaultAsync(u => u.HemisId == hemisId, cancellationToken);
 
         if (user is null || user.PasswordHash is null || user.Role == UserRole.Student)
         {
@@ -95,5 +95,5 @@ internal sealed class LoginCommandHandler(
         return new ForbiddenException(message);
     }
 
-    private const string InvalidCredentials = "Telefon raqami yoki parol noto'g'ri.";
+    private const string InvalidCredentials = "HEMIS ID yoki parol noto'g'ri.";
 }

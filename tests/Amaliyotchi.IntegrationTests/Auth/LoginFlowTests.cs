@@ -23,7 +23,7 @@ public sealed class LoginFlowTests(ApiFixture fixture)
         first.User.Role.Should().Be(UserRole.Tutor);
         first.User.FacultyId.Should().Be(tutor.FacultyId);
         first.User.GroupId.Should().BeNull("tyutorda profil yo'q");
-        first.User.HemisId.Should().BeNull();
+        first.User.HemisId.Should().Be(tutor.HemisId);
         first.RefreshToken.Should().NotBeNullOrEmpty();
 
         // 2. Me
@@ -61,7 +61,7 @@ public sealed class LoginFlowTests(ApiFixture fixture)
         var admin = await Factory.CreateAdminAsync();
         var client = Factory.CreateClient();
 
-        var response = await client.PostJsonAsync("/api/auth/login", new { admin.PhoneNumber, Password = "notogri-parol" });
+        var response = await client.PostJsonAsync("/api/auth/login", new { admin.HemisId, Password = "notogri-parol" });
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
@@ -74,7 +74,7 @@ public sealed class LoginFlowTests(ApiFixture fixture)
     {
         var client = Factory.CreateClient();
 
-        var response = await client.PostJsonAsync("/api/auth/login", new { PhoneNumber = "901234567", Password = "123" });
+        var response = await client.PostJsonAsync("/api/auth/login", new { HemisId = "100000000001", Password = "123" });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();

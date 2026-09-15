@@ -18,7 +18,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Amaliyotchi.IntegrationTests.Infrastructure;
 
 /// <summary>Test foydalanuvchisi: bazaga yozilgan hisob + kirish uchun kerakli sirlar.
-/// Talaba uchun <see cref="GroupId"/> — profil guruhi; tyutor uchun — birinchi biriktirilgan guruh.</summary>
+/// Talaba uchun <see cref="GroupId"/> — profil guruhi; tyutor uchun — birinchi biriktirilgan guruh.
+/// <see cref="HemisId"/> — parol bilan kiradiganlar (admin/tyutor) uchun login identifikatori;
+/// talabada bo'sh (u Telegram orqali kiradi, <c>StudentProfile.HemisId</c> alohida).</summary>
 public sealed record TestUser(
     Guid Id,
     string FullName,
@@ -27,7 +29,8 @@ public sealed record TestUser(
     string Password,
     Guid? FacultyId,
     long? TelegramId,
-    Guid? GroupId = null);
+    Guid? GroupId = null,
+    string HemisId = "");
 
 /// <summary>Tashkiliy zanjir: o'quv yili → fakultet → yo'nalish → guruh.</summary>
 public sealed record TestGroup(Guid AcademicYearId, Guid FacultyId, Guid DirectionId, Guid GroupId, string GroupName, int Course);
@@ -223,7 +226,7 @@ public static class TestClients
     public static async Task<(HttpClient Client, AuthResultDto Auth)> LoginWithResultAsync(this ApiFactory factory, TestUser user)
     {
         var client = factory.CreateClient();
-        var response = await client.PostJsonAsync("/api/auth/login", new { user.PhoneNumber, user.Password });
+        var response = await client.PostJsonAsync("/api/auth/login", new { user.HemisId, user.Password });
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException($"Login {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
 
@@ -262,10 +265,11 @@ public static class TestClients
     private static async Task<TestUser> CreatePasswordUserAsync(this ApiFactory factory, UserRole role, string fullName, Guid? facultyId)
     {
         var phone = RandomPhone();
+        var hemisId = RandomHemisId();
 
         using var scope = factory.Services.CreateScope();
         var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
-        var user = User.CreateWithPassword(fullName, phone, hasher.Hash(DefaultPassword), role, facultyId);
+        var user = User.CreateWithPassword(fullName, hemisId, phone, hasher.Hash(DefaultPassword), role, facultyId);
 
         await factory.WithDbAsync(async db =>
         {
@@ -273,6 +277,6 @@ public static class TestClients
             await db.SaveChangesAsync();
         });
 
-        return new TestUser(user.Id, user.FullName, role, phone, DefaultPassword, facultyId, null);
+        return new TestUser(user.Id, user.FullName, role, phone, DefaultPassword, facultyId, null, GroupId: null, HemisId: hemisId);
     }
 }

@@ -46,7 +46,7 @@ export const authHandlers: HttpHandler[] = [
   http.post('/api/auth/login', async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as Partial<LoginRequest>;
     const errors: Record<string, string[]> = {};
-    if (!body.phoneNumber) errors['PhoneNumber'] = ['Telefon raqamini kiriting.'];
+    if (!body.hemisId) errors['HemisId'] = ['HEMIS ID ni kiriting.'];
     if (!body.password) errors['Password'] = ['Parolni kiriting.'];
     else if (body.password.length < 8)
       errors['Password'] = ["Parol kamida 8 ta belgidan iborat bo'lishi kerak."];
@@ -56,10 +56,9 @@ export const authHandlers: HttpHandler[] = [
       });
     }
 
-    const normalized = body.phoneNumber!.replace(/[\s-]/g, '');
-    const user = mockUsers.find((u) => u.phoneNumber === normalized);
+    const user = mockUsers.find((u) => u.hemisId === body.hemisId);
     if (!user || user.password !== body.password || user.role === 3) {
-      return problemResponse(403, "Ruxsat yo'q", "Telefon raqami yoki parol noto'g'ri.");
+      return problemResponse(403, "Ruxsat yo'q", "HEMIS ID yoki parol noto'g'ri.");
     }
     return HttpResponse.json(issueSession(user));
   }),

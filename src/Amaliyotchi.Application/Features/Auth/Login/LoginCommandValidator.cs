@@ -6,8 +6,8 @@ public sealed class LoginCommandValidator : AbstractValidator<LoginCommand>
 {
     public LoginCommandValidator()
     {
-        RuleFor(x => x.PhoneNumber)
-            .NotEmpty().WithMessage("Telefon raqamini kiriting.");
+        RuleFor(x => x.HemisId)
+            .NotEmpty().WithMessage("HEMIS ID ni kiriting.");
 
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("Parolni kiriting.")

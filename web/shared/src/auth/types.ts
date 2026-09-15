@@ -21,6 +21,7 @@ export interface UserSummaryDto {
   groupName?: string | null;
   /** 1–6 */
   course?: number | null;
+  /** Login identifikatori (5–20 raqam). Barcha rollar uchun kelishi mumkin. */
   hemisId?: string | null;
 }
 
@@ -35,7 +36,7 @@ export interface AuthResultDto {
 
 /** POST /api/auth/login */
 export interface LoginRequest {
-  phoneNumber: string;
+  hemisId: string;
   password: string;
 }
 

@@ -1,0 +1,6 @@
+# Ildizdan `docker compose up -d --build` ishlashi uchun — asl stack deploy/docker-compose.yml da.
+# `include` har bir faylni o'z papkasiga nisbatan o'qiydi: build context'lar (`..`, `../web`)
+# va maxfiy qiymatlar (deploy/.env) o'zgarmaydi.
+include:
+  - path: deploy/docker-compose.yml
+    env_file: deploy/.env

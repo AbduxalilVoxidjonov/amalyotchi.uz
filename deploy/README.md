@@ -39,7 +39,7 @@ TWA <http://localhost:8081>, API health <http://localhost:5080/health>.
 | `POSTGRES_PASSWORD`  | `amaliyotchi`        | postgres va API ulanish satri                               |
 | `TELEGRAM_BOT_TOKEN` | bo'sh                | BotFather tokeni; bo'sh bo'lsa `/api/auth/telegram` → 403    |
 | `SEED_DEMO`          | `true`               | demo ma'lumot — **production'da `false`**                    |
-| `ADMIN_PHONE/PASSWORD` | `+998901234567` / `admin12345` | birinchi admin (baza bo'sh bo'lganda bir marta)   |
+| `ADMIN_HEMIS_ID/PASSWORD` | `100000000001` / `admin12345` | birinchi admin (baza bo'sh bo'lganda bir marta), HEMIS ID — login  |
 | `DOCKER_SUBNET`      | `172.30.0.0/16`      | compose tarmog'i = API `ForwardedHeaders:KnownNetworks`      |
 
 API konfiguratsiyasi to'liq muhit o'zgaruvchilari orqali (`Section__Key`), `appsettings.Docker.json` yo'q.
@@ -50,7 +50,7 @@ Boshqa kalitlar — `src/Amaliyotchi.Api/appsettings.json`.
 API konteyneri startup'da o'zi bajaradi (`Seed__Enabled=true`):
 
 1. `dotnet ef` migratsiyalari (`__migrations` jadvali, idempotent — qayta start xavfsiz);
-2. asosiy seed: sozlama default'lari, birinchi admin (`ADMIN_PHONE/PASSWORD`, admin bo'lmasa), bayramlar;
+2. asosiy seed: sozlama default'lari, birinchi admin (`ADMIN_HEMIS_ID/PASSWORD`, admin bo'lmasa), bayramlar;
 3. `SEED_DEMO=true` bo'lsa demo ma'lumot (AT fakulteti, 412-22/413-22 guruhlari, tyutor `+998907654321`/`tutor12345`,
    38 talaba, korxonalar, davomat, kundaliklar, baholar). Idempotent — demo tyutor bor bo'lsa qayta yuklanmaydi.
 

@@ -64,17 +64,18 @@ public sealed class DbSeeder(
         if (await db.Users.AnyAsync(u => u.Role == UserRole.Admin, cancellationToken))
             return false;
 
-        var (phone, password) = ResolveAdminCredentials();
-        if (phone is null || password is null)
+        var (hemisId, password) = ResolveAdminCredentials();
+        if (hemisId is null || password is null)
         {
             logger.LogWarning(
-                "Seed: admin yo'q va Seed:AdminPhone/Seed:AdminPassword sozlanmagan — admin yaratilmadi");
+                "Seed: admin yo'q va Seed:AdminHemisId/Seed:AdminPassword sozlanmagan — admin yaratilmadi");
             return false;
         }
 
-        var admin = User.CreateWithPassword(options.Value.AdminFullName, phone, passwordHasher.Hash(password), UserRole.Admin);
+        var admin = User.CreateWithPassword(
+            options.Value.AdminFullName, hemisId, phoneNumber: null, passwordHasher.Hash(password), UserRole.Admin);
         db.Users.Add(admin);
-        logger.LogInformation("Seed: birinchi admin yaratildi ({Phone})", PhoneNumber.Normalize(phone));
+        logger.LogInformation("Seed: birinchi admin yaratildi (HEMIS ID {HemisId})", HemisId.Normalize(hemisId));
         return true;
     }
 
@@ -91,17 +92,17 @@ public sealed class DbSeeder(
     }
 
     /// <summary>Konfigdan; Development'da bo'sh bo'lsa — mock'lardagi standart hisob.</summary>
-    private (string? Phone, string? Password) ResolveAdminCredentials()
+    private (string? HemisId, string? Password) ResolveAdminCredentials()
     {
-        var phone = options.Value.AdminPhone;
+        var hemisId = options.Value.AdminHemisId;
         var password = options.Value.AdminPassword;
 
         if (environment.IsDevelopment())
         {
-            phone = string.IsNullOrWhiteSpace(phone) ? SeedOptions.DevelopmentAdminPhone : phone;
+            hemisId = string.IsNullOrWhiteSpace(hemisId) ? SeedOptions.DevelopmentAdminHemisId : hemisId;
             password = string.IsNullOrWhiteSpace(password) ? SeedOptions.DevelopmentAdminPassword : password;
         }
 
-        return (string.IsNullOrWhiteSpace(phone) ? null : phone, string.IsNullOrWhiteSpace(password) ? null : password);
+        return (string.IsNullOrWhiteSpace(hemisId) ? null : hemisId, string.IsNullOrWhiteSpace(password) ? null : password);
     }
 }

@@ -29,7 +29,7 @@ public sealed class SeedTests(ApiFixture fixture)
             settings.Single(s => s.Key == SettingKeys.GeofenceRadius).Value.Should().Be("200");
             settings.Single(s => s.Key == SettingKeys.WorkDays).Value.Should().Be("1,2,3,4,5,6");
 
-            (await db.Users.CountAsync(u => u.PhoneNumber == ApiFactory.SeedAdminPhone)).Should().Be(1);
+            (await db.Users.CountAsync(u => u.HemisId == ApiFactory.SeedAdminHemisId)).Should().Be(1);
             (await db.Holidays.CountAsync()).Should().Be(7);
             (await db.Holidays.AllAsync(h => h.IsRecurring)).Should().BeTrue();
             (await db.DocumentTemplates.AnyAsync()).Should().BeFalse("shablonlar bo'sh — admin yuklaydi");
@@ -42,7 +42,7 @@ public sealed class SeedTests(ApiFixture fixture)
         var client = Factory.CreateClient();
 
         var response = await client.PostJsonAsync(
-            "/api/auth/login", new { PhoneNumber = ApiFactory.SeedAdminPhone, Password = ApiFactory.SeedAdminPassword });
+            "/api/auth/login", new { HemisId = ApiFactory.SeedAdminHemisId, Password = ApiFactory.SeedAdminPassword });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadAsStringAsync();
@@ -51,6 +51,6 @@ public sealed class SeedTests(ApiFixture fixture)
         var auth = await response.Content.ReadAsync<AuthResultDto>();
         auth!.User.Role.Should().Be(UserRole.Admin);
         auth.User.GroupId.Should().BeNull();
-        auth.User.HemisId.Should().BeNull();
+        auth.User.HemisId.Should().Be(ApiFactory.SeedAdminHemisId);
     }
 }

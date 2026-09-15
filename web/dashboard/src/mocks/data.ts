@@ -2,7 +2,7 @@ import type { AuthResultDto, ProblemDetails, UserSummaryDto } from '@amaliyotchi
 
 /**
  * Mock foydalanuvchilar. Rol raqamlari UserRole.cs bilan mos (Admin=1, Tutor=2, Student=3).
- * Login: telefon + parol (pastda).
+ * Login: HEMIS ID + parol (pastda). `phoneNumber` — faqat ma'lumot maydoni, login uchun ishlatilmaydi.
  */
 export interface MockUser extends UserSummaryDto {
   password: string;
@@ -15,14 +15,34 @@ export const mockUsers: MockUser[] = [
     role: 1,
     facultyId: null,
     phoneNumber: '+998901234567',
+    hemisId: '100000000001',
     password: 'admin12345',
   },
   {
     id: '22222222-2222-4222-8222-222222222222',
-    fullName: 'Tyutor Tyutorova',
+    fullName: 'Nodira Saidova',
     role: 2,
     facultyId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     phoneNumber: '+998907654321',
+    hemisId: '100000000002',
+    password: 'tutor12345',
+  },
+  {
+    id: '22222222-2222-4222-8222-222222222223',
+    fullName: 'Baxtiyor Rasulov',
+    role: 2,
+    facultyId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    phoneNumber: '+998912445102',
+    hemisId: '100000000003',
+    password: 'tutor12345',
+  },
+  {
+    id: '22222222-2222-4222-8222-222222222224',
+    fullName: 'Dilshod Ergashev',
+    role: 2,
+    facultyId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+    phoneNumber: '+998937001845',
+    hemisId: '100000000004',
     password: 'tutor12345',
   },
 ];

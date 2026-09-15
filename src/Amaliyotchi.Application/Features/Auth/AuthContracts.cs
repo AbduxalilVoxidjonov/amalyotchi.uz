@@ -3,8 +3,9 @@ using Amaliyotchi.Domain.Identity;
 
 namespace Amaliyotchi.Application.Features.Auth;
 
-/// <summary>Kontrakt v2: talaba uchun guruh/kurs/HEMIS ID ham keladi (StudentProfile ⟕ StudentGroup);
-/// admin va tyutorda bu maydonlar <c>null</c>.</summary>
+/// <summary>Kontrakt v2: talaba uchun guruh/kurs ham keladi (StudentProfile ⟕ StudentGroup), admin/tyutorda
+/// bu maydonlar <c>null</c>. <c>HemisId</c> — talabada <c>StudentProfile.HemisId</c>, admin/tyutorda
+/// <c>User.HemisId</c> (ikkalasi ham login identifikatori sifatida ishlatiladi, shu DTO'da birlashtiriladi).</summary>
 public sealed record UserSummaryDto(
     Guid Id,
     string FullName,
@@ -31,7 +32,7 @@ public sealed record UserSummaryDto(
             profile?.StudentGroupId,
             profile?.Group?.Name,
             profile?.Group?.Course,
-            profile?.HemisId);
+            profile?.HemisId ?? user.HemisId);
     }
 }
 

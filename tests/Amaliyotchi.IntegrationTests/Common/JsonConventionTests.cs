@@ -15,7 +15,7 @@ public sealed class JsonConventionTests(ApiFixture fixture)
         var (_, _) = await fixture.Factory.LoginWithResultAsync(tutor);
 
         var response = await fixture.Factory.CreateClient()
-            .PostJsonAsync("/api/auth/login", new { tutor.PhoneNumber, tutor.Password });
+            .PostJsonAsync("/api/auth/login", new { tutor.HemisId, tutor.Password });
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -34,7 +34,7 @@ public sealed class JsonConventionTests(ApiFixture fixture)
     public async Task ProblemDetails_CamelCase_ErrorsKalitlariPascalCase()
     {
         var response = await fixture.Factory.CreateClient()
-            .PostJsonAsync("/api/auth/login", new { PhoneNumber = "", Password = "" });
+            .PostJsonAsync("/api/auth/login", new { HemisId = "", Password = "" });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -43,7 +43,7 @@ public sealed class JsonConventionTests(ApiFixture fixture)
         root.GetProperty("status").GetInt32().Should().Be(400);
         root.TryGetProperty("traceId", out _).Should().BeTrue();
         var errors = root.GetProperty("errors");
-        errors.TryGetProperty("PhoneNumber", out _).Should().BeTrue("FluentValidation kalitlari PascalCase qoladi");
+        errors.TryGetProperty("HemisId", out _).Should().BeTrue("FluentValidation kalitlari PascalCase qoladi");
         errors.TryGetProperty("Password", out _).Should().BeTrue();
     }
 

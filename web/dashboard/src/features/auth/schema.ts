@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
-/** LoginCommandValidator bilan mos: telefon bo'sh emas, parol ≥ 8 belgi. */
+/** LoginCommandValidator bilan mos: HEMIS ID — 5–20 raqam, parol ≥ 8 belgi. */
 export const loginSchema = z.object({
-  phoneNumber: z
+  hemisId: z
     .string()
     .trim()
-    .min(1, 'Telefon raqamini kiriting.')
-    .regex(/^\+?\d[\d\s-]{8,}$/, "Telefon raqami noto'g'ri formatda."),
+    .min(1, 'HEMIS ID ni kiriting.')
+    .regex(/^\d{5,20}$/, 'HEMIS ID faqat raqamlardan iborat bo\'lishi kerak.'),
   password: z
     .string()
     .min(1, 'Parolni kiriting.')

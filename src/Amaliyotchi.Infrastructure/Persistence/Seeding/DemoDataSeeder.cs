@@ -26,6 +26,7 @@ namespace Amaliyotchi.Infrastructure.Persistence.Seeding;
 public sealed class DemoDataSeeder(AppDbContext db, IPasswordHasher passwordHasher, IClock clock, ILogger<DemoDataSeeder> logger)
 {
     public const string TutorPhone = "+998907654321";
+    public const string TutorHemisId = "100000000002";
     public const string TutorPassword = "tutor12345";
     public const string PeriodName = "Ishlab chiqarish amaliyoti 2026";
 
@@ -116,9 +117,9 @@ public sealed class DemoDataSeeder(AppDbContext db, IPasswordHasher passwordHash
 
         // 2. Tyutorlar + biriktiruvlar
         var tutorHash = passwordHasher.Hash(TutorPassword);
-        var tutor = User.CreateWithPassword("Nodira Saidova", TutorPhone, tutorHash, UserRole.Tutor, it.Id);
-        var tutorEconomics = User.CreateWithPassword("Baxtiyor Rasulov", "+998912445102", tutorHash, UserRole.Tutor, economics.Id);
-        var tutorConstruction = User.CreateWithPassword("Dilshod Ergashev", "+998937001845", tutorHash, UserRole.Tutor, construction.Id);
+        var tutor = User.CreateWithPassword("Nodira Saidova", TutorHemisId, TutorPhone, tutorHash, UserRole.Tutor, it.Id);
+        var tutorEconomics = User.CreateWithPassword("Baxtiyor Rasulov", "100000000003", "+998912445102", tutorHash, UserRole.Tutor, economics.Id);
+        var tutorConstruction = User.CreateWithPassword("Dilshod Ergashev", "100000000004", "+998937001845", tutorHash, UserRole.Tutor, construction.Id);
         db.Users.AddRange(tutor, tutorEconomics, tutorConstruction);
         db.TutorAssignments.AddRange(
             TutorAssignment.Create(tutor.Id, group412.Id, year.Id),

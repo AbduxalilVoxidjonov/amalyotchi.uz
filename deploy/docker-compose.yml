@@ -87,7 +87,7 @@ services:
       # Startup'da migratsiya + seed. Demo ma'lumot — faqat demo/stend uchun (production: SEED_DEMO=false).
       Seed__Enabled: "true"
       Seed__Demo: ${SEED_DEMO:-true}
-      Seed__AdminPhone: ${ADMIN_PHONE:-+998901234567}
+      Seed__AdminHemisId: ${ADMIN_HEMIS_ID:-100000000001}
       Seed__AdminPassword: ${ADMIN_PASSWORD:-admin12345}
       Storage__RootPath: /app/data/files
       # nginx (dashboard/twa) X-Forwarded-For/Proto yuboradi; konteyner IP lari o'zgaruvchan — butun compose tarmog'i ishonchli.
