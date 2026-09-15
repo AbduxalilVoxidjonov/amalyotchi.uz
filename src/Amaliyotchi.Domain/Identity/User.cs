@@ -104,6 +104,16 @@ public sealed class User : AuditableEntity, ISoftDeletable
 
     public void Rename(string fullName) => FullName = Normalize(fullName);
 
+    /// <summary>Aloqa telefonini o'zgartiradi (bo'sh → null). Talabaning telefoni Telegram orqali
+    /// bog'lanadi (<see cref="LinkTelegram"/>) — bu yerdan o'zgartirilmaydi.</summary>
+    public void ChangePhoneNumber(string? phoneNumber)
+    {
+        if (Role == UserRole.Student)
+            throw new DomainException("Talabaning telefoni Telegram orqali bog'lanadi.");
+
+        PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : Phone.Normalize(phoneNumber);
+    }
+
     public void AssignToFaculty(Guid facultyId) => FacultyId = facultyId;
 
     public void MarkLogin(DateTimeOffset at) => LastLoginAt = at;
@@ -115,8 +125,16 @@ public sealed class User : AuditableEntity, ISoftDeletable
     public void Deactivate()
     {
         IsActive = false;
+        RevokeRefreshTokens(DateTimeOffset.UtcNow, "Foydalanuvchi faolsizlantirildi");
+    }
+
+    /// <summary>Barcha yuklangan refresh tokenlarni bekor qiladi (parol tiklanganda — eski sessiyalar
+    /// yashamasin). <see cref="Deactivate"/> kabi faqat XOTIRADAGI tokenlarga ta'sir qiladi — chaqiruvchi
+    /// <c>Include(u => u.RefreshTokens)</c> bilan yuklashi shart.</summary>
+    public void RevokeRefreshTokens(DateTimeOffset now, string reason)
+    {
         foreach (var token in _refreshTokens)
-            token.Revoke(DateTimeOffset.UtcNow, "Foydalanuvchi faolsizlantirildi");
+            token.Revoke(now, reason);
     }
 
     /// <summary>Muddati o'tgan refresh tokenlarni to'plamdan olib tashlaydi (EF ularni o'chiradi).

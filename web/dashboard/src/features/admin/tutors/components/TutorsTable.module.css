@@ -1,3 +1,8 @@
 .pending[data-late='true'] {
   color: var(--color-bad-fg);
 }
+/* Fakultet filtri — qidiruv yonida, kengligi matnga qarab */
+.filter select {
+  width: auto;
+  min-width: 180px;
+}

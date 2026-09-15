@@ -25,8 +25,12 @@ public sealed record TutorRow(
     bool IsActive,
     TutorStatus Status);
 
-/// <summary><c>GET /api/admin/tutors?q&amp;page&amp;pageSize</c> — <c>q</c>: ism, telefon, fakultet kodi/nomi.</summary>
-public sealed record GetTutorsQuery : PagedQuery, IRequest<Paged<TutorRow>>;
+/// <summary><c>GET /api/admin/tutors?q&amp;facultyId&amp;page&amp;pageSize</c> — <c>q</c>: ism, telefon, fakultet kodi/nomi;
+/// <see cref="FacultyId"/> — ixtiyoriy, faqat shu fakultet tyutorlari.</summary>
+public sealed record GetTutorsQuery : PagedQuery, IRequest<Paged<TutorRow>>
+{
+    public Guid? FacultyId { get; init; }
+}
 
 internal sealed class GetTutorsQueryHandler(IApplicationDbContext db, IClock clock)
     : IRequestHandler<GetTutorsQuery, Paged<TutorRow>>
@@ -38,6 +42,9 @@ internal sealed class GetTutorsQueryHandler(IApplicationDbContext db, IClock clo
                      from f in faculties.DefaultIfEmpty()
                      where u.Role == UserRole.Tutor
                      select new { User = u, Faculty = f };
+
+        if (request.FacultyId is { } facultyId)
+            tutors = tutors.Where(x => x.User.FacultyId == facultyId);
 
         if (request.Q is { } q)
         {

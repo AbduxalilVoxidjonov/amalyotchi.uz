@@ -7,6 +7,8 @@ import { Breadcrumb, Button, EmptyState, type BreadcrumbItem } from '@/shared/ui
 import { ErrorState } from '../../components/PageStatus';
 import styles from './HierarchyListPage.module.css';
 
+const FACULTIES_ROOT: BreadcrumbItem[] = [{ label: 'Fakultetlar', to: '/admin/faculties' }];
+
 export interface HierarchyListPageProps<TDetail> {
   /** Joriy obyektning o'zi (breadcrumb — 404/xato/nom shundan chiqadi). */
   detailQuery: UseQueryResult<TDetail>;
@@ -20,6 +22,8 @@ export interface HierarchyListPageProps<TDetail> {
   backLabel: string;
   /** Topbar sarlavhasi — muvaffaqiyatli yuklangach joriy obyekt nomiga almashadi. */
   pageTitle?: (detail: TDetail) => string;
+  /** 404/xato holatidagi breadcrumb (default — "Fakultetlar"). */
+  rootBreadcrumb?: BreadcrumbItem[];
   /** Ro'yxat + amallar — detail 404/xato bo'lmasa render qilinadi. */
   children: ReactNode;
 }
@@ -27,7 +31,8 @@ export interface HierarchyListPageProps<TDetail> {
 /**
  * Ierarxiya sahifalari (kafedralar/yo'nalishlar/guruhlar) uchun umumiy qobiq:
  * breadcrumb + "ota topilmadi" (404) / xato holatlari. `FacultyDepartmentsPage`,
- * `DepartmentDirectionsPage`, `DirectionGroupsPage` shu orqali takrorlanishni kamaytiradi.
+ * `DepartmentDirectionsPage`, `DirectionGroupsPage` (va `rootBreadcrumb` bilan `TutorDetailPage`)
+ * shu orqali takrorlanishni kamaytiradi.
  */
 export function HierarchyListPage<TDetail>({
   detailQuery,
@@ -37,6 +42,7 @@ export function HierarchyListPage<TDetail>({
   backTo,
   backLabel,
   pageTitle,
+  rootBreadcrumb = FACULTIES_ROOT,
   children,
 }: HierarchyListPageProps<TDetail>) {
   const is404 = isApiError(detailQuery.error) && detailQuery.error.status === 404;
@@ -45,7 +51,7 @@ export function HierarchyListPage<TDetail>({
   if (is404) {
     return (
       <div className={styles.page}>
-        <Breadcrumb items={[{ label: 'Fakultetlar', to: '/admin/faculties' }]} />
+        <Breadcrumb items={rootBreadcrumb} />
         <EmptyState
           tone="plain"
           title={notFoundTitle}
@@ -62,7 +68,7 @@ export function HierarchyListPage<TDetail>({
   if (detailQuery.isError) {
     return (
       <div className={styles.page}>
-        <Breadcrumb items={[{ label: 'Fakultetlar', to: '/admin/faculties' }]} />
+        <Breadcrumb items={rootBreadcrumb} />
         <ErrorState error={detailQuery.error} onRetry={() => void detailQuery.refetch()} />
       </div>
     );

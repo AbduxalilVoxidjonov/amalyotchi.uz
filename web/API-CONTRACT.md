@@ -1,11 +1,11 @@
 # API-CONTRACT v2
 
-Oxirgi yangilanish: 14.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
+Oxirgi yangilanish: 15.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
 esa haqiqiy controller/DTO/validator/handler kodidan olingan — har bir maydon, chegara va status kod kodda bor.
 Frontend (`web/dashboard`, `web/twa`, `web/shared`) shu shaklga moslanishi kerak; v1 bilan farqlar §5 da.
 
-Jami **39 ta endpoint**: Auth 5 · Admin 9 · Reports 1 · Tutor 13 · Student (TWA) 10 · Files 1.
+Jami **69 ta endpoint**: Auth 5 · Admin 39 · Reports 1 · Tutor 13 · Student (TWA) 10 · Files 1.
 
 ---
 
@@ -458,7 +458,13 @@ interface GroupRow {
 }
 ```
 
-#### GET `/api/admin/tutors` — `q`: ism, telefon, fakultet kodi/nomi
+### 2.3.3 Tyutorlar — `AdminTutorsController` (`/api/admin/tutors`)
+
+Hammasi `AdminOnly`. O'chirish (DELETE) endpoint'i **yo'q** — tyutor faqat faol emas qilinadi (`PATCH .../status`).
+Semantika: **bir guruhga bir vaqtda bitta faol tyutor** (`TutorAssignment.IsActive`); biriktiruv tarixi saqlanadi
+(ajratilganda yozuv o'chirilmaydi, faolsizlantiriladi).
+
+#### GET `/api/admin/tutors` — `q`: ism, telefon, fakultet kodi/nomi; `&facultyId=<guid>` (ixtiyoriy filtr)
 
 ```ts
 interface TutorRow {
@@ -468,7 +474,7 @@ interface TutorRow {
   facultyId: string | null;
   facultyCode: string | null;
   facultyName: string | null;
-  groups: string[];
+  groups: string[]; /*faol biriktiruvlar — guruh nomlari*/
   students: number;
   pending: number;
   oldestPendingAt: string | null;
@@ -478,6 +484,106 @@ interface TutorRow {
   status: TutorStatus; /*eng eski pending > 48h → late*/
 }
 ```
+
+#### GET `/api/admin/tutors/{id}` · 200
+
+Response `TutorDetail`. **404** (`detail`: "Tyutor topilmadi.") — yo'q, o'chirilgan yoki roli `Tutor` emas.
+
+```ts
+interface TutorDetail {
+  id: string;
+  fullName: string;
+  hemisId: string; /*login identifikatori*/
+  phone: string | null /*E.164*/;
+  facultyId: string;
+  facultyCode: string;
+  facultyName: string;
+  isActive: boolean;
+  lastLoginAt: string | null /*ISO*/;
+  createdAt: string /*ISO*/;
+  groups: TutorGroupDto[]; /*faqat FAOL biriktiruvlar; yo'nalish → guruh nomi bo'yicha*/
+}
+interface TutorGroupDto {
+  assignmentId: string; /*TutorAssignment.Id*/
+  groupId: string;
+  groupName: string;
+  course: number;
+  directionName: string;
+  students: number; /*guruhdagi talabalar (StudentProfile) soni*/
+  academicYearName: string; /*biriktiruv qilingan o'quv yili, "2026-2027"*/
+  isActive: boolean; /*GURUHNING o'zi faolmi (biriktiruv doimo faol — aks holda ro'yxatga tushmaydi)*/
+}
+```
+
+#### POST `/api/admin/tutors` · 201 (+ `Location: /api/admin/tutors/{id}`)
+
+| Maydon      | Tip            | Majburiy | Validatsiya                                                                 |
+| ----------- | -------------- | -------- | --------------------------------------------------------------------------- |
+| `fullName`  | string         | ha       | trim 2–150 belgi                                                            |
+| `hemisId`   | string         | ha       | trim, 5–20 ta raqam (`HemisId` VO); unikal — **o'chirilgan hisoblar ham**   |
+| `phone`     | string \| null | yo'q     | bo'sh → null; aks holda O'zbekiston raqami (`+998901234567`, `901234567`, bo'shliqli variantlar → E.164 ga normallashadi); faol hisoblar orasida unikal |
+| `password`  | string         | ha       | 8–128 belgi                                                                 |
+| `facultyId` | guid           | ha       | mavjud va faol fakultet                                                     |
+
+Response 201 `TutorDetail` (`groups: []`). Xatolar: 400 `errors.FullName`/`errors.HemisId`/`errors.Phone`/
+`errors.Password`/`errors.FacultyId`; **404** (`detail`: "Fakultet topilmadi."); **409** — HEMIS ID band (`detail`: "Bu
+HEMIS ID bilan foydalanuvchi mavjud."), telefon band (`detail`: "Bu telefon raqami bilan foydalanuvchi mavjud."),
+fakultet faol emas (`detail`: "Fakultet faol emas."). Yangi tyutor darhol `POST /api/auth/login` (hemisId + password)
+bilan kira oladi.
+
+#### PUT `/api/admin/tutors/{id}` · 200
+
+Body `{ fullName, phone?, facultyId }` (validatsiya — POST bilan bir xil; `hemisId` va parol bu yerdan
+o'zgartirilmaydi). Response 200 `TutorDetail`. Xatolar: 400; **404** (tyutor yoki yangi fakultet topilmadi); **409** —
+fakultet o'zgartirilmoqda-yu tyutorda faol biriktiruvlar bor (`detail`: "Tyutorga guruhlar biriktirilgan — avval ularni
+ajrating."), yangi fakultet faol emas, telefon band. Fakultet o'zgarmasa biriktiruvlarga tegilmaydi.
+
+#### PATCH `/api/admin/tutors/{id}/status` · 204
+
+Body `{ isActive: boolean }`. `false` → hisob yopiladi **va barcha refresh tokenlari bekor qilinadi** (refresh → 403,
+login → 403 "Hisobingiz faol emas…"); `true` → qayta ochiladi. Guruh biriktiruvlariga tegilmaydi (faol emas tyutorning
+`groups` ro'yxati saqlanadi). Xatolar: **404**. Holat o'zgarmasa (allaqachon shunday) ham 204.
+
+#### POST `/api/admin/tutors/{id}/password` · 204
+
+Body `{ password: string }` (8–128 belgi, `errors.Password`). Yangi parol o'rnatiladi, tyutorning **barcha refresh
+tokenlari bekor qilinadi** — eski sessiya refresh qila olmaydi (403), eski parol bilan login 403, yangisi bilan 200.
+Xatolar: 400; **404**.
+
+#### PUT `/api/admin/tutors/{id}/groups` · 200
+
+Body `{ groupIds: string[] }` (takrorlar e'tiborsiz; `[]` → hammasi ajratiladi). Faol biriktiruvlar to'plamini
+**almashtiradi**: ro'yxatda bo'lmaganlar faolsizlantiriladi (yozuv qoladi), yangilari **faol `AcademicYear`** bilan
+yaratiladi, ilgari ajratilgan guruh qayta kelsa — o'sha yozuv qayta faollashadi (`assignmentId` o'zgarmaydi). Tyutor
+faol bo'lmasa ham ruxsat (bu ma'lumot, kirish emas). Response 200 `TutorDetail`.
+
+Xatolar (birinchi uchragani): **404** tyutor (`detail`: "Tyutor topilmadi.") / guruh (`detail`: "Guruh topilmadi.");
+**400** `errors.GroupIds[i]` (bo'sh guid) yoki `DomainException` — guruh faol emas (`detail`: "Guruh faol emas: {nom}"),
+guruh tyutor fakultetiga tegishli emas (`detail`: "Guruh tyutor fakultetiga tegishli emas: {nom}"; zanjir
+Direction → Department → Faculty); **409** — guruh boshqa faol tyutorda (`detail`: "{guruh} guruhi {tyutor FISH}
+tyutoriga biriktirilgan."), yangi biriktiruv kerak-u faol o'quv yili yo'q (`detail`: "Faol o'quv yili yo'q."; faqat
+ajratish bo'lsa o'quv yili talab qilinmaydi).
+
+#### GET `/api/admin/tutors/{id}/available-groups` · 200
+
+Response `AvailableGroupRow[]` (sahifalanmaydi) — tyutor fakultetidagi barcha **faol** guruhlar, kafedra → yo'nalish →
+guruh nomi bo'yicha. **404** tyutor topilmasa.
+
+```ts
+interface AvailableGroupRow {
+  id: string;
+  name: string;
+  course: number;
+  directionName: string;
+  departmentName: string;
+  students: number;
+  tutorId: string | null; /*hozir faol biriktirilgan tyutor — shu tyutorning o'zi bo'lsa ham to'ldiriladi*/
+  tutorName: string | null;
+}
+```
+
+Biriktirish oynasi: `tutorId === null` → bo'sh; `tutorId === id` → shu tyutorniki (belgilangan); boshqa → band
+(tanlansa `PUT .../groups` 409 beradi — avval egasidan ajratish kerak).
 
 #### GET `/api/admin/students` — `q`: FISH, HEMIS ID, telefon, guruh
 
@@ -1128,7 +1234,7 @@ interface PortfolioDto {
 | `TutorStatus`                      | `active` · `late`                                                                                                                                                                                                                                                                                                                         | admin tutors, dashboard                                                                |
 | `AdminStudentStatus`               | `active` · `flagged` · `unlinked`                                                                                                                                                                                                                                                                                                         | admin students                                                                         |
 | `CompanyFlag`                      | `largeRadius` · `suspicious` · `null`                                                                                                                                                                                                                                                                                                     | admin companies                                                                        |
-| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` | admin audit `action`, `?action=`                                                       |
+| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorGroupsChanged` | admin audit `action`, `?action=`                                                       |
 | `SettingType`                      | `int` · `bool` · `weekdays`                                                                                                                                                                                                                                                                                                               | settings `type`                                                                        |
 | `SettingKey` (string const)        | `geofenceRadius` · `lateTolerance` · `minGpsAccuracy` · `autoCheckout` · `workDays` · `dailyReportRequired` · `minReportLength` · `checkInWindow`                                                                                                                                                                                         | settings                                                                               |
 | `DocumentTemplateKind`             | `contract` · `referral` · `reference`                                                                                                                                                                                                                                                                                                     | settings templates                                                                     |

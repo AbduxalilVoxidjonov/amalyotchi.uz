@@ -83,6 +83,81 @@ public sealed class UserTests
     }
 
     [Fact]
+    public void RevokeRefreshTokens_HisobFaolQoladi_TokenlarBekorBoladi()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Tutor, FacultyId);
+        user.IssueRefreshToken("token-1", now.AddDays(7), null);
+        user.IssueRefreshToken("token-2", now.AddDays(7), null);
+
+        user.RevokeRefreshTokens(now, "Parol tiklandi");
+
+        user.IsActive.Should().BeTrue();
+        user.RefreshTokens.Should().HaveCount(2).And.OnlyContain(t => t.RevokedAt == now && t.RevokedReason == "Parol tiklandi");
+    }
+
+    [Fact]
+    public void RevokeRefreshTokens_AvvalBekorQilinganTokenniQaytaYozmaydi()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Tutor, FacultyId);
+        var earlier = now.AddHours(-1);
+        user.IssueRefreshToken("old", now.AddDays(7), null).Revoke(earlier, "Chiqdi");
+
+        user.RevokeRefreshTokens(now, "Parol tiklandi");
+
+        var token = user.RefreshTokens.Single();
+        token.RevokedAt.Should().Be(earlier);
+        token.RevokedReason.Should().Be("Chiqdi");
+    }
+
+    [Theory]
+    [InlineData("90 765 43 21", "+998907654321")]
+    [InlineData("+998 90 765 43 21", "+998907654321")]
+    public void ChangePhoneNumber_Normallashtiradi(string input, string expected)
+    {
+        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Tutor, FacultyId);
+
+        user.ChangePhoneNumber(input);
+
+        user.PhoneNumber.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void ChangePhoneNumber_Bosh_NullQiladi(string? input)
+    {
+        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Tutor, FacultyId);
+
+        user.ChangePhoneNumber(input);
+
+        user.PhoneNumber.Should().BeNull();
+    }
+
+    [Fact]
+    public void ChangePhoneNumber_NotogriFormat_XatoBeradi()
+    {
+        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Tutor, FacultyId);
+
+        var act = () => user.ChangePhoneNumber("12345");
+
+        act.Should().Throw<DomainException>().WithMessage("*Telefon*");
+        user.PhoneNumber.Should().Be("+998901234567");
+    }
+
+    [Fact]
+    public void ChangePhoneNumber_Talabaga_XatoBeradi()
+    {
+        var student = User.CreateStudent("Karimov Bek", FacultyId);
+
+        var act = () => student.ChangePhoneNumber("901234567");
+
+        act.Should().Throw<DomainException>().WithMessage("*Telegram*");
+    }
+
+    [Fact]
     public void PruneRefreshTokens_FaqatMuddatiOtganlarniOlibTashlaydi()
     {
         var now = DateTimeOffset.UtcNow;

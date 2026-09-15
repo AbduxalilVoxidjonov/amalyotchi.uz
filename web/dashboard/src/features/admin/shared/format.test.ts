@@ -1,5 +1,6 @@
 import {
   formatCount,
+  formatDateTime,
   formatDayMonth,
   formatHours,
   formatPhone,
@@ -19,6 +20,12 @@ describe('admin/shared/format', () => {
   it('formatShortDateTime — Toshkent (UTC+5)', () => {
     expect(formatShortDateTime('2026-10-12T04:31:00+00:00')).toBe('12.10 09:31');
     expect(formatShortDateTime('bad')).toBe('—');
+  });
+
+  it('formatDateTime — yil bilan, Toshkent (UTC+5)', () => {
+    expect(formatDateTime('2026-08-20T09:00:00+00:00')).toBe('20.08.2026 14:00');
+    expect(formatDateTime(null)).toBe('—');
+    expect(formatDateTime('bad')).toBe('—');
   });
 
   it('formatDayMonth — DateOnly', () => {

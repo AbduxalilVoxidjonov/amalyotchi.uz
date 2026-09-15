@@ -54,5 +54,14 @@ public enum AuditAction
     GroupUpdated = 38,
     GroupDeleted = 39,
     GroupActivated = 40,
-    GroupDeactivated = 41
+    GroupDeactivated = 41,
+
+    /// <summary>Admin tyutor yaratdi/tahrirladi, faol holatini o'zgartirdi, parolini tikladi
+    /// yoki guruh biriktiruvlarini almashtirdi.</summary>
+    TutorCreated = 42,
+    TutorUpdated = 43,
+    TutorActivated = 44,
+    TutorDeactivated = 45,
+    TutorPasswordReset = 46,
+    TutorGroupsChanged = 47
 }

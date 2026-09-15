@@ -27,6 +27,7 @@ const DirectionGroupsPage = lazy(
   () => import('@/features/admin/faculties/groups/DirectionGroupsPage'),
 );
 const TutorsPage = lazy(() => import('@/features/admin/tutors/TutorsPage'));
+const TutorDetailPage = lazy(() => import('@/features/admin/tutors/TutorDetailPage'));
 const StudentsPage = lazy(() => import('@/features/admin/students/StudentsPage'));
 const CompaniesPage = lazy(() => import('@/features/admin/companies/CompaniesPage'));
 const AuditPage = lazy(() => import('@/features/admin/audit/AuditPage'));
@@ -80,6 +81,7 @@ export const routes: RouteObject[] = [
             element: <DirectionGroupsPage />,
           },
           { path: 'tutors', element: <TutorsPage /> },
+          { path: 'tutors/:tutorId', element: <TutorDetailPage /> },
           { path: 'students', element: <StudentsPage /> },
           { path: 'companies', element: <CompaniesPage /> },
           { path: 'reports', element: <ReportsPage /> },

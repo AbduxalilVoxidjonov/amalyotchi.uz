@@ -1,12 +1,19 @@
-import { Badge, Button, type DataTableColumn } from '@/shared/ui';
+import { Badge, Button, Select, type DataTableColumn, type SelectOption } from '@/shared/ui';
 import { AdminTable, type TableStateProps } from '../../components/AdminTable';
+import { RowLink } from '../../components/RowLink';
 import { formatPhone, formatScope } from '../../shared/format';
 import { TUTOR_STATUS_LABEL, type Tutor } from '../types';
 import styles from './TutorsTable.module.css';
 
-/** SPEC §9.5 ustunlari. Kutayotgan — kechikayotgan tyutorda qizil (`fg #9c3227`). Telefon/doira — v2 xom maydonlardan. */
+/** SPEC §9.5 ustunlari. Kutayotgan — kechikayotgan tyutorda qizil (`fg #9c3227`). Ism — detail sahifasiga havola. */
 const COLUMNS: DataTableColumn<Tutor>[] = [
-  { key: 'fullName', header: 'FISH', width: 'minmax(160px,1.4fr)', strong: true },
+  {
+    key: 'fullName',
+    header: 'FISH',
+    width: 'minmax(160px,1.4fr)',
+    strong: true,
+    render: (r) => <RowLink to={`/admin/tutors/${r.id}`}>{r.fullName}</RowLink>,
+  },
   {
     key: 'phone',
     header: 'Telefon',
@@ -37,18 +44,36 @@ const COLUMNS: DataTableColumn<Tutor>[] = [
     key: 'status',
     header: 'Holat',
     width: 'minmax(140px,.9fr)',
-    render: (r) => (
-      <Badge status={TUTOR_STATUS_LABEL[r.status].kind}>{TUTOR_STATUS_LABEL[r.status].label}</Badge>
-    ),
+    render: (r) =>
+      r.isActive ? (
+        <Badge status={TUTOR_STATUS_LABEL[r.status].kind}>
+          {TUTOR_STATUS_LABEL[r.status].label}
+        </Badge>
+      ) : (
+        <Badge status="neu">Faol emas</Badge>
+      ),
   },
 ];
 
 export interface TutorsTableProps extends TableStateProps<Tutor> {
+  /** Fakultet filtri: `''` — barchasi. */
+  facultyId: string;
+  facultyOptions: readonly SelectOption[];
+  onFacultyChange: (facultyId: string) => void;
   onCreate: () => void;
-  onSendInvite: () => void;
+  onEdit: (tutor: Tutor) => void;
+  onToggleStatus: (tutor: Tutor) => void;
 }
 
-export function TutorsTable({ onCreate, onSendInvite, ...state }: TutorsTableProps) {
+export function TutorsTable({
+  facultyId,
+  facultyOptions,
+  onFacultyChange,
+  onCreate,
+  onEdit,
+  onToggleStatus,
+  ...state
+}: TutorsTableProps) {
   return (
     <AdminTable
       aria-label="Tyutorlar"
@@ -56,15 +81,37 @@ export function TutorsTable({ onCreate, onSendInvite, ...state }: TutorsTablePro
       rowKey={(r) => r.id}
       minWidth="880px"
       emptyTitle="Tyutorlar yo'q"
-      actions={
+      rowDim={(r) => !r.isActive}
+      filters={
+        <Select
+          aria-label="Fakultet bo'yicha filtr"
+          variant="search"
+          wrapperClassName={styles.filter}
+          value={facultyId}
+          onChange={(e) => onFacultyChange(e.target.value)}
+        >
+          <option value="">Barcha fakultetlar</option>
+          {facultyOptions.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </Select>
+      }
+      rowActions={(r) => (
         <>
-          <Button size="xs" onClick={onCreate}>
-            Tyutor qo'shish
+          <Button size="xs" onClick={() => onEdit(r)}>
+            Tahrirlash
           </Button>
-          <Button size="xs" onClick={onSendInvite}>
-            Kirish havolasini yuborish
+          <Button size="xs" onClick={() => onToggleStatus(r)}>
+            {r.isActive ? 'Faol emas qilish' : 'Faollashtirish'}
           </Button>
         </>
+      )}
+      actions={
+        <Button size="xs" onClick={onCreate}>
+          Yangi tyutor
+        </Button>
       }
       {...state}
     />

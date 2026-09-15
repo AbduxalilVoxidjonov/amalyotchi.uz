@@ -1,4 +1,10 @@
-/* SPEC-TOKENS 4.4 toolbar: actions o'ngda, gap 7, wrap */
+/* SPEC-TOKENS 4.4 toolbar: qidiruv (+ filtrlar) chapda, actions o'ngda, gap 7, wrap */
+.search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
 .actions {
   display: flex;
   gap: 7px;

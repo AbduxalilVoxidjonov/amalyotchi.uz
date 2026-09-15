@@ -34,6 +34,25 @@ function parts(fmt: Intl.DateTimeFormat, d: Date): Record<string, string> {
   return Object.fromEntries(fmt.formatToParts(d).map((x) => [x.type, x.value]));
 }
 
+const fullFmt = new Intl.DateTimeFormat('ru-RU', {
+  timeZone: APP_TIME_ZONE,
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+
+/** ISO → "20.08.2026 14:00" (yil bilan — yaratilgan sana kabi bir martalik vaqtlar, Toshkent vaqti). */
+export function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return DASH;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return DASH;
+  const p = parts(fullFmt, d);
+  return `${p['day']}.${p['month']}.${p['year']} ${p['hour']}:${p['minute']}`;
+}
+
 /** ISO → "12.10 09:31" (audit jurnali vaqti, Toshkent vaqti). */
 export function formatShortDateTime(iso: string): string {
   const d = new Date(iso);

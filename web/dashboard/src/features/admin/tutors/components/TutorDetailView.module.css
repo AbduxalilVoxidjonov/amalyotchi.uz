@@ -1,0 +1,42 @@
+/* Tyutor detail: sarlavha kartasi + guruhlar jadvali */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.sub {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.mono {
+  font-family: var(--font-mono);
+}
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.notice {
+  margin: 0;
+  font-size: var(--fs-sm2);
+  color: var(--color-ok-fg);
+}
+.tableTitle {
+  margin: 0;
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+}
+.tableSub {
+  margin: 2px 0 0;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}
+/* Jadval ichidagi bo'sh holat — tashqi chegarasiz (jadvalning o'zi kartochka) */
+.empty[data-tone] {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}

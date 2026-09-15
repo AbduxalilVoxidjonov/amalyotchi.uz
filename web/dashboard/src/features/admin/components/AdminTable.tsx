@@ -21,6 +21,8 @@ export interface AdminTableProps<T> extends TableStateProps<T> {
   'aria-label': string;
   columns: readonly DataTableColumn<T>[];
   rowKey: (row: T) => string;
+  /** Qidiruv yonidagi filtrlar (masalan fakultet select'i). */
+  filters?: ReactNode;
   /** Toolbar o'ngidagi tugmalar (SPEC 9.x `actions`). */
   actions?: ReactNode;
   /** Qator amallari (❓ dizaynda yo'q — faqat berilsa chiqadi). */
@@ -42,6 +44,7 @@ export function AdminTable<T>({
   'aria-label': ariaLabel,
   columns,
   rowKey,
+  filters,
   actions,
   rowActions,
   rowDim,
@@ -91,14 +94,17 @@ export function AdminTable<T>({
       emptyText={state}
       toolbar={
         <>
-          <Input
-            variant="search"
-            type="search"
-            placeholder="Qidirish…"
-            aria-label="Qidirish"
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-          />
+          <div className={styles.search}>
+            <Input
+              variant="search"
+              type="search"
+              placeholder="Qidirish…"
+              aria-label="Qidirish"
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+            />
+            {filters}
+          </div>
           {actions && <div className={styles.actions}>{actions}</div>}
         </>
       }

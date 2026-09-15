@@ -1,0 +1,16 @@
+/* Tyutor modallari (forma / parol / guruh tanlash) — FacultyFormModal bilan bir xil ritm */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.error {
+  margin: 0;
+  font-size: var(--fs-sm2);
+  color: var(--color-bad-fg);
+}
+.success {
+  margin: 0;
+  font-size: var(--fs-sm2);
+  color: var(--color-ok-fg);
+}
