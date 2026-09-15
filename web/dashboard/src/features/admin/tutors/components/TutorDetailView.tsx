@@ -154,7 +154,7 @@ export function TutorDetailView({
               </p>
             </div>
             <Button size="xs" onClick={onEditScopes}>
-              Ko'lamni tahrirlash
+              Guruhlarni biriktirish
             </Button>
           </>
         }
@@ -163,7 +163,7 @@ export function TutorDetailView({
             tone="plain"
             className={styles.empty}
             title="Ko'lam biriktirilmagan"
-            description="«Ko'lamni tahrirlash» orqali fakultet, kafedra, yo'nalish yoki guruh biriktiring."
+            description="«Guruhlarni biriktirish» orqali fakultet, kafedra, yo'nalish yoki guruh biriktiring."
           />
         }
       />

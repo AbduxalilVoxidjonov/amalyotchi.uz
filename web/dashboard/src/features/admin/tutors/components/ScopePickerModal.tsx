@@ -49,7 +49,7 @@ function metaOf(node: ScopeNode): string {
 }
 
 /**
- * "Ko'lamni tahrirlash" — tyutor fakulteti daraxti (fakultet → kafedra → yo'nalish → guruh), har
+ * "Guruhlarni biriktirish" — tyutor fakulteti daraxti (fakultet → kafedra → yo'nalish → guruh), har
  * tugunda checkbox. Tanlangan tugun avlodlarini qamrab oladi (ular tanlovdan chiqadi — normalizatsiya);
  * boshqa tyutor tuguni, uning avlodlari va ajdodlari tanlab bo'lmaydi (kesishuv).
  * Saqlash → `PUT /tutors/{id}/scopes` (to'plam almashadi).
@@ -218,7 +218,7 @@ export function ScopePickerModal({
     <Modal
       open={open}
       onClose={handleClose}
-      title="Ko'lamni tahrirlash"
+      title="Guruhlarni biriktirish"
       description="Fakultet, kafedra, yo'nalish yoki guruhni tanlang — ota tanlansa ichidagi hamma narsa qamrab olinadi. Boshqa tyutor ko'lami bilan kesishib bo'lmaydi."
       width="620px"
       footer={

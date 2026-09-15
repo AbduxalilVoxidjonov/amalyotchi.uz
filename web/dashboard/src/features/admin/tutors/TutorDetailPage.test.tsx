@@ -24,8 +24,8 @@ function groupsTable() {
 }
 
 async function openScopePicker(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole('button', { name: "Ko'lamni tahrirlash" }));
-  const dialog = await screen.findByRole('dialog', { name: "Ko'lamni tahrirlash" });
+  await user.click(screen.getByRole('button', { name: "Guruhlarni biriktirish" }));
+  const dialog = await screen.findByRole('dialog', { name: "Guruhlarni biriktirish" });
   // Daraxt yuklanguncha.
   await within(dialog).findByRole('checkbox', { name: 'Axborot texnologiyalari (Fakultet)' });
   return dialog;
