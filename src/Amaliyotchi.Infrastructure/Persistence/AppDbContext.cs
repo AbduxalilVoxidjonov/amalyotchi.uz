@@ -28,6 +28,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<AcademicYear> AcademicYears => Set<AcademicYear>();
     public DbSet<Faculty> Faculties => Set<Faculty>();
+    public DbSet<Department> Departments => Set<Department>();
     public DbSet<Direction> Directions => Set<Direction>();
     public DbSet<StudentGroup> StudentGroups => Set<StudentGroup>();
     public DbSet<StudentProfile> StudentProfiles => Set<StudentProfile>();

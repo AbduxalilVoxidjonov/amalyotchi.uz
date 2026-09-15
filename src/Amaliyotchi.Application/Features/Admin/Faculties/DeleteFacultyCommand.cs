@@ -7,9 +7,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Admin.Faculties;
 
-/// <summary><c>DELETE /api/admin/faculties/{id}</c> → 204. Soft delete: fakultet va uning yo'nalishlari
-/// arxivlanadi. Topilmasa (yoki allaqachon o'chirilgan) → 404. Fakultetga biriktirilgan (o'chirilmagan)
-/// foydalanuvchi yoki guruh bo'lsa → 409 — avval ularni boshqa fakultetga ko'chirish kerak.</summary>
+/// <summary><c>DELETE /api/admin/faculties/{id}</c> → 204. Soft delete: faqat fakultetning o'zi
+/// arxivlanadi (kaskad emas). Topilmasa (yoki allaqachon o'chirilgan) → 404. O'chirilmagan kafedrasi
+/// bo'lsa → 409; kafedrasi bo'lmasa-yu biriktirilgan (o'chirilmagan) foydalanuvchi bo'lsa ham → 409 —
+/// avval ularni boshqa fakultetga ko'chirish kerak.</summary>
 public sealed record DeleteFacultyCommand(Guid Id) : IRequest;
 
 internal sealed class DeleteFacultyCommandHandler(IApplicationDbContext db, IAuditWriter audit, IClock clock)
@@ -17,19 +18,15 @@ internal sealed class DeleteFacultyCommandHandler(IApplicationDbContext db, IAud
 {
     public async Task Handle(DeleteFacultyCommand request, CancellationToken cancellationToken)
     {
-        var faculty = await db.Faculties
-            .Include(f => f.Directions)
-            .FirstOrDefaultAsync(f => f.Id == request.Id, cancellationToken)
+        var faculty = await db.Faculties.FirstOrDefaultAsync(f => f.Id == request.Id, cancellationToken)
             ?? throw new NotFoundException("Fakultet topilmadi.");
 
-        var hasUsers = await db.Users.AnyAsync(u => u.FacultyId == request.Id, cancellationToken);
-        var hasGroups = await (
-            from d in db.Directions
-            join g in db.StudentGroups on d.Id equals g.DirectionId
-            where d.FacultyId == request.Id
-            select g.Id).AnyAsync(cancellationToken);
+        var hasDepartments = await db.Departments.AnyAsync(d => d.FacultyId == request.Id, cancellationToken);
+        if (hasDepartments)
+            throw new ConflictException("Fakultetda kafedralar bor — avval ularni o'chiring.");
 
-        if (hasUsers || hasGroups)
+        var hasUsers = await db.Users.AnyAsync(u => u.FacultyId == request.Id, cancellationToken);
+        if (hasUsers)
             throw new ConflictException(
                 "Fakultetga guruhlar, tyutorlar yoki talabalar biriktirilgan — avval ularni boshqa fakultetga ko'chiring.");
 

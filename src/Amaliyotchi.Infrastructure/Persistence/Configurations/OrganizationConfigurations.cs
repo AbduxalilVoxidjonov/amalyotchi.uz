@@ -25,9 +25,28 @@ public sealed class FacultyConfiguration : IEntityTypeConfiguration<Faculty>
         builder.Property(x => x.Code).HasMaxLength(20).IsRequired();
         builder.HasIndex(x => x.Code).IsUnique().HasFilter("is_deleted = false");
 
-        builder.HasMany(x => x.Directions)
+        builder.HasMany(x => x.Departments)
             .WithOne()
             .HasForeignKey(d => d.FacultyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Navigation(x => x.Departments).UsePropertyAccessMode(PropertyAccessMode.Field);
+    }
+}
+
+public sealed class DepartmentConfiguration : IEntityTypeConfiguration<Department>
+{
+    public void Configure(EntityTypeBuilder<Department> builder)
+    {
+        builder.ToTable("departments");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.Code).HasMaxLength(20).IsRequired();
+        builder.HasIndex(x => new { x.FacultyId, x.Code }).IsUnique().HasFilter("is_deleted = false");
+
+        builder.HasMany(x => x.Directions)
+            .WithOne()
+            .HasForeignKey(d => d.DepartmentId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.Navigation(x => x.Directions).UsePropertyAccessMode(PropertyAccessMode.Field);
@@ -42,7 +61,7 @@ public sealed class DirectionConfiguration : IEntityTypeConfiguration<Direction>
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
         builder.Property(x => x.Code).HasMaxLength(30).IsRequired();
-        builder.HasIndex(x => new { x.FacultyId, x.Code }).IsUnique().HasFilter("is_deleted = false");
+        builder.HasIndex(x => new { x.DepartmentId, x.Code }).IsUnique().HasFilter("is_deleted = false");
 
         builder.HasMany(x => x.Groups)
             .WithOne()

@@ -5,47 +5,11 @@ using Xunit;
 
 namespace Amaliyotchi.UnitTests.Domain;
 
+/// <summary>O'quv yili — mustaqil, ierarxiyaga bog'liq emas. Fakultet/kafedra/yo'nalish/guruh
+/// testlari mos ravishda <see cref="FacultyTests"/>, <see cref="DepartmentTests"/>,
+/// <see cref="DirectionTests"/>, <see cref="StudentGroupTests"/> da.</summary>
 public sealed class OrganizationTests
 {
-    private static readonly Guid YearId = Guid.CreateVersion7();
-
-    [Fact]
-    public void Fakultet_TakroriyYonalishKodi_ZiddiyatBeradi()
-    {
-        var faculty = Faculty.Create("Axborot texnologiyalari", "AT");
-        faculty.AddDirection("Dasturiy injiniring", "60610100");
-
-        var act = () => faculty.AddDirection("Boshqa nom", "60610100");
-
-        act.Should().Throw<ConflictException>();
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(7)]
-    public void Guruh_NotogriKurs_XatoBeradi(int course)
-    {
-        var faculty = Faculty.Create("AT", "AT");
-        var direction = faculty.AddDirection("Dasturiy injiniring", "60610100");
-
-        var act = () => direction.AddGroup("412-22", course, YearId);
-
-        act.Should().Throw<DomainException>();
-    }
-
-    [Fact]
-    public void Guruh_KeyingiKursgaKochiriladi()
-    {
-        var faculty = Faculty.Create("AT", "AT");
-        var direction = faculty.AddDirection("Dasturiy injiniring", "60610100");
-        var group = direction.AddGroup("412-22", 3, YearId);
-
-        var promoted = group.PromoteTo(Guid.CreateVersion7());
-
-        promoted.Course.Should().Be(4);
-        promoted.Name.Should().Be("412-22");
-    }
-
     [Fact]
     public void OquvYili_TugashSanasiOldinBolsa_XatoBeradi()
     {

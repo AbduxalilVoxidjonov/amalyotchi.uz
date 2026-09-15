@@ -12,6 +12,14 @@ export function useFacultiesQuery(params: ListParams) {
   });
 }
 
+/** Bitta fakultet (breadcrumb uchun) — `FacultyDepartmentsPage`. */
+export function useFacultyQuery(id: string) {
+  return useQuery({
+    queryKey: adminKeys.faculty(id),
+    queryFn: () => facultiesApi.get(id),
+  });
+}
+
 /** Fakultetlar ro'yxati (barcha `q`/sahifa variantlari) + dashboard statistikasini yangilaydi. */
 function useInvalidateFaculties() {
   const queryClient = useQueryClient();

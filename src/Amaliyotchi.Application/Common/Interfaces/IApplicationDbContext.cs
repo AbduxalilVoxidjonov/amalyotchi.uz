@@ -24,6 +24,7 @@ public interface IApplicationDbContext
     DbSet<AuditLog> AuditLogs { get; }
     DbSet<AcademicYear> AcademicYears { get; }
     DbSet<Faculty> Faculties { get; }
+    DbSet<Department> Departments { get; }
     DbSet<Direction> Directions { get; }
     DbSet<StudentGroup> StudentGroups { get; }
     DbSet<StudentProfile> StudentProfiles { get; }

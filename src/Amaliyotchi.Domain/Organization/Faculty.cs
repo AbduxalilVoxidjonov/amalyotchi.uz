@@ -5,7 +5,7 @@ namespace Amaliyotchi.Domain.Organization;
 
 public sealed class Faculty : AuditableEntity, ISoftDeletable
 {
-    private readonly List<Direction> _directions = [];
+    private readonly List<Department> _departments = [];
 
     private Faculty() { }
 
@@ -18,7 +18,7 @@ public sealed class Faculty : AuditableEntity, ISoftDeletable
     public bool IsDeleted { get; set; }
     public DateTimeOffset? DeletedAt { get; set; }
 
-    public IReadOnlyCollection<Direction> Directions => _directions.AsReadOnly();
+    public IReadOnlyCollection<Department> Departments => _departments.AsReadOnly();
 
     public static Faculty Create(string name, string code)
     {
@@ -48,28 +48,21 @@ public sealed class Faculty : AuditableEntity, ISoftDeletable
 
     public void Deactivate() => IsActive = false;
 
-    /// <summary>Fakultetni va uning barcha yo'nalishlarini arxivlaydi (soft delete).
-    /// DIQQAT: chaqiruvchi fakultetni <c>Include(f => f.Directions)</c> bilan yuklashi shart —
-    /// aks holda faqat yuklangan yo'nalishlar arxivlanadi, qolganlari "osilib qoladi".</summary>
+    /// <summary>Faqat o'zini arxivlaydi (soft delete) — kafedralarini kaskad qilmaydi. Chaqiruvchi
+    /// oldindan o'chirilmagan kafedra yo'qligini tekshirishi shart (409 qoidasi Application qatlamida).</summary>
     public void Delete(DateTimeOffset now)
     {
         IsDeleted = true;
         DeletedAt = now;
-
-        foreach (var direction in _directions)
-        {
-            direction.IsDeleted = true;
-            direction.DeletedAt = now;
-        }
     }
 
-    public Direction AddDirection(string name, string code)
+    public Department AddDepartment(string name, string code)
     {
-        if (_directions.Any(d => string.Equals(d.Code, code, StringComparison.OrdinalIgnoreCase)))
-            throw new ConflictException($"'{code}' kodli yo'nalish bu fakultetda allaqachon mavjud.");
+        if (_departments.Any(d => string.Equals(d.Code, code, StringComparison.OrdinalIgnoreCase)))
+            throw new ConflictException($"'{code}' kodli kafedra bu fakultetda allaqachon mavjud.");
 
-        var direction = Direction.Create(Id, name, code);
-        _directions.Add(direction);
-        return direction;
+        var department = Department.Create(Id, name, code);
+        _departments.Add(department);
+        return department;
     }
 }

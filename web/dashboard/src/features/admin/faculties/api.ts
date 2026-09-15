@@ -8,6 +8,8 @@ export const FACULTIES_ENDPOINT = '/api/admin/faculties';
 export const facultiesApi = {
   list: (params: ListParams) =>
     api.get<Paged<Faculty>>(FACULTIES_ENDPOINT, { query: toQuery(params) }),
+  /** GET /{id} — 200 FacultyDto (breadcrumb uchun). 404. */
+  get: (id: string) => api.get<FacultyDto>(`${FACULTIES_ENDPOINT}/${id}`),
   /** POST — 201 FacultyDto. 400 errors.Name/errors.Code; 409 kod takrori. */
   create: (body: FacultyInput) => api.post<FacultyDto>(FACULTIES_ENDPOINT, body),
   /** PUT /{id} — 200 FacultyDto. 400 errors.Name/errors.Code; 404; 409 kod takrori. */

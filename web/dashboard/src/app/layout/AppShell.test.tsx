@@ -32,7 +32,6 @@ describe('AppShell', () => {
     expect(links.map((l) => l.textContent)).toEqual([
       'Dashboard',
       'Fakultetlar11',
-      'Guruhlar47',
       'Tyutorlar18',
       'Talabalar1284',
       'Korxonalar412',

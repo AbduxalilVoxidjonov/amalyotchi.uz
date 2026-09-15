@@ -991,6 +991,67 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                     b.ToTable("academic_years", (string)null);
                 });
 
+            modelBuilder.Entity("Amaliyotchi.Domain.Organization.Department", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid>("FacultyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("faculty_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_departments");
+
+                    b.HasIndex("FacultyId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_departments_faculty_id_code")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("departments", (string)null);
+                });
+
             modelBuilder.Entity("Amaliyotchi.Domain.Organization.Direction", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1015,9 +1076,13 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
 
-                    b.Property<Guid>("FacultyId")
+                    b.Property<Guid>("DepartmentId")
                         .HasColumnType("uuid")
-                        .HasColumnName("faculty_id");
+                        .HasColumnName("department_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
@@ -1040,9 +1105,9 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_directions");
 
-                    b.HasIndex("FacultyId", "Code")
+                    b.HasIndex("DepartmentId", "Code")
                         .IsUnique()
-                        .HasDatabaseName("ix_directions_faculty_id_code")
+                        .HasDatabaseName("ix_directions_department_id_code")
                         .HasFilter("is_deleted = false");
 
                     b.ToTable("directions", (string)null);
@@ -1134,6 +1199,10 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("DirectionId")
                         .HasColumnType("uuid")
                         .HasColumnName("direction_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
@@ -1844,14 +1913,24 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_leave_requests_users_student_user_id");
                 });
 
-            modelBuilder.Entity("Amaliyotchi.Domain.Organization.Direction", b =>
+            modelBuilder.Entity("Amaliyotchi.Domain.Organization.Department", b =>
                 {
                     b.HasOne("Amaliyotchi.Domain.Organization.Faculty", null)
-                        .WithMany("Directions")
+                        .WithMany("Departments")
                         .HasForeignKey("FacultyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_directions_faculties_faculty_id");
+                        .HasConstraintName("fk_departments_faculties_faculty_id");
+                });
+
+            modelBuilder.Entity("Amaliyotchi.Domain.Organization.Direction", b =>
+                {
+                    b.HasOne("Amaliyotchi.Domain.Organization.Department", null)
+                        .WithMany("Directions")
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_directions_departments_department_id");
                 });
 
             modelBuilder.Entity("Amaliyotchi.Domain.Organization.StudentGroup", b =>
@@ -2021,6 +2100,11 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                     b.Navigation("StudentProfile");
                 });
 
+            modelBuilder.Entity("Amaliyotchi.Domain.Organization.Department", b =>
+                {
+                    b.Navigation("Directions");
+                });
+
             modelBuilder.Entity("Amaliyotchi.Domain.Organization.Direction", b =>
                 {
                     b.Navigation("Groups");
@@ -2028,7 +2112,7 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Amaliyotchi.Domain.Organization.Faculty", b =>
                 {
-                    b.Navigation("Directions");
+                    b.Navigation("Departments");
                 });
 
             modelBuilder.Entity("Amaliyotchi.Domain.Practice.PracticePeriod", b =>

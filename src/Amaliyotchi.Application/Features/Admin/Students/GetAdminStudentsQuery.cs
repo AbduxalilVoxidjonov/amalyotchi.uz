@@ -36,7 +36,8 @@ internal sealed class GetAdminStudentsQueryHandler(IApplicationDbContext db, ICl
         var students = from p in db.StudentProfiles.AsNoTracking()
                        join g in db.StudentGroups on p.StudentGroupId equals g.Id
                        join d in db.Directions on g.DirectionId equals d.Id
-                       join f in db.Faculties on d.FacultyId equals f.Id
+                       join dept in db.Departments on d.DepartmentId equals dept.Id
+                       join f in db.Faculties on dept.FacultyId equals f.Id
                        select new { Profile = p, User = p.User, Group = g, Faculty = f };
 
         if (request.Q is { } q)

@@ -32,8 +32,9 @@ public sealed record TestUser(
     Guid? GroupId = null,
     string HemisId = "");
 
-/// <summary>Tashkiliy zanjir: o'quv yili → fakultet → yo'nalish → guruh.</summary>
-public sealed record TestGroup(Guid AcademicYearId, Guid FacultyId, Guid DirectionId, Guid GroupId, string GroupName, int Course);
+/// <summary>Tashkiliy zanjir: o'quv yili → fakultet → kafedra → yo'nalish → guruh.</summary>
+public sealed record TestGroup(
+    Guid AcademicYearId, Guid FacultyId, Guid DepartmentId, Guid DirectionId, Guid GroupId, string GroupName, int Course);
 
 /// <summary>Har test o'ziga kerakli foydalanuvchini yaratadi (tasodifiy telefon/HEMIS ID) — testlar bir bazada
 /// bir-biriga xalaqit bermaydi. Keyingi agentlar: <c>fixture.Factory.LoginAsTutorAsync()</c> → Bearer bilan tayyor <c>HttpClient</c>.</summary>
@@ -99,7 +100,8 @@ public static class TestClients
             return faculty.Id;
         });
 
-    /// <summary>O'quv yili (bitta umumiy, "Test 2026-2027") → fakultet (berilgan yoki yangi) → yo'nalish → guruh.</summary>
+    /// <summary>O'quv yili (bitta umumiy, "Test 2026-2027") → fakultet (berilgan yoki yangi) → kafedra (berilgan
+    /// fakultetda mavjud bo'lsa qayta ishlatiladi, aks holda yangi) → yo'nalish → guruh.</summary>
     public static Task<TestGroup> CreateGroupAsync(this ApiFactory factory, Guid? facultyId = null, int course = 3) =>
         factory.WithDbAsync(async db =>
         {
@@ -116,7 +118,8 @@ public static class TestClients
             Faculty faculty;
             if (facultyId is { } id)
             {
-                faculty = await db.Faculties.Include(f => f.Directions).FirstAsync(f => f.Id == id);
+                faculty = await db.Faculties.Include(f => f.Departments).ThenInclude(d => d.Directions)
+                    .FirstAsync(f => f.Id == id);
             }
             else
             {
@@ -124,11 +127,34 @@ public static class TestClients
                 db.Faculties.Add(faculty);
             }
 
-            var direction = faculty.AddDirection($"Yo'nalish {suffix}", $"D{suffix}");
+            var department = faculty.Departments.FirstOrDefault() ?? faculty.AddDepartment($"Kafedra {suffix}", $"K{suffix}");
+            var direction = department.AddDirection($"Yo'nalish {suffix}", $"D{suffix}");
             var group = direction.AddGroup($"G-{suffix}", course, year.Id);
             await db.SaveChangesAsync();
 
-            return new TestGroup(year.Id, faculty.Id, direction.Id, group.Id, group.Name, group.Course);
+            return new TestGroup(year.Id, faculty.Id, department.Id, direction.Id, group.Id, group.Name, group.Course);
+        });
+
+    /// <summary>Berilgan fakultetda mustaqil (yo'nalishsiz) kafedra — kafedra darajasi CRUD testlari uchun.</summary>
+    public static Task<Guid> CreateDepartmentAsync(this ApiFactory factory, Guid facultyId, string? name = null) =>
+        factory.WithDbAsync(async db =>
+        {
+            var suffix = Suffix();
+            var faculty = await db.Faculties.Include(f => f.Departments).FirstAsync(f => f.Id == facultyId);
+            var department = faculty.AddDepartment(name ?? $"Kafedra {suffix}", $"K{suffix}");
+            await db.SaveChangesAsync();
+            return department.Id;
+        });
+
+    /// <summary>Berilgan kafedrada mustaqil (guruhsiz) yo'nalish — yo'nalish darajasi CRUD testlari uchun.</summary>
+    public static Task<Guid> CreateDirectionAsync(this ApiFactory factory, Guid departmentId, string? name = null) =>
+        factory.WithDbAsync(async db =>
+        {
+            var suffix = Suffix();
+            var department = await db.Departments.Include(d => d.Directions).FirstAsync(d => d.Id == departmentId);
+            var direction = department.AddDirection(name ?? $"Yo'nalish {suffix}", $"D{suffix}");
+            await db.SaveChangesAsync();
+            return direction.Id;
         });
 
     /// <summary>Toshkent markazidagi korxona (Amir Temur 108), radius 150 m, noyob STIR.</summary>

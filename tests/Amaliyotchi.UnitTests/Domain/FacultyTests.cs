@@ -50,20 +50,28 @@ public sealed class FacultyTests
     }
 
     [Fact]
-    public void Ochirish_OziniVaYonalishlariniArxivlaydi()
+    public void Ochirish_FaqatOziniArxivlaydi_KafedralarniKaskadQilmaydi()
     {
         var faculty = Faculty.Create("Axborot texnologiyalari", "AT");
-        var direction1 = faculty.AddDirection("Dasturiy injiniring", "60610500");
-        var direction2 = faculty.AddDirection("Kompyuter injiniringi", "60610400");
+        var department = faculty.AddDepartment("Dasturiy injiniring kafedrasi", "SE");
         var now = DateTimeOffset.UtcNow;
 
         faculty.Delete(now);
 
         faculty.IsDeleted.Should().BeTrue();
         faculty.DeletedAt.Should().Be(now);
-        direction1.IsDeleted.Should().BeTrue();
-        direction1.DeletedAt.Should().Be(now);
-        direction2.IsDeleted.Should().BeTrue();
-        direction2.DeletedAt.Should().Be(now);
+        department.IsDeleted.Should().BeFalse();
+        department.DeletedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public void AddDepartment_TakroriyKod_ZiddiyatBeradi()
+    {
+        var faculty = Faculty.Create("Axborot texnologiyalari", "AT");
+        faculty.AddDepartment("Dasturiy injiniring kafedrasi", "SE");
+
+        var act = () => faculty.AddDepartment("Boshqa nom", "se");
+
+        act.Should().Throw<ConflictException>();
     }
 }

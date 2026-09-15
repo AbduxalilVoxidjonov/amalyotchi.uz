@@ -97,21 +97,32 @@ public sealed class DemoDataSeeder(AppDbContext db, IPasswordHasher passwordHash
         var admin = await db.Users.FirstOrDefaultAsync(u => u.Role == UserRole.Admin, cancellationToken)
             ?? throw new InvalidOperationException("Demo seed: admin topilmadi — avval DbSeeder ishlashi kerak.");
 
-        // 1. Tashkilot
-        var year = AcademicYear.Create("2026-2027", new DateOnly(2026, 9, 1), new DateOnly(2027, 6, 30));
-        year.Activate();
+        // 1. Tashkilot — faol o'quv yili DbSeeder tomonidan allaqachon yaratilgan (avval shu ishlashi shart).
+        var year = await db.AcademicYears.FirstOrDefaultAsync(y => y.IsActive, cancellationToken);
+        var yearIsNew = year is null;
+        if (year is null)
+        {
+            year = AcademicYear.Create("2026-2027", new DateOnly(2026, 9, 1), new DateOnly(2027, 6, 30));
+            year.Activate();
+        }
 
         var it = Faculty.Create("Axborot texnologiyalari", "AT");
         var economics = Faculty.Create("Iqtisodiyot va moliya", "IM");
         var construction = Faculty.Create("Qurilish va arxitektura", "QA");
         var philology = Faculty.Create("Filologiya", "FL");
 
-        var group412 = it.AddDirection("Dasturiy injiniring", "60610500").AddGroup("412-22", 3, year.Id);
-        var group413 = it.AddDirection("Kompyuter injiniringi", "60610400").AddGroup("413-22", 3, year.Id);
-        var group221 = economics.AddDirection("Bank ishi", "60410100").AddGroup("221-23", 2, year.Id);
-        var group318 = construction.AddDirection("Qurilish muhandisligi", "60730100").AddGroup("318-21", 4, year.Id);
+        var itSoftware = it.AddDepartment("Dasturiy injiniring kafedrasi", "SE");
+        var itComputer = it.AddDepartment("Kompyuter injiniringi kafedrasi", "CE");
+        var economicsBanking = economics.AddDepartment("Moliya va bank ishi kafedrasi", "FB");
+        var constructionEngineering = construction.AddDepartment("Qurilish muhandisligi kafedrasi", "CM");
 
-        db.AcademicYears.Add(year);
+        var group412 = itSoftware.AddDirection("Dasturiy injiniring", "60610500").AddGroup("412-22", 3, year.Id);
+        var group413 = itComputer.AddDirection("Kompyuter injiniringi", "60610400").AddGroup("413-22", 3, year.Id);
+        var group221 = economicsBanking.AddDirection("Bank ishi", "60410100").AddGroup("221-23", 2, year.Id);
+        var group318 = constructionEngineering.AddDirection("Qurilish muhandisligi", "60730100").AddGroup("318-21", 4, year.Id);
+
+        if (yearIsNew)
+            db.AcademicYears.Add(year);
         db.Faculties.AddRange(it, economics, construction, philology);
         await db.SaveChangesAsync(cancellationToken);
 

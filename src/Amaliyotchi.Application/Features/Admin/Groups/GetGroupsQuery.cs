@@ -24,20 +24,35 @@ public sealed record GroupRow(
     string? Tutor,
     int Students,
     int AttendancePct,
-    GroupPeriodDto? Period);
+    GroupPeriodDto? Period,
+    bool IsActive);
 
-/// <summary><c>GET /api/admin/groups?q&amp;page&amp;pageSize</c> — <c>q</c>: guruh, yo'nalish, fakultet yoki tyutor ismi.</summary>
+/// <summary><c>GET /api/admin/groups?q&amp;page&amp;pageSize</c> — <c>q</c>: guruh, yo'nalish, fakultet yoki tyutor ismi.
+/// Global ro'yxat — yo'nalish bo'yicha filtrlanmaydi.</summary>
 public sealed record GetGroupsQuery : PagedQuery, IRequest<Paged<GroupRow>>;
 
 internal sealed class GetGroupsQueryHandler(IApplicationDbContext db, IClock clock)
     : IRequestHandler<GetGroupsQuery, Paged<GroupRow>>
 {
-    public async Task<Paged<GroupRow>> Handle(GetGroupsQuery request, CancellationToken cancellationToken)
+    public Task<Paged<GroupRow>> Handle(GetGroupsQuery request, CancellationToken cancellationToken)
+        => GroupRowQueries.LoadPagedAsync(db, clock, directionId: null, request, cancellationToken);
+}
+
+/// <summary><c>GET /api/admin/groups?q&amp;page&amp;pageSize</c> va <c>GET /api/admin/directions/{id}/groups</c>
+/// bir xil qator shaklini (<see cref="GroupRow"/>) qaytaradi — hisoblash mantig'i shu yerda, ikkalasida takrorlanmasin.</summary>
+internal static class GroupRowQueries
+{
+    public static async Task<Paged<GroupRow>> LoadPagedAsync(
+        IApplicationDbContext db, IClock clock, Guid? directionId, PagedQuery request, CancellationToken cancellationToken)
     {
         var groups = from g in db.StudentGroups.AsNoTracking()
                      join d in db.Directions on g.DirectionId equals d.Id
-                     join f in db.Faculties on d.FacultyId equals f.Id
+                     join dept in db.Departments on d.DepartmentId equals dept.Id
+                     join f in db.Faculties on dept.FacultyId equals f.Id
                      select new { Group = g, Direction = d, Faculty = f };
+
+        if (directionId is { } id)
+            groups = groups.Where(x => x.Direction.Id == id);
 
         if (request.Q is { } q)
         {
@@ -58,6 +73,7 @@ internal sealed class GetGroupsQueryHandler(IApplicationDbContext db, IClock clo
                 x.Group.Id,
                 x.Group.Name,
                 x.Group.Course,
+                x.Group.IsActive,
                 Direction = x.Direction.Name,
                 Faculty = x.Faculty.Name,
                 FacultyCode = x.Faculty.Code,
@@ -120,7 +136,8 @@ internal sealed class GetGroupsQueryHandler(IApplicationDbContext db, IClock clo
                 g.TutorId,
                 g.TutorId is { } tutorId ? tutorNames.GetValueOrDefault(tutorId) : null,
                 g.Students, pct,
-                practice is null ? null : new GroupPeriodDto(practice.PeriodId, practice.PeriodName, practice.Status, practice.StartDate, practice.EndDate));
+                practice is null ? null : new GroupPeriodDto(practice.PeriodId, practice.PeriodName, practice.Status, practice.StartDate, practice.EndDate),
+                g.IsActive);
         }).ToList();
 
         return new Paged<GroupRow>(rows, page.Page, page.PageSize, page.Total);

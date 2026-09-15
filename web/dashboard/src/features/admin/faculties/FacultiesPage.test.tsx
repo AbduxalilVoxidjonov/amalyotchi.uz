@@ -38,6 +38,15 @@ describe('FacultiesPage', () => {
     expect(screen.getByText('1–1 / 1')).toBeInTheDocument();
   });
 
+  it('fakultet nomi — kafedralarga kiradigan havola', async () => {
+    renderWithProviders(<FacultiesPage />);
+    await screen.findByText('Axborot texnologiyalari');
+    expect(screen.getByRole('link', { name: 'Axborot texnologiyalari' })).toHaveAttribute(
+      'href',
+      '/admin/faculties/f1',
+    );
+  });
+
   it("bo'sh javob → EmptyState", async () => {
     server.use(
       http.get(FACULTIES_ENDPOINT, () =>

@@ -31,7 +31,7 @@ public sealed class EntityGraphTests(ApiFixture fixture)
             return y;
         });
 
-        Guid facultyId = Guid.Empty, directionId = Guid.Empty, groupId = Guid.Empty;
+        Guid facultyId = Guid.Empty, departmentId = Guid.Empty, directionId = Guid.Empty, groupId = Guid.Empty;
         var act = () => Factory.WithDbAsync(async db =>
         {
             var faculty = Faculty.Create($"Fakultet {suffix}", $"F{suffix}");
@@ -39,11 +39,13 @@ public sealed class EntityGraphTests(ApiFixture fixture)
             await db.SaveChangesAsync();
 
             // Kuzatilayotgan (tracked) fakultetga navigatsiya orqali yangi entity'lar qo'shiladi — Add chaqirilmaydi.
-            var direction = faculty.AddDirection("Dasturiy injiniring", $"D{suffix}");
+            var department = faculty.AddDepartment("Dasturiy injiniring kafedrasi", $"K{suffix}");
+            var direction = department.AddDirection("Dasturiy injiniring", $"D{suffix}");
             var group = direction.AddGroup("412-22", 3, year.Id);
             await db.SaveChangesAsync();
 
             facultyId = faculty.Id;
+            departmentId = department.Id;
             directionId = direction.Id;
             groupId = group.Id;
         });
@@ -52,7 +54,8 @@ public sealed class EntityGraphTests(ApiFixture fixture)
 
         await Factory.WithDbAsync(async db =>
         {
-            (await db.Directions.AnyAsync(d => d.Id == directionId && d.FacultyId == facultyId)).Should().BeTrue();
+            (await db.Departments.AnyAsync(d => d.Id == departmentId && d.FacultyId == facultyId)).Should().BeTrue();
+            (await db.Directions.AnyAsync(d => d.Id == directionId && d.DepartmentId == departmentId)).Should().BeTrue();
             (await db.StudentGroups.AnyAsync(g => g.Id == groupId && g.DirectionId == directionId)).Should().BeTrue();
         });
     }

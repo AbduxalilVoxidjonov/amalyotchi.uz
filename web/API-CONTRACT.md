@@ -320,7 +320,120 @@ Body `{ isActive: boolean }`. Response 200 `FacultyDto`. Xatolar: **404**.
 Xatolar: **404**; **409** — fakultetga guruh/tyutor/talaba biriktirilgan (`detail`: "Fakultetga guruhlar, tyutorlar
 yoki talabalar biriktirilgan — avval ularni boshqa fakultetga ko'chiring.").
 
+#### GET `/api/admin/faculties/{id}` · 200
+
+Response `FacultyDto` (breadcrumb uchun — `FacultiesPage` ichidagi ierarxiya sahifalari). **404** (`detail`:
+"Fakultet topilmadi.").
+
+---
+
+### 2.3.1 Fakultet ierarxiyasi — Kafedra → Yo'nalish → Guruh
+
+> ⚠️ **Status:** frontend shu kontraktga (`scratchpad/hierarchy-contract.md`, P52) qarab qurilgan; backend
+> tomoni parallel agent tomonidan amalga oshirilmoqda — bu bo'lim hali `src/Amaliyotchi.*` kodida to'liq
+> tasdiqlanmagan bo'lishi mumkin. Barcha endpoint'lar `AdminOnly`. O'chirish qoidasi — har darajada bir xil:
+> o'chirilmagan bolasi bo'lsa **409**, aks holda soft-delete **204**. Kod takrori — ota ichida, case-insensitive,
+> faol yozuvlar orasida → **409**.
+
+```ts
+interface DepartmentRow {
+  id: string;
+  name: string;
+  code: string;
+  isActive: boolean;
+  directions: number;
+  groups: number;
+  students: number;
+}
+interface DepartmentDto {
+  id: string;
+  facultyId: string;
+  facultyName: string;
+  name: string;
+  code: string;
+  isActive: boolean;
+}
+interface DirectionRow {
+  id: string;
+  name: string;
+  code: string;
+  isActive: boolean;
+  groups: number;
+  students: number;
+}
+interface DirectionDto {
+  id: string;
+  departmentId: string;
+  departmentName: string;
+  facultyId: string;
+  facultyName: string;
+  name: string;
+  code: string;
+  isActive: boolean;
+}
+interface GroupDto {
+  id: string;
+  directionId: string;
+  name: string;
+  course: number;
+  isActive: boolean;
+  academicYear: string; // faol `AcademicYear` — "2026-2027"
+}
+```
+
+#### GET/POST `/api/admin/faculties/{facultyId}/departments` — `q`: nom yoki kod
+
+GET → `Paged<DepartmentRow>`. POST body `{ name, code }` (validatsiya — pastda) → 201 `DepartmentDto`. 400
+`errors.Name`/`errors.Code`; 404 (`facultyId` topilmasa, `detail`: "Fakultet topilmadi."); 409 — kod takror
+(`detail`: "'{CODE}' kodli kafedra bu fakultetda allaqachon mavjud.").
+
+#### GET/PUT `/api/admin/departments/{id}` · PATCH `.../status` · DELETE
+
+GET/PUT → `DepartmentDto` (PUT body — POST bilan bir xil). PATCH body `{ isActive }` → 200 `DepartmentDto`. DELETE
+→ 204. Xatolar: 404 (`detail`: "Kafedra topilmadi."); PUT 409 — kod takror (yuqoridagi kabi); DELETE 409 — kafedrada
+o'chirilmagan yo'nalish bor (`detail`: "Kafedrada yo'nalishlar bor — avval ularni o'chiring.").
+
+#### GET/POST `/api/admin/departments/{departmentId}/directions` — `q`: nom yoki kod
+
+GET → `Paged<DirectionRow>`. POST body `{ name, code }` → 201 `DirectionDto`. 400 `errors.Name`/`errors.Code`; 404
+(`departmentId` topilmasa, `detail`: "Kafedra topilmadi."); 409 — kod takror (`detail`: "'{CODE}' kodli yo'nalish bu
+kafedrada allaqachon mavjud.").
+
+#### GET/PUT `/api/admin/directions/{id}` · PATCH `.../status` · DELETE
+
+GET/PUT → `DirectionDto`. PATCH `{ isActive }` → 200 `DirectionDto`. DELETE → 204. Xatolar: 404 (`detail`:
+"Yo'nalish topilmadi."); PUT 409 — kod takror; DELETE 409 — yo'nalishda o'chirilmagan guruh bor (`detail`:
+"Yo'nalishda guruhlar bor — avval ularni o'chiring.").
+
+#### GET/POST `/api/admin/directions/{directionId}/groups` — `q`: guruh nomi, tyutor ismi
+
+GET → `Paged<GroupRow>` (pastdagi §2.3.2 shakli bilan bir xil, endi `+isActive`). POST body `{ name, course }` → 201
+`GroupDto`. Validatsiya: `name` trim 2–20 `^[A-Za-z0-9-]+$` ("412-22" uslubida); `course` int 1–6. 400
+`errors.Name`/`errors.Course`. 404 (`directionId` topilmasa, `detail`: "Yo'nalish topilmadi."). 409 — nom takror
+(`detail`: "'{NAME}' guruhi bu yo'nalishda allaqachon mavjud.") **yoki** faol `AcademicYear` yo'q (`detail`: "Faol
+o'quv yili yo'q — avval o'quv yilini faollashtiring."). `academicYear` body'da yuborilmaydi — faol o'quv yildan
+olinadi.
+
+#### GET/PUT `/api/admin/groups/{id}` · PATCH `.../status` · DELETE
+
+GET/PUT → `GroupDto` (PUT body — POST bilan bir xil, `{ name, course }`). PATCH `{ isActive }` → 200 `GroupDto`.
+DELETE → 204. Xatolar: 404 (`detail`: "Guruh topilmadi."); PUT 409 — nom takror; DELETE 409 — guruhda o'chirilmagan
+talaba (`StudentProfile.StudentGroupId`) yoki faol `TutorAssignment` bor (`detail`: "Guruhda talabalar yoki
+biriktirilgan tyutor bor — avval ularni ko'chiring.").
+
+Frontend marshrutlari: `/admin/faculties/:facultyId` (kafedralar) → `.../departments/:departmentId`
+(yo'nalishlar) → `.../directions/:directionId` (guruhlar). Breadcrumb — har sahifa faqat o'z darajasining
+`GET .../{id}` chaqiradi (ota nomlari DTO ichida keladi: `facultyName`, `departmentName`).
+
+---
+
+### 2.3.2 Global guruhlar ro'yxati
+
 #### GET `/api/admin/groups` — `q`: guruh nomi, yo'nalish, fakultet nomi/kodi, tyutor ismi
+
+> ℹ️ **Frontend'da ishlatilmaydi** (P52) — sidebar'dagi global "Guruhlar" sahifasi olib tashlandi, guruhlar endi
+> faqat ierarxiya ichida (`.../directions/{id}/groups`, §2.3.1) ko'rinadi. Endpoint backendda boshqa
+> integratsiyalar (masalan hisobotlar) uchun qoladi.
 
 ```ts
 interface GroupRow {
@@ -341,6 +454,7 @@ interface GroupRow {
     startDate: string;
     endDate: string;
   } | null;
+  isActive: boolean; // P52 qo'shildi — CRUD hierarchy
 }
 ```
 

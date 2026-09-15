@@ -33,5 +33,26 @@ public enum AuditAction
     FacultyUpdated = 23,
     FacultyDeleted = 24,
     FacultyActivated = 25,
-    FacultyDeactivated = 26
+    FacultyDeactivated = 26,
+
+    /// <summary>Admin kafedra yaratdi/tahrirladi/o'chirdi yoki faol holatini o'zgartirdi.</summary>
+    DepartmentCreated = 27,
+    DepartmentUpdated = 28,
+    DepartmentDeleted = 29,
+    DepartmentActivated = 30,
+    DepartmentDeactivated = 31,
+
+    /// <summary>Admin yo'nalish yaratdi/tahrirladi/o'chirdi yoki faol holatini o'zgartirdi.</summary>
+    DirectionCreated = 32,
+    DirectionUpdated = 33,
+    DirectionDeleted = 34,
+    DirectionActivated = 35,
+    DirectionDeactivated = 36,
+
+    /// <summary>Admin guruh yaratdi/tahrirladi/o'chirdi yoki faol holatini o'zgartirdi.</summary>
+    GroupCreated = 37,
+    GroupUpdated = 38,
+    GroupDeleted = 39,
+    GroupActivated = 40,
+    GroupDeactivated = 41
 }

@@ -7,6 +7,7 @@
 export * from '@amaliyotchi/shared/ui';
 
 export * from './alert';
+export * from './breadcrumb';
 export * from './chip';
 export * from './data-table';
 export * from './empty-state';

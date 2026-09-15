@@ -99,6 +99,13 @@ export const facultiesHandlers: HttpHandler[] = [
     HttpResponse.json(paginateMock(request.url, state, (f) => [f.name, f.code])),
   ),
 
+  http.get(`${FACULTIES_ENDPOINT}/:id`, ({ params }) => {
+    const id = String(params['id']);
+    const existing = state.find((f) => f.id === id);
+    if (!existing) return problemResponse(404, 'Topilmadi', 'Fakultet topilmadi.');
+    return HttpResponse.json(toDto(existing));
+  }),
+
   http.post(FACULTIES_ENDPOINT, async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as Partial<FacultyInput>;
     const errors = validateInput(body);

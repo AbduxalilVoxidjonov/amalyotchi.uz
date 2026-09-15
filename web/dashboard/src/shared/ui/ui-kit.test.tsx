@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import {
   Badge,
+  Breadcrumb,
   Button,
   ConfirmDialog,
   DataTable,
@@ -276,5 +277,34 @@ describe('SidebarNav', () => {
     expect(screen.getByRole('link', { name: /Bugun/ })).not.toHaveAttribute('aria-current');
     expect(screen.getByText('12')).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Asosiy' })).toBeInTheDocument();
+  });
+});
+
+describe('Breadcrumb', () => {
+  it('nav aria-label="Yo\'l", oraliq elementlar havola, oxirgisi aria-current="page" va havola emas', () => {
+    render(
+      <MemoryRouter>
+        <Breadcrumb
+          items={[
+            { label: 'Fakultetlar', to: '/admin/faculties' },
+            { label: 'Axborot texnologiyalari', to: '/admin/faculties/f1' },
+            { label: 'Kompyuter injiniringi kafedrasi' },
+          ]}
+        />
+      </MemoryRouter>,
+    );
+    const nav = screen.getByRole('navigation', { name: "Yo'l" });
+    expect(nav).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Fakultetlar' })).toHaveAttribute(
+      'href',
+      '/admin/faculties',
+    );
+    expect(screen.getByRole('link', { name: 'Axborot texnologiyalari' })).toHaveAttribute(
+      'href',
+      '/admin/faculties/f1',
+    );
+    const current = screen.getByText('Kompyuter injiniringi kafedrasi');
+    expect(current).toHaveAttribute('aria-current', 'page');
+    expect(current.tagName).not.toBe('A');
   });
 });

@@ -2,8 +2,10 @@ import type { HttpHandler } from 'msw';
 import { auditHandlers } from './audit/mocks';
 import { companiesHandlers } from './companies/mocks';
 import { dashboardHandlers } from './dashboard/mocks';
+import { departmentsHandlers } from './faculties/departments/mocks';
+import { directionsHandlers } from './faculties/directions/mocks';
+import { groupsHandlers } from './faculties/groups/mocks';
 import { facultiesHandlers } from './faculties/mocks';
-import { groupsHandlers } from './groups/mocks';
 import { settingsHandlers } from './settings/mocks';
 import { studentsHandlers } from './students/mocks';
 import { tutorsHandlers } from './tutors/mocks';
@@ -15,6 +17,8 @@ import { tutorsHandlers } from './tutors/mocks';
 export const adminHandlers: HttpHandler[] = [
   ...dashboardHandlers,
   ...facultiesHandlers,
+  ...departmentsHandlers,
+  ...directionsHandlers,
   ...groupsHandlers,
   ...tutorsHandlers,
   ...studentsHandlers,

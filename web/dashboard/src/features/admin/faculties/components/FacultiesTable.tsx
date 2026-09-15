@@ -1,10 +1,17 @@
 import { Badge, Button, ProgressBar, type DataTableColumn } from '@/shared/ui';
 import { AdminTable, type TableStateProps } from '../../components/AdminTable';
+import { RowLink } from '../../components/RowLink';
 import { FACULTY_STATUS_LABEL, type Faculty } from '../types';
 
-/** SPEC §9.3 ustunlari (cols aynan) + `isActive` holat badge'i. */
+/** SPEC §9.3 ustunlari (cols aynan) + `isActive` holat badge'i. Nom — kafedralarga kiradigan havola. */
 const COLUMNS: DataTableColumn<Faculty>[] = [
-  { key: 'name', header: 'Fakultet', width: 'minmax(200px,2fr)', strong: true },
+  {
+    key: 'name',
+    header: 'Fakultet',
+    width: 'minmax(200px,2fr)',
+    strong: true,
+    render: (r) => <RowLink to={`/admin/faculties/${r.id}`}>{r.name}</RowLink>,
+  },
   { key: 'directions', header: "Yo'nalish", width: 'minmax(100px,.9fr)', mono: true },
   { key: 'groups', header: 'Guruh', width: 'minmax(80px,.8fr)', mono: true },
   { key: 'students', header: 'Talaba', width: 'minmax(90px,.9fr)', mono: true },

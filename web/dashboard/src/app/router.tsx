@@ -17,7 +17,15 @@ import { AppShell } from './layout/AppShell';
 const LoginPage = lazy(() => import('@/features/auth/LoginPage'));
 const AdminDashboardPage = lazy(() => import('@/features/admin/dashboard/AdminDashboardPage'));
 const FacultiesPage = lazy(() => import('@/features/admin/faculties/FacultiesPage'));
-const GroupsPage = lazy(() => import('@/features/admin/groups/GroupsPage'));
+const FacultyDepartmentsPage = lazy(
+  () => import('@/features/admin/faculties/departments/FacultyDepartmentsPage'),
+);
+const DepartmentDirectionsPage = lazy(
+  () => import('@/features/admin/faculties/directions/DepartmentDirectionsPage'),
+);
+const DirectionGroupsPage = lazy(
+  () => import('@/features/admin/faculties/groups/DirectionGroupsPage'),
+);
 const TutorsPage = lazy(() => import('@/features/admin/tutors/TutorsPage'));
 const StudentsPage = lazy(() => import('@/features/admin/students/StudentsPage'));
 const CompaniesPage = lazy(() => import('@/features/admin/companies/CompaniesPage'));
@@ -62,7 +70,15 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <AdminDashboardPage /> },
           { path: 'faculties', element: <FacultiesPage /> },
-          { path: 'groups', element: <GroupsPage /> },
+          { path: 'faculties/:facultyId', element: <FacultyDepartmentsPage /> },
+          {
+            path: 'faculties/:facultyId/departments/:departmentId',
+            element: <DepartmentDirectionsPage />,
+          },
+          {
+            path: 'faculties/:facultyId/departments/:departmentId/directions/:directionId',
+            element: <DirectionGroupsPage />,
+          },
           { path: 'tutors', element: <TutorsPage /> },
           { path: 'students', element: <StudentsPage /> },
           { path: 'companies', element: <CompaniesPage /> },

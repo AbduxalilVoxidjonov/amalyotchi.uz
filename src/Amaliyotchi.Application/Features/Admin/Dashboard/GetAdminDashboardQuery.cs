@@ -203,7 +203,8 @@ internal sealed class GetAdminDashboardQueryHandler(IApplicationDbContext db, IC
         var studentsByFaculty = await (from p in db.StudentProfiles.AsNoTracking()
                                        join g in db.StudentGroups on p.StudentGroupId equals g.Id
                                        join d in db.Directions on g.DirectionId equals d.Id
-                                       group p by d.FacultyId into grp
+                                       join dept in db.Departments on d.DepartmentId equals dept.Id
+                                       group p by dept.FacultyId into grp
                                        select new { FacultyId = grp.Key, Count = grp.Count() })
             .ToDictionaryAsync(x => x.FacultyId, x => x.Count, cancellationToken);
 
@@ -217,8 +218,9 @@ internal sealed class GetAdminDashboardQueryHandler(IApplicationDbContext db, IC
             expectedByFaculty = await (from p in db.StudentProfiles.AsNoTracking()
                                        join g in db.StudentGroups on p.StudentGroupId equals g.Id
                                        join d in db.Directions on g.DirectionId equals d.Id
+                                       join dept in db.Departments on d.DepartmentId equals dept.Id
                                        where expectedGroups.Contains(p.StudentGroupId)
-                                       group p by d.FacultyId into grp
+                                       group p by dept.FacultyId into grp
                                        select new { FacultyId = grp.Key, Count = grp.Count() })
                 .ToDictionaryAsync(x => x.FacultyId, x => x.Count, cancellationToken);
 
@@ -226,10 +228,11 @@ internal sealed class GetAdminDashboardQueryHandler(IApplicationDbContext db, IC
                                        join p in db.StudentProfiles on a.StudentUserId equals p.UserId
                                        join g in db.StudentGroups on p.StudentGroupId equals g.Id
                                        join d in db.Directions on g.DirectionId equals d.Id
+                                       join dept in db.Departments on d.DepartmentId equals dept.Id
                                        where a.Date == today
                                              && (a.Status == AttendanceStatus.Present || a.Status == AttendanceStatus.Late)
                                              && expectedGroups.Contains(p.StudentGroupId)
-                                       group a by d.FacultyId into grp
+                                       group a by dept.FacultyId into grp
                                        select new { FacultyId = grp.Key, Count = grp.Count() })
                 .ToDictionaryAsync(x => x.FacultyId, x => x.Count, cancellationToken);
         }

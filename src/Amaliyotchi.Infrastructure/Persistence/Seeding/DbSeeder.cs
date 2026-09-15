@@ -1,6 +1,8 @@
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Domain.Identity;
+using Amaliyotchi.Domain.Organization;
 using Amaliyotchi.Domain.Settings;
 using Amaliyotchi.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +13,7 @@ using Microsoft.Extensions.Options;
 namespace Amaliyotchi.Infrastructure.Persistence.Seeding;
 
 /// <summary>Har startup'da ishlaydigan idempotent seed: sozlama default'lari (yo'q kalitlar),
-/// birinchi admin (admin bo'lmasa), O'zbekiston bayramlari (bo'sh bo'lsa).
+/// birinchi admin (admin bo'lmasa), O'zbekiston bayramlari (bo'sh bo'lsa), faol o'quv yili (yo'q bo'lsa).
 /// Hujjat shablonlari — bo'sh (admin yuklaydi).</summary>
 public sealed class DbSeeder(
     AppDbContext db,
@@ -41,6 +43,7 @@ public sealed class DbSeeder(
         changed |= await SeedSettingsAsync(now, cancellationToken);
         changed |= await SeedAdminAsync(cancellationToken);
         changed |= await SeedHolidaysAsync(cancellationToken);
+        changed |= await SeedAcademicYearAsync(cancellationToken);
 
         if (changed)
             await db.SaveChangesAsync(cancellationToken);
@@ -88,6 +91,29 @@ public sealed class DbSeeder(
             db.Holidays.Add(Holiday.Create(new DateOnly(2000, month, day), name, isRecurring: true));
 
         logger.LogInformation("Seed: {Count} ta takrorlanadigan bayram qo'shildi", RecurringHolidays.Length);
+        return true;
+    }
+
+    /// <summary>Faol o'quv yili yo'q bo'lsa — joriy sanaga qarab (sentyabr–iyun sikli) "YYYY-YYYY" yaratib
+    /// (yoki avval yaratilgan, arxivlangan yozuv bo'lsa — o'shani) faollashtiradi. Guruh yaratish shu yilga tayanadi.</summary>
+    private async Task<bool> SeedAcademicYearAsync(CancellationToken cancellationToken)
+    {
+        if (await db.AcademicYears.AnyAsync(y => y.IsActive, cancellationToken))
+            return false;
+
+        var today = clock.LocalToday();
+        var startYear = today.Month >= 9 ? today.Year : today.Year - 1;
+        var name = $"{startYear}-{startYear + 1}";
+
+        var year = await db.AcademicYears.FirstOrDefaultAsync(y => y.Name == name, cancellationToken);
+        if (year is null)
+        {
+            year = AcademicYear.Create(name, new DateOnly(startYear, 9, 1), new DateOnly(startYear + 1, 6, 30));
+            db.AcademicYears.Add(year);
+        }
+
+        year.Activate();
+        logger.LogInformation("Seed: faol o'quv yili {Name} faollashtirildi", name);
         return true;
     }
 

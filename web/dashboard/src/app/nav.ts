@@ -14,7 +14,6 @@ export interface NavBadges {
 /** SPEC-NAV §2.1 — badge'lar dizayndagi mock qiymatlar. */
 export const ADMIN_NAV_BADGES: NavBadges = {
   '/admin/faculties': 11,
-  '/admin/groups': 47,
   '/admin/tutors': 18,
   '/admin/students': 1284,
   '/admin/companies': 412,
@@ -32,7 +31,6 @@ export const TUTOR_NAV_BADGES: NavBadges = {
 const ADMIN_NAV: readonly SidebarNavItem[] = [
   { label: 'Dashboard', to: '/admin', end: true },
   { label: 'Fakultetlar', to: '/admin/faculties' },
-  { label: 'Guruhlar', to: '/admin/groups' },
   { label: 'Tyutorlar', to: '/admin/tutors' },
   { label: 'Talabalar', to: '/admin/students' },
   { label: 'Korxonalar', to: '/admin/companies' },
