@@ -137,6 +137,12 @@ public sealed class DemoDataSeeder(AppDbContext db, IPasswordHasher passwordHash
             TutorAssignment.Create(tutor.Id, group413.Id, year.Id),
             TutorAssignment.Create(tutorEconomics.Id, group221.Id, year.Id),
             TutorAssignment.Create(tutorConstruction.Id, group318.Id, year.Id));
+        // Ko'lamlar (guruh darajasi) — biriktiruvlarning "nima tanlangan" manbai; ikkalasi mos bo'lishi shart.
+        db.TutorScopes.AddRange(
+            TutorScope.Create(tutor.Id, TutorScopeLevel.Group, it.Id, itSoftware.Id, group412.DirectionId, group412.Id),
+            TutorScope.Create(tutor.Id, TutorScopeLevel.Group, it.Id, itComputer.Id, group413.DirectionId, group413.Id),
+            TutorScope.Create(tutorEconomics.Id, TutorScopeLevel.Group, economics.Id, economicsBanking.Id, group221.DirectionId, group221.Id),
+            TutorScope.Create(tutorConstruction.Id, TutorScopeLevel.Group, construction.Id, constructionEngineering.Id, group318.DirectionId, group318.Id));
 
         // 3. Korxonalar (Toshkent)
         var companies = new[]

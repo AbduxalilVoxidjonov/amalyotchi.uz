@@ -1,4 +1,4 @@
-/* Tyutor detail: sarlavha kartasi + guruhlar jadvali */
+/* Tyutor detail: sarlavha kartasi + ko'lam jadvali + yig'iladigan qamrab olingan guruhlar */
 .page {
   display: flex;
   flex-direction: column;
@@ -39,4 +39,35 @@
   border: 0;
   background: transparent;
   padding: 0;
+}
+/* Ko'lam jadvali: nom + ostida kichik yo'l */
+.scopeName {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.scopeTitle {
+  color: var(--color-text);
+  font-weight: var(--fw-semibold);
+}
+.scopeTitle[data-level='group'] {
+  font-family: var(--font-mono);
+}
+.scopePath {
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}
+/* Ikkilamchi bo'lim — yig'iladigan */
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.summary {
+  cursor: pointer;
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+  list-style: revert;
 }

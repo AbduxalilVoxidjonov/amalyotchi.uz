@@ -412,14 +412,16 @@ GET → `Paged<GroupRow>` (pastdagi §2.3.2 shakli bilan bir xil, endi `+isActiv
 `errors.Name`/`errors.Course`. 404 (`directionId` topilmasa, `detail`: "Yo'nalish topilmadi."). 409 — nom takror
 (`detail`: "'{NAME}' guruhi bu yo'nalishda allaqachon mavjud.") **yoki** faol `AcademicYear` yo'q (`detail`: "Faol
 o'quv yili yo'q — avval o'quv yilini faollashtiring."). `academicYear` body'da yuborilmaydi — faol o'quv yildan
-olinadi.
+olinadi. Yo'nalishni qamrab oluvchi faol tyutor ko'lami (fakultet/kafedra/yo'nalish, §2.3.3) bo'lsa yangi guruh o'sha
+tyutorga avtomatik biriktiriladi.
 
 #### GET/PUT `/api/admin/groups/{id}` · PATCH `.../status` · DELETE
 
 GET/PUT → `GroupDto` (PUT body — POST bilan bir xil, `{ name, course }`). PATCH `{ isActive }` → 200 `GroupDto`.
 DELETE → 204. Xatolar: 404 (`detail`: "Guruh topilmadi."); PUT 409 — nom takror; DELETE 409 — guruhda o'chirilmagan
-talaba (`StudentProfile.StudentGroupId`) yoki faol `TutorAssignment` bor (`detail`: "Guruhda talabalar yoki
-biriktirilgan tyutor bor — avval ularni ko'chiring.").
+talaba (`StudentProfile.StudentGroupId`) yoki aynan shu **guruh darajasidagi** faol tyutor ko'lami bor (`detail`: "Guruhda
+talabalar yoki biriktirilgan tyutor bor — avval ularni ko'chiring."). Ota ko'lamdan (fakultet/kafedra/yo'nalish) kelib
+chiqqan biriktiruv esa guruh bilan birga faolsizlantiriladi — 204.
 
 Frontend marshrutlari: `/admin/faculties/:facultyId` (kafedralar) → `.../departments/:departmentId`
 (yo'nalishlar) → `.../directions/:directionId` (guruhlar). Breadcrumb — har sahifa faqat o'z darajasining
@@ -461,8 +463,14 @@ interface GroupRow {
 ### 2.3.3 Tyutorlar — `AdminTutorsController` (`/api/admin/tutors`)
 
 Hammasi `AdminOnly`. O'chirish (DELETE) endpoint'i **yo'q** — tyutor faqat faol emas qilinadi (`PATCH .../status`).
-Semantika: **bir guruhga bir vaqtda bitta faol tyutor** (`TutorAssignment.IsActive`); biriktiruv tarixi saqlanadi
-(ajratilganda yozuv o'chirilmaydi, faolsizlantiriladi).
+Semantika: tyutor **ierarxik ko'lam** bilan biriktiriladi (`TutorScope`) — fakultet, kafedra, yo'nalish yoki guruh
+darajasida, bir tyutorda bir nechta ko'lam bo'lishi mumkin (masalan 2 ta kafedra + 1 ta guruh). Ko'lam guruhlarga
+**materializatsiya** qilinadi (`TutorAssignment` — `groups`): fakultet → fakultetdagi barcha faol guruhlar, kafedra →
+undagi barcha yo'nalish/guruhlar, yo'nalish → undagi guruhlar, guruh → o'zi. Ko'lam ichida **keyin yaratilgan** guruh
+avtomatik qamrab olinadi. **Kesishmaslik qoidasi:** ikki xil tyutorning faol ko'lamlari kesishmaydi (teng, ota yoki
+bola — masalan A fakultetga, B shu fakultetdagi guruhga bo'lolmaydi) → 409. Bir tyutorning o'z tanlovlarida ota
+tanlangan bo'lsa bolalari jimgina tashlab yuboriladi. Tarix saqlanadi (ajratilganda ko'lam ham, biriktiruv ham
+o'chirilmaydi, faolsizlantiriladi).
 
 #### GET `/api/admin/tutors` — `q`: ism, telefon, fakultet kodi/nomi; `&facultyId=<guid>` (ixtiyoriy filtr)
 
@@ -501,7 +509,21 @@ interface TutorDetail {
   isActive: boolean;
   lastLoginAt: string | null /*ISO*/;
   createdAt: string /*ISO*/;
-  groups: TutorGroupDto[]; /*faqat FAOL biriktiruvlar; yo'nalish → guruh nomi bo'yicha*/
+  scopes: TutorScopeDto[]; /*admin tanlagan FAOL ko'lamlar; daraja → nom bo'yicha*/
+  groups: TutorGroupDto[]; /*ko'lamlardan materializatsiya qilingan FAOL biriktiruvlar; yo'nalish → guruh nomi bo'yicha*/
+}
+type TutorScopeLevel = 'faculty' | 'department' | 'direction' | 'group';
+interface TutorScopeDto {
+  id: string; /*TutorScope.Id*/
+  level: TutorScopeLevel;
+  facultyId: string; /*doim — tyutor fakulteti*/
+  departmentId: string | null; /*department/direction/group darajasida*/
+  directionId: string | null; /*direction/group darajasida*/
+  groupId: string | null; /*faqat group darajasida*/
+  name: string; /*tanlangan tugun nomi (fakultet/kafedra/yo'nalish nomi yoki guruh nomi)*/
+  path: string; /*ota tugunlar " › " bilan, tugunning o'zisiz: "Axborot texnologiyalari › Umumiy kafedra"; fakultetda ""*/
+  groups: number; /*qamrab olingan faol guruhlar soni*/
+  students: number; /*shu guruhlardagi talabalar*/
 }
 interface TutorGroupDto {
   assignmentId: string; /*TutorAssignment.Id*/
@@ -525,7 +547,7 @@ interface TutorGroupDto {
 | `password`  | string         | ha       | 8–128 belgi                                                                 |
 | `facultyId` | guid           | ha       | mavjud va faol fakultet                                                     |
 
-Response 201 `TutorDetail` (`groups: []`). Xatolar: 400 `errors.FullName`/`errors.HemisId`/`errors.Phone`/
+Response 201 `TutorDetail` (`scopes: []`, `groups: []`). Xatolar: 400 `errors.FullName`/`errors.HemisId`/`errors.Phone`/
 `errors.Password`/`errors.FacultyId`; **404** (`detail`: "Fakultet topilmadi."); **409** — HEMIS ID band (`detail`: "Bu
 HEMIS ID bilan foydalanuvchi mavjud."), telefon band (`detail`: "Bu telefon raqami bilan foydalanuvchi mavjud."),
 fakultet faol emas (`detail`: "Fakultet faol emas."). Yangi tyutor darhol `POST /api/auth/login` (hemisId + password)
@@ -535,14 +557,14 @@ bilan kira oladi.
 
 Body `{ fullName, phone?, facultyId }` (validatsiya — POST bilan bir xil; `hemisId` va parol bu yerdan
 o'zgartirilmaydi). Response 200 `TutorDetail`. Xatolar: 400; **404** (tyutor yoki yangi fakultet topilmadi); **409** —
-fakultet o'zgartirilmoqda-yu tyutorda faol biriktiruvlar bor (`detail`: "Tyutorga guruhlar biriktirilgan — avval ularni
-ajrating."), yangi fakultet faol emas, telefon band. Fakultet o'zgarmasa biriktiruvlarga tegilmaydi.
+fakultet o'zgartirilmoqda-yu tyutorda faol ko'lamlar bor (`detail`: "Tyutorga ko'lam biriktirilgan — avval uni
+ajrating."), yangi fakultet faol emas, telefon band. Fakultet o'zgarmasa ko'lam/biriktiruvlarga tegilmaydi.
 
 #### PATCH `/api/admin/tutors/{id}/status` · 204
 
 Body `{ isActive: boolean }`. `false` → hisob yopiladi **va barcha refresh tokenlari bekor qilinadi** (refresh → 403,
-login → 403 "Hisobingiz faol emas…"); `true` → qayta ochiladi. Guruh biriktiruvlariga tegilmaydi (faol emas tyutorning
-`groups` ro'yxati saqlanadi). Xatolar: **404**. Holat o'zgarmasa (allaqachon shunday) ham 204.
+login → 403 "Hisobingiz faol emas…"); `true` → qayta ochiladi. Ko'lam/biriktiruvlarga tegilmaydi (faol emas tyutorning
+`scopes`/`groups` ro'yxati saqlanadi). Xatolar: **404**. Holat o'zgarmasa (allaqachon shunday) ham 204.
 
 #### POST `/api/admin/tutors/{id}/password` · 204
 
@@ -550,40 +572,53 @@ Body `{ password: string }` (8–128 belgi, `errors.Password`). Yangi parol o'rn
 tokenlari bekor qilinadi** — eski sessiya refresh qila olmaydi (403), eski parol bilan login 403, yangisi bilan 200.
 Xatolar: 400; **404**.
 
-#### PUT `/api/admin/tutors/{id}/groups` · 200
+#### PUT `/api/admin/tutors/{id}/scopes` · 200
 
-Body `{ groupIds: string[] }` (takrorlar e'tiborsiz; `[]` → hammasi ajratiladi). Faol biriktiruvlar to'plamini
-**almashtiradi**: ro'yxatda bo'lmaganlar faolsizlantiriladi (yozuv qoladi), yangilari **faol `AcademicYear`** bilan
-yaratiladi, ilgari ajratilgan guruh qayta kelsa — o'sha yozuv qayta faollashadi (`assignmentId` o'zgarmaydi). Tyutor
-faol bo'lmasa ham ruxsat (bu ma'lumot, kirish emas). Response 200 `TutorDetail`.
+Body `{ scopes: { level: TutorScopeLevel; id: string }[] }` (takrorlar e'tiborsiz; `[]` → hammasi ajratiladi; `id` —
+shu darajadagi tugun: fakultet/kafedra/yo'nalish/guruh id'si; `faculty` darajasida `id` tyutorning o'z fakulteti
+bo'lishi shart). Faol ko'lamlar to'plamini **almashtiradi**: ro'yxatda bo'lmaganlar faolsizlantiriladi (yozuv qoladi),
+ilgari ajratilgan tugun qaytsa — o'sha yozuv qayta faollashadi (`scopes[].id` o'zgarmaydi), yangilari yaratiladi. So'ng
+guruh biriktiruvlari sinxronlanadi (`groups`): yangilari **faol `AcademicYear`** bilan yaratiladi, qaytganlari qayta
+faollashadi (`assignmentId` o'zgarmaydi), ortiqchalari faolsizlantiriladi. Ota tanlangan bo'lsa bolalari jimgina
+tashlanadi (masalan `[direction X, group X.1]` → faqat `direction X`). Tyutor faol bo'lmasa ham ruxsat. Response 200
+`TutorDetail`.
 
-Xatolar (birinchi uchragani): **404** tyutor (`detail`: "Tyutor topilmadi.") / guruh (`detail`: "Guruh topilmadi.");
-**400** `errors.GroupIds[i]` (bo'sh guid) yoki `DomainException` — guruh faol emas (`detail`: "Guruh faol emas: {nom}"),
-guruh tyutor fakultetiga tegishli emas (`detail`: "Guruh tyutor fakultetiga tegishli emas: {nom}"; zanjir
-Direction → Department → Faculty); **409** — guruh boshqa faol tyutorda (`detail`: "{guruh} guruhi {tyutor FISH}
-tyutoriga biriktirilgan."), yangi biriktiruv kerak-u faol o'quv yili yo'q (`detail`: "Faol o'quv yili yo'q."; faqat
-ajratish bo'lsa o'quv yili talab qilinmaydi).
+Xatolar (birinchi uchragani): **404** tyutor (`detail`: "Tyutor topilmadi."); **400** `errors.Scopes[i].Id` (bo'sh guid) /
+`errors.Scopes[i].Level` yoki `DomainException` — tugun topilmadi (`detail`: "{Daraja} topilmadi." — daraja: `Fakultet`/
+`Kafedra`/`Yo'nalish`/`Guruh`; o'chirilgan tugun ham "topilmadi"), faol emas (`detail`: "{Daraja} faol emas: {nom}"),
+tyutor fakultetiga tegishli emas (`detail`: "{Daraja} tyutor fakultetiga tegishli emas: {nom}"; zanjir
+Group → Direction → Department → Faculty); **409** — boshqa tyutorning faol ko'lami bilan kesishadi (`detail`:
+"{nom} ({daraja}) {tyutor FISH} tyutoriga biriktirilgan." — `nom`/`daraja` kesishgan **boshqa** tyutor ko'lamining nomi
+va darajasi kichik harf bilan: `fakultet`/`kafedra`/`yo'nalish`/`guruh`, masalan "412-22 (guruh) Nodira Saidova tyutoriga
+biriktirilgan."), yangi biriktiruv kerak-u faol o'quv yili yo'q (`detail`: "Faol o'quv yili yo'q."; faqat ajratish bo'lsa
+o'quv yili talab qilinmaydi). Xato bo'lsa hech narsa yozilmaydi.
 
-#### GET `/api/admin/tutors/{id}/available-groups` · 200
+#### GET `/api/admin/tutors/{id}/scope-tree` · 200
 
-Response `AvailableGroupRow[]` (sahifalanmaydi) — tyutor fakultetidagi barcha **faol** guruhlar, kafedra → yo'nalish →
-guruh nomi bo'yicha. **404** tyutor topilmasa.
+Response `TutorScopeTree` — tyutor fakultetining daraxti, faqat **faol** kafedra/yo'nalish/guruhlar, nom bo'yicha
+tartib (guruh: kurs, nom). **404** tyutor topilmasa.
 
 ```ts
-interface AvailableGroupRow {
-  id: string;
+interface TutorScopeTree {
+  id: string; /*fakultet*/
   name: string;
-  course: number;
-  directionName: string;
-  departmentName: string;
-  students: number;
-  tutorId: string | null; /*hozir faol biriktirilgan tyutor — shu tyutorning o'zi bo'lsa ham to'ldiriladi*/
+  code: string;
+  tutorId: string | null; /*AYNAN shu tugunda faol ko'lami bor tyutor — so'ralayotgan tyutorning o'zi ham; yo'q bo'lsa null*/
   tutorName: string | null;
+  departments: {
+    id: string; name: string; tutorId: string | null; tutorName: string | null;
+    directions: {
+      id: string; name: string; tutorId: string | null; tutorName: string | null;
+      groups: { id: string; name: string; course: number; students: number; tutorId: string | null; tutorName: string | null }[];
+    }[];
+  }[];
 }
 ```
 
-Biriktirish oynasi: `tutorId === null` → bo'sh; `tutorId === id` → shu tyutorniki (belgilangan); boshqa → band
-(tanlansa `PUT .../groups` 409 beradi — avval egasidan ajratish kerak).
+Biriktirish oynasi: `tutorId` faqat ko'lam **tanlangan tugunda** to'ldiriladi (ota ko'lam bolalarga "yoyilmaydi" —
+fakultet darajasida tanlangan bo'lsa `departments[].tutorId` null). `tutorId === id` → shu tyutorniki (belgilangan);
+boshqa → band; boshqa tyutorning tuguni ostidagi yoki ustidagi tugunni tanlash `PUT .../scopes` da 409 beradi — avval
+egasidan ajratish kerak.
 
 #### GET `/api/admin/students` — `q`: FISH, HEMIS ID, telefon, guruh
 
@@ -1232,9 +1267,10 @@ interface PortfolioDto {
 | `MapPointKind`                     | `ok` · `late` · `bad`                                                                                                                                                                                                                                                                                                                     | tutor map                                                                              |
 | `FacultyStatus`                    | `active` · `attention`                                                                                                                                                                                                                                                                                                                    | admin faculties                                                                        |
 | `TutorStatus`                      | `active` · `late`                                                                                                                                                                                                                                                                                                                         | admin tutors, dashboard                                                                |
+| `TutorScopeLevel`                  | `faculty` · `department` · `direction` · `group`                                                                                                                                                                                                                                                                                          | admin tutors `scopes[].level`, `PUT .../scopes` body                                   |
 | `AdminStudentStatus`               | `active` · `flagged` · `unlinked`                                                                                                                                                                                                                                                                                                         | admin students                                                                         |
 | `CompanyFlag`                      | `largeRadius` · `suspicious` · `null`                                                                                                                                                                                                                                                                                                     | admin companies                                                                        |
-| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorGroupsChanged` | admin audit `action`, `?action=`                                                       |
+| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorScopesChanged` | admin audit `action`, `?action=`                                                       |
 | `SettingType`                      | `int` · `bool` · `weekdays`                                                                                                                                                                                                                                                                                                               | settings `type`                                                                        |
 | `SettingKey` (string const)        | `geofenceRadius` · `lateTolerance` · `minGpsAccuracy` · `autoCheckout` · `workDays` · `dailyReportRequired` · `minReportLength` · `checkInWindow`                                                                                                                                                                                         | settings                                                                               |
 | `DocumentTemplateKind`             | `contract` · `referral` · `reference`                                                                                                                                                                                                                                                                                                     | settings templates                                                                     |

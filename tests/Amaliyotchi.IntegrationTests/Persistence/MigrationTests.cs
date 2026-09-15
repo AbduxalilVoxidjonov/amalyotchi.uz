@@ -1,3 +1,5 @@
+using Amaliyotchi.Domain.Students;
+using Amaliyotchi.Infrastructure.Persistence.Migrations;
 using Amaliyotchi.IntegrationTests.Infrastructure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -61,6 +63,38 @@ public sealed class MigrationTests(ApiFixture fixture)
     }
 
     [Fact]
+    public async Task TutorScopes_Backfill_FaolBiriktiruvdanGuruhKolami_Idempotent()
+    {
+        // Ko'lamsiz eski uslubdagi biriktiruvlar: faol va faolsizlantirilgan.
+        var groupA = await Factory.CreateGroupAsync();
+        var groupB = await Factory.CreateGroupAsync(groupA.FacultyId);
+        var tutor = await Factory.CreateAdminAsync("Backfill Tyutor"); // rol muhim emas — faqat users.id kerak
+        await Factory.WithDbAsync(async db =>
+        {
+            var active = TutorAssignment.Create(tutor.Id, groupA.GroupId, groupA.AcademicYearId);
+            var inactive = TutorAssignment.Create(tutor.Id, groupB.GroupId, groupB.AcademicYearId);
+            inactive.Deactivate();
+            db.TutorAssignments.AddRange(active, inactive);
+            await db.SaveChangesAsync();
+        });
+
+        await Factory.WithDbAsync(async db =>
+        {
+            await db.Database.ExecuteSqlRawAsync(TutorScopes.BackfillGroupScopesSql);
+            await db.Database.ExecuteSqlRawAsync(TutorScopes.BackfillGroupScopesSql); // ikkinchi marta — takror yaratmaydi
+
+            var scopes = await db.TutorScopes.Where(s => s.TutorUserId == tutor.Id).ToListAsync();
+            var scope = scopes.Should().ContainSingle("faqat faol biriktiruv ko'chiriladi, bir marta").Subject;
+            scope.Level.Should().Be(TutorScopeLevel.Group);
+            scope.FacultyId.Should().Be(groupA.FacultyId);
+            scope.DepartmentId.Should().Be(groupA.DepartmentId);
+            scope.DirectionId.Should().Be(groupA.DirectionId);
+            scope.StudentGroupId.Should().Be(groupA.GroupId);
+            scope.IsActive.Should().BeTrue();
+        });
+    }
+
+    [Fact]
     public async Task Nomlar_SnakeCase_VaPrefikslarButun()
     {
         await Factory.WithDbAsync(async db =>
@@ -69,7 +103,7 @@ public sealed class MigrationTests(ApiFixture fixture)
                 .SqlQueryRaw<string>("SELECT tablename AS \"Value\" FROM pg_tables WHERE schemaname = 'public'")
                 .ToListAsync();
 
-            tables.Should().Contain(["users", "student_profiles", "tutor_assignments", "companies", "practice_periods",
+            tables.Should().Contain(["users", "student_profiles", "tutor_assignments", "tutor_scopes", "companies", "practice_periods",
                 "practice_period_groups", "practice_applications", "daily_attendances", "attendance_events",
                 "diary_entries", "diary_attachments", "leave_requests", "practice_grades", "app_settings",
                 "holidays", "document_templates", "stored_files", "__migrations"]);

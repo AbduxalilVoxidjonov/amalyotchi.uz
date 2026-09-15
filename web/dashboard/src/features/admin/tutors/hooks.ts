@@ -3,7 +3,7 @@ import { facultiesApi } from '../faculties/api';
 import { adminKeys } from '../shared/keys';
 import type { ListParams } from '../shared/types';
 import { tutorsApi } from './api';
-import type { TutorCreateInput, TutorListParams, TutorUpdateInput } from './types';
+import type { TutorCreateInput, TutorListParams, TutorScopeInput, TutorUpdateInput } from './types';
 
 const FACULTY_OPTIONS_PARAMS: Required<ListParams> = { q: '', page: 1, pageSize: 100 };
 
@@ -15,7 +15,7 @@ export function useTutorsQuery(params: TutorListParams) {
   });
 }
 
-/** Bitta tyutor — `TutorDetailPage` (sarlavha kartasi + biriktirilgan guruhlar). */
+/** Bitta tyutor — `TutorDetailPage` (sarlavha kartasi + biriktirilgan ko'lam). */
 export function useTutorQuery(id: string) {
   return useQuery({
     queryKey: adminKeys.tutor(id),
@@ -23,17 +23,17 @@ export function useTutorQuery(id: string) {
   });
 }
 
-/** Tyutor fakultetidagi faol guruhlar — `GroupsPickerModal`. Faqat modal ochiq bo'lganda so'raladi. */
-export function useAvailableGroupsQuery(id: string, enabled: boolean) {
+/** Tyutor fakulteti daraxti (egalari bilan) — `ScopePickerModal`. Faqat modal ochiq bo'lganda so'raladi. */
+export function useTutorScopeTreeQuery(id: string, enabled: boolean) {
   return useQuery({
-    queryKey: adminKeys.tutorAvailableGroups(id),
-    queryFn: () => tutorsApi.availableGroups(id),
+    queryKey: adminKeys.tutorScopeTree(id),
+    queryFn: () => tutorsApi.scopeTree(id),
     enabled,
   });
 }
 
 /**
- * Ro'yxat (barcha `q`/fakultet/sahifa variantlari), detail (+ available-groups) va dashboard
+ * Ro'yxat (barcha `q`/fakultet/sahifa variantlari), detail (+ scope-tree) va dashboard
  * statistikasini yangilaydi. `id` berilmasa faqat ro'yxat/dashboard.
  */
 function useInvalidateTutors() {
@@ -84,12 +84,12 @@ export function useResetTutorPassword() {
   });
 }
 
-export function useSetTutorGroups() {
+export function useSetTutorScopes() {
   const invalidate = useInvalidateTutors();
   return useMutation({
-    mutationKey: ['admin', 'tutors', 'set-groups'],
-    mutationFn: ({ id, groupIds }: { id: string; groupIds: string[] }) =>
-      tutorsApi.setGroups(id, groupIds),
+    mutationKey: ['admin', 'tutors', 'set-scopes'],
+    mutationFn: ({ id, scopes }: { id: string; scopes: TutorScopeInput[] }) =>
+      tutorsApi.setScopes(id, scopes),
     onSuccess: (_data, { id }) => invalidate(id),
   });
 }

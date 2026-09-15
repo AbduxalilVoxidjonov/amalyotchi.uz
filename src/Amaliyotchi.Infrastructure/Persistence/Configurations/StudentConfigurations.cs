@@ -64,3 +64,44 @@ public sealed class TutorAssignmentConfiguration : IEntityTypeConfiguration<Tuto
         builder.HasIndex(x => x.StudentGroupId);
     }
 }
+
+public sealed class TutorScopeConfiguration : IEntityTypeConfiguration<TutorScope>
+{
+    public void Configure(EntityTypeBuilder<TutorScope> builder)
+    {
+        builder.ToTable("tutor_scopes");
+        builder.HasKey(x => x.Id);
+
+        builder.Property(x => x.Level).HasConversion<int>().IsRequired();
+        builder.Ignore(x => x.NodeId);
+
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(x => x.TutorUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Faculty>()
+            .WithMany()
+            .HasForeignKey(x => x.FacultyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Department>()
+            .WithMany()
+            .HasForeignKey(x => x.DepartmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Direction>()
+            .WithMany()
+            .HasForeignKey(x => x.DirectionId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<StudentGroup>()
+            .WithMany()
+            .HasForeignKey(x => x.StudentGroupId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(x => x.TutorUserId);
+        // Kesishmaslik tekshiruvi fakultet bo'yicha faol ko'lamlarni yuklaydi.
+        builder.HasIndex(x => x.FacultyId).HasFilter("is_deleted = false");
+    }
+}

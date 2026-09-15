@@ -9,14 +9,14 @@ namespace Amaliyotchi.Application.Features.Admin.Tutors;
 
 /// <summary><c>PUT /api/admin/tutors/{id}</c>: <c>{ fullName, phone?, facultyId }</c> → 200 <see cref="TutorDetail"/>.
 /// <see cref="Id"/> route'dan. Tyutor topilmasa → 404. Fakultet o'zgarsa: yangi fakultet topilmasa → 404, faol bo'lmasa → 409,
-/// tyutorda faol guruh biriktiruvlari bo'lsa → 409 (avval ajratish kerak — guruhlar eski fakultetda qoladi).
+/// tyutorda faol ko'lam biriktiruvlari bo'lsa → 409 (avval ajratish kerak — ko'lamlar eski fakultetda qoladi).
 /// Telefon boshqa faol hisobda bo'lsa → 409.</summary>
 public sealed record UpdateTutorCommand(Guid Id, string FullName, string? Phone, Guid FacultyId) : IRequest<TutorDetail>;
 
 internal sealed class UpdateTutorCommandHandler(IApplicationDbContext db, IAuditWriter audit)
     : IRequestHandler<UpdateTutorCommand, TutorDetail>
 {
-    public const string HasAssignmentsMessage = "Tyutorga guruhlar biriktirilgan — avval ularni ajrating.";
+    public const string HasScopesMessage = "Tyutorga ko'lam biriktirilgan — avval uni ajrating.";
 
     public async Task<TutorDetail> Handle(UpdateTutorCommand request, CancellationToken cancellationToken)
     {
@@ -32,10 +32,10 @@ internal sealed class UpdateTutorCommandHandler(IApplicationDbContext db, IAudit
             if (!faculty.IsActive)
                 throw new ConflictException(CreateTutorCommandHandler.FacultyInactiveMessage);
 
-            var hasAssignments = await db.TutorAssignments
-                .AnyAsync(a => a.TutorUserId == tutor.Id && a.IsActive, cancellationToken);
-            if (hasAssignments)
-                throw new ConflictException(HasAssignmentsMessage);
+            var hasScopes = await db.TutorScopes
+                .AnyAsync(s => s.TutorUserId == tutor.Id && s.IsActive, cancellationToken);
+            if (hasScopes)
+                throw new ConflictException(HasScopesMessage);
 
             tutor.AssignToFaculty(faculty.Id);
         }

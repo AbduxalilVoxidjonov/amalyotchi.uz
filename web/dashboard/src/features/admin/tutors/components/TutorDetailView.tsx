@@ -10,8 +10,35 @@ import {
   type DataTableColumn,
 } from '@/shared/ui';
 import { formatDateTime, formatPhone, formatRelative } from '../../shared/format';
-import type { TutorDetail, TutorGroup } from '../types';
+import { SCOPE_LEVEL_LABEL, type TutorDetail, type TutorGroup, type TutorScope } from '../types';
 import styles from './TutorDetailView.module.css';
+
+const SCOPE_COLUMNS: DataTableColumn<TutorScope>[] = [
+  {
+    key: 'level',
+    header: 'Daraja',
+    width: 'minmax(100px,.8fr)',
+    render: (r) => (
+      <Badge status={r.level === 'faculty' ? 'info' : 'neu'}>{SCOPE_LEVEL_LABEL[r.level]}</Badge>
+    ),
+  },
+  {
+    key: 'name',
+    header: 'Nomi',
+    width: 'minmax(220px,2.2fr)',
+    wrap: true,
+    render: (r) => (
+      <span className={styles.scopeName}>
+        <span className={styles.scopeTitle} data-level={r.level}>
+          {r.name}
+        </span>
+        {r.path && <span className={styles.scopePath}>{r.path}</span>}
+      </span>
+    ),
+  },
+  { key: 'groups', header: 'Guruhlar', width: 'minmax(90px,.7fr)', mono: true },
+  { key: 'students', header: 'Talabalar', width: 'minmax(90px,.7fr)', mono: true },
+];
 
 const GROUP_COLUMNS: DataTableColumn<TutorGroup>[] = [
   { key: 'groupName', header: 'Guruh', width: 'minmax(110px,1fr)', mono: true, strong: true },
@@ -40,17 +67,20 @@ export interface TutorDetailViewProps {
   onEdit: () => void;
   onResetPassword: () => void;
   onToggleStatus: () => void;
-  onEditGroups: () => void;
+  onEditScopes: () => void;
 }
 
-/** Tyutor detail: sarlavha kartasi (faktlar + amallar) va biriktirilgan guruhlar jadvali. Presentation. */
+/**
+ * Tyutor detail: sarlavha kartasi (faktlar + amallar), biriktirilgan ko'lam jadvali va ostida
+ * yig'iladigan "Qamrab olingan guruhlar" (ko'lamlardan yoyilgan samarali guruhlar). Presentation.
+ */
 export function TutorDetailView({
   tutor,
   notice,
   onEdit,
   onResetPassword,
   onToggleStatus,
-  onEditGroups,
+  onEditScopes,
 }: TutorDetailViewProps) {
   const students = tutor.groups.reduce((sum, g) => sum + g.students, 0);
   return (
@@ -110,21 +140,21 @@ export function TutorDetailView({
       </Card>
 
       <DataTable
-        aria-label="Biriktirilgan guruhlar"
-        columns={GROUP_COLUMNS}
-        rows={tutor.groups}
-        rowKey={(r) => r.assignmentId}
-        minWidth="620px"
+        aria-label="Biriktirilgan ko'lam"
+        columns={SCOPE_COLUMNS}
+        rows={tutor.scopes}
+        rowKey={(r) => r.id}
+        minWidth="560px"
         toolbar={
           <>
             <div>
-              <h2 className={styles.tableTitle}>Biriktirilgan guruhlar</h2>
+              <h2 className={styles.tableTitle}>Biriktirilgan ko'lam</h2>
               <p className={styles.tableSub}>
-                {tutor.groups.length} guruh · {students} talaba
+                {tutor.scopes.length} ko'lam · {tutor.groups.length} guruh · {students} talaba
               </p>
             </div>
-            <Button size="xs" onClick={onEditGroups}>
-              Guruhlarni tahrirlash
+            <Button size="xs" onClick={onEditScopes}>
+              Ko'lamni tahrirlash
             </Button>
           </>
         }
@@ -132,11 +162,33 @@ export function TutorDetailView({
           <EmptyState
             tone="plain"
             className={styles.empty}
-            title="Guruhlar biriktirilmagan"
-            description="«Guruhlarni tahrirlash» orqali tyutor fakultetidagi guruhlarni biriktiring."
+            title="Ko'lam biriktirilmagan"
+            description="«Ko'lamni tahrirlash» orqali fakultet, kafedra, yo'nalish yoki guruh biriktiring."
           />
         }
       />
+
+      <details className={styles.details}>
+        <summary className={styles.summary}>
+          Qamrab olingan guruhlar ({tutor.groups.length})
+        </summary>
+        <DataTable
+          aria-label="Qamrab olingan guruhlar"
+          columns={GROUP_COLUMNS}
+          rows={tutor.groups}
+          rowKey={(r) => r.assignmentId}
+          minWidth="620px"
+          density="compact"
+          emptyText={
+            <EmptyState
+              tone="plain"
+              className={styles.empty}
+              title="Qamrab olingan guruhlar yo'q"
+              description="Ko'lam biriktirilganda ichidagi faol guruhlar shu yerda ko'rinadi."
+            />
+          }
+        />
+      </details>
     </div>
   );
 }

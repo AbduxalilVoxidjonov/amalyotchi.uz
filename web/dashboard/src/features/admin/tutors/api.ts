@@ -1,11 +1,12 @@
 import { api } from '@/shared/api';
 import { toQuery, type Paged } from '../shared/types';
 import type {
-  AvailableGroup,
   Tutor,
   TutorCreateInput,
   TutorDetail,
   TutorListParams,
+  TutorScopeInput,
+  TutorScopeTree,
   TutorUpdateInput,
 } from './types';
 
@@ -22,7 +23,7 @@ export const tutorsApi = {
   get: (id: string) => api.get<TutorDetail>(`${TUTORS_ENDPOINT}/${id}`),
   /** POST → 201 TutorDetail. 400 validatsiya; 409 "Bu HEMIS ID bilan foydalanuvchi mavjud." */
   create: (body: TutorCreateInput) => api.post<TutorDetail>(TUTORS_ENDPOINT, body),
-  /** PUT /{id} → 200 TutorDetail. 409 fakultet o'zgartirilganda guruhlar biriktirilgan bo'lsa. */
+  /** PUT /{id} → 200 TutorDetail. 409 fakultet o'zgartirilganda ko'lam biriktirilgan bo'lsa. */
   update: (id: string, body: TutorUpdateInput) =>
     api.put<TutorDetail>(`${TUTORS_ENDPOINT}/${id}`, body),
   /** PATCH /{id}/status → 204. */
@@ -31,10 +32,12 @@ export const tutorsApi = {
   /** POST /{id}/password `{ password }` (min 8) → 204. */
   resetPassword: (id: string, password: string) =>
     api.post<void>(`${TUTORS_ENDPOINT}/${id}/password`, { password }),
-  /** PUT /{id}/groups `{ groupIds }` → 200 TutorDetail (to'plamni almashtiradi). 409 band guruh / faol o'quv yili yo'q. */
-  setGroups: (id: string, groupIds: string[]) =>
-    api.put<TutorDetail>(`${TUTORS_ENDPOINT}/${id}/groups`, { groupIds }),
-  /** GET /{id}/available-groups → AvailableGroup[] (tyutor fakultetidagi faol guruhlar). */
-  availableGroups: (id: string) =>
-    api.get<AvailableGroup[]>(`${TUTORS_ENDPOINT}/${id}/available-groups`),
+  /**
+   * PUT /{id}/scopes `{ scopes: [{ level, id }] }` → 200 TutorDetail (to'plamni almashtiradi).
+   * 409 "<nom> (<daraja>) <FISH> tyutoriga biriktirilgan." / "Faol o'quv yili yo'q."; 400 — detail.
+   */
+  setScopes: (id: string, scopes: TutorScopeInput[]) =>
+    api.put<TutorDetail>(`${TUTORS_ENDPOINT}/${id}/scopes`, { scopes }),
+  /** GET /{id}/scope-tree → TutorScopeTree (tyutor fakulteti: kafedra → yo'nalish → guruh, egalari bilan). */
+  scopeTree: (id: string) => api.get<TutorScopeTree>(`${TUTORS_ENDPOINT}/${id}/scope-tree`),
 };

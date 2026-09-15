@@ -1,7 +1,9 @@
 using System.Net;
 using System.Text.Json;
 using Amaliyotchi.Application.Features.Admin.Groups;
+using Amaliyotchi.Application.Features.Admin.Tutors;
 using Amaliyotchi.Domain.Practice;
+using Amaliyotchi.Domain.Students;
 using Amaliyotchi.IntegrationTests.Infrastructure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -271,15 +273,38 @@ public sealed class AdminGroupsTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Ochirish_FaolTyutorBiriktiruviBolsa_409()
+    public async Task Ochirish_GuruhDarajasidagiKolamBolsa_409()
     {
         var group = await Factory.CreateGroupAsync();
-        await Factory.CreateTutorAsync(group);
+        await Factory.CreateTutorAsync(group); // guruh darajasidagi ko'lam
         var client = await Factory.LoginAsAdminAsync();
 
         var response = await client.DeleteAsync($"/api/admin/groups/{group.GroupId}");
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task Ochirish_OtaKolamdanKelganBiriktiruv_204_BiriktiruvFaolsizlanadi()
+    {
+        var group = await Factory.CreateGroupAsync();
+        var sibling = await Factory.CreateGroupAsync(group.FacultyId);
+        var tutor = await Factory.CreateTutorAsync(sibling);
+        var client = await Factory.LoginAsAdminAsync();
+        var scoped = await client.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes",
+            new { scopes = new[] { new { level = "department", id = group.DepartmentId } } });
+        scoped.StatusCode.Should().Be(HttpStatusCode.OK, await scoped.Content.ReadAsStringAsync());
+        (await scoped.Content.ReadAsync<TutorDetail>())!.Groups.Select(g => g.GroupId).Should().Contain(group.GroupId);
+
+        var response = await client.DeleteAsync($"/api/admin/groups/{group.GroupId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var detail = (await client.GetFromJsonAsync<TutorDetail>($"/api/admin/tutors/{tutor.Id}"))!;
+        detail.Groups.Select(g => g.GroupId).Should().BeEquivalentTo([sibling.GroupId]);
+        detail.Scopes.Should().ContainSingle(s => s.Level == TutorScopeLevel.Department, "ko'lamning o'zi qoladi");
+        var assignment = await Factory.WithDbAsync(db =>
+            db.TutorAssignments.SingleAsync(a => a.TutorUserId == tutor.Id && a.StudentGroupId == group.GroupId));
+        assignment.IsActive.Should().BeFalse("tarix saqlanadi, faolsizlantiriladi");
     }
 
     [Fact]

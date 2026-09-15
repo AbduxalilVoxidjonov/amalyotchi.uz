@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Admin.Tutors;
 
-/// <summary><see cref="TutorDetail"/> ni yig'ish — GET, yaratish, tahrirlash va guruh almashtirish bir xil
+/// <summary><see cref="TutorDetail"/> ni yig'ish — GET, yaratish, tahrirlash va ko'lam almashtirish bir xil
 /// shaklni qaytaradi, mantiq shu yerda. Topilmasa yoki roli tyutor bo'lmasa → 404.</summary>
 internal static class TutorDetailQueries
 {
@@ -44,9 +44,17 @@ internal static class TutorDetailQueries
                                 y.Name, g.IsActive))
             .ToListAsync(cancellationToken);
 
+        var scopes = await db.TutorScopes.AsNoTracking()
+            .Where(s => s.TutorUserId == tutorId && s.IsActive)
+            .ToListAsync(cancellationToken);
+        var facultyGroups = scopes.Count == 0
+            ? []
+            : await TutorScopeQueries.LoadActiveGroupsAsync(db, tutor.FacultyId, cancellationToken);
+        var scopeDtos = await TutorScopeQueries.ToDtosAsync(db, scopes, facultyGroups, cancellationToken);
+
         return new TutorDetail(
             tutor.Id, tutor.FullName, tutor.HemisId ?? string.Empty, tutor.PhoneNumber,
             tutor.FacultyId, tutor.FacultyCode, tutor.FacultyName,
-            tutor.IsActive, tutor.LastLoginAt, tutor.CreatedAt, groups);
+            tutor.IsActive, tutor.LastLoginAt, tutor.CreatedAt, scopeDtos, groups);
     }
 }

@@ -19,7 +19,7 @@ public sealed class AdminTutorsController(ISender sender) : ControllerBase
     public async Task<ActionResult<Paged<TutorRow>>> List([FromQuery] GetTutorsQuery query, CancellationToken cancellationToken)
         => Ok(await sender.Send(query, cancellationToken));
 
-    /// <summary>Tyutor kartasi: hisob + faol guruh biriktiruvlari. Topilmasa yoki roli tyutor bo'lmasa → 404.</summary>
+    /// <summary>Tyutor kartasi: hisob + faol ko'lamlar + materializatsiya qilingan guruh biriktiruvlari. Topilmasa yoki roli tyutor bo'lmasa → 404.</summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType<TutorDetail>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -40,7 +40,7 @@ public sealed class AdminTutorsController(ISender sender) : ControllerBase
     }
 
     /// <summary><c>{ fullName, phone?, facultyId }</c> → 200. <c>id</c> route'dan; body'da bo'lmaydi.
-    /// Fakultet o'zgarsa-yu faol biriktiruvlar bo'lsa → 409.</summary>
+    /// Fakultet o'zgarsa-yu faol ko'lamlar bo'lsa → 409.</summary>
     [HttpPut("{id:guid}")]
     [ProducesResponseType<TutorDetail>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -73,21 +73,22 @@ public sealed class AdminTutorsController(ISender sender) : ControllerBase
         return NoContent();
     }
 
-    /// <summary><c>{ groupIds }</c> → 200. Faol biriktiruvlar to'plamini almashtiradi (tarix saqlanadi).
-    /// Guruh topilmasa → 404; faol emas / begona fakultet → 400; boshqa tyutorda yoki faol o'quv yili yo'q → 409.</summary>
-    [HttpPut("{id:guid}/groups")]
+    /// <summary><c>{ scopes: [{ level, id }] }</c> → 200. Faol ko'lamlar to'plamini almashtiradi (tarix saqlanadi) va guruh
+    /// biriktiruvlarini materializatsiya qiladi. Tugun topilmadi / faol emas / begona fakultet → 400; boshqa tyutor ko'lami
+    /// bilan kesishsa yoki faol o'quv yili yo'q → 409.</summary>
+    [HttpPut("{id:guid}/scopes")]
     [ProducesResponseType<TutorDetail>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<TutorDetail>> SetGroups(
-        Guid id, SetTutorGroupsCommand command, CancellationToken cancellationToken)
+    public async Task<ActionResult<TutorDetail>> SetScopes(
+        Guid id, SetTutorScopesCommand command, CancellationToken cancellationToken)
         => Ok(await sender.Send(command with { Id = id }, cancellationToken));
 
-    /// <summary>Tyutor fakultetidagi barcha faol guruhlar + hozirgi tyutori — biriktirish oynasi uchun.</summary>
-    [HttpGet("{id:guid}/available-groups")]
-    [ProducesResponseType<IReadOnlyList<AvailableGroupRow>>(StatusCodes.Status200OK)]
+    /// <summary>Tyutor fakultetining daraxti (faol kafedra → yo'nalish → guruh) + har tugunda faol ko'lam egasi — biriktirish oynasi uchun.</summary>
+    [HttpGet("{id:guid}/scope-tree")]
+    [ProducesResponseType<TutorScopeTree>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<IReadOnlyList<AvailableGroupRow>>> AvailableGroups(Guid id, CancellationToken cancellationToken)
-        => Ok(await sender.Send(new GetTutorAvailableGroupsQuery(id), cancellationToken));
+    public async Task<ActionResult<TutorScopeTree>> ScopeTree(Guid id, CancellationToken cancellationToken)
+        => Ok(await sender.Send(new GetTutorScopeTreeQuery(id), cancellationToken));
 }

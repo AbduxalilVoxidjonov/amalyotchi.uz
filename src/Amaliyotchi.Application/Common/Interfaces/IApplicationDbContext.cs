@@ -29,6 +29,7 @@ public interface IApplicationDbContext
     DbSet<StudentGroup> StudentGroups { get; }
     DbSet<StudentProfile> StudentProfiles { get; }
     DbSet<TutorAssignment> TutorAssignments { get; }
+    DbSet<TutorScope> TutorScopes { get; }
     DbSet<Company> Companies { get; }
     DbSet<PracticePeriod> PracticePeriods { get; }
     DbSet<PracticePeriodGroup> PracticePeriodGroups { get; }

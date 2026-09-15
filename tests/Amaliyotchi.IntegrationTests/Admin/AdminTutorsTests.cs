@@ -1,8 +1,11 @@
 using System.Net;
 using System.Text.Json;
 using Amaliyotchi.Application.Features.Admin.Common;
+using Amaliyotchi.Application.Features.Admin.Groups;
 using Amaliyotchi.Application.Features.Admin.Tutors;
+using Amaliyotchi.Application.Features.Tutor.Students;
 using Amaliyotchi.Domain.Enums;
+using Amaliyotchi.Domain.Students;
 using Amaliyotchi.IntegrationTests.Infrastructure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -119,6 +122,7 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         {
             json.RootElement.GetProperty("hemisId").GetString().Should().Be(tutor.HemisId);
             json.RootElement.GetProperty("groups")[0].GetProperty("assignmentId").ValueKind.Should().Be(JsonValueKind.String);
+            json.RootElement.GetProperty("scopes")[0].GetProperty("level").GetString().Should().Be("group", "enum camelCase string");
         }
 
         var detail = (await response.Content.ReadAsync<TutorDetail>())!;
@@ -131,6 +135,16 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         detail.IsActive.Should().BeTrue();
         detail.LastLoginAt.Should().BeNull();
         detail.CreatedAt.Should().BeAfter(DateTimeOffset.MinValue);
+        var scope = detail.Scopes.Should().ContainSingle().Subject;
+        scope.Level.Should().Be(TutorScopeLevel.Group);
+        scope.FacultyId.Should().Be(group.FacultyId);
+        scope.DepartmentId.Should().Be(group.DepartmentId);
+        scope.DirectionId.Should().Be(group.DirectionId);
+        scope.GroupId.Should().Be(group.GroupId);
+        scope.Name.Should().Be(group.GroupName);
+        scope.Path.Split(" › ").Should().HaveCount(3, "fakultet › kafedra › yo'nalish");
+        scope.Groups.Should().Be(1);
+        scope.Students.Should().Be(2);
         var g = detail.Groups.Should().ContainSingle().Subject;
         g.GroupId.Should().Be(group.GroupId);
         g.GroupName.Should().Be(group.GroupName);
@@ -180,6 +194,7 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         detail.Phone.Should().Be(phone);
         detail.FacultyId.Should().Be(facultyId);
         detail.IsActive.Should().BeTrue();
+        detail.Scopes.Should().BeEmpty();
         detail.Groups.Should().BeEmpty();
 
         var login = await Factory.CreateClient().PostJsonAsync("/api/auth/login", new { hemisId, password = "Yangi-Parol-1" });
@@ -335,7 +350,7 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Yangilash_FakultetOzgarsa_BiriktiruvBorsa_409()
+    public async Task Yangilash_FakultetOzgarsa_KolamBorsa_409()
     {
         var tutor = await Factory.CreateTutorAsync();
         var otherFacultyId = await Factory.CreateFacultyAsync();
@@ -347,7 +362,16 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
-        (await Detail(response)).Should().Be("Tyutorga guruhlar biriktirilgan — avval ularni ajrating.");
+        (await Detail(response)).Should().Be("Tyutorga ko'lam biriktirilgan — avval uni ajrating.");
+
+        // Ko'lam ajratilgach — fakultet o'zgaradi
+        (await client.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes", new { scopes = Array.Empty<object>() })).EnsureSuccessStatusCode();
+        var moved = await client.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}", new
+        {
+            fullName = tutor.FullName, phone = tutor.PhoneNumber, facultyId = otherFacultyId
+        });
+        moved.StatusCode.Should().Be(HttpStatusCode.OK, await moved.Content.ReadAsStringAsync());
+        (await moved.Content.ReadAsync<TutorDetail>())!.FacultyId.Should().Be(otherFacultyId);
     }
 
     [Fact]
@@ -455,56 +479,243 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
             .StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
-    // ---------- PUT {id}/groups ----------
+    // ---------- PUT {id}/scopes ----------
 
     [Fact]
-    public async Task Guruhlar_Almashtirish_TarixSaqlanadi_QaytaFaollashadi()
+    public async Task Kolamlar_FakultetDarajasi_FakultetdagiBarchaFaolGuruhlar()
+    {
+        var groupA = await Factory.CreateGroupAsync();
+        var groupB = await Factory.CreateGroupAsync(groupA.FacultyId);
+        var inactive = await Factory.CreateGroupAsync(groupA.FacultyId);
+        var foreign = await Factory.CreateGroupAsync();
+        await Factory.CreateStudentAsync(group: groupA);
+        await Factory.CreateStudentAsync(group: groupB);
+        var admin = await Factory.LoginAsAdminAsync();
+        (await admin.PatchAsJsonAsync($"/api/admin/groups/{inactive.GroupId}/status", new { isActive = false })).EnsureSuccessStatusCode();
+        var tutor = await CreateTutorViaApiAsync(admin, groupA.FacultyId);
+
+        var response = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes",
+            new { scopes = new[] { new { level = "faculty", id = groupA.FacultyId } } });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+        var detail = (await response.Content.ReadAsync<TutorDetail>())!;
+        var scope = detail.Scopes.Should().ContainSingle().Subject;
+        scope.Level.Should().Be(TutorScopeLevel.Faculty);
+        scope.FacultyId.Should().Be(groupA.FacultyId);
+        scope.DepartmentId.Should().BeNull();
+        scope.DirectionId.Should().BeNull();
+        scope.GroupId.Should().BeNull();
+        scope.Name.Should().Be(detail.FacultyName);
+        scope.Path.Should().BeEmpty();
+        scope.Groups.Should().Be(2, "faol emas guruh qamralmaydi");
+        scope.Students.Should().Be(2);
+        detail.Groups.Select(g => g.GroupId).Should().BeEquivalentTo([groupA.GroupId, groupB.GroupId]);
+        detail.Groups.Select(g => g.GroupId).Should().NotContain([inactive.GroupId, foreign.GroupId]);
+
+        var page = await admin.GetPagedAsync<TutorRow>($"/api/admin/tutors?q={tutor.Phone}");
+        page.Items.Single().Groups.Should().BeEquivalentTo([groupA.GroupName, groupB.GroupName], "ro'yxat materializatsiyaga tayanadi");
+
+        // Faol emas guruh qayta faollashtirilsa — ko'lam ichida bo'lgani uchun avtomatik qamraladi
+        (await admin.PatchAsJsonAsync($"/api/admin/groups/{inactive.GroupId}/status", new { isActive = true })).EnsureSuccessStatusCode();
+        (await admin.GetFromJsonAsync<TutorDetail>($"/api/admin/tutors/{tutor.Id}"))!.Groups.Select(g => g.GroupId)
+            .Should().BeEquivalentTo([groupA.GroupId, groupB.GroupId, inactive.GroupId]);
+    }
+
+    [Fact]
+    public async Task Kolamlar_KafedraYonalishGuruh_Darajalari()
+    {
+        // Fakultet: kafedra1 { yo'nalish11 { g111, g112 }, yo'nalish12 { g121 } }, kafedra2 { yo'nalish21 { g211 } }
+        var g111 = await Factory.CreateGroupAsync();
+        var admin = await Factory.LoginAsAdminAsync();
+        var g112 = await CreateGroupViaApiAsync(admin, g111.DirectionId);
+        var g121 = await Factory.CreateGroupAsync(g111.FacultyId);
+        var dept2 = await Factory.CreateDepartmentAsync(g111.FacultyId, "Ikkinchi kafedra");
+        var dir21 = await Factory.CreateDirectionAsync(dept2, "Ikkinchi yo'nalish");
+        var g211 = await CreateGroupViaApiAsync(admin, dir21);
+        var tutor = await CreateTutorViaApiAsync(admin, g111.FacultyId);
+        var facultyName = (await admin.GetFromJsonAsync<TutorDetail>($"/api/admin/tutors/{tutor.Id}"))!.FacultyName;
+
+        // Kafedra darajasi → kafedra1 ning barcha guruhlari
+        var dept = await Put(admin, tutor.Id, new { level = "department", id = g111.DepartmentId });
+        dept.Groups.Select(g => g.GroupId).Should().BeEquivalentTo([g111.GroupId, g112.Id, g121.GroupId]);
+        var deptScope = dept.Scopes.Should().ContainSingle().Subject;
+        deptScope.Level.Should().Be(TutorScopeLevel.Department);
+        deptScope.DepartmentId.Should().Be(g111.DepartmentId);
+        deptScope.DirectionId.Should().BeNull();
+        deptScope.Path.Should().Be(facultyName);
+        deptScope.Groups.Should().Be(3);
+
+        // Yo'nalish darajasi → faqat yo'nalish11 guruhlari
+        var dir = await Put(admin, tutor.Id, new { level = "direction", id = g111.DirectionId });
+        dir.Groups.Select(g => g.GroupId).Should().BeEquivalentTo([g111.GroupId, g112.Id]);
+        var dirScope = dir.Scopes.Should().ContainSingle().Subject;
+        dirScope.Level.Should().Be(TutorScopeLevel.Direction);
+        dirScope.DirectionId.Should().Be(g111.DirectionId);
+        dirScope.GroupId.Should().BeNull();
+        dirScope.Path.Should().Be($"{facultyName} › {dept.Scopes[0].Name}");
+        dirScope.Name.Should().Be(dir.Groups[0].DirectionName);
+
+        // Guruh darajasi → faqat shu guruh
+        var single = await Put(admin, tutor.Id, new { level = "group", id = g111.GroupId });
+        single.Groups.Select(g => g.GroupId).Should().BeEquivalentTo([g111.GroupId]);
+        single.Scopes.Should().ContainSingle().Which.Path.Should().Be($"{facultyName} › {deptScope.Name} › {dirScope.Name}");
+
+        // Bir nechta ko'lam: 2-kafedra + 1-yo'nalishdagi bitta guruh — daraja → nom tartibida
+        var multi = await Put(admin, tutor.Id,
+            new { level = "group", id = g112.Id }, new { level = "department", id = dept2 });
+        multi.Scopes.Select(x => x.Level).Should().Equal(TutorScopeLevel.Department, TutorScopeLevel.Group);
+        multi.Scopes[0].Name.Should().Be("Ikkinchi kafedra");
+        multi.Scopes[0].Groups.Should().Be(1);
+        multi.Groups.Select(g => g.GroupId).Should().BeEquivalentTo([g112.Id, g211.Id]);
+    }
+
+    [Fact]
+    public async Task Kolamlar_Almashtirish_TarixSaqlanadi_QaytaFaollashadi()
     {
         var groupA = await Factory.CreateGroupAsync();
         var groupB = await Factory.CreateGroupAsync(groupA.FacultyId);
         var tutor = await Factory.CreateTutorAsync(groupA);
         var admin = await Factory.LoginAsAdminAsync();
 
-        var originalAssignmentId = (await admin.GetFromJsonAsync<TutorDetail>($"/api/admin/tutors/{tutor.Id}"))!
-            .Groups.Single().AssignmentId;
+        var original = (await admin.GetFromJsonAsync<TutorDetail>($"/api/admin/tutors/{tutor.Id}"))!;
+        var originalAssignmentId = original.Groups.Single().AssignmentId;
+        var originalScopeId = original.Scopes.Single().Id;
 
-        // A → B: A faolsizlantiriladi (o'chirilmaydi), B yaratiladi
-        var swap = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/groups", new { groupIds = new[] { groupB.GroupId } });
-        swap.StatusCode.Should().Be(HttpStatusCode.OK, await swap.Content.ReadAsStringAsync());
-        var afterSwap = (await swap.Content.ReadAsync<TutorDetail>())!;
+        // A → B: A ko'lami va biriktiruvi faolsizlantiriladi (o'chirilmaydi), B yaratiladi
+        var afterSwap = await Put(admin, tutor.Id, new { level = "group", id = groupB.GroupId });
         afterSwap.Groups.Select(g => g.GroupId).Should().BeEquivalentTo([groupB.GroupId]);
+        afterSwap.Scopes.Single().GroupId.Should().Be(groupB.GroupId);
 
-        var records = await Factory.WithDbAsync(db =>
+        var assignments = await Factory.WithDbAsync(db =>
             db.TutorAssignments.Where(a => a.TutorUserId == tutor.Id).Select(a => new { a.Id, a.StudentGroupId, a.IsActive }).ToListAsync());
-        records.Should().HaveCount(2);
-        records.Single(r => r.StudentGroupId == groupA.GroupId).IsActive.Should().BeFalse();
-        records.Single(r => r.StudentGroupId == groupB.GroupId).IsActive.Should().BeTrue();
+        assignments.Should().HaveCount(2);
+        assignments.Single(r => r.StudentGroupId == groupA.GroupId).IsActive.Should().BeFalse();
+        assignments.Single(r => r.StudentGroupId == groupB.GroupId).IsActive.Should().BeTrue();
+        var scopes = await Factory.WithDbAsync(db =>
+            db.TutorScopes.Where(x => x.TutorUserId == tutor.Id).Select(x => new { x.Id, x.StudentGroupId, x.IsActive }).ToListAsync());
+        scopes.Should().HaveCount(2);
+        scopes.Single(x => x.StudentGroupId == groupA.GroupId).IsActive.Should().BeFalse();
 
-        // A qayta keladi (B bilan birga) — mavjud yozuv faollashadi, yangi yozuv yaratilmaydi
-        var both = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/groups",
-            new { groupIds = new[] { groupA.GroupId, groupB.GroupId, groupA.GroupId } });
-        both.StatusCode.Should().Be(HttpStatusCode.OK);
-        var afterBoth = (await both.Content.ReadAsync<TutorDetail>())!;
+        // A qayta keladi (B bilan birga, takror bilan) — mavjud yozuvlar faollashadi, yangi yozuv yaratilmaydi
+        var afterBoth = await Put(admin, tutor.Id,
+            new { level = "group", id = groupA.GroupId }, new { level = "group", id = groupB.GroupId }, new { level = "group", id = groupA.GroupId });
         afterBoth.Groups.Should().HaveCount(2);
         afterBoth.Groups.Single(g => g.GroupId == groupA.GroupId).AssignmentId.Should().Be(originalAssignmentId);
+        afterBoth.Scopes.Should().HaveCount(2);
+        afterBoth.Scopes.Single(x => x.GroupId == groupA.GroupId).Id.Should().Be(originalScopeId);
 
         (await Factory.WithDbAsync(db => db.TutorAssignments.CountAsync(a => a.TutorUserId == tutor.Id))).Should().Be(2);
+        (await Factory.WithDbAsync(db => db.TutorScopes.CountAsync(x => x.TutorUserId == tutor.Id))).Should().Be(2);
 
         // Bo'sh ro'yxat — hammasi ajratiladi
-        var clear = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/groups", new { groupIds = Array.Empty<Guid>() });
+        var clear = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes", new { scopes = Array.Empty<object>() });
         clear.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await clear.Content.ReadAsync<TutorDetail>())!.Groups.Should().BeEmpty();
+        var cleared = (await clear.Content.ReadAsync<TutorDetail>())!;
+        cleared.Scopes.Should().BeEmpty();
+        cleared.Groups.Should().BeEmpty();
 
         var page = await admin.GetPagedAsync<TutorRow>($"/api/admin/tutors?q={tutor.PhoneNumber}");
         page.Items.Single().Groups.Should().BeEmpty("ro'yxat ham faol biriktiruvlarga tayanadi");
 
         var audit = await Factory.WithDbAsync(db =>
-            db.AuditLogs.CountAsync(a => a.Action == AuditAction.TutorGroupsChanged && a.EntityId == tutor.Id.ToString()));
-        audit.Should().Be(3);
+            db.AuditLogs.Where(a => a.Action == AuditAction.TutorScopesChanged && a.EntityId == tutor.Id.ToString())
+                .Select(a => a.Changes).ToListAsync());
+        audit.Should().HaveCount(3);
+        audit.Should().Contain(c => c!.Contains("\"group\""), "tafsilotda daraja (API nomi bilan)");
     }
 
     [Fact]
-    public async Task Guruhlar_FaolEmasTyutorgaHam_Ruxsat()
+    public async Task Kolamlar_YonalishKolami_KeyinYaratilganGuruh_AvtomatikQamraladi()
+    {
+        var group = await Factory.CreateGroupAsync();
+        var admin = await Factory.LoginAsAdminAsync();
+        var tutor = await CreateTutorViaApiAsync(admin, group.FacultyId);
+        var tutorUser = new TestUser(tutor.Id, tutor.FullName, UserRole.Tutor, tutor.Phone!, TestClients.DefaultPassword,
+            group.FacultyId, null, HemisId: tutor.HemisId);
+        (await Put(admin, tutor.Id, new { level = "direction", id = group.DirectionId })).Groups.Should().HaveCount(1);
+
+        // Shu yo'nalishda yangi guruh — tyutorga avtomatik biriktiriladi
+        var created = await CreateGroupViaApiAsync(admin, group.DirectionId);
+        var newcomer = await Factory.CreateStudentAsync(group: group with { GroupId = created.Id, GroupName = created.Name });
+
+        var detail = (await admin.GetFromJsonAsync<TutorDetail>($"/api/admin/tutors/{tutor.Id}"))!;
+        detail.Groups.Select(g => g.GroupId).Should().BeEquivalentTo([group.GroupId, created.Id]);
+        detail.Scopes.Single().Groups.Should().Be(2);
+
+        // ScopeResolver — tyutor kirganda yangi guruh talabasi ko'rinadi
+        var tutorClient = await Factory.LoginAsync(tutorUser);
+        var students = (await tutorClient.GetFromJsonAsync<List<TutorStudent>>("/api/tutor/students"))!;
+        students.Select(x => x.Id).Should().Contain(newcomer.Id);
+
+        // Boshqa yo'nalishdagi yangi guruh — qamralmaydi
+        var other = await Factory.CreateGroupAsync(group.FacultyId);
+        var otherStudent = await Factory.CreateStudentAsync(group: other);
+        students = (await tutorClient.GetFromJsonAsync<List<TutorStudent>>("/api/tutor/students"))!;
+        students.Select(x => x.Id).Should().NotContain(otherStudent.Id);
+    }
+
+    [Fact]
+    public async Task Kolamlar_Kesishuv_409_AniqXabar()
+    {
+        var group = await Factory.CreateGroupAsync();
+        var owner = await Factory.CreateTutorAsync(group, "Egasi Tyutor"); // guruh darajasi
+        var admin = await Factory.LoginAsAdminAsync();
+        var tutor = await CreateTutorViaApiAsync(admin, group.FacultyId);
+        var facultyName = (await admin.GetFromJsonAsync<TutorDetail>($"/api/admin/tutors/{tutor.Id}"))!.FacultyName;
+
+        // Fakultet vs guruh
+        var faculty = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes",
+            new { scopes = new[] { new { level = "faculty", id = group.FacultyId } } });
+        faculty.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await Detail(faculty)).Should().Be($"{group.GroupName} (guruh) Egasi Tyutor tyutoriga biriktirilgan.");
+
+        // Teng: guruh vs guruh
+        var same = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes",
+            new { scopes = new[] { new { level = "group", id = group.GroupId } } });
+        same.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await Detail(same)).Should().Be($"{group.GroupName} (guruh) Egasi Tyutor tyutoriga biriktirilgan.");
+
+        // Egasi kafedraga ko'tariladi → yo'nalish vs kafedra
+        var deptName = (await Put(admin, owner.Id, new { level = "department", id = group.DepartmentId })).Scopes.Single().Name;
+        var direction = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes",
+            new { scopes = new[] { new { level = "direction", id = group.DirectionId } } });
+        direction.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await Detail(direction)).Should().Be($"{deptName} (kafedra) Egasi Tyutor tyutoriga biriktirilgan.");
+
+        // Egasi fakultetga ko'tariladi → boshqa kafedra ham band
+        var dept2 = await Factory.CreateDepartmentAsync(group.FacultyId);
+        await Put(admin, owner.Id, new { level = "faculty", id = group.FacultyId });
+        var other = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes",
+            new { scopes = new[] { new { level = "department", id = dept2 } } });
+        other.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await Detail(other)).Should().Be($"{facultyName} (fakultet) Egasi Tyutor tyutoriga biriktirilgan.");
+
+        // Egasi ajratgach — bo'shaydi; hech narsa yozilmagan (409 lar iz qoldirmagan)
+        (await admin.PutAsJsonAsync($"/api/admin/tutors/{owner.Id}/scopes", new { scopes = Array.Empty<object>() })).EnsureSuccessStatusCode();
+        (await Put(admin, tutor.Id, new { level = "faculty", id = group.FacultyId })).Groups.Should().Contain(g => g.GroupId == group.GroupId);
+        (await Factory.WithDbAsync(db => db.TutorScopes.CountAsync(x => x.TutorUserId == tutor.Id))).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Kolamlar_OzIchidaOtaVaBola_BolaJimginaTashlanadi()
+    {
+        var group = await Factory.CreateGroupAsync();
+        var admin = await Factory.LoginAsAdminAsync();
+        var tutor = await CreateTutorViaApiAsync(admin, group.FacultyId);
+
+        var detail = await Put(admin, tutor.Id,
+            new { level = "group", id = group.GroupId },
+            new { level = "direction", id = group.DirectionId },
+            new { level = "department", id = group.DepartmentId });
+
+        var scope = detail.Scopes.Should().ContainSingle().Subject;
+        scope.Level.Should().Be(TutorScopeLevel.Department);
+        detail.Groups.Should().ContainSingle(g => g.GroupId == group.GroupId);
+        (await Factory.WithDbAsync(db => db.TutorScopes.CountAsync(x => x.TutorUserId == tutor.Id))).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Kolamlar_FaolEmasTyutorgaHam_Ruxsat()
     {
         var group = await Factory.CreateGroupAsync();
         var other = await Factory.CreateGroupAsync(group.FacultyId);
@@ -512,69 +723,78 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         var admin = await Factory.LoginAsAdminAsync();
         (await admin.PatchAsJsonAsync($"/api/admin/tutors/{tutor.Id}/status", new { isActive = false })).EnsureSuccessStatusCode();
 
-        var response = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/groups", new { groupIds = new[] { other.GroupId } });
+        var response = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes",
+            new { scopes = new[] { new { level = "group", id = other.GroupId } } });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
-    public async Task Guruhlar_BegonaFakultetGuruhi_400()
+    public async Task Kolamlar_BegonaFakultet_400()
     {
         var tutor = await Factory.CreateTutorAsync();
         var foreign = await Factory.CreateGroupAsync();
         var admin = await Factory.LoginAsAdminAsync();
+        var foreignFacultyName = (await admin.GetFromJsonAsync<TutorDetail>(
+            $"/api/admin/tutors/{(await Factory.CreateTutorAsync(foreign)).Id}"))!.FacultyName;
 
-        var response = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/groups", new { groupIds = new[] { foreign.GroupId } });
+        var group = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes",
+            new { scopes = new[] { new { level = "group", id = foreign.GroupId } } });
+        group.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Detail(group)).Should().Be($"Guruh tyutor fakultetiga tegishli emas: {foreign.GroupName}");
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await Detail(response)).Should().Be($"Guruh tyutor fakultetiga tegishli emas: {foreign.GroupName}");
+        var direction = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes",
+            new { scopes = new[] { new { level = "direction", id = foreign.DirectionId } } });
+        direction.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Detail(direction)).Should().StartWith("Yo'nalish tyutor fakultetiga tegishli emas: ");
+
+        var faculty = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes",
+            new { scopes = new[] { new { level = "faculty", id = foreign.FacultyId } } });
+        faculty.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Detail(faculty)).Should().Be($"Fakultet tyutor fakultetiga tegishli emas: {foreignFacultyName}");
+
+        (await admin.GetFromJsonAsync<TutorDetail>($"/api/admin/tutors/{tutor.Id}"))!.Groups
+            .Should().ContainSingle(g => g.GroupId == tutor.GroupId, "xato so'rov hech narsani o'zgartirmaydi");
     }
 
     [Fact]
-    public async Task Guruhlar_BoshqaTyutorGuruhi_409()
+    public async Task Kolamlar_FaolEmasTugun_400_Topilmasa_400_Validatsiya()
     {
         var group = await Factory.CreateGroupAsync();
-        var owner = await Factory.CreateTutorAsync(group, "Egasi Tyutor");
-        var other = await Factory.CreateGroupAsync(group.FacultyId);
-        var tutor = await Factory.CreateTutorAsync(other);
-        var admin = await Factory.LoginAsAdminAsync();
-
-        var response = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/groups", new { groupIds = new[] { other.GroupId, group.GroupId } });
-
-        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
-        (await Detail(response)).Should().Be($"{group.GroupName} guruhi {owner.FullName} tyutoriga biriktirilgan.");
-
-        // Egasi ajratgach — bo'shaydi
-        (await admin.PutAsJsonAsync($"/api/admin/tutors/{owner.Id}/groups", new { groupIds = Array.Empty<Guid>() })).EnsureSuccessStatusCode();
-        (await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/groups", new { groupIds = new[] { other.GroupId, group.GroupId } }))
-            .StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    [Fact]
-    public async Task Guruhlar_FaolEmasGuruh_400_Topilmasa_404()
-    {
-        var group = await Factory.CreateGroupAsync();
-        var inactive = await Factory.CreateGroupAsync(group.FacultyId);
+        var inactiveDir = await Factory.CreateGroupAsync(group.FacultyId);
         var tutor = await Factory.CreateTutorAsync(group);
         var admin = await Factory.LoginAsAdminAsync();
-        (await admin.PatchAsJsonAsync($"/api/admin/groups/{inactive.GroupId}/status", new { isActive = false })).EnsureSuccessStatusCode();
+        (await admin.PatchAsJsonAsync($"/api/admin/directions/{inactiveDir.DirectionId}/status", new { isActive = false })).EnsureSuccessStatusCode();
+        var directionName = (await admin.GetFromJsonAsync<JsonElement>($"/api/admin/directions/{inactiveDir.DirectionId}")).GetProperty("name").GetString();
 
-        var response = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/groups", new { groupIds = new[] { inactive.GroupId } });
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await Detail(response)).Should().Be($"Guruh faol emas: {inactive.GroupName}");
+        var inactive = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes",
+            new { scopes = new[] { new { level = "direction", id = inactiveDir.DirectionId } } });
+        inactive.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Detail(inactive)).Should().Be($"Yo'nalish faol emas: {directionName}");
 
-        var missing = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/groups", new { groupIds = new[] { Guid.CreateVersion7() } });
-        missing.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var missing = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes",
+            new { scopes = new[] { new { level = "group", id = Guid.CreateVersion7() } } });
+        missing.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Detail(missing)).Should().Be("Guruh topilmadi.");
 
-        var emptyId = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/groups", new { groupIds = new[] { Guid.Empty } });
+        var missingDept = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes",
+            new { scopes = new[] { new { level = "department", id = Guid.CreateVersion7() } } });
+        (await Detail(missingDept)).Should().Be("Kafedra topilmadi.");
+
+        var emptyId = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes",
+            new { scopes = new[] { new { level = "group", id = Guid.Empty } } });
         emptyId.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        (await admin.PutAsJsonAsync($"/api/admin/tutors/{Guid.CreateVersion7()}/groups", new { groupIds = Array.Empty<Guid>() }))
+        var badLevel = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes",
+            new { scopes = new[] { new { level = "university", id = group.GroupId } } });
+        badLevel.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        (await admin.PutAsJsonAsync($"/api/admin/tutors/{Guid.CreateVersion7()}/scopes", new { scopes = Array.Empty<object>() }))
             .StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
-    public async Task Guruhlar_FaolOquvYiliYoq_409()
+    public async Task Kolamlar_FaolOquvYiliYoq_409()
     {
         var group = await Factory.CreateGroupAsync();
         var other = await Factory.CreateGroupAsync(group.FacultyId);
@@ -590,12 +810,13 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         });
         try
         {
-            var response = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/groups", new { groupIds = new[] { other.GroupId } });
+            var response = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes",
+                new { scopes = new[] { new { level = "group", id = other.GroupId } } });
             response.StatusCode.Should().Be(HttpStatusCode.Conflict);
             (await Detail(response)).Should().Be("Faol o'quv yili yo'q.");
 
-            // Yangi yozuv kerak bo'lmasa (faqat ajratish) — o'quv yili talab qilinmaydi
-            (await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/groups", new { groupIds = Array.Empty<Guid>() }))
+            // Yangi biriktiruv kerak bo'lmasa (faqat ajratish) — o'quv yili talab qilinmaydi
+            (await admin.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes", new { scopes = Array.Empty<object>() }))
                 .StatusCode.Should().Be(HttpStatusCode.OK);
         }
         finally
@@ -609,14 +830,14 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         }
     }
 
-    // ---------- GET {id}/available-groups ----------
+    // ---------- GET {id}/scope-tree ----------
 
     [Fact]
-    public async Task AvailableGroups_FakultetdagiFaolGuruhlar_TutorNameTogri()
+    public async Task ScopeTree_FaolTugunlar_TutorIdTutorNameTogri()
     {
-        var groupA = await Factory.CreateGroupAsync();
-        var groupB = await Factory.CreateGroupAsync(groupA.FacultyId);
-        var groupC = await Factory.CreateGroupAsync(groupA.FacultyId);
+        var groupA = await Factory.CreateGroupAsync(course: 2);
+        var groupB = await Factory.CreateGroupAsync(groupA.FacultyId, course: 1);
+        var groupC = await Factory.CreateGroupAsync(groupA.FacultyId, course: 3);
         var inactive = await Factory.CreateGroupAsync(groupA.FacultyId);
         var foreign = await Factory.CreateGroupAsync();
         var tutor = await Factory.CreateTutorAsync(groupA, "Ozi Tyutor");
@@ -624,32 +845,60 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         await Factory.CreateStudentAsync(group: groupC);
         var admin = await Factory.LoginAsAdminAsync();
         (await admin.PatchAsJsonAsync($"/api/admin/groups/{inactive.GroupId}/status", new { isActive = false })).EnsureSuccessStatusCode();
+        var dept2 = await Factory.CreateDepartmentAsync(groupA.FacultyId, "Band kafedra");
+        var inactiveDept = await Factory.CreateDepartmentAsync(groupA.FacultyId, "Faol emas kafedra");
+        (await admin.PatchAsJsonAsync($"/api/admin/departments/{inactiveDept}/status", new { isActive = false })).EnsureSuccessStatusCode();
+        var deptOwner = await CreateTutorViaApiAsync(admin, groupA.FacultyId);
+        await Put(admin, deptOwner.Id, new { level = "department", id = dept2 });
 
-        var rows = (await admin.GetFromJsonAsync<List<AvailableGroupRow>>($"/api/admin/tutors/{tutor.Id}/available-groups"))!;
+        var tree = (await admin.GetFromJsonAsync<TutorScopeTree>($"/api/admin/tutors/{tutor.Id}/scope-tree"))!;
 
-        rows.Select(r => r.Id).Should().BeEquivalentTo([groupA.GroupId, groupB.GroupId, groupC.GroupId]);
-        rows.Select(r => r.Id).Should().NotContain([inactive.GroupId, foreign.GroupId]);
+        tree.Id.Should().Be(groupA.FacultyId);
+        tree.Name.Should().NotBeNullOrEmpty();
+        tree.Code.Should().NotBeNullOrEmpty();
+        tree.TutorId.Should().BeNull("fakultet darajasida hech kim yo'q");
+        tree.TutorName.Should().BeNull();
+        tree.Departments.Select(d => d.Id).Should().Contain([groupA.DepartmentId, dept2]).And.NotContain(inactiveDept);
+        tree.Departments.Should().BeInAscendingOrder(d => d.Name, StringComparer.Ordinal);
 
-        var a = rows.Single(r => r.Id == groupA.GroupId);
+        var dept = tree.Departments.Single(d => d.Id == groupA.DepartmentId);
+        dept.TutorId.Should().BeNull();
+        var bandDept = tree.Departments.Single(d => d.Id == dept2);
+        bandDept.TutorId.Should().Be(deptOwner.Id);
+        bandDept.TutorName.Should().Be(deptOwner.FullName);
+        bandDept.Directions.Should().BeEmpty();
+
+        var groups = dept.Directions.SelectMany(d => d.Groups).ToList();
+        groups.Select(g => g.Id).Should().BeEquivalentTo([groupA.GroupId, groupB.GroupId, groupC.GroupId]);
+        groups.Select(g => g.Id).Should().NotContain([inactive.GroupId, foreign.GroupId]);
+        dept.Directions.Should().BeInAscendingOrder(d => d.Name, StringComparer.Ordinal);
+        dept.Directions.Should().OnlyContain(d => d.TutorId == null, "yo'nalish darajasida ko'lam yo'q");
+
+        var a = groups.Single(g => g.Id == groupA.GroupId);
         a.TutorId.Should().Be(tutor.Id);
         a.TutorName.Should().Be("Ozi Tyutor", "shu tyutorning o'zi bo'lsa ham to'ldiriladi");
         a.Name.Should().Be(groupA.GroupName);
-        a.Course.Should().Be(groupA.Course);
-        a.DirectionName.Should().NotBeNullOrEmpty();
-        a.DepartmentName.Should().NotBeNullOrEmpty();
+        a.Course.Should().Be(2);
 
-        var b = rows.Single(r => r.Id == groupB.GroupId);
+        var b = groups.Single(g => g.Id == groupB.GroupId);
         b.TutorId.Should().Be(other.Id);
         b.TutorName.Should().Be("Boshqa Tyutor");
 
-        var c = rows.Single(r => r.Id == groupC.GroupId);
+        var c = groups.Single(g => g.Id == groupC.GroupId);
         c.TutorId.Should().BeNull();
         c.TutorName.Should().BeNull();
         c.Students.Should().Be(1);
 
-        rows.Should().BeInAscendingOrder(r => r.DirectionName, StringComparer.Ordinal);
+        // Fakultet darajasiga ko'tarilsa — ildizda ko'rinadi, guruhda emas
+        (await admin.PutAsJsonAsync($"/api/admin/tutors/{other.Id}/scopes", new { scopes = Array.Empty<object>() })).EnsureSuccessStatusCode();
+        (await admin.PutAsJsonAsync($"/api/admin/tutors/{deptOwner.Id}/scopes", new { scopes = Array.Empty<object>() })).EnsureSuccessStatusCode();
+        await Put(admin, tutor.Id, new { level = "faculty", id = groupA.FacultyId });
+        tree = (await admin.GetFromJsonAsync<TutorScopeTree>($"/api/admin/tutors/{tutor.Id}/scope-tree"))!;
+        tree.TutorId.Should().Be(tutor.Id);
+        tree.TutorName.Should().Be("Ozi Tyutor");
+        tree.Departments.SelectMany(d => d.Directions).SelectMany(d => d.Groups).Should().OnlyContain(g => g.TutorId == null);
 
-        (await admin.GetAsync($"/api/admin/tutors/{Guid.CreateVersion7()}/available-groups")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await admin.GetAsync($"/api/admin/tutors/{Guid.CreateVersion7()}/scope-tree")).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     // ---------- yordamchilar ----------
@@ -660,7 +909,24 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         return json.RootElement.GetProperty("detail").GetString();
     }
 
-    /// <summary>API orqali guruhsiz tyutor (fakultet o'zgartirish ssenariylari uchun).</summary>
+    /// <summary><c>PUT .../scopes</c> → 200 <see cref="TutorDetail"/>; muvaffaqiyatsiz bo'lsa tanadagi xabar bilan yiqiladi.</summary>
+    private static async Task<TutorDetail> Put(HttpClient admin, Guid tutorId, params object[] scopes)
+    {
+        var response = await admin.PutAsJsonAsync($"/api/admin/tutors/{tutorId}/scopes", new { scopes });
+        response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+        return (await response.Content.ReadAsync<TutorDetail>())!;
+    }
+
+    /// <summary>API orqali yo'nalishda guruh — <c>CreateGroupCommand</c> ning ko'lam bo'yicha avtomatik biriktirish yo'li ham ishlaydi.</summary>
+    private static async Task<GroupDto> CreateGroupViaApiAsync(HttpClient admin, Guid directionId)
+    {
+        var response = await admin.PostJsonAsync($"/api/admin/directions/{directionId}/groups",
+            new { name = $"G-{Guid.NewGuid().ToString("N")[..6].ToUpperInvariant()}", course = 2 });
+        response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
+        return (await response.Content.ReadAsync<GroupDto>())!;
+    }
+
+    /// <summary>API orqali ko'lamsiz tyutor (fakultet o'zgartirish / ko'lam ssenariylari uchun).</summary>
     private static async Task<TutorDetail> CreateTutorViaApiAsync(HttpClient admin, Guid facultyId)
     {
         var response = await admin.PostJsonAsync("/api/admin/tutors", new

@@ -151,7 +151,7 @@ describe('TutorsPage', () => {
     expect(await screen.findByText('Dilshod Ergashev-Yangi')).toBeInTheDocument();
   });
 
-  it("tahrirlash: guruhlari bor tyutor fakultetini o'zgartirish → 409 modal ichida", async () => {
+  it("tahrirlash: ko'lami bor tyutor fakultetini o'zgartirish → 409 modal ichida", async () => {
     const user = userEvent.setup();
     renderWithProviders(<TutorsPage />);
     await screen.findByText('Nodira Saidova');
@@ -164,7 +164,7 @@ describe('TutorsPage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Saqlash' }));
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'Tyutorga guruhlar biriktirilgan — avval ularni ajrating.',
+      "Tyutorga ko'lam biriktirilgan — avval uni ajrating.",
     );
   });
 

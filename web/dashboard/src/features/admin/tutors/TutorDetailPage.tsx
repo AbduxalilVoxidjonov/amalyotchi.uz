@@ -4,17 +4,17 @@ import { errorMessage } from '@/shared/api';
 import { ConfirmDialog, type BreadcrumbItem } from '@/shared/ui';
 import { LoadingState } from '../components/PageStatus';
 import { HierarchyListPage } from '../faculties/components/HierarchyListPage';
-import { GroupsPickerModal } from './components/GroupsPickerModal';
 import { PasswordResetModal } from './components/PasswordResetModal';
+import { ScopePickerModal } from './components/ScopePickerModal';
 import { TutorDetailView } from './components/TutorDetailView';
 import { TutorFormModal } from './components/TutorFormModal';
 import { useSetTutorStatus, useTutorQuery } from './hooks';
 
 const ROOT: BreadcrumbItem[] = [{ label: 'Tyutorlar', to: '/admin/tutors' }];
 
-type Dialog = 'edit' | 'password' | 'status' | 'groups' | null;
+type Dialog = 'edit' | 'password' | 'status' | 'scopes' | null;
 
-/** Admin · Tyutor sahifasi (`/admin/tutors/:tutorId`): ma'lumotlar, parol tiklash, holat, guruh biriktirish. */
+/** Admin · Tyutor sahifasi (`/admin/tutors/:tutorId`): ma'lumotlar, parol tiklash, holat, ko'lam biriktirish. */
 export function TutorDetailPage() {
   const { tutorId = '' } = useParams<{ tutorId: string }>();
   const tutorQuery = useTutorQuery(tutorId);
@@ -60,7 +60,7 @@ export function TutorDetailPage() {
           onEdit={() => open('edit')}
           onResetPassword={() => open('password')}
           onToggleStatus={() => open('status')}
-          onEditGroups={() => open('groups')}
+          onEditScopes={() => open('scopes')}
         />
       ) : (
         <LoadingState />
@@ -78,12 +78,12 @@ export function TutorDetailPage() {
             onSuccess={() => setNotice('Parol yangilandi.')}
           />
 
-          <GroupsPickerModal
-            open={dialog === 'groups'}
+          <ScopePickerModal
+            open={dialog === 'scopes'}
             tutorId={tutor.id}
-            currentGroupIds={tutor.groups.map((g) => g.groupId)}
+            currentScopes={tutor.scopes}
             onClose={close}
-            onSaved={() => setNotice('Guruhlar saqlandi.')}
+            onSaved={() => setNotice("Ko'lam saqlandi.")}
           />
 
           <ConfirmDialog

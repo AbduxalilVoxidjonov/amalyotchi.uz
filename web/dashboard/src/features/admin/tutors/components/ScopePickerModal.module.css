@@ -1,0 +1,119 @@
+/* Ko'lam tanlash modali: qidiruv → 4 darajali daraxt (ochilib-yopiladigan) → checkbox qatorlari */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.scroll {
+  max-height: 55vh;
+  overflow-y: auto;
+  border: var(--border-inner);
+  border-radius: var(--radius-lg);
+  padding: 4px 0;
+}
+.tree,
+.children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.children {
+  padding-left: 22px;
+}
+.node {
+  padding: 0;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-left: 6px;
+}
+.row:hover {
+  background: var(--color-surface-hover);
+}
+.toggle,
+.toggleSpacer {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.toggle {
+  border: 0;
+  background: transparent;
+  color: var(--color-text-faint);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.toggle:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-surface-2);
+}
+.toggle:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.check {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 12px 6px 4px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.node[data-state='taken'] > .row .check,
+.node[data-state='takenViaAncestor'] > .row .check,
+.node[data-state='takenInside'] > .row .check {
+  cursor: not-allowed;
+  color: var(--color-text-disabled);
+}
+.node[data-state='covered'] > .row .check {
+  cursor: default;
+  color: var(--color-text-dim);
+}
+.name {
+  font-size: var(--fs-sm2);
+  color: var(--color-text);
+  margin-right: 6px;
+}
+.node[data-level='group'] > .row .name {
+  font-family: var(--font-mono);
+}
+.node[data-level='faculty'] > .row .name,
+.node[data-level='department'] > .row .name {
+  font-weight: var(--fw-semibold);
+}
+.node[data-state='taken'] > .row .name,
+.node[data-state='takenViaAncestor'] > .row .name,
+.node[data-state='takenInside'] > .row .name {
+  color: var(--color-text-disabled);
+}
+.node[data-state='covered'] > .row .name {
+  color: var(--color-text-dim);
+}
+.level {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+  margin-right: 6px;
+}
+.meta {
+  font-size: var(--fs-sm);
+  color: var(--color-text-dim);
+}
+.note {
+  margin-left: 6px;
+  font-size: var(--fs-sm);
+  color: var(--color-text-faint);
+  font-style: italic;
+}
+.count {
+  margin-right: auto;
+  font-size: var(--fs-sm2);
+  color: var(--color-text-dim);
+}

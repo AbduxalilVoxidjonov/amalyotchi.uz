@@ -1,4 +1,5 @@
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Features.Admin.Tutors;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Domain.Exceptions;
 using Amaliyotchi.Domain.Organization;
@@ -8,7 +9,9 @@ using Microsoft.EntityFrameworkCore;
 namespace Amaliyotchi.Application.Features.Admin.Groups;
 
 /// <summary><c>PATCH /api/admin/groups/{id}/status</c>: <c>{ isActive }</c> → 200 <see cref="GroupDto"/>.
-/// <see cref="Id"/> route'dan keladi. Topilmasa → 404.</summary>
+/// <see cref="Id"/> route'dan keladi. Topilmasa → 404. Faollashtirilganda guruhni qamrab oluvchi faol tyutor ko'lami
+/// bo'lsa biriktiruv qo'shiladi/faollashadi (<see cref="TutorAssignmentSync.AttachGroupAsync"/>); faolsizlantirish
+/// biriktiruvlarga tegmaydi.</summary>
 public sealed record SetGroupStatusCommand(Guid Id, bool IsActive) : IRequest<GroupDto>;
 
 internal sealed class SetGroupStatusCommandHandler(IApplicationDbContext db, IAuditWriter audit)
@@ -22,9 +25,22 @@ internal sealed class SetGroupStatusCommandHandler(IApplicationDbContext db, IAu
         if (group.IsActive != request.IsActive)
         {
             if (request.IsActive)
+            {
                 group.Activate();
+
+                var directionId = group.DirectionId;
+                var chain = await (from d in db.Directions.AsNoTracking()
+                                   join dept in db.Departments on d.DepartmentId equals dept.Id
+                                   where d.Id == directionId
+                                   select new { DirectionId = d.Id, DepartmentId = dept.Id, dept.FacultyId })
+                    .FirstAsync(cancellationToken);
+                await TutorAssignmentSync.AttachGroupAsync(
+                    db, group.Id, chain.DirectionId, chain.DepartmentId, chain.FacultyId, group.AcademicYearId, cancellationToken);
+            }
             else
+            {
                 group.Deactivate();
+            }
 
             await audit.WriteAsync(
                 request.IsActive ? AuditAction.GroupActivated : AuditAction.GroupDeactivated,

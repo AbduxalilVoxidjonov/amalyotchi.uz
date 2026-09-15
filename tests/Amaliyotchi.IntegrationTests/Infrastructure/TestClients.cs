@@ -45,8 +45,8 @@ public static class TestClients
     public static Task<TestUser> CreateAdminAsync(this ApiFactory factory, string? fullName = null) =>
         factory.CreatePasswordUserAsync(UserRole.Admin, fullName ?? "Test Admin", facultyId: null);
 
-    /// <summary>Tyutor: fakultetga biriktirilgan + kamida bitta guruhga faol <c>TutorAssignment</c>.
-    /// Guruh berilmasa — yangi fakultet/yo'nalish/guruh yaratiladi.</summary>
+    /// <summary>Tyutor: fakultetga biriktirilgan + kamida bitta guruhga guruh darajasidagi faol <c>TutorScope</c>
+    /// va unga mos <c>TutorAssignment</c> (materializatsiya). Guruh berilmasa — yangi fakultet/yo'nalish/guruh yaratiladi.</summary>
     public static async Task<TestUser> CreateTutorAsync(
         this ApiFactory factory, TestGroup? group = null, string? fullName = null, params Guid[] extraGroupIds)
     {
@@ -55,9 +55,22 @@ public static class TestClients
 
         await factory.WithDbAsync(async db =>
         {
-            db.TutorAssignments.Add(TutorAssignment.Create(tutor.Id, group.GroupId, group.AcademicYearId));
-            foreach (var extra in extraGroupIds)
-                db.TutorAssignments.Add(TutorAssignment.Create(tutor.Id, extra, group.AcademicYearId));
+            var groupIds = new[] { group.GroupId }.Concat(extraGroupIds).ToList();
+            var chains = await (from g in db.StudentGroups
+                                join d in db.Directions on g.DirectionId equals d.Id
+                                join dept in db.Departments on d.DepartmentId equals dept.Id
+                                where groupIds.Contains(g.Id)
+                                select new { g.Id, DirectionId = d.Id, DepartmentId = dept.Id, dept.FacultyId })
+                .ToListAsync();
+
+            foreach (var groupId in groupIds)
+            {
+                var chain = chains.Single(c => c.Id == groupId);
+                db.TutorScopes.Add(TutorScope.Create(
+                    tutor.Id, TutorScopeLevel.Group, chain.FacultyId, chain.DepartmentId, chain.DirectionId, groupId));
+                db.TutorAssignments.Add(TutorAssignment.Create(tutor.Id, groupId, group.AcademicYearId));
+            }
+
             await db.SaveChangesAsync();
         });
 

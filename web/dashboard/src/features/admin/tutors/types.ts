@@ -47,7 +47,40 @@ export interface TutorGroup {
   isActive: boolean;
 }
 
-/** `GET/POST/PUT /api/admin/tutors/{id}` javobi. */
+/** Ko'lam darajasi: fakultet → kafedra → yo'nalish → guruh (ota tanlansa — ichidagi hamma narsa). */
+export type TutorScopeLevel = 'faculty' | 'department' | 'direction' | 'group';
+
+export const SCOPE_LEVEL_LABEL: Record<TutorScopeLevel, string> = {
+  faculty: 'Fakultet',
+  department: 'Kafedra',
+  direction: "Yo'nalish",
+  group: 'Guruh',
+};
+
+/** `TutorDetail.scopes[]` — tyutorga aniq biriktirilgan tugun (ko'lam). */
+export interface TutorScope {
+  id: string;
+  level: TutorScopeLevel;
+  facultyId: string;
+  departmentId: string | null;
+  directionId: string | null;
+  groupId: string | null;
+  /** Tanlangan tugun nomi. */
+  name: string;
+  /** Ota tugunlar: "Axborot texnologiyalari › Umumiy kafedra" (fakultet darajasida ""). */
+  path: string;
+  /** Qamrab olingan faol guruhlar soni. */
+  groups: number;
+  students: number;
+}
+
+/** `PUT /api/admin/tutors/{id}/scopes` body elementi. */
+export interface TutorScopeInput {
+  level: TutorScopeLevel;
+  id: string;
+}
+
+/** `GET/POST/PUT /api/admin/tutors/{id}` javobi. `groups` — ko'lamlardan yoyilgan samarali guruhlar (backend hisoblaydi). */
 export interface TutorDetail {
   id: string;
   fullName: string;
@@ -59,6 +92,7 @@ export interface TutorDetail {
   isActive: boolean;
   lastLoginAt: string | null;
   createdAt: string;
+  scopes: TutorScope[];
   groups: TutorGroup[];
 }
 
@@ -78,15 +112,35 @@ export interface TutorUpdateInput {
   facultyId: string;
 }
 
-/** `GET /api/admin/tutors/{id}/available-groups` qatori — tyutor fakultetidagi barcha faol guruhlar. */
-export interface AvailableGroup {
+/** AYNAN shu tugunda ko'lami bor tyutor (joriy tyutorning o'zi ham bo'lishi mumkin); yo'q — null. */
+export interface ScopeNodeOwner {
+  tutorId: string | null;
+  tutorName: string | null;
+}
+
+export interface ScopeTreeGroup extends ScopeNodeOwner {
   id: string;
   name: string;
   course: number;
-  directionName: string;
-  departmentName: string;
   students: number;
-  /** Boshqa tyutorga biriktirilgan bo'lsa — uning id/FISH'i; bo'sh — null. */
-  tutorId: string | null;
-  tutorName: string | null;
+}
+
+export interface ScopeTreeDirection extends ScopeNodeOwner {
+  id: string;
+  name: string;
+  groups: ScopeTreeGroup[];
+}
+
+export interface ScopeTreeDepartment extends ScopeNodeOwner {
+  id: string;
+  name: string;
+  directions: ScopeTreeDirection[];
+}
+
+/** `GET /api/admin/tutors/{id}/scope-tree` — tyutor fakulteti daraxti (faol tugunlar). */
+export interface TutorScopeTree extends ScopeNodeOwner {
+  id: string;
+  name: string;
+  code: string;
+  departments: ScopeTreeDepartment[];
 }

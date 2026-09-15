@@ -29,9 +29,9 @@ export const adminKeys = {
   tutors: (params: ListParams) => ['admin', 'tutors', params] as const,
   /** Barcha `tutors(params)` so'rovlarini invalidate qilish uchun. */
   tutorsAll: () => ['admin', 'tutors'] as const,
-  /** `GET /tutors/{id}` — detail sahifasi; `available-groups` ham shu prefiks ostida. */
+  /** `GET /tutors/{id}` — detail sahifasi; `scope-tree` ham shu prefiks ostida. */
   tutor: (id: string) => ['admin', 'tutor', id] as const,
-  tutorAvailableGroups: (id: string) => ['admin', 'tutor', id, 'available-groups'] as const,
+  tutorScopeTree: (id: string) => ['admin', 'tutor', id, 'scope-tree'] as const,
   students: (params: ListParams) => ['admin', 'students', params] as const,
   companies: (params: ListParams) => ['admin', 'companies', params] as const,
   audit: (params: ListParams) => ['admin', 'audit', params] as const,
