@@ -26,5 +26,12 @@ public enum AuditAction
     GradeChanged = 18,
     GradeReverted = 19,
     SettingsChanged = 20,
-    AttendanceMarkedSuspicious = 21
+    AttendanceMarkedSuspicious = 21,
+
+    /// <summary>Admin fakultet yaratdi/tahrirladi/o'chirdi yoki faol holatini o'zgartirdi.</summary>
+    FacultyCreated = 22,
+    FacultyUpdated = 23,
+    FacultyDeleted = 24,
+    FacultyActivated = 25,
+    FacultyDeactivated = 26
 }

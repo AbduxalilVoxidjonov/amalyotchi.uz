@@ -2,7 +2,7 @@ import { Badge, Button, ProgressBar, type DataTableColumn } from '@/shared/ui';
 import { AdminTable, type TableStateProps } from '../../components/AdminTable';
 import { FACULTY_STATUS_LABEL, type Faculty } from '../types';
 
-/** SPEC §9.3 ustunlari (cols aynan). */
+/** SPEC §9.3 ustunlari (cols aynan) + `isActive` holat badge'i. */
 const COLUMNS: DataTableColumn<Faculty>[] = [
   { key: 'name', header: 'Fakultet', width: 'minmax(200px,2fr)', strong: true },
   { key: 'directions', header: "Yo'nalish", width: 'minmax(100px,.9fr)', mono: true },
@@ -18,27 +18,54 @@ const COLUMNS: DataTableColumn<Faculty>[] = [
     key: 'status',
     header: 'Holat',
     width: 'minmax(120px,.9fr)',
-    render: (r) => (
-      <Badge status={FACULTY_STATUS_LABEL[r.status].kind}>
-        {FACULTY_STATUS_LABEL[r.status].label}
-      </Badge>
-    ),
+    render: (r) =>
+      r.isActive ? (
+        <Badge status={FACULTY_STATUS_LABEL[r.status].kind}>
+          {FACULTY_STATUS_LABEL[r.status].label}
+        </Badge>
+      ) : (
+        <Badge status="neu">Faol emas</Badge>
+      ),
   },
 ];
 
 export interface FacultiesTableProps extends TableStateProps<Faculty> {
   onCreate: () => void;
   onExport: () => void;
+  onEdit: (faculty: Faculty) => void;
+  onToggleStatus: (faculty: Faculty) => void;
+  onDelete: (faculty: Faculty) => void;
 }
 
-export function FacultiesTable({ onCreate, onExport, ...state }: FacultiesTableProps) {
+export function FacultiesTable({
+  onCreate,
+  onExport,
+  onEdit,
+  onToggleStatus,
+  onDelete,
+  ...state
+}: FacultiesTableProps) {
   return (
     <AdminTable
       aria-label="Fakultetlar"
       columns={COLUMNS}
       rowKey={(r) => r.id}
-      minWidth="760px"
+      minWidth="820px"
       emptyTitle="Fakultetlar yo'q"
+      rowDim={(r) => !r.isActive}
+      rowActions={(r) => (
+        <>
+          <Button size="xs" onClick={() => onEdit(r)}>
+            Tahrirlash
+          </Button>
+          <Button size="xs" onClick={() => onToggleStatus(r)}>
+            {r.isActive ? 'Faol emas qilish' : 'Faollashtirish'}
+          </Button>
+          <Button size="xs" variant="danger" onClick={() => onDelete(r)}>
+            O'chirish
+          </Button>
+        </>
+      )}
       actions={
         <>
           <Button size="xs" onClick={onCreate}>

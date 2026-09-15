@@ -39,6 +39,8 @@ export interface DataTableProps<T> extends Omit<HTMLAttributes<HTMLDivElement>, 
   minWidth?: string;
   onRowClick?: (row: T, index: number) => void;
   selectedKey?: string | number | null;
+  /** `true` qaytarsa qator xiralashtiriladi (masalan `isActive: false` yozuv). */
+  rowDim?: (row: T, index: number) => boolean;
   /** a11y: jadval nomi. */
   'aria-label'?: string;
 }
@@ -67,6 +69,7 @@ export function DataTable<T>({
   minWidth,
   onRowClick,
   selectedKey = null,
+  rowDim,
   className,
   style,
   ...rest
@@ -121,6 +124,7 @@ export function DataTable<T>({
                   role="row"
                   data-clickable={clickable || undefined}
                   data-selected={selectedKey !== null && selectedKey === key ? 'true' : undefined}
+                  data-row-dim={rowDim?.(row, i) ? 'true' : undefined}
                   onClick={clickable ? () => onRowClick?.(row, i) : undefined}
                 >
                   {columns.map((c, ci) => (

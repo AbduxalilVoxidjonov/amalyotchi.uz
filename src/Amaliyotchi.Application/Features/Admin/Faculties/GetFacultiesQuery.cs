@@ -13,6 +13,7 @@ public sealed record FacultyRow(
     Guid Id,
     string Name,
     string Code,
+    bool IsActive,
     int Directions,
     int Groups,
     int Students,
@@ -44,6 +45,7 @@ internal sealed class GetFacultiesQueryHandler(IApplicationDbContext db, IClock 
                 f.Id,
                 f.Name,
                 f.Code,
+                f.IsActive,
                 Directions = f.Directions.Count,
                 Groups = f.Directions.SelectMany(d => d.Groups).Count()
             })
@@ -108,7 +110,7 @@ internal sealed class GetFacultiesQueryHandler(IApplicationDbContext db, IClock 
                 : FacultyStatus.Active;
 
             return new FacultyRow(
-                f.Id, f.Name, f.Code, f.Directions, f.Groups,
+                f.Id, f.Name, f.Code, f.IsActive, f.Directions, f.Groups,
                 studentsByFaculty.GetValueOrDefault(f.Id),
                 tutorsByFaculty.GetValueOrDefault(f.Id),
                 pct, status);

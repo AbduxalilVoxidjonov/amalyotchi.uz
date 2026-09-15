@@ -63,4 +63,7 @@ internal static class AdminJson
 
     public static Task<HttpResponseMessage> PutAsJsonAsync<T>(this HttpClient client, string url, T body)
         => System.Net.Http.Json.HttpClientJsonExtensions.PutAsJsonAsync(client, url, body, JsonDefaults.Options);
+
+    public static Task<HttpResponseMessage> PatchAsJsonAsync<T>(this HttpClient client, string url, T body)
+        => System.Net.Http.Json.HttpClientJsonExtensions.PatchAsJsonAsync(client, url, body, JsonDefaults.Options);
 }

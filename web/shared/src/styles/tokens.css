@@ -188,6 +188,7 @@
   /* ---------- Z-index ---------- */
   --z-topbar: 5;
   --z-drawer: 20;
+  --z-modal: 30;
 
   /* ---------- Focus ---------- */
   --focus-ring: 0 0 0 2px var(--color-accent-soft);

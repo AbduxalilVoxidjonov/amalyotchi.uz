@@ -17,4 +17,44 @@ public sealed class AdminFacultiesController(ISender sender) : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<Paged<FacultyRow>>> List([FromQuery] GetFacultiesQuery query, CancellationToken cancellationToken)
         => Ok(await sender.Send(query, cancellationToken));
+
+    /// <summary><c>{ name, code }</c> → 201. Kod takrorlansa (faol fakultetlar orasida) → 409.</summary>
+    [HttpPost]
+    [ProducesResponseType<FacultyDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<FacultyDto>> Create(CreateFacultyCommand command, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(command, cancellationToken);
+        return StatusCode(StatusCodes.Status201Created, result);
+    }
+
+    /// <summary><c>{ name, code }</c> → 200. <c>id</c> route'dan; body'da bo'lmaydi.</summary>
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType<FacultyDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<FacultyDto>> Update(
+        Guid id, UpdateFacultyCommand command, CancellationToken cancellationToken)
+        => Ok(await sender.Send(command with { Id = id }, cancellationToken));
+
+    /// <summary>Soft delete. Bog'liq guruh/tyutor/talaba bo'lsa → 409.</summary>
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        await sender.Send(new DeleteFacultyCommand(id), cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary><c>{ isActive }</c> → 200. Faol emas fakultet ro'yxatda qoladi.</summary>
+    [HttpPatch("{id:guid}/status")]
+    [ProducesResponseType<FacultyDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<FacultyDto>> SetStatus(
+        Guid id, SetFacultyStatusCommand command, CancellationToken cancellationToken)
+        => Ok(await sender.Send(command with { Id = id }, cancellationToken));
 }

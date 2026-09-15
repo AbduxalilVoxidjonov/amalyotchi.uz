@@ -12,6 +12,7 @@ export * from './data-table';
 export * from './empty-state';
 export * from './fact-grid';
 export * from './map-placeholder';
+export * from './modal';
 export * from './pill';
 export * from './sidebar-nav';
 export * from './stat-tile';

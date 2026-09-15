@@ -25,6 +25,8 @@ export interface AdminTableProps<T> extends TableStateProps<T> {
   actions?: ReactNode;
   /** Qator amallari (❓ dizaynda yo'q — faqat berilsa chiqadi). */
   rowActions?: ((row: T) => ReactNode) | undefined;
+  /** `true` qaytarsa qator xiralashtiriladi (masalan `isActive: false`). */
+  rowDim?: ((row: T) => boolean) | undefined;
   emptyTitle: string;
   emptyDescription?: ReactNode;
   minWidth?: string;
@@ -42,6 +44,7 @@ export function AdminTable<T>({
   rowKey,
   actions,
   rowActions,
+  rowDim,
   emptyTitle,
   emptyDescription,
   minWidth,
@@ -83,6 +86,7 @@ export function AdminTable<T>({
       rows={rows}
       rowKey={(r) => rowKey(r)}
       {...(rowActions ? { actions: rowActions } : {})}
+      {...(rowDim ? { rowDim: (r: T) => rowDim(r) } : {})}
       {...(minWidth ? { minWidth } : {})}
       emptyText={state}
       toolbar={

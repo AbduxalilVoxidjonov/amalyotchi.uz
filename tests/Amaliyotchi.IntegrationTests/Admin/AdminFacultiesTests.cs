@@ -101,6 +101,175 @@ public sealed class AdminFacultiesTests(ApiFixture fixture)
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         json.RootElement.GetProperty("errors").TryGetProperty("Q", out _).Should().BeTrue();
     }
+
+    [Fact]
+    public async Task Yaratish_201_KodniKichikHarfdanUppercaseGaOtkazadiVaRoyxatdaKorinadi()
+    {
+        var client = await Factory.LoginAsAdminAsync();
+        var marker = Guid.NewGuid().ToString("N")[..6];
+
+        var response = await client.PostJsonAsync("/api/admin/faculties", new { name = $"Yangi Fakultet {marker}", code = $"y{marker[..4]}" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
+        var dto = await response.Content.ReadAsync<FacultyDto>();
+        dto.Should().NotBeNull();
+        dto!.Name.Should().Be($"Yangi Fakultet {marker}");
+        dto.Code.Should().Be($"Y{marker[..4]}".ToUpperInvariant());
+        dto.IsActive.Should().BeTrue();
+
+        var page = await client.GetFacultiesAsync($"/api/admin/faculties?q={marker}");
+        page.Items.Should().ContainSingle(f => f.Id == dto.Id && f.Code == dto.Code);
+    }
+
+    [Fact]
+    public async Task Yaratish_TakroriyKod_409()
+    {
+        var client = await Factory.LoginAsAdminAsync();
+        var code = "DUP" + Guid.NewGuid().ToString("N")[..4].ToUpperInvariant();
+        await Factory.CreateFacultyAsync($"Birinchi {code}");
+        await Factory.WithDbAsync(async db =>
+        {
+            var faculty = Amaliyotchi.Domain.Organization.Faculty.Create($"Birinchi {code}", code);
+            db.Faculties.Add(faculty);
+            await db.SaveChangesAsync();
+        });
+
+        var response = await client.PostJsonAsync("/api/admin/faculties", new { name = "Ikkinchi", code = code.ToLowerInvariant() });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task Yaratish_Validatsiya_BoshNom_400()
+    {
+        var client = await Factory.LoginAsAdminAsync();
+
+        var response = await client.PostJsonAsync("/api/admin/faculties", new { name = "", code = "AB" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        json.RootElement.GetProperty("errors").TryGetProperty("Name", out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Yangilash_200_NomVaKodOzgaradi()
+    {
+        var client = await Factory.LoginAsAdminAsync();
+        var facultyId = await Factory.CreateFacultyAsync("Eski Nom");
+        var marker = Guid.NewGuid().ToString("N")[..6].ToUpperInvariant();
+
+        var response = await client.PutAsJsonAsync($"/api/admin/faculties/{facultyId}", new { name = "Yangi Nom", code = marker });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+        var dto = await response.Content.ReadAsync<FacultyDto>();
+        dto!.Id.Should().Be(facultyId);
+        dto.Name.Should().Be("Yangi Nom");
+        dto.Code.Should().Be(marker);
+    }
+
+    [Fact]
+    public async Task Yangilash_BoshqaFakultetningKodiga_409()
+    {
+        var client = await Factory.LoginAsAdminAsync();
+        var other = Guid.NewGuid().ToString("N")[..6].ToUpperInvariant();
+        await Factory.WithDbAsync(async db =>
+        {
+            var faculty = Amaliyotchi.Domain.Organization.Faculty.Create("Band Kod", other);
+            db.Faculties.Add(faculty);
+            await db.SaveChangesAsync();
+        });
+        var facultyId = await Factory.CreateFacultyAsync("Ozgaruvchi");
+
+        var response = await client.PutAsJsonAsync($"/api/admin/faculties/{facultyId}", new { name = "Ozgaruvchi", code = other });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task Yangilash_Topilmasa_404()
+    {
+        var client = await Factory.LoginAsAdminAsync();
+
+        var response = await client.PutAsJsonAsync(
+            $"/api/admin/faculties/{Guid.CreateVersion7()}", new { name = "Yoq", code = "YQ" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        json.RootElement.GetProperty("detail").GetString().Should().Be("Fakultet topilmadi.");
+    }
+
+    [Fact]
+    public async Task Ochirish_204_RoyxatdanChiqadi_QaytaOchirish404()
+    {
+        var client = await Factory.LoginAsAdminAsync();
+        var facultyId = await Factory.CreateFacultyAsync("Ochiriladigan");
+
+        var delete = await client.DeleteAsync($"/api/admin/faculties/{facultyId}");
+        delete.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var page = await client.GetFacultiesAsync($"/api/admin/faculties?q={facultyId}");
+        page.Items.Should().BeEmpty();
+
+        var again = await client.DeleteAsync($"/api/admin/faculties/{facultyId}");
+        again.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Ochirish_BogliqGuruhVaTyutorBolsa_409()
+    {
+        var client = await Factory.LoginAsAdminAsync();
+        var group = await Factory.CreateGroupAsync();
+        await Factory.CreateTutorAsync(group);
+
+        var response = await client.DeleteAsync($"/api/admin/faculties/{group.FacultyId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task Ochirish_TyutorTokeni_403()
+    {
+        var facultyId = await Factory.CreateFacultyAsync("Tyutor Uchun");
+        var client = await Factory.LoginAsTutorAsync();
+
+        var response = await client.DeleteAsync($"/api/admin/faculties/{facultyId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Holat_DeactivateVaActivate_RoyxatdaKorinadi()
+    {
+        var client = await Factory.LoginAsAdminAsync();
+        var facultyId = await Factory.CreateFacultyAsync("Holat Sinovi");
+
+        var deactivate = await client.PatchAsJsonAsync($"/api/admin/faculties/{facultyId}/status", new { isActive = false });
+        deactivate.StatusCode.Should().Be(HttpStatusCode.OK, await deactivate.Content.ReadAsStringAsync());
+        var deactivated = await deactivate.Content.ReadAsync<FacultyDto>();
+        deactivated!.IsActive.Should().BeFalse();
+
+        var afterDeactivate = await client.GetFacultiesAsync($"/api/admin/faculties?q=Holat Sinovi");
+        afterDeactivate.Items.Single(f => f.Id == facultyId).IsActive.Should().BeFalse();
+
+        var activate = await client.PatchAsJsonAsync($"/api/admin/faculties/{facultyId}/status", new { isActive = true });
+        activate.StatusCode.Should().Be(HttpStatusCode.OK);
+        var activated = await activate.Content.ReadAsync<FacultyDto>();
+        activated!.IsActive.Should().BeTrue();
+
+        var afterActivate = await client.GetFacultiesAsync($"/api/admin/faculties?q=Holat Sinovi");
+        afterActivate.Items.Single(f => f.Id == facultyId).IsActive.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Holat_Topilmasa_404()
+    {
+        var client = await Factory.LoginAsAdminAsync();
+
+        var response = await client.PatchAsJsonAsync(
+            $"/api/admin/faculties/{Guid.CreateVersion7()}/status", new { isActive = false });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }
 
 internal static class AdminHttp

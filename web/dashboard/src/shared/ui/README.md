@@ -16,7 +16,8 @@ Manba: `design/SPEC-TOKENS.md` (19 komponent). Vizual ko'rgazma: `npm run dev` â
     `ProgressBar` (+`pctColor`), `Avatar` (+`initialsOf`), `Eyebrow`, `cn`.
   - `@/shared/ui` (shu papka) â€” yuqoridagilarni re-export qiladi **+** dashboard'ga xos: `Pill`/`PillGroup`,
     `DataTable`/`PersonCell`, `StatTile`/`StatGrid`, `FactGrid`, `SidebarNav`, `Topbar`(=`PageHeader`),
-    `Alert`/`AlertList`/`AlertRow`, `Chip`/`ChipRow`/`FileBox`, `MapPlaceholder`, `EmptyState`.
+    `Alert`/`AlertList`/`AlertRow`, `Chip`/`ChipRow`/`FileBox`, `MapPlaceholder`, `EmptyState`,
+    `Modal`/`ConfirmDialog`.
 - Import har doim `import { Button, DataTable } from '@/shared/ui'` (dashboard) yoki
   `from '@amaliyotchi/shared/ui'` (twa). Tree-shake ishlaydi (`sideEffects: false`).
 
@@ -41,6 +42,8 @@ Manba: `design/SPEC-TOKENS.md` (19 komponent). Vizual ko'rgazma: `npm run dev` â
 | `MapPlaceholder`            | `title coords note height`                                                                                                                                                                             |
 | `Eyebrow`                   | `as spacing tone margin`                                                                                                                                                                               |
 | `EmptyState`                | `title description action tone`                                                                                                                                                                        |
+| `Modal`                     | `open onClose title description children footer width` â€” a11y: `role="dialog"`, Esc/overlay yopadi, fokus ichkarida qulflanadi, `body` scroll qulflanadi                                             |
+| `ConfirmDialog`             | `Modal` ustida: `open title description confirmLabel cancelLabel danger isLoading error onConfirm onCancel`                                                                                            |
 
 ## Shell bilan ishlash (`src/app/layout`)
 

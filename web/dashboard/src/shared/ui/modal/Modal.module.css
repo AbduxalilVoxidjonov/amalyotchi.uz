@@ -1,0 +1,81 @@
+/* Umumiy modal — Card (radius-2xl) uslubiga mos, SPEC-TOKENS'da alohida bo'lim yo'q. */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 21, 18, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: var(--z-modal);
+}
+.panel {
+  width: var(--modal-w, 440px);
+  max-width: 100%;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: var(--border);
+  border-radius: var(--radius-2xl);
+  outline: none;
+}
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: var(--section-head-pad);
+  border-bottom: var(--border-inner);
+}
+.title {
+  margin: 0;
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+}
+.close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-dim);
+  font-size: var(--fs-xl);
+  line-height: 1;
+  cursor: pointer;
+}
+.close:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+.close:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.description {
+  margin: 0;
+  padding: 14px var(--card-pad) 0;
+  font-size: var(--fs-sm2);
+  color: var(--color-text-dim);
+}
+.body {
+  padding: var(--card-pad);
+}
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: var(--section-head-pad);
+  background: var(--color-surface-2);
+  border-top: var(--border-inner);
+}
+.confirmError {
+  margin: 0;
+  font-size: var(--fs-sm2);
+  color: var(--color-bad-fg);
+}

@@ -1,6 +1,6 @@
 # Qurish holati
 
-Oxirgi yangilanish: 14.09.2026
+Oxirgi yangilanish: 15.09.2026
 
 ## Tayyor
 
@@ -8,7 +8,7 @@ Oxirgi yangilanish: 14.09.2026
 |---|---|---|
 | M01 Fundament | **Tayyor** | Solution, qatlamlar, DbContext (snake_case, soft delete, UTC), `Initial` migratsiya (PostGIS), audit interceptor, ProblemDetails, health, Serilog, rate limiting, Docker Compose, demo seed (`Seed:Demo`, Development) |
 | M02 Auth/RBAC | **Tayyor** | JWT + refresh rotatsiyasi, PBKDF2, rol siyosatlari (`admin.only`, `tutor.only`, `student.only`, `tutor.or.admin`), Telegram `initData` HMAC tekshiruvi, data scoping (`ScopeResolver`/`InScope`), `me`/`logout` |
-| M03 Tashkiliy struktura | O'qish + asosiy amallar, CRUD yo'q | `GET /api/admin/faculties`, `groups`; sozlamalar `GET`/`PUT /api/admin/settings` (bayramlar, shablonlar o'qiladi); fakultet/yo'nalish/guruh yaratish-tahrirlash endpoint'lari yo'q |
+| M03 Tashkiliy struktura | Fakultet CRUD tayyor, yo'nalish/guruh CRUD yo'q | `GET/POST/PUT/DELETE /api/admin/faculties`, `PATCH {id}/status` (faol/faol emas), `GET groups`; sozlamalar `GET`/`PUT /api/admin/settings` (bayramlar, shablonlar o'qiladi); yo'nalish/guruh yaratish-tahrirlash endpoint'lari yo'q |
 | M04 Talabalar registri | O'qish, CRUD yo'q | `GET /api/admin/students` (filtr, holat, kartadagi statistika), `GET /api/admin/tutors`; Excel import, taklif tokenlari, talaba yaratish/tahrirlash yo'q |
 | M05 Amaliyot davri | O'qish, CRUD yo'q | Davr/kalendar hisoblari (`PracticeCalendar`, `PeriodLookup`) barcha o'qishlarda ishlaydi; davr yaratish/guruh biriktirish endpoint'i yo'q (seed orqali) |
 | M06 Korxonalar | O'qish, CRUD yo'q | `GET /api/admin/companies` (radius bayrog'i `largeRadius`, shubhali kunlar); korxona yaratish/tahrirlash yo'q |
@@ -21,7 +21,7 @@ Oxirgi yangilanish: 14.09.2026
 | M10 Telegram bot, M11 fon vazifalari | Boshlanmagan | Worker loyihasi bo'sh; avto-yopish (18:00), eslatmalar yo'q |
 | Frontend (`web/`) | Mock bilan tayyor, v2 ga moslash kutilmoqda | Admin 9, tyutor 8, talaba (TWA) 6 ekran — MSW mock (`VITE_USE_MOCKS=true`); haqiqiy shakllar `web/API-CONTRACT.md` **v2** (backend DTO'laridan), v1→v2 farqlar §5 |
 
-Endpoint'lar: **39** (auth 5 · admin 9 · reports 1 · tyutor 13 · talaba 10 · files 1) — to'liq ro'yxat `web/API-CONTRACT.md`.
+Endpoint'lar: **43** (auth 5 · admin 13 · reports 1 · tyutor 13 · talaba 10 · files 1) — to'liq ro'yxat `web/API-CONTRACT.md`.
 
 ## Tekshirilgan
 

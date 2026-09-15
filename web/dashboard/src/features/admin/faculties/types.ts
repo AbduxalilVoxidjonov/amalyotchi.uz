@@ -14,9 +14,25 @@ export interface Faculty {
   /** Bugungi davomat (kutilganlardan kelgan/kech kelgan), kutilgan bo'lmasa 0. */
   attendancePct: number;
   status: FacultyStatus;
+  /** Fakultet o'zi faolmi (davomat holatidan mustaqil — CRUD orqali boshqariladi). */
+  isActive: boolean;
 }
 
 export const FACULTY_STATUS_LABEL: Record<FacultyStatus, { label: string; kind: 'ok' | 'late' }> = {
   active: { label: 'Faol', kind: 'ok' },
   attention: { label: "E'tibor", kind: 'late' },
 };
+
+/** POST/PUT/PATCH `/api/admin/faculties` javobi — to'liq `Faculty` qatoridan qisqa. */
+export interface FacultyDto {
+  id: string;
+  name: string;
+  code: string;
+  isActive: boolean;
+}
+
+/** POST/PUT `/api/admin/faculties` body'si. */
+export interface FacultyInput {
+  name: string;
+  code: string;
+}

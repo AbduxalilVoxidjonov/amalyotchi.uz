@@ -40,13 +40,13 @@ Jami **39 ta endpoint**: Auth 5 · Admin 9 · Reports 1 · Tutor 13 · Student (
 
 ### 1.3 Roles va policy'lar (`Policies.cs`, `AuthorizationSetup.cs`)
 
-| Policy | Nomi | Kim |
-|---|---|---|
-| `AdminOnly` | `admin.only` | `Admin` |
-| `TutorOnly` | `tutor.only` | `Tutor` (admin ham kira olmaydi) |
-| `StudentOnly` | `student.only` | `Student` |
-| `TutorOrAdmin` | `tutor.or.admin` | `Admin`, `Tutor` — faqat `/api/reports` |
-| `Authenticated` | `authenticated` | har qanday rol — `logout`, `me`, `files` |
+| Policy          | Nomi             | Kim                                      |
+| --------------- | ---------------- | ---------------------------------------- |
+| `AdminOnly`     | `admin.only`     | `Admin`                                  |
+| `TutorOnly`     | `tutor.only`     | `Tutor` (admin ham kira olmaydi)         |
+| `StudentOnly`   | `student.only`   | `Student`                                |
+| `TutorOrAdmin`  | `tutor.or.admin` | `Admin`, `Tutor` — faqat `/api/reports`  |
+| `Authenticated` | `authenticated`  | har qanday rol — `logout`, `me`, `files` |
 
 **Ma'lumot ko'lami** (`ScopeResolver`): admin — hamma; tyutor — faol `TutorAssignment` guruhlaridagi talabalar;
 talaba — faqat o'zi (Bearer'dan, query'da `studentId`/`groupId` yo'q). Ko'lamdan tashqaridagi yozuv **404** (403 emas —
@@ -66,12 +66,12 @@ mavjudligi oshkor qilinmaydi). Tyutorga guruh biriktirilmagan bo'lsa ro'yxatlar 
 
 ### 1.5 Sana/vaqt
 
-| C# tip | JSON | Misol |
-|---|---|---|
-| `DateOnly` | `"YYYY-MM-DD"` | `"2026-10-12"` |
-| `DateTimeOffset` | ISO 8601 **offset bilan** (baza UTC → `+00:00`, `Z` emas) | `"2026-10-11T07:42:00.123456+00:00"` |
-| `TimeOnly` (oyna, check-in soati) | `"HH:mm"` string, **Toshkent (+05:00)** vaqti | `"09:02"` |
-| Oy (`month` query/response) | `"YYYY-MM"` | `"2026-10"` |
+| C# tip                            | JSON                                                      | Misol                                |
+| --------------------------------- | --------------------------------------------------------- | ------------------------------------ |
+| `DateOnly`                        | `"YYYY-MM-DD"`                                            | `"2026-10-12"`                       |
+| `DateTimeOffset`                  | ISO 8601 **offset bilan** (baza UTC → `+00:00`, `Z` emas) | `"2026-10-11T07:42:00.123456+00:00"` |
+| `TimeOnly` (oyna, check-in soati) | `"HH:mm"` string, **Toshkent (+05:00)** vaqti             | `"09:02"`                            |
+| Oy (`month` query/response)       | `"YYYY-MM"`                                               | `"2026-10"`                          |
 
 Kirishda `occurredAt` uchun `"Z"` ham, offset ham qabul qilinadi. "Bugun", "ish kuni", oynalar — **Toshkent** bo'yicha
 (`PracticeTime.Offset = +05:00`, yozgi vaqt yo'q). `new Date(iso)` ikkala shaklni ham o'qiydi.
@@ -82,7 +82,12 @@ Kirishda `occurredAt` uchun `"Z"` ham, offset ham qabul qilinadi. "Bugun", "ish 
 // So'rov: ?q=<matn>&page=<1..>&pageSize=<1..100>
 // q bo'sh/whitespace → e'tiborsiz (null). page < 1 → 1. pageSize 1..100 dan tashqari → 20 (xato EMAS).
 // q > 100 belgi → 400 (errors.Q). Admin ro'yxatlarida validator bor; tutor/today'da validator YO'Q (faqat normalizatsiya).
-interface Paged<T> { items: T[]; page: number; pageSize: number; total: number }
+interface Paged<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
 ```
 
 Qidiruv `q` — case-insensitive `LIKE %q%` (`%`, `_`, `\` ekranlanadi), maydonlar har endpoint'da ko'rsatilgan.
@@ -93,26 +98,26 @@ Barcha handler xatolari — RFC 7807 `application/problem+json`:
 
 ```ts
 interface ProblemDetails {
-  status: number;              // 400 | 401 | 403 | 404 | 409 | 500
-  title: string;               // o'zbekcha: "Ma'lumotlar noto'g'ri" | "Avtorizatsiya talab qilinadi" | "Topilmadi" | "Ziddiyat" | "Ruxsat yo'q" | "Noto'g'ri amal" | "Ichki xatolik"
-  detail: string;              // o'zbekcha xabar (foydalanuvchiga ko'rsatsa bo'ladi)
-  traceId: string;             // extensions — log'dan topish uchun
+  status: number; // 400 | 401 | 403 | 404 | 409 | 500
+  title: string; // o'zbekcha: "Ma'lumotlar noto'g'ri" | "Avtorizatsiya talab qilinadi" | "Topilmadi" | "Ziddiyat" | "Ruxsat yo'q" | "Noto'g'ri amal" | "Ichki xatolik"
+  detail: string; // o'zbekcha xabar (foydalanuvchiga ko'rsatsa bo'ladi)
+  traceId: string; // extensions — log'dan topish uchun
   errors?: Record<string, string[]>; // faqat 400 validation (FluentValidation)
-  type?: string;               // ASP.NET avtomatik 400 da bo'ladi (pastga qarang)
+  type?: string; // ASP.NET avtomatik 400 da bo'ladi (pastga qarang)
 }
 ```
 
-| Exception (backend) | Status | `title` | Qachon |
-|---|---|---|---|
-| `ValidationException` (FluentValidation quvuri) | **400** | Ma'lumotlar noto'g'ri | `errors` dict bilan; `detail` = "Kiritilgan ma'lumotlarda xatolik bor." |
-| `DomainException` | **400** | Noto'g'ri amal | biznes qoida (oyna yopiq, davr yo'q, sanalar davr tashqarisida…) |
-| `UnauthorizedException` | **401** | Avtorizatsiya talab qilinadi | (hozir handler'larda ishlatilmaydi — 401 asosan middleware'dan, body bo'sh) |
-| `ForbiddenException` | **403** | Ruxsat yo'q | login/refresh/telegram rad; `currentUser.UserId` yo'q |
-| `NotFoundException` | **404** | Topilmadi | yozuv yo'q yoki ko'lamdan tashqarida |
-| `ConflictException` | **409** | Ziddiyat | allaqachon hal qilingan/yuborilgan, radius tashqarisi, kesishuvchi ruxsat |
-| `DbUpdateConcurrencyException`, unique/FK violation | **409** | Ziddiyat | — |
-| boshqa | **500** | Ichki xatolik | `detail` umumiy, stack yo'q |
-| Rate limit | **429** | — | body bo'sh |
+| Exception (backend)                                 | Status  | `title`                      | Qachon                                                                      |
+| --------------------------------------------------- | ------- | ---------------------------- | --------------------------------------------------------------------------- |
+| `ValidationException` (FluentValidation quvuri)     | **400** | Ma'lumotlar noto'g'ri        | `errors` dict bilan; `detail` = "Kiritilgan ma'lumotlarda xatolik bor."     |
+| `DomainException`                                   | **400** | Noto'g'ri amal               | biznes qoida (oyna yopiq, davr yo'q, sanalar davr tashqarisida…)            |
+| `UnauthorizedException`                             | **401** | Avtorizatsiya talab qilinadi | (hozir handler'larda ishlatilmaydi — 401 asosan middleware'dan, body bo'sh) |
+| `ForbiddenException`                                | **403** | Ruxsat yo'q                  | login/refresh/telegram rad; `currentUser.UserId` yo'q                       |
+| `NotFoundException`                                 | **404** | Topilmadi                    | yozuv yo'q yoki ko'lamdan tashqarida                                        |
+| `ConflictException`                                 | **409** | Ziddiyat                     | allaqachon hal qilingan/yuborilgan, radius tashqarisi, kesishuvchi ruxsat   |
+| `DbUpdateConcurrencyException`, unique/FK violation | **409** | Ziddiyat                     | —                                                                           |
+| boshqa                                              | **500** | Ichki xatolik                | `detail` umumiy, stack yo'q                                                 |
+| Rate limit                                          | **429** | —                            | body bo'sh                                                                  |
 
 **ASP.NET avtomatik 400** (`[ApiController]`): JSON sintaksisi buzuq, enum'ga noma'lum string (`?status=foo`,
 `"decision":"x"`), `DateOnly`/`Guid` parse xatosi, majburiy `[FromForm]` maydon yo'q → `ValidationProblemDetails`:
@@ -131,24 +136,32 @@ Response — TypeScript uslubida. Enum qiymatlari §3 da.
 
 #### POST `/api/auth/login` · AllowAnonymous · rate `auth` 10/min
 
-| Maydon | Tip | Majburiy | Validatsiya |
-|---|---|---|---|
-| `hemisId` | string | ha | bo'sh emas, faqat raqamlar, 5–20 xonali (odatda 12 xonali). Noto'g'ri qiymat 403 beradi (mavjudligi oshkor qilinmaydi) |
-| `password` | string | ha | ≥ 8 belgi |
+| Maydon     | Tip    | Majburiy | Validatsiya                                                                                                            |
+| ---------- | ------ | -------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `hemisId`  | string | ha       | bo'sh emas, faqat raqamlar, 5–20 xonali (odatda 12 xonali). Noto'g'ri qiymat 403 beradi (mavjudligi oshkor qilinmaydi) |
+| `password` | string | ha       | ≥ 8 belgi                                                                                                              |
 
 Response 200 `AuthResultDto`. Xatolar: 400 `errors.HemisId` / `errors.Password`; **403** — HEMIS ID/parol noto'g'ri,
 talaba hisobi, parolsiz hisob (`detail`: "HEMIS ID yoki parol noto'g'ri.") yoki hisob faol emas
 ("Hisobingiz faol emas. Administratorga murojaat qiling."); 429.
 
 ```ts
-interface AuthResultDto { accessToken: string; accessTokenExpiresAt: string /*ISO*/; refreshToken: string; user: UserSummaryDto }
+interface AuthResultDto {
+  accessToken: string;
+  accessTokenExpiresAt: string /*ISO*/;
+  refreshToken: string;
+  user: UserSummaryDto;
+}
 interface UserSummaryDto {
-  id: string; fullName: string;
-  role: 'admin' | 'tutor' | 'student';      // camelCase (JWT claim'da "Admin")
-  facultyId: string | null;                 // tyutor — majburiy; admin/talaba null bo'lishi mumkin
-  phoneNumber: string | null;               // E.164 xom: "+998901234567" (ma'lumot maydoni, login uchun emas; talabada null bo'lishi mumkin)
-  groupId: string | null; groupName: string | null; course: number | null;
-  hemisId: string | null;                   // login identifikatori — admin/tyutor/talaba barchasida bo'lishi mumkin
+  id: string;
+  fullName: string;
+  role: 'admin' | 'tutor' | 'student'; // camelCase (JWT claim'da "Admin")
+  facultyId: string | null; // tyutor — majburiy; admin/talaba null bo'lishi mumkin
+  phoneNumber: string | null; // E.164 xom: "+998901234567" (ma'lumot maydoni, login uchun emas; talabada null bo'lishi mumkin)
+  groupId: string | null;
+  groupName: string | null;
+  course: number | null;
+  hemisId: string | null; // login identifikatori — admin/tyutor/talaba barchasida bo'lishi mumkin
 }
 ```
 
@@ -157,9 +170,9 @@ Baxtiyor Rasulov `100000000003`, Dilshod Ergashev `100000000004`.
 
 #### POST `/api/auth/telegram` · AllowAnonymous · rate `auth` 10/min
 
-| Maydon | Tip | Majburiy | Validatsiya |
-|---|---|---|---|
-| `initData` | string | ha | bo'sh emas, ≤ 8192 belgi |
+| Maydon     | Tip    | Majburiy | Validatsiya              |
+| ---------- | ------ | -------- | ------------------------ |
+| `initData` | string | ha       | bo'sh emas, ≤ 8192 belgi |
 
 Response 200 `AuthResultDto` (`user.role = "student"`). Xatolar: 400 `errors.InitData`; **403** — imzo/`auth_date`
 ("Telegram imzosi tasdiqlanmadi. Ilovani qaytadan oching."), hisob bog'lanmagan ("Hisob topilmadi — tyutoringizdan
@@ -206,72 +219,186 @@ Response 200 `AdminDashboardDto`. Bo'sh bazada ham 200 (0 / `[]`).
 
 ```ts
 interface AdminDashboardDto {
-  date: string;                       // bugun (Toshkent), DateOnly
-  stats: DashboardStatsDto;           // XOM raqamlar — matn/foiz formatini frontend yasaydi
-  faculties: FacultyAttendanceDto[];  // nom bo'yicha
-  tutors: TutorActivityDto[];         // late → pendingCount desc → name
-  audit: AuditEntryDto[];             // so'nggi 8 ta
+  date: string; // bugun (Toshkent), DateOnly
+  stats: DashboardStatsDto; // XOM raqamlar — matn/foiz formatini frontend yasaydi
+  faculties: FacultyAttendanceDto[]; // nom bo'yicha
+  tutors: TutorActivityDto[]; // late → pendingCount desc → name
+  audit: AuditEntryDto[]; // so'nggi 8 ta
 }
 interface DashboardStatsDto {
-  studentsTotal: number; studentsLinked: number; studentsUnlinked: number;   // Telegram bog'langan/bog'lanmagan
-  faculties: number; groups: number; companiesActive: number;
-  applicationsPending: number;        // status = submitted
-  applicationsOverdue: number;        // submitted va 48 soatdan ko'p javobsiz
-  contractsApproved: number;          // approved + completed
-  contractsRevision: number; contractsRejected: number;
-  contractsMissing: number;           // faol davr guruhidagi talaba, arizasi umuman yo'q
-  expectedToday: number;              // bugun ish kuni bo'lgan faol davr guruhlaridagi talabalar
-  presentToday: number; lateToday: number; absentToday: number; excusedToday: number;
-  noDiaryToday: number;               // max(0, (present+late) − bugungi kundaliklar)
-  attendanceTodayPct: number;         // int 0..100 = (present+late)/expectedToday
+  studentsTotal: number;
+  studentsLinked: number;
+  studentsUnlinked: number; // Telegram bog'langan/bog'lanmagan
+  faculties: number;
+  groups: number;
+  companiesActive: number;
+  applicationsPending: number; // status = submitted
+  applicationsOverdue: number; // submitted va 48 soatdan ko'p javobsiz
+  contractsApproved: number; // approved + completed
+  contractsRevision: number;
+  contractsRejected: number;
+  contractsMissing: number; // faol davr guruhidagi talaba, arizasi umuman yo'q
+  expectedToday: number; // bugun ish kuni bo'lgan faol davr guruhlaridagi talabalar
+  presentToday: number;
+  lateToday: number;
+  absentToday: number;
+  excusedToday: number;
+  noDiaryToday: number; // max(0, (present+late) − bugungi kundaliklar)
+  attendanceTodayPct: number; // int 0..100 = (present+late)/expectedToday
   attendanceYesterdayPct: number;
 }
-interface FacultyAttendanceDto { id: string; name: string; code: string; studentCount: number; expectedToday: number; attendedToday: number; attendancePct: number }
+interface FacultyAttendanceDto {
+  id: string;
+  name: string;
+  code: string;
+  studentCount: number;
+  expectedToday: number;
+  attendedToday: number;
+  attendancePct: number;
+}
 interface TutorActivityDto {
-  id: string; name: string; facultyCode: string | null; groups: string[]; studentCount: number;
-  pendingCount: number; oldestPendingAt: string | null /*ISO*/; avgDecisionHours: number | null /*1 kasr, so'nggi 60 kun*/;
-  lastActiveAt: string | null /*ISO: max(lastLoginAt, oxirgi audit)*/; status: TutorStatus;
+  id: string;
+  name: string;
+  facultyCode: string | null;
+  groups: string[];
+  studentCount: number;
+  pendingCount: number;
+  oldestPendingAt: string | null /*ISO*/;
+  avgDecisionHours: number | null /*1 kasr, so'nggi 60 kun*/;
+  lastActiveAt: string | null /*ISO: max(lastLoginAt, oxirgi audit)*/;
+  status: TutorStatus;
 }
 ```
 
 #### GET `/api/admin/faculties` — `q`: nom, kod
 
 ```ts
-interface FacultyRow { id: string; name: string; code: string; directions: number; groups: number; students: number; tutors: number;
-  attendancePct: number /*bugungi, int*/; status: FacultyStatus /*expectedToday>0 && pct<70 → attention*/ }
+interface FacultyRow {
+  id: string;
+  name: string;
+  code: string;
+  directions: number;
+  groups: number;
+  students: number;
+  tutors: number;
+  attendancePct: number /*bugungi, int*/;
+  status: FacultyStatus /*expectedToday>0 && pct<70 → attention*/;
+  isActive: boolean;
+}
 ```
+
+#### POST `/api/admin/faculties` · 201
+
+| Maydon | Tip    | Majburiy | Validatsiya                                                                           |
+| ------ | ------ | -------- | ------------------------------------------------------------------------------------- |
+| `name` | string | ha       | trim 2–150 belgi                                                                      |
+| `code` | string | ha       | trim 2–10 ta lotin harf/raqam (`^[A-Za-z0-9]+$`), katalogda unikal (case-insensitive) |
+
+Response 201 `FacultyDto`. Xatolar: 400 `errors.Name`/`errors.Code`; **409** — kod takror (`detail`: "'{CODE}' kodli
+fakultet allaqachon mavjud.").
+
+```ts
+interface FacultyDto {
+  id: string;
+  name: string;
+  code: string;
+  isActive: boolean;
+}
+```
+
+#### PUT `/api/admin/faculties/{id}` · 200
+
+Body — POST bilan bir xil (`name`, `code`). Response 200 `FacultyDto`. Xatolar: 400 `errors.Name`/`errors.Code`;
+**404** (`detail`: "Fakultet topilmadi."); **409** kod boshqa fakultetda band (yuqoridagi kabi).
+
+#### PATCH `/api/admin/faculties/{id}/status` · 200
+
+Body `{ isActive: boolean }`. Response 200 `FacultyDto`. Xatolar: **404**.
+
+#### DELETE `/api/admin/faculties/{id}` · 204
+
+Xatolar: **404**; **409** — fakultetga guruh/tyutor/talaba biriktirilgan (`detail`: "Fakultetga guruhlar, tyutorlar
+yoki talabalar biriktirilgan — avval ularni boshqa fakultetga ko'chiring.").
 
 #### GET `/api/admin/groups` — `q`: guruh nomi, yo'nalish, fakultet nomi/kodi, tyutor ismi
 
 ```ts
-interface GroupRow { id: string; code: string /*guruh nomi "412-22"*/; course: number; direction: string; faculty: string; facultyCode: string;
-  tutorId: string | null; tutor: string | null /*to'liq FISH*/; students: number;
+interface GroupRow {
+  id: string;
+  code: string /*guruh nomi "412-22"*/;
+  course: number;
+  direction: string;
+  faculty: string;
+  facultyCode: string;
+  tutorId: string | null;
+  tutor: string | null /*to'liq FISH*/;
+  students: number;
   attendancePct: number /*int; faol davr boshidan kechagacha, maxraj = o'tgan ish kunlari × arizasi tasdiqlangan talabalar*/;
-  period: { id: string; name: string; status: PracticePeriodStatus; startDate: string; endDate: string } | null }
+  period: {
+    id: string;
+    name: string;
+    status: PracticePeriodStatus;
+    startDate: string;
+    endDate: string;
+  } | null;
+}
 ```
 
 #### GET `/api/admin/tutors` — `q`: ism, telefon, fakultet kodi/nomi
 
 ```ts
-interface TutorRow { id: string; fullName: string; phone: string | null /*E.164 xom*/; facultyId: string | null; facultyCode: string | null; facultyName: string | null;
-  groups: string[]; students: number; pending: number; oldestPendingAt: string | null; avgDecisionHours: number | null;
-  lastActiveAt: string | null; isActive: boolean; status: TutorStatus /*eng eski pending > 48h → late*/ }
+interface TutorRow {
+  id: string;
+  fullName: string;
+  phone: string | null /*E.164 xom*/;
+  facultyId: string | null;
+  facultyCode: string | null;
+  facultyName: string | null;
+  groups: string[];
+  students: number;
+  pending: number;
+  oldestPendingAt: string | null;
+  avgDecisionHours: number | null;
+  lastActiveAt: string | null;
+  isActive: boolean;
+  status: TutorStatus; /*eng eski pending > 48h → late*/
+}
 ```
 
 #### GET `/api/admin/students` — `q`: FISH, HEMIS ID, telefon, guruh
 
 ```ts
-interface StudentRow { id: string /*User.Id — tyutor endpoint'laridagi studentId bilan bir xil*/; fullName: string; hemisId: string; groupId: string; group: string; course: number;
-  faculty: string; company: string | null /*eng so'nggi tasdiqlangan ariza*/; attendancePct: number /*int*/; suspiciousDays: number; telegramLinked: boolean;
-  status: AdminStudentStatus /*!telegramLinked → unlinked; suspiciousDays≥2 || (elapsed>0 && pct<70) → flagged; aks holda active*/ }
+interface StudentRow {
+  id: string /*User.Id — tyutor endpoint'laridagi studentId bilan bir xil*/;
+  fullName: string;
+  hemisId: string;
+  groupId: string;
+  group: string;
+  course: number;
+  faculty: string;
+  company: string | null /*eng so'nggi tasdiqlangan ariza*/;
+  attendancePct: number /*int*/;
+  suspiciousDays: number;
+  telegramLinked: boolean;
+  status: AdminStudentStatus; /*!telegramLinked → unlinked; suspiciousDays≥2 || (elapsed>0 && pct<70) → flagged; aks holda active*/
+}
 ```
 
 #### GET `/api/admin/companies` — `q`: nom, STIR, manzil
 
 ```ts
-interface CompanyRow { id: string; name: string; tin: string /*9 raqam xom "304512889"*/; activity: string; address: string; radiusM: number;
-  students: number /*arizasi approved*/; suspiciousDays: number; isActive: boolean;
-  flag: CompanyFlag | null /*suspiciousDays≥3 → suspicious; radiusM>500 → largeRadius; aks holda null*/ }
+interface CompanyRow {
+  id: string;
+  name: string;
+  tin: string /*9 raqam xom "304512889"*/;
+  activity: string;
+  address: string;
+  radiusM: number;
+  students: number /*arizasi approved*/;
+  suspiciousDays: number;
+  isActive: boolean;
+  flag: CompanyFlag | null; /*suspiciousDays≥3 → suspicious; radiusM>500 → largeRadius; aks holda null*/
+}
 ```
 
 #### GET `/api/admin/audit` — `q`: entityName, entityId, reason, foydalanuvchi ismi; `&action=<AuditAction>`
@@ -279,9 +406,18 @@ interface CompanyRow { id: string; name: string; tin: string /*9 raqam xom "3045
 `action` — enum string (`settingsChanged`); noma'lum → 400. Yangisi birinchi.
 
 ```ts
-interface AuditEntryDto { id: string; at: string /*ISO*/; action: AuditAction; entityName: string /*"User","AppSetting","PracticeApplication"…*/;
-  entityId: string | null; reason: string | null; changes: string | null /*JSON matn: {"geofenceRadius":{"old":"200","new":"250"}}*/;
-  userId: string | null; userName: string | null; userRole: 'admin' | 'tutor' | 'student' | null }
+interface AuditEntryDto {
+  id: string;
+  at: string /*ISO*/;
+  action: AuditAction;
+  entityName: string /*"User","AppSetting","PracticeApplication"…*/;
+  entityId: string | null;
+  reason: string | null;
+  changes: string | null /*JSON matn: {"geofenceRadius":{"old":"200","new":"250"}}*/;
+  userId: string | null;
+  userName: string | null;
+  userRole: 'admin' | 'tutor' | 'student' | null;
+}
 ```
 
 #### GET `/api/admin/settings` · PUT `/api/admin/settings`
@@ -293,11 +429,35 @@ Bool qabul: `true|1|yes|ha` / `false|0|no|yo'q` → `"true"`/`"false"` ga normal
 `settingsChanged`. Ikkalasi ham 200 `AdminSettingsDto` (PUT — yangilangan holat).
 
 ```ts
-interface AdminSettingsDto { settings: SettingDto[]; holidays: HolidayDto[]; templates: DocTemplateDto[] }
-interface SettingDto { key: SettingKey; label: string; value: string /*xom*/; type: 'int' | 'bool' | 'weekdays'; unit: 'm' | 'min' | 'chars' | null;
-  note: string; min: number | null; max: number | null /*faqat int*/; updatedAt: string | null }
-interface HolidayDto { id: string; date: string /*DateOnly*/; name: string; isRecurring: boolean }
-interface DocTemplateDto { id: string; name: string; kind: 'contract' | 'referral' | 'reference'; fileName: string; url: string /*"/api/files/<id>"*/ }
+interface AdminSettingsDto {
+  settings: SettingDto[];
+  holidays: HolidayDto[];
+  templates: DocTemplateDto[];
+}
+interface SettingDto {
+  key: SettingKey;
+  label: string;
+  value: string /*xom*/;
+  type: 'int' | 'bool' | 'weekdays';
+  unit: 'm' | 'min' | 'chars' | null;
+  note: string;
+  min: number | null;
+  max: number | null /*faqat int*/;
+  updatedAt: string | null;
+}
+interface HolidayDto {
+  id: string;
+  date: string /*DateOnly*/;
+  name: string;
+  isRecurring: boolean;
+}
+interface DocTemplateDto {
+  id: string;
+  name: string;
+  kind: 'contract' | 'referral' | 'reference';
+  fileName: string;
+  url: string; /*"/api/files/<id>"*/
+}
 ```
 
 Sozlamalar (kalit · tur · birlik · default · min–max): `geofenceRadius` int m `200` 50–1000 · `lateTolerance` int min `15` 0–120 ·
@@ -312,11 +472,25 @@ Bazada yo'q kalit default bilan qaytadi (`updatedAt: null`).
 #### GET `/api/reports`
 
 ```ts
-interface ReportsCatalog { filter: ReportFilter; reports: ReportCard[] }
-interface ReportFilter { dateFrom: string | null; dateTo: string | null /*faol davrlar min/max; yo'q → null*/;
-  scope: string /*admin: "Barcha fakultetlar"; tyutor: "412-22, 413-22"*/; groups: string[] /*admin: []*/; studentCount: number }
-interface ReportCard { id: 'attendance' | 'portfolio' | 'company-reference' | 'diaries'; name: string; formats: ('pdf' | 'xlsx')[]; desc: string;
-  available: boolean /*hozir hammasi false*/; note: string | null /*"Fayl generatsiyasi keyingi bosqichda (M14) qo'shiladi."*/ }
+interface ReportsCatalog {
+  filter: ReportFilter;
+  reports: ReportCard[];
+}
+interface ReportFilter {
+  dateFrom: string | null;
+  dateTo: string | null /*faol davrlar min/max; yo'q → null*/;
+  scope: string /*admin: "Barcha fakultetlar"; tyutor: "412-22, 413-22"*/;
+  groups: string[] /*admin: []*/;
+  studentCount: number;
+}
+interface ReportCard {
+  id: 'attendance' | 'portfolio' | 'company-reference' | 'diaries';
+  name: string;
+  formats: ('pdf' | 'xlsx')[];
+  desc: string;
+  available: boolean /*hozir hammasi false*/;
+  note: string | null; /*"Fayl generatsiyasi keyingi bosqichda (M14) qo'shiladi."*/
+}
 ```
 
 `GET /api/reports/{id}/download` — **yo'q** (M14).
@@ -329,21 +503,49 @@ Ko'lam — biriktirilgan guruhlar. Hamma ro'yxat (today'dan tashqari) sahifalanm
 
 #### GET `/api/tutor/today` — `?status=&q=&page=&pageSize=`
 
-| Query | Tip | Izoh |
-|---|---|---|
-| `status` | `present\|late\|absent\|excused\|pending\|suspicious` | ixtiyoriy; `suspicious` = `suspicious \|\| outOfRadius` bayrog'i bo'yicha; noma'lum → 400 |
-| `q` | string | ism bo'yicha `includes` (xotirada) |
-| `page`, `pageSize` | int | §1.6; validator yo'q |
+| Query              | Tip                                                   | Izoh                                                                                      |
+| ------------------ | ----------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `status`           | `present\|late\|absent\|excused\|pending\|suspicious` | ixtiyoriy; `suspicious` = `suspicious \|\| outOfRadius` bayrog'i bo'yicha; noma'lum → 400 |
+| `q`                | string                                                | ism bo'yicha `includes` (xotirada)                                                        |
+| `page`, `pageSize` | int                                                   | §1.6; validator yo'q                                                                      |
 
 ```ts
-interface TodayResponse { date: string; stats: TodayStats; alerts: TodayAlert[]; rows: Paged<AttendanceRow> }
-interface TodayStats { present: number; late: number; absent: number; excused: number; pending: number; diaries: number /*written*/; total: number } // filtr QO'LLANMAGAN barcha qatorlar bo'yicha
-interface TodayAlert { kind: 'outOfRadius' | 'notCheckedIn' | 'newLeaveRequests' | 'newApplications'; count: number;
-  href: string /*"/tutor/map" | "/tutor?status=absent" | "/tutor/leave-requests" | "/tutor/applications"*/; maxDistanceM: number | null /*faqat outOfRadius*/ }
-interface AttendanceRow { studentId: string; name: string; group: string; company: string | null;
-  checkIn: string | null /*"09:02"*/; checkOut: string | null; diary: 'written' | 'pending' | null;
-  distanceM: number | null /*check-in masofasi yoki rad etilgan urinishning maksimal masofasi*/; outOfRadius: boolean;
-  status: AttendanceStatus /*pending|present|late|absent|excused|dayOff*/; suspicious: boolean; manual: boolean; autoClosed: boolean }
+interface TodayResponse {
+  date: string;
+  stats: TodayStats;
+  alerts: TodayAlert[];
+  rows: Paged<AttendanceRow>;
+}
+interface TodayStats {
+  present: number;
+  late: number;
+  absent: number;
+  excused: number;
+  pending: number;
+  diaries: number /*written*/;
+  total: number;
+} // filtr QO'LLANMAGAN barcha qatorlar bo'yicha
+interface TodayAlert {
+  kind: 'outOfRadius' | 'notCheckedIn' | 'newLeaveRequests' | 'newApplications';
+  count: number;
+  href: string /*"/tutor/map" | "/tutor?status=absent" | "/tutor/leave-requests" | "/tutor/applications"*/;
+  maxDistanceM: number | null; /*faqat outOfRadius*/
+}
+interface AttendanceRow {
+  studentId: string;
+  name: string;
+  group: string;
+  company: string | null;
+  checkIn: string | null /*"09:02"*/;
+  checkOut: string | null;
+  diary: 'written' | 'pending' | null;
+  distanceM: number | null /*check-in masofasi yoki rad etilgan urinishning maksimal masofasi*/;
+  outOfRadius: boolean;
+  status: AttendanceStatus /*pending|present|late|absent|excused|dayOff*/;
+  suspicious: boolean;
+  manual: boolean;
+  autoClosed: boolean;
+}
 ```
 
 `status` hisobi (qator bazada yo'q bo'lsa): davr yo'q/ish kuni emas → `dayOff`; tasdiqlangan ruxsat → `excused`;
@@ -356,33 +558,55 @@ present/late/pending → `pending`; aks holda `null`.
 Tartib: `submitted` birinchi (eng eski `submittedAt` tepada), keyin `decidedAt` desc.
 
 ```ts
-interface ApplicationListResponse { counts: { submitted: number; revisionNeeded: number; approved: number; rejected: number }; items: ApplicationSummary[] }
-interface ApplicationSummary { id: string; studentId: string; name: string; group: string; course: number; hemisId: string; company: string;
-  status: ApplicationStatus; submittedAt: string /*ISO — "2 soat oldin" ni frontend hisoblaydi*/; decidedAt: string | null }
+interface ApplicationListResponse {
+  counts: { submitted: number; revisionNeeded: number; approved: number; rejected: number };
+  items: ApplicationSummary[];
+}
+interface ApplicationSummary {
+  id: string;
+  studentId: string;
+  name: string;
+  group: string;
+  course: number;
+  hemisId: string;
+  company: string;
+  status: ApplicationStatus;
+  submittedAt: string /*ISO — "2 soat oldin" ni frontend hisoblaydi*/;
+  decidedAt: string | null;
+}
 ```
 
 #### GET `/api/tutor/applications/{id}` · 404
 
 ```ts
 interface ApplicationDetail extends ApplicationSummary {
-  coords: { lat: number; lng: number };           // korxona
-  radiusM: number;                                // proposedRadiusM (tasdiqlangach tyutor qiymati)
-  companyDetails: { name: string; tin: string; activity: string; address: string; supervisorName: string; supervisorPhone: string; mentorName: string | null; mentorPhone: string | null };
+  coords: { lat: number; lng: number }; // korxona
+  radiusM: number; // proposedRadiusM (tasdiqlangach tyutor qiymati)
+  companyDetails: {
+    name: string;
+    tin: string;
+    activity: string;
+    address: string;
+    supervisorName: string;
+    supervisorPhone: string;
+    mentorName: string | null;
+    mentorPhone: string | null;
+  };
   contract: { name: string; pages: number | null; sizeBytes: number; url: string } | null;
-  comment: string | null;                         // qaror izohi
-  checklist: number[];                            // belgilangan punkt indekslari 0..6
+  comment: string | null; // qaror izohi
+  checklist: number[]; // belgilangan punkt indekslari 0..6
   revisionCount: number;
 }
 ```
 
 #### POST `/api/tutor/applications/{id}/decision`
 
-| Maydon | Tip | Majburiy | Validatsiya |
-|---|---|---|---|
-| `decision` | `'approve' \| 'return' \| 'reject'` | ha | enum |
-| `radiusM` | int | `approve` da **ha** | 50–1000, 50 qadam (`errors.RadiusM`) |
-| `checklist` | int[] | yo'q | har element 0..6 (`errors["Checklist[i]"]`); `approve` da saqlanadi |
-| `comment` | string | `return`/`reject` da **ha** | ≤ 1000 belgi (`errors.Comment`) |
+| Maydon      | Tip                                 | Majburiy                    | Validatsiya                                                         |
+| ----------- | ----------------------------------- | --------------------------- | ------------------------------------------------------------------- |
+| `decision`  | `'approve' \| 'return' \| 'reject'` | ha                          | enum                                                                |
+| `radiusM`   | int                                 | `approve` da **ha**         | 50–1000, 50 qadam (`errors.RadiusM`)                                |
+| `checklist` | int[]                               | yo'q                        | har element 0..6 (`errors["Checklist[i]"]`); `approve` da saqlanadi |
+| `comment`   | string                              | `return`/`reject` da **ha** | ≤ 1000 belgi (`errors.Comment`)                                     |
 
 Response 200 `{ id: string; status: ApplicationStatus }` — `approve→approved`, `return→revisionNeeded`,
 `reject→rejected`. `approve`: radius korxonaga yoziladi (o'zgarsa audit `radiusChanged`).
@@ -391,10 +615,22 @@ Xatolar: 400 validation; **404** ko'lamdan tashqari; **409** status `submitted` 
 #### GET `/api/tutor/students`
 
 ```ts
-interface TutorStudent { id: string; name: string; hemisId: string; group: string; company: string | null;
-  attendancePct: number /*1 kasr*/; attendedDays: number; totalDays: number; diaryCount: number; diaryAvg: number /*1 kasr, baholanganlar bo'yicha*/;
-  state: 'active' | 'redFlag' | 'suspicious'; suspiciousCount: number }
+interface TutorStudent {
+  id: string;
+  name: string;
+  hemisId: string;
+  group: string;
+  company: string | null;
+  attendancePct: number /*1 kasr*/;
+  attendedDays: number;
+  totalDays: number;
+  diaryCount: number;
+  diaryAvg: number /*1 kasr, baholanganlar bo'yicha*/;
+  state: 'active' | 'redFlag' | 'suspicious';
+  suspiciousCount: number;
+}
 ```
+
 `state`: `totalDays>0 && pct<70` → `redFlag`; `suspiciousCount≥1` → `suspicious`; aks holda `active`. FISH bo'yicha tartib.
 
 #### GET `/api/tutor/diaries` — `?status=<DiaryStatus>`
@@ -402,18 +638,30 @@ interface TutorStudent { id: string; name: string; hemisId: string; group: strin
 Tartib: `submitted`/`seen` birinchi, keyin `submittedAt` desc.
 
 ```ts
-interface TutorDiaryEntry { id: string; studentId: string; studentName: string; group: string; date: string /*DateOnly*/; submittedAt: string;
-  status: DiaryStatus; text: string; learned: string | null; files: { name: string; url: string }[]; score: number | null /*1..5*/;
-  comment: string | null; reviewedAt: string | null }
+interface TutorDiaryEntry {
+  id: string;
+  studentId: string;
+  studentName: string;
+  group: string;
+  date: string /*DateOnly*/;
+  submittedAt: string;
+  status: DiaryStatus;
+  text: string;
+  learned: string | null;
+  files: { name: string; url: string }[];
+  score: number | null /*1..5*/;
+  comment: string | null;
+  reviewedAt: string | null;
+}
 ```
 
 #### POST `/api/tutor/diaries/{id}/review`
 
-| Maydon | Tip | Majburiy | Validatsiya |
-|---|---|---|---|
-| `action` | `'approve' \| 'score' \| 'rewrite'` | ha | enum |
-| `score` | int | `score` da **ha** | 1–5 (`errors.Score`); `approve` da ixtiyoriy; `rewrite` da e'tiborsiz (null bo'ladi) |
-| `comment` | string | `rewrite` da **ha** | ≤ 1000 (`errors.Comment`) |
+| Maydon    | Tip                                 | Majburiy            | Validatsiya                                                                          |
+| --------- | ----------------------------------- | ------------------- | ------------------------------------------------------------------------------------ |
+| `action`  | `'approve' \| 'score' \| 'rewrite'` | ha                  | enum                                                                                 |
+| `score`   | int                                 | `score` da **ha**   | 1–5 (`errors.Score`); `approve` da ixtiyoriy; `rewrite` da e'tiborsiz (null bo'ladi) |
+| `comment` | string                              | `rewrite` da **ha** | ≤ 1000 (`errors.Comment`)                                                            |
 
 Response 200 `TutorDiaryEntry` (yangilangan; `approve`/`score` → `approved`, `rewrite` → `rewrite`).
 Xatolar: 400; **404**; **409** — status `submitted`/`seen` emas ("Hisobot allaqachon ko'rib chiqilgan…").
@@ -423,7 +671,11 @@ Xatolar: 400; **404**; **409** — status `submitted`/`seen` emas ("Hisobot alla
 400 — `month` formati (`errors.Month`).
 
 ```ts
-interface CalendarResponse { month: string; days: number[] /*1..N*/; rows: { studentId: string; name: string; days: CalendarDayStatus[] /*uzunligi N*/ }[] }
+interface CalendarResponse {
+  month: string;
+  days: number[] /*1..N*/;
+  rows: { studentId: string; name: string; days: CalendarDayStatus[] /*uzunligi N*/ }[];
+}
 ```
 
 #### GET `/api/tutor/map` — `?date=YYYY-MM-DD` (berilmasa bugun)
@@ -431,9 +683,22 @@ interface CalendarResponse { month: string; days: number[] /*1..N*/; rows: { stu
 Har talaba uchun shu kundagi **oxirgi check-in urinishi** (qabul yoki rad). Urinish yo'q → nuqta yo'q.
 
 ```ts
-interface MapResponse { date: string; points: MapPoint[] }
-interface MapPoint { studentId: string; name: string; company: string; distanceM: number /*butun*/; radiusM: number; rejected: boolean;
-  time: string /*"09:02" — server qabul qilgan vaqt*/; kind: 'ok' | 'late' | 'bad' /*rad → bad; late → late*/; lat: number; lng: number }
+interface MapResponse {
+  date: string;
+  points: MapPoint[];
+}
+interface MapPoint {
+  studentId: string;
+  name: string;
+  company: string;
+  distanceM: number /*butun*/;
+  radiusM: number;
+  rejected: boolean;
+  time: string /*"09:02" — server qabul qilgan vaqt*/;
+  kind: 'ok' | 'late' | 'bad' /*rad → bad; late → late*/;
+  lat: number;
+  lng: number;
+}
 ```
 
 #### GET `/api/tutor/leave-requests` — `?status=<LeaveRequestStatus>`
@@ -441,16 +706,28 @@ interface MapPoint { studentId: string; name: string; company: string; distanceM
 Tartib: `pending` birinchi, keyin `createdAt` desc.
 
 ```ts
-interface TutorLeaveRequest { id: string; studentId: string; studentName: string; group: string; dateFrom: string; dateTo: string /*bir kunlik → dateFrom bilan teng, null EMAS*/;
-  reason: string; document: { name: string; url: string | null } | null; status: LeaveRequestStatus; comment: string | null; createdAt: string; decidedAt: string | null }
+interface TutorLeaveRequest {
+  id: string;
+  studentId: string;
+  studentName: string;
+  group: string;
+  dateFrom: string;
+  dateTo: string /*bir kunlik → dateFrom bilan teng, null EMAS*/;
+  reason: string;
+  document: { name: string; url: string | null } | null;
+  status: LeaveRequestStatus;
+  comment: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+}
 ```
 
 #### POST `/api/tutor/leave-requests/{id}/decision`
 
-| Maydon | Tip | Majburiy | Validatsiya |
-|---|---|---|---|
-| `decision` | `'approve' \| 'reject'` | ha | enum |
-| `comment` | string | yo'q | ≤ 1000 |
+| Maydon     | Tip                     | Majburiy | Validatsiya |
+| ---------- | ----------------------- | -------- | ----------- |
+| `decision` | `'approve' \| 'reject'` | ha       | enum        |
+| `comment`  | string                  | yo'q     | ≤ 1000      |
 
 Response 200 `TutorLeaveRequest`. `approve` → oraliqdagi har ish kuni `excused` (`DailyAttendance` yaratiladi/yangilanadi).
 Xatolar: 400; **404**; **409** — status `pending` emas.
@@ -460,9 +737,17 @@ Xatolar: 400; **404**; **409** — status `pending` emas.
 Faol davri bo'lmagan talaba qatorga **kirmaydi**.
 
 ```ts
-interface GradingRow { studentId: string; name: string; attendance: { points: number /*0..40, 1 kasr*/; pct: number }; reports: { points: number /*0..30*/; avg: number };
-  tutorPoints: number | null /*0..20*/; referencePoints: number | null /*0..10*/; recommended: { tutorPoints: number; referencePoints: number };
-  total: number /*0..100, 1 kasr*/; grade: 2 | 3 | 4 | 5 | null /*null → davomat < 70%, qayta topshiradi*/ }
+interface GradingRow {
+  studentId: string;
+  name: string;
+  attendance: { points: number /*0..40, 1 kasr*/; pct: number };
+  reports: { points: number /*0..30*/; avg: number };
+  tutorPoints: number | null /*0..20*/;
+  referencePoints: number | null /*0..10*/;
+  recommended: { tutorPoints: number; referencePoints: number };
+  total: number /*0..100, 1 kasr*/;
+  grade: 2 | 3 | 4 | 5 | null; /*null → davomat < 70%, qayta topshiradi*/
+}
 ```
 
 #### PUT `/api/tutor/grading/{studentId}`
@@ -480,14 +765,46 @@ Hammasi Bearer. Profil yo'q → 404 ("Talaba profili topilmadi.").
 #### GET `/api/student/today`
 
 ```ts
-interface TodayDto { date: string; window: TodayWindowDto; checkin: TodayCheckInDto; place: TodayPlaceDto | null; diary: TodayDiaryDto }
-interface TodayWindowDto { start: string /*"09:00" check-in ochiladi*/; end: string /*"09:15" shundan late*/; closesAt: string /*"10:30" check-in yopiladi*/;
-  checkoutAt: string /*"17:00" check-out ochiladi (18:00 gacha)*/; isOpen: boolean /*hozirgi bosqich (check-in yoki check-out) mumkinmi*/ }
-interface TodayCheckInDto { status: AttendanceStatus /*pending|present|late|absent|excused|dayOff*/; checkInAt: string | null /*ISO*/; checkOutAt: string | null;
-  distanceM: number | null; radiusM: number | null /*korxona yo'q → null*/; gpsAccuracyM: number | null; suspicious: boolean; autoClosed: boolean;
-  note: string | null /*amal mumkin bo'lmasa sabab: "Amaliyot joyingiz hali tasdiqlanmagan." …*/ }
-interface TodayPlaceDto { company: string; address: string; radiusM: number; attendancePct: number /*1 kasr*/; daysPresent: number; daysTotal: number; reports: number; avgScore: number }
-interface TodayDiaryDto { submittedToday: boolean; minChars: number /*sozlama minReportLength*/; maxFiles: number /*5*/ }
+interface TodayDto {
+  date: string;
+  window: TodayWindowDto;
+  checkin: TodayCheckInDto;
+  place: TodayPlaceDto | null;
+  diary: TodayDiaryDto;
+}
+interface TodayWindowDto {
+  start: string /*"09:00" check-in ochiladi*/;
+  end: string /*"09:15" shundan late*/;
+  closesAt: string /*"10:30" check-in yopiladi*/;
+  checkoutAt: string /*"17:00" check-out ochiladi (18:00 gacha)*/;
+  isOpen: boolean; /*hozirgi bosqich (check-in yoki check-out) mumkinmi*/
+}
+interface TodayCheckInDto {
+  status: AttendanceStatus /*pending|present|late|absent|excused|dayOff*/;
+  checkInAt: string | null /*ISO*/;
+  checkOutAt: string | null;
+  distanceM: number | null;
+  radiusM: number | null /*korxona yo'q → null*/;
+  gpsAccuracyM: number | null;
+  suspicious: boolean;
+  autoClosed: boolean;
+  note: string | null; /*amal mumkin bo'lmasa sabab: "Amaliyot joyingiz hali tasdiqlanmagan." …*/
+}
+interface TodayPlaceDto {
+  company: string;
+  address: string;
+  radiusM: number;
+  attendancePct: number /*1 kasr*/;
+  daysPresent: number;
+  daysTotal: number;
+  reports: number;
+  avgScore: number;
+}
+interface TodayDiaryDto {
+  submittedToday: boolean;
+  minChars: number /*sozlama minReportLength*/;
+  maxFiles: number; /*5*/
+}
 ```
 
 `place` — faqat ariza `approved` va korxona bor bo'lsa. Davr yo'q → `checkin.status="pending"`, `note="Faol amaliyot davri yo'q."`, `place=null`.
@@ -497,30 +814,30 @@ interface TodayDiaryDto { submittedToday: boolean; minChars: number /*sozlama mi
 
 Body (ikkalasi bir xil, `GeoRequestValidator`):
 
-| Maydon | Tip | Majburiy | Validatsiya |
-|---|---|---|---|
-| `lat` | number | ha | −90..90 (`errors.Lat`) |
-| `lng` | number | ha | −180..180 (`errors.Lng`) |
-| `accuracy` | number (m) | ha | 0..100000 (`errors.Accuracy`) |
-| `occurredAt` | ISO datetime | ha | ≤ server + 1 min; ≥ server − 10 min (`errors.OccurredAt`) |
+| Maydon       | Tip          | Majburiy | Validatsiya                                               |
+| ------------ | ------------ | -------- | --------------------------------------------------------- |
+| `lat`        | number       | ha       | −90..90 (`errors.Lat`)                                    |
+| `lng`        | number       | ha       | −180..180 (`errors.Lng`)                                  |
+| `accuracy`   | number (m)   | ha       | 0..100000 (`errors.Accuracy`)                             |
+| `occurredAt` | ISO datetime | ha       | ≤ server + 1 min; ≥ server − 10 min (`errors.OccurredAt`) |
 
 Response 200 `TodayDto` (yangilangan). **Har urinish** (rad etilgani ham) `AttendanceEvent` ga yoziladi. Idempotent:
 bir xil `occurredAt` bilan qabul qilingan urinish qayta kelsa — xato emas, joriy holat.
 
 Xato → status (`CheckInRejectReason.ToException`), `detail` = §3.2 xabari:
 
-| Check-in | Status | Check-out | Status |
-|---|---|---|---|
-| davr yo'q ("Faol amaliyot davri yo'q.") | 400 | davr yo'q | 400 |
-| `notApproved` (korxona/ariza yo'q) | 400 | `noCheckIn` | **409** |
-| `periodNotStarted` / `periodEnded` | 400 | `alreadyCheckedOut` (yoki `autoClosed`) | **409** |
-| `notWorkDay` | 400 | `windowNotOpen` (17:00 dan oldin) | 400 |
-| `onLeave` | 400 | `windowClosed` (18:00 dan keyin) | 400 |
-| `alreadyCheckedIn` | **409** | `poorAccuracy` | 400 |
-| `windowNotOpen` (09:00 dan oldin) | 400 | `outOfRadius` | **409** |
-| `windowClosed` (10:30 dan keyin) | 400 | | |
-| `poorAccuracy` (accuracy > 100 m) | 400 | | |
-| `outOfRadius` (masofa > radius) | **409** | | |
+| Check-in                                | Status  | Check-out                               | Status  |
+| --------------------------------------- | ------- | --------------------------------------- | ------- |
+| davr yo'q ("Faol amaliyot davri yo'q.") | 400     | davr yo'q                               | 400     |
+| `notApproved` (korxona/ariza yo'q)      | 400     | `noCheckIn`                             | **409** |
+| `periodNotStarted` / `periodEnded`      | 400     | `alreadyCheckedOut` (yoki `autoClosed`) | **409** |
+| `notWorkDay`                            | 400     | `windowNotOpen` (17:00 dan oldin)       | 400     |
+| `onLeave`                               | 400     | `windowClosed` (18:00 dan keyin)        | 400     |
+| `alreadyCheckedIn`                      | **409** | `poorAccuracy`                          | 400     |
+| `windowNotOpen` (09:00 dan oldin)       | 400     | `outOfRadius`                           | **409** |
+| `windowClosed` (10:30 dan keyin)        | 400     |                                         |         |
+| `poorAccuracy` (accuracy > 100 m)       | 400     |                                         |         |
+| `outOfRadius` (masofa > radius)         | **409** |                                         |         |
 
 Tekshiruv tartibi aynan shu (birinchi mos kelgan sabab qaytadi). Qabul: `localNow ≥ 09:15` → `late`, aks holda `present`.
 
@@ -529,11 +846,33 @@ Tekshiruv tartibi aynan shu (birinchi mos kelgan sabab qaytadi). Qabul: `localNo
 404 — davr yoki ariza yoki korxona yo'q ("Amaliyot joyi hali biriktirilmagan.").
 
 ```ts
-interface PracticePlaceDto { status: ApplicationStatus; comment: string | null /*tyutor qaror izohi*/; company: string; tin: string /*9 raqam*/; activity: string; address: string;
-  supervisorName: string; supervisorPhone: string; mentorName: string | null; mentorPhone: string | null; radiusM: number; lat: number; lng: number;
-  periodFrom: string; periodTo: string;
-  contract: { fileId: string; fileName: string; pages: number | null; sizeBytes: number; uploadedAt: string /*ISO datetime*/; approvedAt: string | null /*faqat approved*/;
-              approvedBy: string | null /*FISH*/; templateUrl: string | null /*faol contract shabloni "/api/files/<id>"*/ } | null }
+interface PracticePlaceDto {
+  status: ApplicationStatus;
+  comment: string | null /*tyutor qaror izohi*/;
+  company: string;
+  tin: string /*9 raqam*/;
+  activity: string;
+  address: string;
+  supervisorName: string;
+  supervisorPhone: string;
+  mentorName: string | null;
+  mentorPhone: string | null;
+  radiusM: number;
+  lat: number;
+  lng: number;
+  periodFrom: string;
+  periodTo: string;
+  contract: {
+    fileId: string;
+    fileName: string;
+    pages: number | null;
+    sizeBytes: number;
+    uploadedAt: string /*ISO datetime*/;
+    approvedAt: string | null /*faqat approved*/;
+    approvedBy: string | null /*FISH*/;
+    templateUrl: string | null; /*faol contract shabloni "/api/files/<id>"*/
+  } | null;
+}
 ```
 
 #### GET `/api/student/diary`
@@ -541,17 +880,26 @@ interface PracticePlaceDto { status: ApplicationStatus; comment: string | null /
 Barcha davrlar, `date` desc → `submittedAt` desc.
 
 ```ts
-interface DiaryEntryDto { id: string; date: string /*DateOnly*/; submittedAt: string; status: DiaryStatus; text: string; learned: string | null;
-  files: { id: string /*storedFileId*/; name: string; url: string }[]; score: number | null; comment: string | null /*tyutor*/ }
+interface DiaryEntryDto {
+  id: string;
+  date: string /*DateOnly*/;
+  submittedAt: string;
+  status: DiaryStatus;
+  text: string;
+  learned: string | null;
+  files: { id: string /*storedFileId*/; name: string; url: string }[];
+  score: number | null;
+  comment: string | null; /*tyutor*/
+}
 ```
 
 #### POST `/api/student/diary` · `multipart/form-data` · 201
 
-| Form maydoni | Tip | Majburiy | Validatsiya |
-|---|---|---|---|
-| `text` | string | ha | bo'sh emas; trim uzunligi ≥ `minReportLength` (default 150); ≤ 10000 (`errors.Text`) |
-| `learned` | string | yo'q | ≤ 10000 (`errors.Learned`) |
-| `files` | file[] (bir nomda ko'p) | yo'q | ≤ 5 ta; har biri > 0 va ≤ 5 MB; `image/jpeg,png,webp,heic,heif` yoki `application/pdf`; nom ≤ 255 (`errors.Files`) |
+| Form maydoni | Tip                     | Majburiy | Validatsiya                                                                                                        |
+| ------------ | ----------------------- | -------- | ------------------------------------------------------------------------------------------------------------------ |
+| `text`       | string                  | ha       | bo'sh emas; trim uzunligi ≥ `minReportLength` (default 150); ≤ 10000 (`errors.Text`)                               |
+| `learned`    | string                  | yo'q     | ≤ 10000 (`errors.Learned`)                                                                                         |
+| `files`      | file[] (bir nomda ko'p) | yo'q     | ≤ 5 ta; har biri > 0 va ≤ 5 MB; `image/jpeg,png,webp,heic,heif` yoki `application/pdf`; nom ≤ 255 (`errors.Files`) |
 
 Butun so'rov ≤ 30 MB (`RequestSizeLimit`) — oshsa 413. Response **201** `DiaryEntryDto`.
 Xatolar: 400 validation; **400** davr yo'q / davr bugunni o'z ichiga olmaydi / fayllar jami > 5; **409** — bugungi
@@ -563,7 +911,12 @@ hisobot allaqachon bor ("Bugungi hisobot allaqachon yuborilgan."). Istisno: bugu
 400 — format (`errors.Month`). Oyning **har kuni**.
 
 ```ts
-interface CalendarMonthDto { month: string; studentName: string; groupName: string; days: { date: string; status: CalendarDayStatus }[] }
+interface CalendarMonthDto {
+  month: string;
+  studentName: string;
+  groupName: string;
+  days: { date: string; status: CalendarDayStatus }[];
+}
 ```
 
 Davr yo'q: kelajak → `future`, qolgani `dayOff`. Aks holda §4.1 `DayStatus` qoidasi.
@@ -572,20 +925,28 @@ Davr yo'q: kelajak → `future`, qolgani `dayOff`. Aks holda §4.1 `DayStatus` q
 
 POST body:
 
-| Maydon | Tip | Majburiy | Validatsiya |
-|---|---|---|---|
-| `dateFrom` | DateOnly | ha | bo'sh emas (`errors.DateFrom`) |
-| `dateTo` | DateOnly | ha | ≥ `dateFrom`; oraliq ≤ 31 kun (`errors.DateTo`) |
-| `reason` | string | ha | trim ≥ 10, ≤ 1000 (`errors.Reason`) |
-| `attachmentName` | string | yo'q | ≤ 255 (fayl yuklanmaydi — faqat nom) |
-| `attachmentFileId` | GUID | yo'q | o'zi yuklagan `StoredFile` bo'lishi shart, aks holda 404 |
+| Maydon             | Tip      | Majburiy | Validatsiya                                              |
+| ------------------ | -------- | -------- | -------------------------------------------------------- |
+| `dateFrom`         | DateOnly | ha       | bo'sh emas (`errors.DateFrom`)                           |
+| `dateTo`           | DateOnly | ha       | ≥ `dateFrom`; oraliq ≤ 31 kun (`errors.DateTo`)          |
+| `reason`           | string   | ha       | trim ≥ 10, ≤ 1000 (`errors.Reason`)                      |
+| `attachmentName`   | string   | yo'q     | ≤ 255 (fayl yuklanmaydi — faqat nom)                     |
+| `attachmentFileId` | GUID     | yo'q     | o'zi yuklagan `StoredFile` bo'lishi shart, aks holda 404 |
 
 Response 201 `LeaveRequestDto`. Xatolar: 400 validation; **400** davr yo'q / sanalar davr tashqarisida ("Ruxsat sanalari
 amaliyot davri ichida bo'lishi kerak."); **409** — `rejected` bo'lmagan kesishuvchi so'rov bor.
 
 ```ts
-interface LeaveRequestDto { id: string; dateFrom: string; dateTo: string; reason: string; status: LeaveRequestStatus; comment: string | null;
-  document: { name: string; url: string | null } | null; createdAt: string /*ISO datetime*/ }
+interface LeaveRequestDto {
+  id: string;
+  dateFrom: string;
+  dateTo: string;
+  reason: string;
+  status: LeaveRequestStatus;
+  comment: string | null;
+  document: { name: string; url: string | null } | null;
+  createdAt: string; /*ISO datetime*/
+}
 ```
 
 #### GET `/api/student/portfolio` · 404
@@ -593,10 +954,33 @@ interface LeaveRequestDto { id: string; dateFrom: string; dateTo: string; reason
 404 — faol davr yo'q.
 
 ```ts
-interface PortfolioDto { student: string; group: string; practiceTitle: string /*davr nomi*/; company: string | null; periodFrom: string; periodTo: string;
-  stats: { attendancePct: number; daysPresent: number; daysTotal: number; late: number; excused: number; reports: number; avgScore: number };
-  score: { key: 'attendance' | 'reports' | 'tutor' | 'reference'; weightPct: 40 | 30 | 20 | 10; points: number }[];
-  total: number; grade: number | null; finalized: boolean; conclusion: { text: string; author: string; date: string /*ISO*/ } | null; pdfUrl: string | null /*hozir null*/ }
+interface PortfolioDto {
+  student: string;
+  group: string;
+  practiceTitle: string /*davr nomi*/;
+  company: string | null;
+  periodFrom: string;
+  periodTo: string;
+  stats: {
+    attendancePct: number;
+    daysPresent: number;
+    daysTotal: number;
+    late: number;
+    excused: number;
+    reports: number;
+    avgScore: number;
+  };
+  score: {
+    key: 'attendance' | 'reports' | 'tutor' | 'reference';
+    weightPct: 40 | 30 | 20 | 10;
+    points: number;
+  }[];
+  total: number;
+  grade: number | null;
+  finalized: boolean;
+  conclusion: { text: string; author: string; date: string /*ISO*/ } | null;
+  pdfUrl: string | null; /*hozir null*/
+}
 ```
 
 ---
@@ -605,54 +989,54 @@ interface PortfolioDto { student: string; group: string; practiceTitle: string /
 
 ### 3.1 Domain va Application enum'lari
 
-| Enum | Qiymatlar | Qayerda |
-|---|---|---|
-| `UserRole` | `admin` · `tutor` · `student` | `UserSummaryDto.role`, `AuditEntryDto.userRole` (JWT claim: `Admin`/`Tutor`/`Student`) |
-| `AttendanceStatus` | `pending` · `present` · `late` · `absent` · `excused` · `dayOff` | tutor today `rows[].status`, TWA `checkin.status` |
-| `CalendarDayStatus` | `future` · `pending` · `present` · `late` · `absent` · `excused` · `dayOff` | tutor/TWA kalendar |
-| `AttendanceEventKind` | `checkIn` · `checkOut` | ichki |
-| `CheckInRejectReason` | `none` · `notApproved` · `notWorkDay` · `periodNotStarted` · `periodEnded` · `windowNotOpen` · `windowClosed` · `poorAccuracy` · `outOfRadius` · `alreadyCheckedIn` · `noCheckIn` · `alreadyCheckedOut` · `onLeave` | API'da faqat xabar (§3.2) |
-| `DiaryStatus` | `submitted` · `seen` · `rewrite` · `approved` | diary'lar |
-| `DiaryReviewAction` (request) | `approve` · `score` · `rewrite` | tutor review |
-| `DiaryState` | `written` · `pending` (+ `null`) | tutor today `rows[].diary` |
-| `LeaveRequestStatus` | `pending` · `approved` · `rejected` | leave |
-| `LeaveDecision` (request) | `approve` · `reject` | tutor leave decision |
-| `ApplicationStatus` | `draft` · `submitted` · `revisionNeeded` · `approved` · `rejected` · `completed` | applications, TWA place |
-| `ApplicationDecision` (request) | `approve` · `return` · `reject` | tutor decision |
-| `PracticePeriodStatus` | `planned` · `active` · `closed` | admin groups `period.status` |
-| `WorkDays` | bitmask; sozlamada `"1,2,3,4,5,6"` (1=Du … 7=Ya) | settings `workDays` |
-| `StudentStatus` (domain, akademik) | `active` · `suspended` · `graduated` | API'ga chiqmaydi |
-| `TodayFilter` (query) | `present` · `late` · `absent` · `excused` · `pending` · `suspicious` | tutor today `?status=` |
-| `TodayAlertKind` | `outOfRadius` · `notCheckedIn` · `newLeaveRequests` · `newApplications` | tutor today alerts |
-| `StudentState` | `active` · `redFlag` · `suspicious` | tutor students |
-| `MapPointKind` | `ok` · `late` · `bad` | tutor map |
-| `FacultyStatus` | `active` · `attention` | admin faculties |
-| `TutorStatus` | `active` · `late` | admin tutors, dashboard |
-| `AdminStudentStatus` | `active` · `flagged` · `unlinked` | admin students |
-| `CompanyFlag` | `largeRadius` · `suspicious` · `null` | admin companies |
-| `AuditAction` | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` | admin audit `action`, `?action=` |
-| `SettingType` | `int` · `bool` · `weekdays` | settings `type` |
-| `SettingKey` (string const) | `geofenceRadius` · `lateTolerance` · `minGpsAccuracy` · `autoCheckout` · `workDays` · `dailyReportRequired` · `minReportLength` · `checkInWindow` | settings |
-| `DocumentTemplateKind` | `contract` · `referral` · `reference` | settings templates |
-| `StoredFileKind` | `contract` · `diaryAttachment` · `leaveDocument` · `template` | ichki (files ko'lami) |
-| Grade | `2` · `3` · `4` · `5` · `null` | grading, portfolio (number) |
+| Enum                               | Qiymatlar                                                                                                                                                                                                                                                                                                                                 | Qayerda                                                                                |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `UserRole`                         | `admin` · `tutor` · `student`                                                                                                                                                                                                                                                                                                             | `UserSummaryDto.role`, `AuditEntryDto.userRole` (JWT claim: `Admin`/`Tutor`/`Student`) |
+| `AttendanceStatus`                 | `pending` · `present` · `late` · `absent` · `excused` · `dayOff`                                                                                                                                                                                                                                                                          | tutor today `rows[].status`, TWA `checkin.status`                                      |
+| `CalendarDayStatus`                | `future` · `pending` · `present` · `late` · `absent` · `excused` · `dayOff`                                                                                                                                                                                                                                                               | tutor/TWA kalendar                                                                     |
+| `AttendanceEventKind`              | `checkIn` · `checkOut`                                                                                                                                                                                                                                                                                                                    | ichki                                                                                  |
+| `CheckInRejectReason`              | `none` · `notApproved` · `notWorkDay` · `periodNotStarted` · `periodEnded` · `windowNotOpen` · `windowClosed` · `poorAccuracy` · `outOfRadius` · `alreadyCheckedIn` · `noCheckIn` · `alreadyCheckedOut` · `onLeave`                                                                                                                       | API'da faqat xabar (§3.2)                                                              |
+| `DiaryStatus`                      | `submitted` · `seen` · `rewrite` · `approved`                                                                                                                                                                                                                                                                                             | diary'lar                                                                              |
+| `DiaryReviewAction` (request)      | `approve` · `score` · `rewrite`                                                                                                                                                                                                                                                                                                           | tutor review                                                                           |
+| `DiaryState`                       | `written` · `pending` (+ `null`)                                                                                                                                                                                                                                                                                                          | tutor today `rows[].diary`                                                             |
+| `LeaveRequestStatus`               | `pending` · `approved` · `rejected`                                                                                                                                                                                                                                                                                                       | leave                                                                                  |
+| `LeaveDecision` (request)          | `approve` · `reject`                                                                                                                                                                                                                                                                                                                      | tutor leave decision                                                                   |
+| `ApplicationStatus`                | `draft` · `submitted` · `revisionNeeded` · `approved` · `rejected` · `completed`                                                                                                                                                                                                                                                          | applications, TWA place                                                                |
+| `ApplicationDecision` (request)    | `approve` · `return` · `reject`                                                                                                                                                                                                                                                                                                           | tutor decision                                                                         |
+| `PracticePeriodStatus`             | `planned` · `active` · `closed`                                                                                                                                                                                                                                                                                                           | admin groups `period.status`                                                           |
+| `WorkDays`                         | bitmask; sozlamada `"1,2,3,4,5,6"` (1=Du … 7=Ya)                                                                                                                                                                                                                                                                                          | settings `workDays`                                                                    |
+| `StudentStatus` (domain, akademik) | `active` · `suspended` · `graduated`                                                                                                                                                                                                                                                                                                      | API'ga chiqmaydi                                                                       |
+| `TodayFilter` (query)              | `present` · `late` · `absent` · `excused` · `pending` · `suspicious`                                                                                                                                                                                                                                                                      | tutor today `?status=`                                                                 |
+| `TodayAlertKind`                   | `outOfRadius` · `notCheckedIn` · `newLeaveRequests` · `newApplications`                                                                                                                                                                                                                                                                   | tutor today alerts                                                                     |
+| `StudentState`                     | `active` · `redFlag` · `suspicious`                                                                                                                                                                                                                                                                                                       | tutor students                                                                         |
+| `MapPointKind`                     | `ok` · `late` · `bad`                                                                                                                                                                                                                                                                                                                     | tutor map                                                                              |
+| `FacultyStatus`                    | `active` · `attention`                                                                                                                                                                                                                                                                                                                    | admin faculties                                                                        |
+| `TutorStatus`                      | `active` · `late`                                                                                                                                                                                                                                                                                                                         | admin tutors, dashboard                                                                |
+| `AdminStudentStatus`               | `active` · `flagged` · `unlinked`                                                                                                                                                                                                                                                                                                         | admin students                                                                         |
+| `CompanyFlag`                      | `largeRadius` · `suspicious` · `null`                                                                                                                                                                                                                                                                                                     | admin companies                                                                        |
+| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` | admin audit `action`, `?action=`                                                       |
+| `SettingType`                      | `int` · `bool` · `weekdays`                                                                                                                                                                                                                                                                                                               | settings `type`                                                                        |
+| `SettingKey` (string const)        | `geofenceRadius` · `lateTolerance` · `minGpsAccuracy` · `autoCheckout` · `workDays` · `dailyReportRequired` · `minReportLength` · `checkInWindow`                                                                                                                                                                                         | settings                                                                               |
+| `DocumentTemplateKind`             | `contract` · `referral` · `reference`                                                                                                                                                                                                                                                                                                     | settings templates                                                                     |
+| `StoredFileKind`                   | `contract` · `diaryAttachment` · `leaveDocument` · `template`                                                                                                                                                                                                                                                                             | ichki (files ko'lami)                                                                  |
+| Grade                              | `2` · `3` · `4` · `5` · `null`                                                                                                                                                                                                                                                                                                            | grading, portfolio (number)                                                            |
 
 ### 3.2 `CheckInRejectReason` xabarlari (`detail` da keladi)
 
-| Sabab | Status | `detail` |
-|---|---|---|
-| `notApproved` | 400 | Amaliyot joyingiz hali tasdiqlanmagan. |
-| `notWorkDay` | 400 | Bugun ish kuni emas. |
-| `periodNotStarted` | 400 | Amaliyot davri hali boshlanmagan. |
-| `periodEnded` | 400 | Amaliyot davri tugagan. |
-| `windowNotOpen` | 400 | Belgilanish oynasi hali ochilmagan. |
-| `windowClosed` | 400 | Bugungi belgilanish oynasi yopilgan. |
-| `poorAccuracy` | 400 | GPS aniqligi yetarli emas. Ochiq joyga chiqib qayta urinib ko'ring. |
-| `outOfRadius` | **409** | Siz amaliyot joyida emassiz. |
-| `alreadyCheckedIn` | **409** | Bugun allaqachon belgilangansiz. |
-| `noCheckIn` | **409** | Avval kelganingizni belgilang. |
-| `alreadyCheckedOut` | **409** | Ketish allaqachon belgilangan. |
-| `onLeave` | 400 | Bu kunga ruxsat tasdiqlangan — belgilanish shart emas. |
+| Sabab               | Status  | `detail`                                                            |
+| ------------------- | ------- | ------------------------------------------------------------------- |
+| `notApproved`       | 400     | Amaliyot joyingiz hali tasdiqlanmagan.                              |
+| `notWorkDay`        | 400     | Bugun ish kuni emas.                                                |
+| `periodNotStarted`  | 400     | Amaliyot davri hali boshlanmagan.                                   |
+| `periodEnded`       | 400     | Amaliyot davri tugagan.                                             |
+| `windowNotOpen`     | 400     | Belgilanish oynasi hali ochilmagan.                                 |
+| `windowClosed`      | 400     | Bugungi belgilanish oynasi yopilgan.                                |
+| `poorAccuracy`      | 400     | GPS aniqligi yetarli emas. Ochiq joyga chiqib qayta urinib ko'ring. |
+| `outOfRadius`       | **409** | Siz amaliyot joyida emassiz.                                        |
+| `alreadyCheckedIn`  | **409** | Bugun allaqachon belgilangansiz.                                    |
+| `noCheckIn`         | **409** | Avval kelganingizni belgilang.                                      |
+| `alreadyCheckedOut` | **409** | Ketish allaqachon belgilangan.                                      |
+| `onLeave`           | 400     | Bu kunga ruxsat tasdiqlangan — belgilanish shart emas.              |
 
 Shu xabarlar `TodayDto.checkin.note` da ham keladi (amal hozir mumkin bo'lmasa).
 
@@ -680,31 +1064,31 @@ o'qishda hisoblanadi.
 Uch hisoblagich bor, formulasi bir xil: **`pct = attended / (countable − excused) × 100`**, `attended = present + late`,
 maxraj ≤ 0 → 0.
 
-| Qayerda | `countable` | Yaxlitlash |
-|---|---|---|
-| TWA `today.place`, `portfolio.stats` (`AttendanceCalendar.ComputeStats`) | davr boshidan bugungacha ish kunlari + davr ichidagi yozuvli kunlar; bugun — yozuv bo'lsa yoki oyna (10:30) yopilgan bo'lsa | 1 kasr |
-| Tyutor `students`, `grading` (`StudentStatsCalculator`) | o'tgan ish kunlari; bugun — oyna yopilgan bo'lsa; bugun `present/late` bo'lsa har doim | 1 kasr |
+| Qayerda                                                                        | `countable`                                                                                                                                                                                      | Yaxlitlash  |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
+| TWA `today.place`, `portfolio.stats` (`AttendanceCalendar.ComputeStats`)       | davr boshidan bugungacha ish kunlari + davr ichidagi yozuvli kunlar; bugun — yozuv bo'lsa yoki oyna (10:30) yopilgan bo'lsa                                                                      | 1 kasr      |
+| Tyutor `students`, `grading` (`StudentStatsCalculator`)                        | o'tgan ish kunlari; bugun — oyna yopilgan bo'lsa; bugun `present/late` bo'lsa har doim                                                                                                           | 1 kasr      |
 | Admin `students/groups/faculties/dashboard` (`PracticeCalendar.AttendancePct`) | `elapsedWorkDays` = davr boshidan **kechagacha** ish kunlari (bugun kirmaydi); guruhda × arizasi `approved` talabalar; bugungi fakultet/dashboard foizi = `attended / expectedToday` (excused 0) | int, 0..100 |
 
 `late` — `attended` ichida (kelgan deb hisoblanadi). `excused` — maxrajdan chiqariladi. `daysTotal`/`totalDays` = `countable − excused`.
 
 ### 4.3 Chegaralar (kodda qotirilgan)
 
-| Nima | Qiymat | Manba |
-|---|---|---|
-| Fakultet `attention` | bugungi pct < **70** (expected > 0) | `AdminThresholds.AttentionAttendancePct` |
-| Tyutor `late` | eng eski `submitted` ariza > **48 soat** | `AdminThresholds.PendingApplicationLateAfter` |
-| Talaba `flagged` (admin) | shubhali kunlar ≥ **2** yoki (elapsed > 0 va pct < **70**) | `FlaggedSuspiciousDays`, `FlaggedAttendancePct` |
-| Talaba `redFlag` (tyutor) | totalDays > 0 va pct < **70** | `GradeThresholds.MinAttendancePct` |
-| Talaba `suspicious` (tyutor) | shubhali kunlar ≥ **1** | `GetTutorStudentsQueryHandler.SuspiciousMinCount` |
-| Korxona `largeRadius` | radius > **500 m** | `AdminThresholds.LargeRadiusM` |
-| Korxona `suspicious` | shubhali kunlar ≥ **3** | `AdminThresholds.SuspiciousCompanyEvents` |
-| Dashboard audit | so'nggi **8** | `DashboardAuditCount` |
-| Qaror tezligi oynasi | so'nggi **60 kun** | `DecisionSpeedWindow` |
-| Check-in default (`CheckInRules.Default`) | start **09:00**, late **09:15** (+15), yopiladi **10:30** (+90), check-out **17:00**, auto-close **18:00** (+60), GPS ≤ **100 m** | davr `PracticePeriod` o'z qiymatlarini beradi; GPS — sozlama `minGpsAccuracy` |
-| Shubha (`SuspiciousDetector`) | oldingi urinishdan ≤ **6 soat** ichida ≥ **1 km** sakrash va tezlik > **150 km/soat**; yoki oldingi kunlar bilan **aynan bir xil koordinata** | `MarkSuspicious` — jazo emas, faqat bayroq |
-| `occurredAt` | ≤ +1 min, ≥ −10 min | `GeoRequestValidator` |
-| Telegram `auth_date` | ≤ 24 soat, ≥ −5 min | `TelegramOptions.MaxAgeSeconds` |
+| Nima                                      | Qiymat                                                                                                                                        | Manba                                                                         |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Fakultet `attention`                      | bugungi pct < **70** (expected > 0)                                                                                                           | `AdminThresholds.AttentionAttendancePct`                                      |
+| Tyutor `late`                             | eng eski `submitted` ariza > **48 soat**                                                                                                      | `AdminThresholds.PendingApplicationLateAfter`                                 |
+| Talaba `flagged` (admin)                  | shubhali kunlar ≥ **2** yoki (elapsed > 0 va pct < **70**)                                                                                    | `FlaggedSuspiciousDays`, `FlaggedAttendancePct`                               |
+| Talaba `redFlag` (tyutor)                 | totalDays > 0 va pct < **70**                                                                                                                 | `GradeThresholds.MinAttendancePct`                                            |
+| Talaba `suspicious` (tyutor)              | shubhali kunlar ≥ **1**                                                                                                                       | `GetTutorStudentsQueryHandler.SuspiciousMinCount`                             |
+| Korxona `largeRadius`                     | radius > **500 m**                                                                                                                            | `AdminThresholds.LargeRadiusM`                                                |
+| Korxona `suspicious`                      | shubhali kunlar ≥ **3**                                                                                                                       | `AdminThresholds.SuspiciousCompanyEvents`                                     |
+| Dashboard audit                           | so'nggi **8**                                                                                                                                 | `DashboardAuditCount`                                                         |
+| Qaror tezligi oynasi                      | so'nggi **60 kun**                                                                                                                            | `DecisionSpeedWindow`                                                         |
+| Check-in default (`CheckInRules.Default`) | start **09:00**, late **09:15** (+15), yopiladi **10:30** (+90), check-out **17:00**, auto-close **18:00** (+60), GPS ≤ **100 m**             | davr `PracticePeriod` o'z qiymatlarini beradi; GPS — sozlama `minGpsAccuracy` |
+| Shubha (`SuspiciousDetector`)             | oldingi urinishdan ≤ **6 soat** ichida ≥ **1 km** sakrash va tezlik > **150 km/soat**; yoki oldingi kunlar bilan **aynan bir xil koordinata** | `MarkSuspicious` — jazo emas, faqat bayroq                                    |
+| `occurredAt`                              | ≤ +1 min, ≥ −10 min                                                                                                                           | `GeoRequestValidator`                                                         |
+| Telegram `auth_date`                      | ≤ 24 soat, ≥ −5 min                                                                                                                           | `TelegramOptions.MaxAgeSeconds`                                               |
 
 ### 4.4 Baho (`GradeCalculator`)
 
@@ -718,6 +1102,7 @@ grade            = attendancePct < 70 ? null : total ≥ 86 → 5 | ≥ 71 → 4
 recommended.tutorPoints     = diaryCount == 0 ? 0 : round(diaryAvg / 5 × 20)
 recommended.referencePoints = round(attendancePct / 100 × 10)
 ```
+
 Tyutor `grading` da `diaryCount` = **baholangan** yozuvlar soni (`ScoredCount`); TWA `portfolio` da — barcha yozuvlar soni
 (`avgScore` esa baholanganlar bo'yicha). Yakunlangan (`isFinalized`) bahoni PUT qilib bo'lmaydi → 409.
 
@@ -737,84 +1122,84 @@ Har qator: **v1 shakl → v2 haqiqiy shakl → nima qilish kerak**. Ustun "Qayer
 
 ### 5.1 Umumiy
 
-| # | Qayer | v1 | v2 | Nima qilish |
-|---|---|---|---|---|
-| U1 | `shared/auth/roles.ts` | `UserRole` DTO'da `1/2/3` | `"admin" \| "tutor" \| "student"` (camelCase string); JWT claim `"Admin"` | `toUserRole` string'ni asosiy qilsin |
-| U2 | `shared/api/client.ts` | 401 body'siz; 403 login | 401/403 middleware'dan **body'siz**; handler 403 — ProblemDetails; **429** body'siz | `ApiError` body bo'sh bo'lsa ham `kind` ni statusdan olsin |
-| U3 | xato `errors` | PascalCase | PascalCase (FluentValidation) **+** settings'da kalit nomi (`geofenceRadius`) **+** ASP.NET avtomatik 400 (`$.field`, `status`) | `fieldError` 3 shaklni ham qidirsin |
-| U4 | `DateTimeOffset` | `"…Z"` | `"…+00:00"` | `new Date()` bilan parse — o'zgarish shart emas, test fixture'larni yangilang |
-| U5 | fayl URL | `url?` ba'zan yo'q | har doim `"/api/files/<guid>"`, **Bearer kerak** | `fetch`+blob helper yozing; `<a href>` ishlatmang |
-| U6 | `Paged<T>` | `{items,page,pageSize,total}` | bir xil; `pageSize` > 100 → 20 ga tushadi (xato yo'q) | — |
-| U7 | endpoint soni | 4 + 34 | 39 (+ `GET /api/files/{id}`) | fayl endpoint'ini qo'shing |
+| #   | Qayer                  | v1                            | v2                                                                                                                              | Nima qilish                                                                   |
+| --- | ---------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| U1  | `shared/auth/roles.ts` | `UserRole` DTO'da `1/2/3`     | `"admin" \| "tutor" \| "student"` (camelCase string); JWT claim `"Admin"`                                                       | `toUserRole` string'ni asosiy qilsin                                          |
+| U2  | `shared/api/client.ts` | 401 body'siz; 403 login       | 401/403 middleware'dan **body'siz**; handler 403 — ProblemDetails; **429** body'siz                                             | `ApiError` body bo'sh bo'lsa ham `kind` ni statusdan olsin                    |
+| U3  | xato `errors`          | PascalCase                    | PascalCase (FluentValidation) **+** settings'da kalit nomi (`geofenceRadius`) **+** ASP.NET avtomatik 400 (`$.field`, `status`) | `fieldError` 3 shaklni ham qidirsin                                           |
+| U4  | `DateTimeOffset`       | `"…Z"`                        | `"…+00:00"`                                                                                                                     | `new Date()` bilan parse — o'zgarish shart emas, test fixture'larni yangilang |
+| U5  | fayl URL               | `url?` ba'zan yo'q            | har doim `"/api/files/<guid>"`, **Bearer kerak**                                                                                | `fetch`+blob helper yozing; `<a href>` ishlatmang                             |
+| U6  | `Paged<T>`             | `{items,page,pageSize,total}` | bir xil; `pageSize` > 100 → 20 ga tushadi (xato yo'q)                                                                           | —                                                                             |
+| U7  | endpoint soni          | 4 + 34                        | 39 (+ `GET /api/files/{id}`)                                                                                                    | fayl endpoint'ini qo'shing                                                    |
 
 ### 5.2 Admin (`dashboard/src/features/admin/*`)
 
-| # | Qayer | v1 | v2 | Nima qilish |
-|---|---|---|---|---|
-| A1 | dashboard `stats` | `AdminStat[] {label,value:"1 284",note,noteKind}` | **obyekt** `DashboardStatsDto` — 20 ta xom raqam (`studentsTotal`, `presentToday`, `attendanceTodayPct`…) | kartalarni frontend yasaydi: label/format/noteKind lokal |
-| A2 | dashboard `faculties[]` | `{id,name,pct,count:"286 talaba"}` | `{id,name,code,studentCount,expectedToday,attendedToday,attendancePct}` | `pct→attendancePct`, `count` matnini yasang |
-| A3 | dashboard `tutors[]` | `{id,name,scope,pending:"0 ariza",speed:"o'rtacha 4 soat",pendingKind}` | `{id,name,facultyCode,groups[],studentCount,pendingCount,oldestPendingAt,avgDecisionHours,lastActiveAt,status:'active'\|'late'}` | matnlarni yasang; `pendingKind` → `status` |
-| A4 | dashboard `audit[]` | `{id,at,text,who}` | `AuditEntryDto` (xom: `action`, `entityName`, `userName`, `userRole`, `reason`, `changes`) | matnni `action`+`entityName` dan yasang; + `date` maydoni |
-| A5 | `Faculty` | `{…, directions, groups, students, attendancePct, status}` | + `code`, `tutors` | qo'shing |
-| A6 | `Group` | `tutor:"N. Saidova"` | `tutorId: string\|null`, `tutor: string\|null` (to'liq FISH); + `faculty`, `facultyCode`, `period{…}\|null` | qisqartirishni frontend qilsin; `null` holatini ko'rsating |
-| A7 | `Tutor` | `phone:"+998 90 111 22 33"`, `assigned:"AT · 412-22, 413-22"` | `phone: string\|null` (E.164 xom), `facultyCode`, `groups: string[]`; + `facultyId`, `facultyName`, `oldestPendingAt`, `avgDecisionHours`, `lastActiveAt`, `isActive` | formatlashni frontend qilsin |
-| A8 | `Student` | `{id,fullName,group,faculty,company,attendancePct,status}` | + `hemisId`, `groupId`, `course`, `suspiciousDays`, `telegramLinked` | qo'shing |
-| A9 | `Company` | `tin:"304 512 889"`, `flag:'large-radius'\|'suspicious'\|null` | `tin` 9 raqam xom; **`flag:'largeRadius'\|'suspicious'\|null`**; + `activity`, `suspiciousDays`, `isActive` | enum qiymatini `largeRadius` ga o'zgartiring; STIR formatini frontend qilsin |
-| A10 | `AuditEntry` / `AuditAction` | `{id,at,action,detail,who}`; `manual-checkin\|radius-changed\|application-rejected\|status-changed\|grade-reverted` | `AuditEntryDto`; **18 ta camelCase** qiymat (`manualCheckIn`, `radiusChanged`, `settingsChanged`…) | enum'ni to'liq almashtiring; `?action=` ishlaydi |
-| A11 | `Setting` | `{key, k, v:"200 m", note}` | `{key, label, value:"200" (xom), type, unit, note, min, max, updatedAt}` | `k→label`, `v→value+unit`; input turini `type` dan; **yangi kalit `checkInWindow`** |
-| A12 | `Holiday` | `date:"08.03"` | `date:"YYYY-MM-DD"`, + `isRecurring` | format qiling |
-| A13 | `DocTemplate` | `{id,name,file}` | `{id,name,kind,fileName,url}` | `file→fileName`, `url` orqali yuklab olish |
-| A14 | `PUT settings` | `values: {key: "200 m"}` | `values: {key: "200"}` — xom, tiplangan tekshiruv, 400 `errors.<key>` | birlikni yubormang; xatoni kalit bo'yicha ko'rsating |
+| #   | Qayer                        | v1                                                                                                                  | v2                                                                                                                                                                    | Nima qilish                                                                         |
+| --- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| A1  | dashboard `stats`            | `AdminStat[] {label,value:"1 284",note,noteKind}`                                                                   | **obyekt** `DashboardStatsDto` — 20 ta xom raqam (`studentsTotal`, `presentToday`, `attendanceTodayPct`…)                                                             | kartalarni frontend yasaydi: label/format/noteKind lokal                            |
+| A2  | dashboard `faculties[]`      | `{id,name,pct,count:"286 talaba"}`                                                                                  | `{id,name,code,studentCount,expectedToday,attendedToday,attendancePct}`                                                                                               | `pct→attendancePct`, `count` matnini yasang                                         |
+| A3  | dashboard `tutors[]`         | `{id,name,scope,pending:"0 ariza",speed:"o'rtacha 4 soat",pendingKind}`                                             | `{id,name,facultyCode,groups[],studentCount,pendingCount,oldestPendingAt,avgDecisionHours,lastActiveAt,status:'active'\|'late'}`                                      | matnlarni yasang; `pendingKind` → `status`                                          |
+| A4  | dashboard `audit[]`          | `{id,at,text,who}`                                                                                                  | `AuditEntryDto` (xom: `action`, `entityName`, `userName`, `userRole`, `reason`, `changes`)                                                                            | matnni `action`+`entityName` dan yasang; + `date` maydoni                           |
+| A5  | `Faculty`                    | `{…, directions, groups, students, attendancePct, status}`                                                          | + `code`, `tutors`                                                                                                                                                    | qo'shing                                                                            |
+| A6  | `Group`                      | `tutor:"N. Saidova"`                                                                                                | `tutorId: string\|null`, `tutor: string\|null` (to'liq FISH); + `faculty`, `facultyCode`, `period{…}\|null`                                                           | qisqartirishni frontend qilsin; `null` holatini ko'rsating                          |
+| A7  | `Tutor`                      | `phone:"+998 90 111 22 33"`, `assigned:"AT · 412-22, 413-22"`                                                       | `phone: string\|null` (E.164 xom), `facultyCode`, `groups: string[]`; + `facultyId`, `facultyName`, `oldestPendingAt`, `avgDecisionHours`, `lastActiveAt`, `isActive` | formatlashni frontend qilsin                                                        |
+| A8  | `Student`                    | `{id,fullName,group,faculty,company,attendancePct,status}`                                                          | + `hemisId`, `groupId`, `course`, `suspiciousDays`, `telegramLinked`                                                                                                  | qo'shing                                                                            |
+| A9  | `Company`                    | `tin:"304 512 889"`, `flag:'large-radius'\|'suspicious'\|null`                                                      | `tin` 9 raqam xom; **`flag:'largeRadius'\|'suspicious'\|null`**; + `activity`, `suspiciousDays`, `isActive`                                                           | enum qiymatini `largeRadius` ga o'zgartiring; STIR formatini frontend qilsin        |
+| A10 | `AuditEntry` / `AuditAction` | `{id,at,action,detail,who}`; `manual-checkin\|radius-changed\|application-rejected\|status-changed\|grade-reverted` | `AuditEntryDto`; **18 ta camelCase** qiymat (`manualCheckIn`, `radiusChanged`, `settingsChanged`…)                                                                    | enum'ni to'liq almashtiring; `?action=` ishlaydi                                    |
+| A11 | `Setting`                    | `{key, k, v:"200 m", note}`                                                                                         | `{key, label, value:"200" (xom), type, unit, note, min, max, updatedAt}`                                                                                              | `k→label`, `v→value+unit`; input turini `type` dan; **yangi kalit `checkInWindow`** |
+| A12 | `Holiday`                    | `date:"08.03"`                                                                                                      | `date:"YYYY-MM-DD"`, + `isRecurring`                                                                                                                                  | format qiling                                                                       |
+| A13 | `DocTemplate`                | `{id,name,file}`                                                                                                    | `{id,name,kind,fileName,url}`                                                                                                                                         | `file→fileName`, `url` orqali yuklab olish                                          |
+| A14 | `PUT settings`               | `values: {key: "200 m"}`                                                                                            | `values: {key: "200"}` — xom, tiplangan tekshiruv, 400 `errors.<key>`                                                                                                 | birlikni yubormang; xatoni kalit bo'yicha ko'rsating                                |
 
 ### 5.3 Reports (`dashboard/src/features/reports`)
 
-| # | v1 | v2 | Nima qilish |
-|---|---|---|---|
-| R1 | `filter:{dateRange:"01.10.2026 — 15.11.2026", scope:"412-22 · 38 talaba"}` | `{dateFrom, dateTo (DateOnly\|null), scope, groups[], studentCount}` | matnni yasang |
-| R2 | `ReportCard.fmt:"PDF / Excel"` | `formats:('pdf'\|'xlsx')[]`, + `available:false`, `note` | tugmani `available` bo'yicha o'chiring |
-| R3 | `GET /reports/{id}/download` | **yo'q** | chaqirmang |
+| #   | v1                                                                         | v2                                                                   | Nima qilish                            |
+| --- | -------------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------- |
+| R1  | `filter:{dateRange:"01.10.2026 — 15.11.2026", scope:"412-22 · 38 talaba"}` | `{dateFrom, dateTo (DateOnly\|null), scope, groups[], studentCount}` | matnni yasang                          |
+| R2  | `ReportCard.fmt:"PDF / Excel"`                                             | `formats:('pdf'\|'xlsx')[]`, + `available:false`, `note`             | tugmani `available` bo'yicha o'chiring |
+| R3  | `GET /reports/{id}/download`                                               | **yo'q**                                                             | chaqirmang                             |
 
 ### 5.4 Tyutor (`dashboard/src/features/tutor/*`)
 
-| # | Qayer | v1 | v2 | Nima qilish |
-|---|---|---|---|---|
-| T1 | today `?status=` | `present\|late\|absent\|suspicious` | `present\|late\|absent\|excused\|pending\|suspicious`; + `q`, `page`, `pageSize` | filtr ro'yxatini kengaytiring |
-| T2 | today `stats` | `TodayStat[] {key,label,value,note,dot}` | **obyekt** `{present,late,absent,excused,pending,diaries,total}` | kartalarni frontend yasaydi |
-| T3 | today `alerts[]` | `{id,text,action,href?}` | `{kind,count,href,maxDistanceM}` | matnni `kind` dan yasang |
-| T4 | today `rows` + `pagination:{page,pageSize,shown,total}` | **`rows: Paged<AttendanceRow>`** `{items,page,pageSize,total}` | `rows.items` ga o'ting; `shown = items.length` |
-| T5 | `AttendanceRow.status` | `present\|late\|absent\|suspicious\|excused` | `AttendanceStatus` (`pending`, `dayOff` qo'shildi, **`suspicious` yo'q**); + `suspicious: boolean`, `manual`, `autoClosed`; `company: string\|null` | shubhani bayroqdan oling |
-| T6 | applications `?status=` / `counts` | `new\|fixing\|approved\|rejected` | `submitted\|revisionNeeded\|approved\|rejected`; `counts` kalitlari shu | tab kalitlarini almashtiring (`new→submitted`, `fixing→revisionNeeded`) |
-| T7 | `ApplicationSummary.waited:"2 soat oldin"` | **yo'q**; `submittedAt`, `decidedAt` ISO; `course: number` | "oldin" matnini frontend hisoblasin |
-| T8 | `ApplicationDetail.fields[] {k,v}` | **`companyDetails`** obyekt (`name,tin,activity,address,supervisorName,supervisorPhone,mentorName,mentorPhone`) | jadvalni obyektdan yasang |
-| T9 | `ApplicationDetail.contract {name,pages,size:"1.2 MB",url}` | `{name, pages: number\|null, sizeBytes, url} \| null`; + `comment`, `checklist: number[]`, `revisionCount` | hajmni formatlang; `null` holati |
-| T10 | decision body | `radiusM` va `checklist` majburiy | `radiusM` faqat `approve` da majburiy; `checklist` ixtiyoriy; `comment` **`return`/`reject` da majburiy**; 409 hal qilingan | validatsiyani moslang |
-| T11 | `TutorStudent.state` | `'red_flag'` | **`'redFlag'`**; `suspiciousCount` har doim `number` | qiymatni almashtiring |
-| T12 | `DiaryEntry` | `{…, files:{name,url?}, score}` | + `date`, `learned`, `reviewedAt`, `comment`; `files[].url` har doim bor; `?status=` filtr | maydonlarni qo'shing |
-| T13 | `CalendarRow.days: DayCode[]` (`k\|l\|a\|s\|d\|n`) | **`CalendarDayStatus[]`** (`future\|pending\|present\|late\|absent\|excused\|dayOff`) | `DayCode` mapping'ini olib tashlang |
-| T14 | map `?date=` | yuborilmaydi | ishlaydi (`YYYY-MM-DD`) | sana tanlash qo'shsa bo'ladi |
-| T15 | `LeaveRequest.dateTo: string\|null` | **`dateTo` har doim string** (bir kunlik → `dateFrom` ga teng); + `comment`, `createdAt`, `decidedAt`; `?status=` | `null` tekshiruvini `dateFrom===dateTo` ga almashtiring |
-| T16 | grading PUT | 400/404 | + **400** faol davr yo'q, **409** baho yakunlangan; faol davrsiz talaba GET'da yo'q | holatlarni ko'rsating |
+| #   | Qayer                                                       | v1                                                                                                                | v2                                                                                                                                                  | Nima qilish                                                             |
+| --- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| T1  | today `?status=`                                            | `present\|late\|absent\|suspicious`                                                                               | `present\|late\|absent\|excused\|pending\|suspicious`; + `q`, `page`, `pageSize`                                                                    | filtr ro'yxatini kengaytiring                                           |
+| T2  | today `stats`                                               | `TodayStat[] {key,label,value,note,dot}`                                                                          | **obyekt** `{present,late,absent,excused,pending,diaries,total}`                                                                                    | kartalarni frontend yasaydi                                             |
+| T3  | today `alerts[]`                                            | `{id,text,action,href?}`                                                                                          | `{kind,count,href,maxDistanceM}`                                                                                                                    | matnni `kind` dan yasang                                                |
+| T4  | today `rows` + `pagination:{page,pageSize,shown,total}`     | **`rows: Paged<AttendanceRow>`** `{items,page,pageSize,total}`                                                    | `rows.items` ga o'ting; `shown = items.length`                                                                                                      |
+| T5  | `AttendanceRow.status`                                      | `present\|late\|absent\|suspicious\|excused`                                                                      | `AttendanceStatus` (`pending`, `dayOff` qo'shildi, **`suspicious` yo'q**); + `suspicious: boolean`, `manual`, `autoClosed`; `company: string\|null` | shubhani bayroqdan oling                                                |
+| T6  | applications `?status=` / `counts`                          | `new\|fixing\|approved\|rejected`                                                                                 | `submitted\|revisionNeeded\|approved\|rejected`; `counts` kalitlari shu                                                                             | tab kalitlarini almashtiring (`new→submitted`, `fixing→revisionNeeded`) |
+| T7  | `ApplicationSummary.waited:"2 soat oldin"`                  | **yo'q**; `submittedAt`, `decidedAt` ISO; `course: number`                                                        | "oldin" matnini frontend hisoblasin                                                                                                                 |
+| T8  | `ApplicationDetail.fields[] {k,v}`                          | **`companyDetails`** obyekt (`name,tin,activity,address,supervisorName,supervisorPhone,mentorName,mentorPhone`)   | jadvalni obyektdan yasang                                                                                                                           |
+| T9  | `ApplicationDetail.contract {name,pages,size:"1.2 MB",url}` | `{name, pages: number\|null, sizeBytes, url} \| null`; + `comment`, `checklist: number[]`, `revisionCount`        | hajmni formatlang; `null` holati                                                                                                                    |
+| T10 | decision body                                               | `radiusM` va `checklist` majburiy                                                                                 | `radiusM` faqat `approve` da majburiy; `checklist` ixtiyoriy; `comment` **`return`/`reject` da majburiy**; 409 hal qilingan                         | validatsiyani moslang                                                   |
+| T11 | `TutorStudent.state`                                        | `'red_flag'`                                                                                                      | **`'redFlag'`**; `suspiciousCount` har doim `number`                                                                                                | qiymatni almashtiring                                                   |
+| T12 | `DiaryEntry`                                                | `{…, files:{name,url?}, score}`                                                                                   | + `date`, `learned`, `reviewedAt`, `comment`; `files[].url` har doim bor; `?status=` filtr                                                          | maydonlarni qo'shing                                                    |
+| T13 | `CalendarRow.days: DayCode[]` (`k\|l\|a\|s\|d\|n`)          | **`CalendarDayStatus[]`** (`future\|pending\|present\|late\|absent\|excused\|dayOff`)                             | `DayCode` mapping'ini olib tashlang                                                                                                                 |
+| T14 | map `?date=`                                                | yuborilmaydi                                                                                                      | ishlaydi (`YYYY-MM-DD`)                                                                                                                             | sana tanlash qo'shsa bo'ladi                                            |
+| T15 | `LeaveRequest.dateTo: string\|null`                         | **`dateTo` har doim string** (bir kunlik → `dateFrom` ga teng); + `comment`, `createdAt`, `decidedAt`; `?status=` | `null` tekshiruvini `dateFrom===dateTo` ga almashtiring                                                                                             |
+| T16 | grading PUT                                                 | 400/404                                                                                                           | + **400** faol davr yo'q, **409** baho yakunlangan; faol davrsiz talaba GET'da yo'q                                                                 | holatlarni ko'rsating                                                   |
 
 ### 5.5 Talaba / TWA (`twa/src/features/*`)
 
-| # | Qayer | v1 | v2 | Nima qilish |
-|---|---|---|---|---|
-| S1 | `TodayDto.checkin.status` | `CheckinStatus 'pending'\|'in'\|'late'\|'out'` | **`AttendanceStatus`** `pending\|present\|late\|absent\|excused\|dayOff`; "chiqdi" = `checkOutAt !== null` | enum'ni almashtiring; `out` ni `checkOutAt`/`autoClosed` dan oling |
-| S2 | `TodayDto.window` | `{start,end,checkoutAt,isOpen}` | + **`closesAt`** ("10:30") | ko'rsating |
-| S3 | `TodayDto.checkin` | `radiusM: number` | `radiusM: number\|null`; + `suspicious`, `autoClosed`, **`note: string\|null`** (nega mumkin emas) | `note` ni tugma ostida ko'rsating |
-| S4 | `TodayDto.place` | har doim | **`null`** (ariza tasdiqlanmagan/davr yo'q) | bo'sh holat |
-| S5 | `TodayDto.diary.minChars` | 150 qotirilgan | sozlamadan (`minReportLength`) | frontend konstantasini DTO qiymati bilan almashtiring |
-| S6 | `PracticePlaceDto.status/statusKind` | label string + `statusKind` | **`status: ApplicationStatus`** enum, + `comment`; `statusKind` yo'q | label/rangni frontend hisoblasin |
-| S7 | `PracticePlaceDto.supervisor/mentor` | `"Islomov B. · +998…"` string | `supervisorName`, `supervisorPhone`, `mentorName\|null`, `mentorPhone\|null`; + `periodFrom`, `periodTo` | birlashtiring |
-| S8 | `PracticePlaceDto.contract` | `{fileName,pages,sizeBytes,uploadedAt:DateOnly,approvedAt,approvedBy,templateUrl}` | `{fileId, fileName, pages:number\|null, sizeBytes, uploadedAt: ISO datetime, approvedAt: ISO\|null, approvedBy\|null, templateUrl\|null} \| null` | tiplarni yangilang |
-| S9 | `DiaryEntryDto.status/statusKind` | label + `statusKind` | **`status: DiaryStatus`**; + `date`; `files[]` = `{id,name,url}`; `statusKind` yo'q | label'ni frontend |
-| S10 | `POST diary` | 201/400 | + **409** bugungi bor (rewrite'dan tashqari); `files` turi/hajmi chegaralari; 413 > 30 MB | 409 ni "allaqachon yuborilgan" deb ko'rsating |
-| S11 | `CalendarMonthDto` | `{month,rowLabel:"Akmal · 412-22",days:{date,code:DayCode}}` | `{month, studentName, groupName, days:{date, status: CalendarDayStatus}}` | `DayCode` → enum; label'ni yasang |
-| S12 | `LeaveRequestDto` | `{id,from,to,reason,status:label,statusKind,createdAt:DateOnly}` | `{id, dateFrom, dateTo, reason, status: LeaveRequestStatus, comment, document\|null, createdAt: ISO}` | `from/to → dateFrom/dateTo`; label'ni frontend |
-| S13 | `LeaveRequestCreate` | `{from,to,reason,attachmentName?}` | `{dateFrom, dateTo, reason, attachmentName?, attachmentFileId?}`; `errors.DateFrom/DateTo/Reason`; 400 davr tashqarisi; **409** kesishuv | nomlarni almashtiring |
-| S14 | `PortfolioDto.score[]` | `{label,weightPct,points}` | `{key:'attendance'\|'reports'\|'tutor'\|'reference', weightPct, points}`; `grade: number\|null`; + `finalized`; `company\|null`; `conclusion.date` ISO datetime | label'ni `key` dan; `grade=null` → "qayta topshiradi" |
-| S15 | `GET portfolio`/`place` | 200 har doim | **404** faol davr/ariza yo'q | bo'sh holat |
-| S16 | `CheckinRequest.occurredAt` | ISO | ≤ +1 min / ≥ −10 min, aks holda 400 `errors.OccurredAt` | offline navbatda eski urinishni yubormang |
+| #   | Qayer                                | v1                                                                                 | v2                                                                                                                                                              | Nima qilish                                                        |
+| --- | ------------------------------------ | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| S1  | `TodayDto.checkin.status`            | `CheckinStatus 'pending'\|'in'\|'late'\|'out'`                                     | **`AttendanceStatus`** `pending\|present\|late\|absent\|excused\|dayOff`; "chiqdi" = `checkOutAt !== null`                                                      | enum'ni almashtiring; `out` ni `checkOutAt`/`autoClosed` dan oling |
+| S2  | `TodayDto.window`                    | `{start,end,checkoutAt,isOpen}`                                                    | + **`closesAt`** ("10:30")                                                                                                                                      | ko'rsating                                                         |
+| S3  | `TodayDto.checkin`                   | `radiusM: number`                                                                  | `radiusM: number\|null`; + `suspicious`, `autoClosed`, **`note: string\|null`** (nega mumkin emas)                                                              | `note` ni tugma ostida ko'rsating                                  |
+| S4  | `TodayDto.place`                     | har doim                                                                           | **`null`** (ariza tasdiqlanmagan/davr yo'q)                                                                                                                     | bo'sh holat                                                        |
+| S5  | `TodayDto.diary.minChars`            | 150 qotirilgan                                                                     | sozlamadan (`minReportLength`)                                                                                                                                  | frontend konstantasini DTO qiymati bilan almashtiring              |
+| S6  | `PracticePlaceDto.status/statusKind` | label string + `statusKind`                                                        | **`status: ApplicationStatus`** enum, + `comment`; `statusKind` yo'q                                                                                            | label/rangni frontend hisoblasin                                   |
+| S7  | `PracticePlaceDto.supervisor/mentor` | `"Islomov B. · +998…"` string                                                      | `supervisorName`, `supervisorPhone`, `mentorName\|null`, `mentorPhone\|null`; + `periodFrom`, `periodTo`                                                        | birlashtiring                                                      |
+| S8  | `PracticePlaceDto.contract`          | `{fileName,pages,sizeBytes,uploadedAt:DateOnly,approvedAt,approvedBy,templateUrl}` | `{fileId, fileName, pages:number\|null, sizeBytes, uploadedAt: ISO datetime, approvedAt: ISO\|null, approvedBy\|null, templateUrl\|null} \| null`               | tiplarni yangilang                                                 |
+| S9  | `DiaryEntryDto.status/statusKind`    | label + `statusKind`                                                               | **`status: DiaryStatus`**; + `date`; `files[]` = `{id,name,url}`; `statusKind` yo'q                                                                             | label'ni frontend                                                  |
+| S10 | `POST diary`                         | 201/400                                                                            | + **409** bugungi bor (rewrite'dan tashqari); `files` turi/hajmi chegaralari; 413 > 30 MB                                                                       | 409 ni "allaqachon yuborilgan" deb ko'rsating                      |
+| S11 | `CalendarMonthDto`                   | `{month,rowLabel:"Akmal · 412-22",days:{date,code:DayCode}}`                       | `{month, studentName, groupName, days:{date, status: CalendarDayStatus}}`                                                                                       | `DayCode` → enum; label'ni yasang                                  |
+| S12 | `LeaveRequestDto`                    | `{id,from,to,reason,status:label,statusKind,createdAt:DateOnly}`                   | `{id, dateFrom, dateTo, reason, status: LeaveRequestStatus, comment, document\|null, createdAt: ISO}`                                                           | `from/to → dateFrom/dateTo`; label'ni frontend                     |
+| S13 | `LeaveRequestCreate`                 | `{from,to,reason,attachmentName?}`                                                 | `{dateFrom, dateTo, reason, attachmentName?, attachmentFileId?}`; `errors.DateFrom/DateTo/Reason`; 400 davr tashqarisi; **409** kesishuv                        | nomlarni almashtiring                                              |
+| S14 | `PortfolioDto.score[]`               | `{label,weightPct,points}`                                                         | `{key:'attendance'\|'reports'\|'tutor'\|'reference', weightPct, points}`; `grade: number\|null`; + `finalized`; `company\|null`; `conclusion.date` ISO datetime | label'ni `key` dan; `grade=null` → "qayta topshiradi"              |
+| S15 | `GET portfolio`/`place`              | 200 har doim                                                                       | **404** faol davr/ariza yo'q                                                                                                                                    | bo'sh holat                                                        |
+| S16 | `CheckinRequest.occurredAt`          | ISO                                                                                | ≤ +1 min / ≥ −10 min, aks holda 400 `errors.OccurredAt`                                                                                                         | offline navbatda eski urinishni yubormang                          |
 
 ### 5.6 v1 §7 ochiq savollar — javoblar
 
@@ -826,5 +1211,5 @@ Har qator: **v1 shakl → v2 haqiqiy shakl → nima qilish kerak**. Ustun "Qayer
 6. Sozlamalar → tiplangan (`type/unit/min/max`), qiymat xom string.
 7. Ruxsat hujjati → `attachmentName` + ixtiyoriy `attachmentFileId`; upload endpoint'i hali yo'q.
 8. `map?date=` → ishlaydi. 9. decision 409 → bor. 10. download/`?action=` → download yo'q, `?action=` bor.
-11. `radiusM` dublikati → saqlangan (`checkin.radiusM` nullable, `place.radiusM`). 12. Nav badge'lar → `tutor/today.alerts`
-    va `applications.counts` dan olsa bo'ladi; alohida endpoint yo'q.
+9. `radiusM` dublikati → saqlangan (`checkin.radiusM` nullable, `place.radiusM`). 12. Nav badge'lar → `tutor/today.alerts`
+   va `applications.counts` dan olsa bo'ladi; alohida endpoint yo'q.

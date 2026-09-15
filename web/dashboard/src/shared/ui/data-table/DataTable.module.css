@@ -93,6 +93,10 @@
 .row[data-clickable='true'] > .cell {
   cursor: pointer;
 }
+/* isActive:false kabi "o'chirilgan" yozuvlar — amallar ustuni bundan mustasno (bosilishi kerak). */
+.row[data-row-dim='true'] > .cell:not(.actions) {
+  opacity: 0.55;
+}
 .row:has(> .cell:focus-visible) > .cell {
   background: var(--color-surface-2);
 }

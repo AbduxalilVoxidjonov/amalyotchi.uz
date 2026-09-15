@@ -4,8 +4,10 @@ import { MemoryRouter } from 'react-router-dom';
 import {
   Badge,
   Button,
+  ConfirmDialog,
   DataTable,
   Input,
+  Modal,
   pctKind,
   ProgressBar,
   SidebarNav,
@@ -158,6 +160,99 @@ describe('DataTable', () => {
     firstCell.focus();
     await userEvent.keyboard('{Enter}');
     expect(onRowClick).toHaveBeenCalledTimes(2);
+  });
+
+  it('rowDim — faqat mos qatorga data-row-dim="true" qo\'yadi (amallar ustuni xira bo\'lmaydi)', () => {
+    const rows: Row[] = [
+      { id: '1', name: 'Akmal', pct: 90 },
+      { id: '2', name: 'Dilnoza', pct: 70 },
+    ];
+    render(
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(r) => r.id}
+        rowDim={(r) => r.id === '2'}
+        actions={() => <button type="button">Amal</button>}
+      />,
+    );
+    const [, ...bodyRows] = screen.getAllByRole('row');
+    expect(bodyRows[0]).not.toHaveAttribute('data-row-dim');
+    expect(bodyRows[1]).toHaveAttribute('data-row-dim', 'true');
+  });
+});
+
+describe('Modal', () => {
+  it("role=dialog/aria-modal, Esc yopadi, overlay bosilsa yopadi, fokus ichkariga o'tadi", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(
+      <Modal open onClose={onClose} title="Sarlavha" description="Tavsif">
+        <input aria-label="Maydon" />
+      </Modal>,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Sarlavha' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveAccessibleDescription('Tavsif');
+    expect(screen.getByLabelText('Maydon')).toHaveFocus();
+
+    await user.keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('overlay (fon) bosilsa yopiladi, panel ichi bosilsa yopilmaydi', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(
+      <Modal open onClose={onClose} title="Sarlavha">
+        <p>Kontent</p>
+      </Modal>,
+    );
+    await user.click(screen.getByText('Kontent'));
+    expect(onClose).not.toHaveBeenCalled();
+
+    // `createPortal` — overlay `document.body`ga to'g'ridan-to'g'ri chiqadi; dialog uning bolasi.
+    const dialog = screen.getByRole('dialog');
+    const overlay = dialog.parentElement;
+    expect(overlay).not.toBeNull();
+    // overlay elementiga bevosita bosish (bola emas) — mousedown target === currentTarget.
+    await user.click(overlay as Element);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('open=false — hech narsa render qilmaydi', () => {
+    render(
+      <Modal open={false} onClose={vi.fn()} title="Sarlavha">
+        <p>Kontent</p>
+      </Modal>,
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('ConfirmDialog', () => {
+  it('tasdiqlash/bekor qilish tugmalari, danger variant, xato banner', async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    render(
+      <ConfirmDialog
+        open
+        title="O'chirishni tasdiqlang"
+        description="Bu amalni qaytarib bo'lmaydi."
+        danger
+        error="Xatolik yuz berdi."
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      />,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('Xatolik yuz berdi.');
+    const confirmBtn = screen.getByRole('button', { name: 'Tasdiqlash' });
+    expect(confirmBtn).toHaveAttribute('data-variant', 'danger');
+    await user.click(confirmBtn);
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole('button', { name: 'Bekor qilish' }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
 });
 
