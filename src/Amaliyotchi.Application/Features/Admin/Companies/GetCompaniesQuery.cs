@@ -9,7 +9,8 @@ namespace Amaliyotchi.Application.Features.Admin.Companies;
 
 /// <summary>Kontrakt v2 <c>Company</c>: STIR xom (9 raqam), <paramref name="Students"/> — arizasi tasdiqlangan talabalar,
 /// <paramref name="SuspiciousDays"/> — shu korxonadagi talabalarning shubhali davomat kunlari.
-/// Bayroq ustuvorligi: <c>suspicious</c> → <c>largeRadius</c> → <c>null</c>.</summary>
+/// <paramref name="MaxStudents"/> — <c>maxStudentsPerCompany</c> sozlamasi, <paramref name="OverLimit"/> — chegaradan oshgani.
+/// Bayroq ustuvorligi: <c>suspicious</c> → <c>tooManyStudents</c> → <c>largeRadius</c> → <c>null</c>.</summary>
 public sealed record CompanyRow(
     Guid Id,
     string Name,
@@ -20,6 +21,8 @@ public sealed record CompanyRow(
     int Students,
     int SuspiciousDays,
     bool IsActive,
+    int MaxStudents,
+    bool OverLimit,
     CompanyFlag? Flag);
 
 /// <summary><c>GET /api/admin/companies?q&amp;page&amp;pageSize</c> — <c>q</c>: nom, STIR, manzil.</summary>
@@ -66,11 +69,16 @@ internal sealed class GetCompaniesQueryHandler(IApplicationDbContext db)
         if (page.Total == 0)
             return Paged<CompanyRow>.Empty(request);
 
-        var rows = page.Items.Select(c => new CompanyRow(
-            c.Id, c.Name, c.Tin, c.Activity, c.Address, c.RadiusM, c.Students, c.SuspiciousDays, c.IsActive,
-            c.SuspiciousDays >= AdminThresholds.SuspiciousCompanyEvents ? CompanyFlag.Suspicious
-            : c.RadiusM > AdminThresholds.LargeRadiusM ? CompanyFlag.LargeRadius
-            : null)).ToList();
+        var maxStudents = await CompanyQueries.LoadMaxStudentsAsync(db, cancellationToken);
+
+        var rows = page.Items.Select(c =>
+        {
+            var overLimit = c.Students > maxStudents;
+            return new CompanyRow(
+                c.Id, c.Name, c.Tin, c.Activity, c.Address, c.RadiusM, c.Students, c.SuspiciousDays, c.IsActive,
+                maxStudents, overLimit,
+                CompanyFlags.Resolve(c.SuspiciousDays, c.RadiusM, overLimit));
+        }).ToList();
 
         return new Paged<CompanyRow>(rows, page.Page, page.PageSize, page.Total);
     }

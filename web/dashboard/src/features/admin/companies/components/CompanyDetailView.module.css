@@ -1,0 +1,43 @@
+/* Admin · Korxona detali: ma'lumot kartasi + STIR nazorati + davrlar jadvali */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.sub {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.mono {
+  font-family: var(--font-mono);
+}
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.contact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tableTitle {
+  margin: 0;
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+}
+.tableSub {
+  margin: 2px 0 0;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}
+/* Jadval ichidagi bo'sh holat — tashqi chegarasiz (jadvalning o'zi kartochka) */
+.empty[data-tone] {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}

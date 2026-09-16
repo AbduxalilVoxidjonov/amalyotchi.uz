@@ -10,3 +10,19 @@ export function useCompaniesQuery(params: ListParams) {
     placeholderData: keepPreviousData,
   });
 }
+
+export function useCompanyQuery(id: string) {
+  return useQuery({
+    queryKey: adminKeys.company(id),
+    queryFn: () => companiesApi.detail(id),
+    enabled: id !== '',
+  });
+}
+
+export function useCompanyStudentsQuery(id: string) {
+  return useQuery({
+    queryKey: adminKeys.companyStudents(id),
+    queryFn: () => companiesApi.students(id),
+    enabled: id !== '',
+  });
+}

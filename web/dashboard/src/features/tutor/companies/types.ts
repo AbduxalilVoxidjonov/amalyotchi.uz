@@ -1,33 +1,12 @@
 import type { StatusKind } from '@/shared/ui';
 
 /**
- * Kontrakt v3 `Company` (backend `CompanyRow`).
- * Belgi: null (—) · largeRadius (late) · tooManyStudents (bad) · suspicious (bad).
- * Ustuvorlik (backend): suspicious → tooManyStudents → largeRadius → null.
+ * Korxona bayrog'i (backend `CompanyFlag`). Ustuvorlik: suspicious → tooManyStudents →
+ * largeRadius → null.
  */
 export type CompanyFlag = 'largeRadius' | 'suspicious' | 'tooManyStudents';
 
-export interface Company {
-  id: string;
-  name: string;
-  /** STIR xom 9 raqam "305881204" (UI: "305 881 204"). */
-  tin: string;
-  activity: string;
-  address: string;
-  radiusM: number;
-  /** Arizasi tasdiqlangan talabalar. */
-  students: number;
-  /** Shu korxonadagi talabalarning shubhali davomat kunlari. */
-  suspiciousDays: number;
-  /** STIR nazorati: `maxStudentsPerCompany` sozlamasi qiymati. */
-  maxStudents: number;
-  /** `students > maxStudents` — bitta STIR ostida haddan ko'p talaba. */
-  overLimit: boolean;
-  isActive: boolean;
-  flag: CompanyFlag | null;
-}
-
-export const COMPANY_FLAG_LABEL: Record<CompanyFlag, { label: string; kind: 'late' | 'bad' }> = {
+export const COMPANY_FLAG_LABEL: Record<CompanyFlag, { label: string; kind: StatusKind }> = {
   largeRadius: { label: 'Katta radius', kind: 'late' },
   suspicious: { label: "Shubhali to'planish", kind: 'bad' },
   tooManyStudents: { label: "Talaba ko'p", kind: 'bad' },
@@ -61,6 +40,29 @@ export const COMPANY_STUDENT_STATE_LABEL: Record<
   suspicious: { label: 'Shubhali', kind: 'late' },
 };
 
+/** GET /api/tutor/companies → TutorCompany[] (faqat ko'lamdagi talabalar biriktirilgan korxonalar). */
+export interface TutorCompany {
+  id: string;
+  name: string;
+  /** STIR xom 9 raqam. */
+  tin: string;
+  address: string;
+  lat: number;
+  lng: number;
+  radiusM: number;
+  /** FAQAT tyutor ko'lamidagi talabalar. */
+  students: number;
+  /** Butun tizim bo'yicha shu korxonada (STIR nazorati uchun). */
+  totalStudents: number;
+  maxStudents: number;
+  /** `totalStudents > maxStudents`. */
+  overLimit: boolean;
+  /** Ko'lamdagi talabalar o'rtachasi, 0–100 (1 kasr). */
+  attendancePct: number;
+  suspiciousDays: number;
+  flag: CompanyFlag | null;
+}
+
 /** Amaliyot davri kesimi: shu korxonada qaysi davrda nechta talaba. */
 export interface CompanyPeriod {
   id: string;
@@ -71,8 +73,8 @@ export interface CompanyPeriod {
   students: number;
 }
 
-/** GET /api/admin/companies/{id} → CompanyDetail · 404 */
-export interface CompanyDetail {
+/** GET /api/tutor/companies/{id} → CompanyDetail (`students` — ko'lamda) · 404 */
+export interface TutorCompanyDetail {
   id: string;
   name: string;
   tin: string;
@@ -86,7 +88,10 @@ export interface CompanyDetail {
   mentorName: string | null;
   mentorPhone: string | null;
   isActive: boolean;
+  /** Tyutor ko'lamidagi talabalar. */
   students: number;
+  /** Butun tizim bo'yicha (STIR nazorati). */
+  totalStudents: number;
   suspiciousDays: number;
   maxStudents: number;
   overLimit: boolean;
@@ -94,7 +99,7 @@ export interface CompanyDetail {
   periods: CompanyPeriod[];
 }
 
-/** GET /api/admin/companies/{id}/students → CompanyStudent[] (FISH bo'yicha tartib). */
+/** GET /api/tutor/companies/{id}/students → CompanyStudent[] (faqat ko'lamdagilar, FISH tartibida). */
 export interface CompanyStudent {
   studentId: string;
   name: string;
@@ -105,7 +110,6 @@ export interface CompanyStudent {
   tutorName: string | null;
   applicationStatus: ApplicationStatus;
   periodName: string | null;
-  /** 0–100 (kasrli bo'lishi mumkin). */
   attendancePct: number;
   attendedDays: number;
   totalDays: number;
@@ -114,7 +118,7 @@ export interface CompanyStudent {
   suspiciousCount: number;
 }
 
-/** Jadval/kartochkada "21/10" ko'rinishidagi talaba-chegara nisbati. */
+/** "21/10" — talaba / STIR chegarasi. */
 export function studentsOfLimit(students: number, maxStudents: number): string {
   return `${students}/${maxStudents}`;
 }

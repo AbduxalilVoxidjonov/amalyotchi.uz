@@ -1,0 +1,18 @@
+/* Tyutor · Korxona talabalari jadvali */
+.tableTitle {
+  margin: 0;
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+}
+.tableSub {
+  margin: 2px 0 0;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}
+.days {
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}

@@ -34,6 +34,9 @@ export const adminKeys = {
   tutorScopeTree: (id: string) => ['admin', 'tutor', id, 'scope-tree'] as const,
   students: (params: ListParams) => ['admin', 'students', params] as const,
   companies: (params: ListParams) => ['admin', 'companies', params] as const,
+  /** `GET /companies/{id}` — detail sahifasi. */
+  company: (id: string) => ['admin', 'company', id] as const,
+  companyStudents: (id: string) => ['admin', 'company', id, 'students'] as const,
   audit: (params: ListParams) => ['admin', 'audit', params] as const,
   settings: () => ['admin', 'settings'] as const,
 };

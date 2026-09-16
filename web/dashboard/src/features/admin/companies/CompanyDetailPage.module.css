@@ -1,0 +1,6 @@
+/* Korxona detali: karta bloklari + talabalar jadvali */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}

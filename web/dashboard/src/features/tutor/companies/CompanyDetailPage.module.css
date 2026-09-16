@@ -1,0 +1,21 @@
+/* Tyutor · Korxona detali: orqaga havola + bloklar */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.back {
+  align-self: flex-start;
+  font-size: var(--fs-sm2);
+  color: var(--color-text-faint);
+  text-decoration: none;
+}
+.back:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+.back:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}

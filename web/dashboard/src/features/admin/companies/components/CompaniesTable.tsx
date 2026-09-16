@@ -1,11 +1,22 @@
 import { Badge, Button, type DataTableColumn } from '@/shared/ui';
 import { AdminTable, type TableStateProps } from '../../components/AdminTable';
+import { RowLink } from '../../components/RowLink';
 import { formatTin } from '../../shared/format';
-import { COMPANY_FLAG_LABEL, type Company } from '../types';
+import { COMPANY_FLAG_LABEL, studentsOfLimit, type Company } from '../types';
 
-/** SPEC §9.7 ustunlari. STIR — xom 9 raqamdan formatlanadi. */
+/**
+ * SPEC §9.7 ustunlari. STIR — xom 9 raqamdan formatlanadi; korxona nomi detail sahifasiga havola
+ * (`AdminTable` qator bosishni uzatmaydi — ierarxiya jadvallaridagi `RowLink` naqshi).
+ * `overLimit` qatorda talaba ustuni "21/10" ogohlantirish `Badge`iga aylanadi.
+ */
 const COLUMNS: DataTableColumn<Company>[] = [
-  { key: 'name', header: 'Korxona', width: 'minmax(190px,1.7fr)', strong: true },
+  {
+    key: 'name',
+    header: 'Korxona',
+    width: 'minmax(190px,1.7fr)',
+    strong: true,
+    render: (r) => <RowLink to={`/admin/companies/${r.id}`}>{r.name}</RowLink>,
+  },
   {
     key: 'tin',
     header: 'STIR',
@@ -22,7 +33,20 @@ const COLUMNS: DataTableColumn<Company>[] = [
     mono: true,
     render: (r) => `${r.radiusM} m`,
   },
-  { key: 'students', header: 'Talaba', width: 'minmax(80px,.8fr)', mono: true },
+  {
+    key: 'students',
+    header: 'Talaba',
+    width: 'minmax(110px,.9fr)',
+    mono: true,
+    render: (r) =>
+      r.overLimit ? (
+        <Badge status="bad" title={`STIR chegarasi: ${r.maxStudents} talaba`}>
+          {studentsOfLimit(r.students, r.maxStudents)}
+        </Badge>
+      ) : (
+        String(r.students)
+      ),
+  },
   {
     key: 'flag',
     header: 'Belgi',
@@ -50,6 +74,7 @@ export function CompaniesTable({ onExport, onShowSuspicious, ...state }: Compani
       rowKey={(r) => r.id}
       minWidth="880px"
       emptyTitle="Korxonalar yo'q"
+      rowDim={(r) => !r.isActive}
       actions={
         <>
           <Button size="xs" onClick={onExport}>
