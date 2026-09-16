@@ -1,6 +1,7 @@
 import type { HttpHandler } from 'msw';
 import { applicationsHandlers, resetApplicationsMock } from './applications/mocks';
 import { calendarHandlers } from './calendar/mocks';
+import { companiesHandlers } from './companies/mocks';
 import { diariesHandlers, resetDiariesMock } from './diaries/mocks';
 import { gradingHandlers, resetGradingMock } from './grading/mocks';
 import { leaveRequestsHandlers, resetLeaveRequestsMock } from './leave-requests/mocks';
@@ -21,6 +22,7 @@ export const tutorHandlers: HttpHandler[] = [
   ...mapHandlers,
   ...leaveRequestsHandlers,
   ...gradingHandlers,
+  ...companiesHandlers,
 ];
 
 /** Mutatsiyalar o'zgartirgan in-memory holatni tiklash (testlar orasida). */

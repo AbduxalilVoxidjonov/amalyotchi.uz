@@ -50,6 +50,7 @@ const TUTOR_NAV: readonly SidebarNavItem[] = [
   { label: 'Kundaliklar', to: '/tutor/diaries' },
   { label: 'Kalendar', to: '/tutor/calendar' },
   { label: 'Xarita', to: '/tutor/map' },
+  { label: 'Korxonalar', to: '/tutor/companies' },
   { label: "Ruxsat so'rovlari", to: '/tutor/leave-requests' },
   { label: 'Baholash', to: '/tutor/grading' },
   { label: 'Hisobotlar', to: '/tutor/reports' },

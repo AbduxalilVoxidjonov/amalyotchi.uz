@@ -53,7 +53,7 @@ describe('AppShell', () => {
     loginAs(1);
     const router = renderApp('/tutor');
     const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
-    expect(within(nav).getAllByRole('link')).toHaveLength(9);
+    expect(within(nav).getAllByRole('link')).toHaveLength(10);
     expect(within(nav).getByRole('link', { name: /Bugun/ })).toHaveAttribute(
       'aria-current',
       'page',

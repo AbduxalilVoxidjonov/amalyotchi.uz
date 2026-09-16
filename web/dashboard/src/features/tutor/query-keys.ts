@@ -13,7 +13,19 @@ export const tutorKeys = {
     list: (params: { tab: ApplicationTab }) => ['tutor', 'applications', 'list', params] as const,
     detail: (id: string) => ['tutor', 'applications', 'detail', id] as const,
   },
-  students: () => ['tutor', 'students'] as const,
+  students: Object.assign(() => ['tutor', 'students'] as const, {
+    all: ['tutor', 'students'] as const,
+    detail: (id: string) => ['tutor', 'students', 'detail', id] as const,
+    attendance: (id: string, range: { from: string | null; to: string | null }) =>
+      ['tutor', 'students', 'attendance', id, range] as const,
+    diaries: (id: string) => ['tutor', 'students', 'diaries', id] as const,
+  }),
+  companies: {
+    all: ['tutor', 'companies'] as const,
+    list: () => ['tutor', 'companies', 'list'] as const,
+    detail: (id: string) => ['tutor', 'companies', 'detail', id] as const,
+    students: (id: string) => ['tutor', 'companies', 'detail', id, 'students'] as const,
+  },
   diaries: {
     all: ['tutor', 'diaries'] as const,
     list: () => ['tutor', 'diaries', 'list'] as const,

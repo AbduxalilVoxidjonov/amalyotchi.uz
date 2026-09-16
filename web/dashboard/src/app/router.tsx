@@ -30,17 +30,21 @@ const TutorsPage = lazy(() => import('@/features/admin/tutors/TutorsPage'));
 const TutorDetailPage = lazy(() => import('@/features/admin/tutors/TutorDetailPage'));
 const StudentsPage = lazy(() => import('@/features/admin/students/StudentsPage'));
 const CompaniesPage = lazy(() => import('@/features/admin/companies/CompaniesPage'));
+const CompanyDetailPage = lazy(() => import('@/features/admin/companies/CompanyDetailPage'));
 const AuditPage = lazy(() => import('@/features/admin/audit/AuditPage'));
 const SettingsPage = lazy(() => import('@/features/admin/settings/SettingsPage'));
 const ReportsPage = lazy(() => import('@/features/reports/ReportsPage'));
 const TodayPage = lazy(() => import('@/features/tutor/today/TodayPage'));
 const ApplicationsPage = lazy(() => import('@/features/tutor/applications/ApplicationsPage'));
 const MyStudentsPage = lazy(() => import('@/features/tutor/students/MyStudentsPage'));
+const StudentDetailPage = lazy(() => import('@/features/tutor/students/StudentDetailPage'));
 const DiariesPage = lazy(() => import('@/features/tutor/diaries/DiariesPage'));
 const CalendarPage = lazy(() => import('@/features/tutor/calendar/CalendarPage'));
 const MapPage = lazy(() => import('@/features/tutor/map/MapPage'));
 const LeaveRequestsPage = lazy(() => import('@/features/tutor/leave-requests/LeaveRequestsPage'));
 const GradingPage = lazy(() => import('@/features/tutor/grading/GradingPage'));
+const TutorCompaniesPage = lazy(() => import('@/features/tutor/companies/CompaniesPage'));
+const TutorCompanyDetailPage = lazy(() => import('@/features/tutor/companies/CompanyDetailPage'));
 // `import.meta.env.DEV` build'da `false` ga almashadi → chunk umuman yaratilmaydi.
 const KitPage = import.meta.env.DEV ? lazy(() => import('@/dev/KitPage')) : null;
 
@@ -84,6 +88,7 @@ export const routes: RouteObject[] = [
           { path: 'tutors/:tutorId', element: <TutorDetailPage /> },
           { path: 'students', element: <StudentsPage /> },
           { path: 'companies', element: <CompaniesPage /> },
+          { path: 'companies/:companyId', element: <CompanyDetailPage /> },
           { path: 'reports', element: <ReportsPage /> },
           { path: 'audit', element: <AuditPage /> },
           { path: 'settings', element: <SettingsPage /> },
@@ -102,9 +107,12 @@ export const routes: RouteObject[] = [
           { index: true, element: <TodayPage /> },
           { path: 'applications', element: <ApplicationsPage /> },
           { path: 'students', element: <MyStudentsPage /> },
+          { path: 'students/:studentId', element: <StudentDetailPage /> },
           { path: 'diaries', element: <DiariesPage /> },
           { path: 'calendar', element: <CalendarPage /> },
           { path: 'map', element: <MapPage /> },
+          { path: 'companies', element: <TutorCompaniesPage /> },
+          { path: 'companies/:companyId', element: <TutorCompanyDetailPage /> },
           { path: 'leave-requests', element: <LeaveRequestsPage /> },
           { path: 'grading', element: <GradingPage /> },
           { path: 'reports', element: <ReportsPage /> },
