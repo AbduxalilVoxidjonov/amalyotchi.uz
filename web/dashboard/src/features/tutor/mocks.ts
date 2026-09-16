@@ -6,7 +6,7 @@ import { diariesHandlers, resetDiariesMock } from './diaries/mocks';
 import { gradingHandlers, resetGradingMock } from './grading/mocks';
 import { leaveRequestsHandlers, resetLeaveRequestsMock } from './leave-requests/mocks';
 import { mapHandlers } from './map/mocks';
-import { studentsHandlers } from './students/mocks';
+import { resetStudentDiaryReviewsMock, studentsHandlers } from './students/mocks';
 import { todayHandlers } from './today/mocks';
 
 /**
@@ -31,4 +31,5 @@ export function resetTutorMocks() {
   resetDiariesMock();
   resetLeaveRequestsMock();
   resetGradingMock();
+  resetStudentDiaryReviewsMock();
 }

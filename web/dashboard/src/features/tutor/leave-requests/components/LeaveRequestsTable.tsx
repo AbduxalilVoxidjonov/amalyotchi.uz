@@ -1,3 +1,4 @@
+import { AuthFileButton } from '@/shared/files';
 import { Badge, Button, DataTable, Input, type DataTableColumn } from '@/shared/ui';
 import { fmtDayRange } from '../../format';
 import { LEAVE_STATUS_LABEL, type LeaveDecision, type LeaveRequest } from '../types';
@@ -26,9 +27,7 @@ const COLUMNS: DataTableColumn<LeaveRequest>[] = [
     render: (r) =>
       r.document ? (
         r.document.url ? (
-          <a href={r.document.url} target="_blank" rel="noreferrer">
-            {r.document.name}
-          </a>
+          <AuthFileButton url={r.document.url} name={r.document.name} variant="link" />
         ) : (
           r.document.name
         )

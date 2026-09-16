@@ -1,10 +1,18 @@
 import { Badge, Button, ProgressBar, type DataTableColumn } from '@/shared/ui';
 import { AdminTable, type TableStateProps } from '../../components/AdminTable';
+import { RowLink } from '../../components/RowLink';
 import { STUDENT_STATUS_LABEL, type Student } from '../types';
 
 /** SPEC §9.6 ustunlari. ❓ `bar:0` — dizaynda foiz bo'sh; matn o'rni (38px) saqlanadi — track'lar teng. */
 const COLUMNS: DataTableColumn<Student>[] = [
-  { key: 'fullName', header: 'Talaba', width: 'minmax(180px,1.6fr)', strong: true },
+  {
+    key: 'fullName',
+    header: 'Talaba',
+    width: 'minmax(180px,1.6fr)',
+    strong: true,
+    // Ism — talaba profiliga havola (`/admin/students/:studentId`), tyutor/korxona jadvallaridagidek.
+    render: (r) => <RowLink to={`/admin/students/${r.id}`}>{r.fullName}</RowLink>,
+  },
   { key: 'group', header: 'Guruh', width: 'minmax(90px,.7fr)', mono: true, dim: true },
   { key: 'faculty', header: 'Fakultet', width: 'minmax(170px,1.3fr)' },
   {

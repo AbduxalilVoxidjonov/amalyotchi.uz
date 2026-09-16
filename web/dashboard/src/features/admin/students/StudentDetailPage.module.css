@@ -1,0 +1,6 @@
+/* Talaba profili: profil kartasi + korxona/ariza/davr + davomat va kundaliklar */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}

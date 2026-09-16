@@ -6,12 +6,22 @@ import {
   DataTable,
   Eyebrow,
   MapPlaceholder,
+  Modal,
   type DataTableColumn,
 } from '@/shared/ui';
+import { errorMessage } from '@/shared/api';
 import { fmtDateOnly, fmtDayMonth, fmtDistance } from '../../format';
-import { DIARY_STATUS_LABEL } from '../../diaries/types';
-import { dayStatusLabel, fmtCoords, type StudentAttendanceDay } from '../types';
+import { useDiaryReview } from '../../diaries/hooks';
+import { DIARY_STATUS_LABEL, type DiaryEntry } from '../../diaries/types';
+import {
+  dayStatusLabel,
+  fmtCoords,
+  type AttendancePunch,
+  type StudentApiArea,
+  type StudentAttendanceDay,
+} from '../types';
 import { PhotoPreview } from './PhotoPreview';
+import { DiaryDayCard } from './DiaryDayCard';
 import styles from './AttendanceDayTable.module.css';
 
 const WEEK_DAYS = ['Ya', 'Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh'] as const;
@@ -144,83 +154,185 @@ export interface AttendanceDayTableProps {
   days: readonly StudentAttendanceDay[];
   /** Korxona geofence radiusi (kun panelida ko'rsatiladi). */
   radiusM: number | null;
+  /** Talabaning kundaliklari — kun oynasida o'sha kunga tegishlisi ochiladi. */
+  diaries?: readonly DiaryEntry[];
+  /** Kun oynasidagi baholash qaysi rol endpoint'iga borishi (tyutor yoki admin paneli). */
+  area?: StudentApiArea;
 }
 
-/** Kun-bakun davomat jadvali (KONTRAKT §2.2). Qator bosilsa — kun tafsiloti paneli ochiladi. */
-export function AttendanceDayTable({ days, radiusM }: AttendanceDayTableProps) {
+/** Bitta belgilanish (kirish/chiqish): vaqt, masofa, aniqlik, nuqta va o'sha paytdagi selfi. */
+function PunchBlock({
+  kind,
+  punch,
+  date,
+}: {
+  kind: 'in' | 'out';
+  punch: AttendancePunch | null;
+  date: string;
+}) {
+  const title = kind === 'in' ? 'Kirish' : 'Chiqish';
+  const label = `${fmtDateOnly(date)} ${kind === 'in' ? 'check-in' : 'check-out'} rasmi`;
+
+  if (!punch) {
+    return (
+      <div className={styles.punch}>
+        <Eyebrow margin="none">{title}</Eyebrow>
+        <p className={styles.punchEmpty}>Belgilanmagan</p>
+      </div>
+    );
+  }
+
+  const coords = fmtCoords(punch.lat, punch.lng);
+
+  return (
+    <div className={styles.punch}>
+      <Eyebrow margin="none">
+        {title} · {punch.at}
+      </Eyebrow>
+      <dl className={styles.panelFacts}>
+        <div>
+          <dt>Masofa</dt>
+          <dd data-out-of-radius={punch.outOfRadius || undefined} className={styles.distance}>
+            {punch.distanceM === null ? '—' : fmtDistance(punch.distanceM)}
+          </dd>
+        </div>
+        <div>
+          <dt>Aniqlik</dt>
+          <dd>{punch.accuracyM === null ? '—' : fmtDistance(punch.accuracyM)}</dd>
+        </div>
+        <div>
+          <dt>Lokatsiya</dt>
+          <dd>{coords ?? 'Yuborilmagan'}</dd>
+        </div>
+      </dl>
+
+      <MapPlaceholder
+        title={`${title} nuqtasi · ${fmtDayMonth(date)}`}
+        coords={coords ?? 'Koordinata yo‘q'}
+        note={punch.outOfRadius ? 'Radius tashqarisida' : undefined}
+        height={140}
+      />
+
+      {punch.photoUrl ? (
+        <div className={styles.panelPhoto}>
+          <Eyebrow margin="none">Yuborgan rasmi</Eyebrow>
+          <PhotoPreview url={punch.photoUrl} label={label} size="card" />
+        </div>
+      ) : (
+        <p className={styles.punchEmpty}>Rasm yuborilmagan</p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Kundalik jadval (KONTRAKT §2.2) — har bir amaliyot kuni bir qator.
+ * Sana bosilsa, o'sha kun **oynada** (modal) ochiladi: talaba yuborgan lokatsiya, rasm va
+ * shu kunga yozgan kundaligi (matn, o'rgangani, fayllari, ball va tyutor izohi).
+ */
+export function AttendanceDayTable({
+  days,
+  radiusM,
+  diaries = [],
+  area = 'tutor',
+}: AttendanceDayTableProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const selected = days.find((d) => d.date === selectedDate) ?? null;
+  const diary = selected ? (diaries.find((e) => e.date === selected.date) ?? null) : null;
+  const status = selected ? dayStatusLabel(selected) : null;
+  const review = useDiaryReview(area);
 
   return (
     <>
       <DataTable
-        aria-label="Kun-bakun davomat"
+        aria-label="Kundalik jadval"
         columns={COLUMNS}
         rows={days}
         rowKey={(d) => d.date}
         density="compact"
         minWidth="1080px"
         selectedKey={selectedDate}
-        onRowClick={(d) => setSelectedDate((prev) => (prev === d.date ? null : d.date))}
+        onRowClick={(d) => {
+          review.reset();
+          setSelectedDate(d.date);
+        }}
         emptyText="Tanlangan oraliqda davomat yozuvi yo'q"
       />
 
-      {selected && (
-        <section
-          className={styles.panel}
-          aria-label={`${fmtDateOnly(selected.date)} kuni tafsiloti`}
-        >
-          <div className={styles.panelMain}>
-            <Eyebrow margin="none">{fmtDateOnly(selected.date)} — kun tafsiloti</Eyebrow>
-            <dl className={styles.panelFacts}>
-              <div>
-                <dt>Urinishlar</dt>
-                <dd>
-                  {selected.attempts} ta
-                  {selected.rejectedAttempts > 0 && ` · ${selected.rejectedAttempts} rad etilgan`}
-                </dd>
-              </div>
-              <div>
-                <dt>Ish kuni</dt>
-                <dd>{selected.isWorkDay ? 'Ha' : "Yo'q"}</dd>
-              </div>
-              {radiusM !== null && (
-                <div>
-                  <dt>Radius</dt>
-                  <dd>{fmtDistance(radiusM)}</dd>
-                </div>
-              )}
-            </dl>
-            {selected.suspiciousReason && (
-              <p className={styles.reason}>{selected.suspiciousReason}</p>
-            )}
-            {selected.manualReason && <p className={styles.reason}>{selected.manualReason}</p>}
-          </div>
-          <MapPlaceholder
-            title={`Belgilanish nuqtasi · ${fmtDayMonth(selected.date)}`}
-            coords={
-              fmtCoords(selected.checkIn?.lat ?? null, selected.checkIn?.lng ?? null) ??
-              'Koordinata yo‘q'
-            }
-            note={
-              selected.checkIn?.accuracyM != null
-                ? `Aniqlik: ${fmtDistance(selected.checkIn.accuracyM)}`
-                : undefined
-            }
-            height={150}
-          />
-          {selected.checkIn?.photoUrl && (
-            <div className={styles.panelPhoto}>
-              <Eyebrow margin="none">Check-in rasmi</Eyebrow>
-              <PhotoPreview
-                url={selected.checkIn.photoUrl}
-                label={`${fmtDateOnly(selected.date)} check-in rasmi`}
-                size="card"
-              />
+      <Modal
+        open={selected !== null}
+        onClose={() => {
+          review.reset();
+          setSelectedDate(null);
+        }}
+        width="min(1040px, 94vw)"
+        title={
+          selected && status ? (
+            <span className={styles.modalTitle}>
+              {fmtDateOnly(selected.date)} — kun tafsiloti
+              <Badge status={status.kind}>{status.label}</Badge>
+            </span>
+          ) : (
+            'Kun tafsiloti'
+          )
+        }
+      >
+        {selected && (
+          <div className={styles.panel}>
+            <div className={styles.punches}>
+              <PunchBlock kind="in" punch={selected.checkIn} date={selected.date} />
+              <PunchBlock kind="out" punch={selected.checkOut} date={selected.date} />
             </div>
-          )}
-        </section>
-      )}
+
+            <div className={styles.panelMain}>
+              <dl className={styles.panelFacts}>
+                <div>
+                  <dt>Urinishlar</dt>
+                  <dd>
+                    {selected.attempts} ta
+                    {selected.rejectedAttempts > 0 && ` · ${selected.rejectedAttempts} rad etilgan`}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Ish kuni</dt>
+                  <dd>{selected.isWorkDay ? 'Ha' : "Yo'q"}</dd>
+                </div>
+                {radiusM !== null && (
+                  <div>
+                    <dt>Radius</dt>
+                    <dd>{fmtDistance(radiusM)}</dd>
+                  </div>
+                )}
+              </dl>
+              {selected.suspiciousReason && (
+                <p className={styles.reason}>{selected.suspiciousReason}</p>
+              )}
+              {selected.manualReason && <p className={styles.reason}>{selected.manualReason}</p>}
+            </div>
+
+            <div className={styles.panelDiary}>
+              <Eyebrow margin="none">Shu kunga yuborgan kundaligi</Eyebrow>
+              {diary ? (
+                <DiaryDayCard
+                  entry={diary}
+                  review={{
+                    pending: review.isPending,
+                    error: review.error ? errorMessage(review.error) : undefined,
+                    onReview: (body) => review.mutate({ id: diary.id, body }),
+                  }}
+                />
+              ) : selected.diary ? (
+                <p className={styles.punchEmpty}>
+                  Kundalik yuborilgan ({DIARY_STATUS_LABEL[selected.diary.status].label}), lekin
+                  matni yuklanmadi — sahifani yangilang.
+                </p>
+              ) : (
+                <p className={styles.punchEmpty}>Bu kunga kundalik yuborilmagan.</p>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
     </>
   );
 }

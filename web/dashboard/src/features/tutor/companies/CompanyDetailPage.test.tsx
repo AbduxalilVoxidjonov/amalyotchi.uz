@@ -28,6 +28,11 @@ describe('CompanyDetailPage (/tutor/companies/:companyId)', () => {
 
     const students = within(await screen.findByRole('table', { name: 'Korxona talabalari' }));
     expect(students.getByText('Aliyev Akmal')).toBeInTheDocument();
+    // Ism — talaba profiliga havola ("ichiga kirish").
+    expect(students.getByRole('link', { name: 'Aliyev Akmal' })).toHaveAttribute(
+      'href',
+      '/tutor/students/c1-s1',
+    );
     expect(students.getByText('HEMIS 341400')).toBeInTheDocument();
     expect(students.getByRole('progressbar', { name: 'Aliyev Akmal davomati' })).toHaveAttribute(
       'aria-valuenow',

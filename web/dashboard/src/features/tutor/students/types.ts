@@ -197,6 +197,13 @@ export interface StudentAttendanceDay {
   rejectedAttempts: number;
 }
 
+/**
+ * Davomat va kundalik bo'limlari ikkala profilda ham ishlatiladi: tyutorniki
+ * (`/api/tutor/students/...`) va adminniki (`/api/admin/students/...`) — shakl bir xil,
+ * faqat yo'l va ruxsat farq qiladi.
+ */
+export type StudentApiArea = 'tutor' | 'admin';
+
 /** Davomat so'rovi oralig'i (ikkalasi ham null → butun davr). */
 export interface AttendanceRange {
   from: string | null;

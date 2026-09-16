@@ -1,3 +1,4 @@
+import { AuthFileButton } from '@/shared/files';
 import {
   Avatar,
   Badge,
@@ -191,9 +192,12 @@ export function StudentDetailView({ detail }: { detail: TutorStudentDetail }) {
                       {application.contract.pages !== null &&
                         `${application.contract.pages} bet · `}
                       {fmtBytes(application.contract.sizeBytes)} ·{' '}
-                      <a href={application.contract.url} target="_blank" rel="noreferrer">
-                        shartnomani ochish
-                      </a>
+                      <AuthFileButton
+                        url={application.contract.url}
+                        name={application.contract.name}
+                        variant="link"
+                        label="shartnomani ochish"
+                      />
                     </>
                   }
                 />

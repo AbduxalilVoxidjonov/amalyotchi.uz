@@ -21,7 +21,11 @@ export function PhotoPreview({ url, label, size = 'thumb' }: PhotoPreviewProps) 
         type="button"
         className={styles.trigger}
         data-size={size}
-        onClick={() => setOpen(true)}
+        onClick={(e) => {
+          // Jadval katagida — qator bosilishi (kun oynasi) bilan birga ochilmasin.
+          e.stopPropagation();
+          setOpen(true);
+        }}
         aria-label={`${label} — kattalashtirish`}
       >
         <AuthImage src={url} alt={label} height={size === 'thumb' ? 54 : 120} />

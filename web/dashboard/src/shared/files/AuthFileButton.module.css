@@ -1,0 +1,105 @@
+/* Token bilan ochiladigan fayl tugmasi (chip ichida yoki matn havolasi ko'rinishida). */
+.chipButton,
+.linkButton {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.chipButton:disabled,
+.linkButton:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.chipButton:hover:not(:disabled),
+.linkButton:hover:not(:disabled) {
+  color: var(--color-text);
+}
+.chipButton:focus-visible,
+.linkButton:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+.error {
+  margin-left: 8px;
+  font-size: var(--fs-sm);
+  color: var(--color-bad-fg);
+}
+.frame {
+  width: 100%;
+  height: min(70vh, 720px);
+  border: var(--border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+}
+.image {
+  display: block;
+  width: 100%;
+  max-height: min(70vh, 720px);
+  object-fit: contain;
+  border-radius: var(--radius-md);
+}
+.note {
+  margin: 0;
+  font-size: var(--fs-sm2);
+  color: var(--color-text-dim);
+}
+.download {
+  font-size: var(--fs-sm2);
+}
+
+/* Joyida ko'rsatiladigan fayl (kun oynasidagi kundalik ilovasi). */
+.embed {
+  display: grid;
+  gap: 8px;
+  margin: 13px 0 0;
+}
+.embedHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.embedName {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+a.embedName {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+a.embedName:hover {
+  color: var(--color-text);
+}
+.embedActions {
+  display: inline-flex;
+  gap: 12px;
+  white-space: nowrap;
+}
+.embedFrame {
+  width: 100%;
+  height: 420px;
+  border: var(--border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+}
+.embedImage {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+  border: var(--border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+}
+.errorBlock {
+  margin: 0;
+  font-size: var(--fs-sm2);
+  color: var(--color-bad-fg);
+}

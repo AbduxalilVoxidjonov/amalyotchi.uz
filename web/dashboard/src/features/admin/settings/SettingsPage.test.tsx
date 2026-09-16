@@ -16,10 +16,8 @@ describe('SettingsPage', () => {
     expect(screen.getAllByText('daqiqa').length).toBeGreaterThan(0);
     expect(screen.getByText("21.03 · Navro'z bayrami")).toBeInTheDocument();
     expect(screen.getByText("20.03.2027 · Navro'z (ko'chirilgan dam olish)")).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'shartnoma_shablon.docx' })).toHaveAttribute(
-      'href',
-      '/api/files/d1',
-    );
+    // Fayl token bilan ochiladi (`AuthFileButton`) — oddiy havola emas, tugma.
+    expect(screen.getByRole('button', { name: 'shartnoma_shablon.docx' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Saqlash' })).toBeDisabled();
   });
 

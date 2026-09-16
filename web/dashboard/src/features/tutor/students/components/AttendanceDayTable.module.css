@@ -15,16 +15,40 @@
   font-size: var(--fs-xs2);
   color: var(--color-text-muted);
 }
+/* Kun tafsiloti — modal ichidagi mazmun (jadval ostida emas, alohida oynada). */
 .panel {
   display: grid;
-  grid-template-columns: minmax(220px, 1.3fr) minmax(200px, 1fr) auto;
-  gap: 16px;
+  gap: 14px;
+}
+.modalTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+/* Kirish va chiqish — yonma-yon; har birida nuqta, xarita va rasm. */
+.punches {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
   align-items: start;
-  margin-top: 14px;
-  padding: 14px;
+}
+.punch {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
   border: var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.punchEmpty {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--color-text-faint);
+}
+.panelDiary {
+  display: grid;
+  gap: 8px;
 }
 .panelFacts {
   display: flex;
@@ -56,7 +80,7 @@
 }
 
 @media (max-width: 900px) {
-  .panel {
+  .punches {
     grid-template-columns: 1fr;
   }
 }

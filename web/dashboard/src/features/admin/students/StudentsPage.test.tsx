@@ -12,4 +12,12 @@ describe('StudentsPage', () => {
     expect(screen.getByRole('button', { name: 'HEMIS dan tortish' })).toBeInTheDocument();
     expect(screen.getByText('1–5 / 5')).toBeInTheDocument();
   });
+
+  it('talaba ismi profil sahifasiga havola', async () => {
+    renderWithProviders(<StudentsPage />);
+    expect(await screen.findByRole('link', { name: 'Aliyev Akmal' })).toHaveAttribute(
+      'href',
+      '/admin/students/s1',
+    );
+  });
 });

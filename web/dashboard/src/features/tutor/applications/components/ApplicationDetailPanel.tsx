@@ -1,3 +1,4 @@
+import { AuthFileButton } from '@/shared/files';
 import {
   Avatar,
   Badge,
@@ -108,9 +109,12 @@ export function ApplicationDetailPanel({
                 <>
                   {contract.pages !== null && `${contract.pages} bet · `}
                   {fmtBytes(contract.sizeBytes)} ·{' '}
-                  <a href={contract.url} target="_blank" rel="noreferrer">
-                    brauzerda ochish
-                  </a>
+                  <AuthFileButton
+                    url={contract.url}
+                    name={contract.name}
+                    variant="link"
+                    label="brauzerda ochish"
+                  />
                 </>
               }
             />

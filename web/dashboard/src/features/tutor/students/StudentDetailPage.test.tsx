@@ -74,10 +74,9 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
     const application = screen.getByRole('region', { name: 'Ariza' });
     expect(within(application).getByText('Tasdiqlangan')).toHaveAttribute('data-status', 'ok');
     expect(within(application).getByText('01.09.2026')).toBeInTheDocument();
-    expect(within(application).getByRole('link', { name: 'shartnomani ochish' })).toHaveAttribute(
-      'href',
-      '/api/files/contract-s-341030',
-    );
+    expect(
+      within(application).getByRole('button', { name: 'shartnomani ochish' }),
+    ).toBeInTheDocument();
 
     const period = screen.getByRole('region', { name: 'Amaliyot davri' });
     expect(within(period).getAllByText('3-kurs ishlab chiqarish amaliyoti').length).toBeGreaterThan(
@@ -92,7 +91,7 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
     const user = userEvent.setup();
     renderStudentDetail('/tutor/students/s-341030');
 
-    const table = await screen.findByRole('table', { name: 'Kun-bakun davomat' });
+    const table = await screen.findByRole('table', { name: 'Kundalik jadval' });
     // Davr boshi (07.09.2026) dan mock "bugun" (12.10.2026) gacha — 36 kun.
     expect(within(table).getByText('07.09.2026')).toBeInTheDocument();
     expect(within(table).getByText('12.10.2026')).toBeInTheDocument();
@@ -110,10 +109,16 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
     expect(within(dialog).getByRole('img')).toHaveAttribute('src', 'blob:mock-photo');
     await user.click(within(dialog).getByRole('button', { name: 'Yopish' }));
 
-    // Qator bosilsa — kun tafsiloti paneli (xarita + urinishlar).
+    // Sana bosilsa — kun tafsiloti oynada (modal) ochiladi, keyin yopiladi.
     await user.click(within(table).getByText('07.09.2026'));
-    const panel = await screen.findByRole('region', { name: '07.09.2026 kuni tafsiloti' });
-    expect(within(panel).getByText('Urinishlar')).toBeInTheDocument();
+    const dayDialog = await screen.findByRole('dialog', { name: /07\.09\.2026 — kun tafsiloti/ });
+    expect(within(dayDialog).getByText('Urinishlar')).toBeInTheDocument();
+    await user.click(within(dayDialog).getByRole('button', { name: 'Yopish' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: /07\.09\.2026 — kun tafsiloti/ }),
+      ).not.toBeInTheDocument(),
+    );
 
     // Sana oralig'i: amaliyotdan oldingi oy → bo'sh holat.
     fireEvent.change(screen.getByLabelText('Dan'), { target: { value: '2026-01-01' } });
@@ -121,22 +126,118 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
     expect(await screen.findByText("Tanlangan oraliqda davomat yozuvi yo'q.")).toBeInTheDocument();
   });
 
-  it("kundaliklar matni, foto hisobot va fayl havolasi ko'rinadi", async () => {
+  it('kun qatori bosilsa — o\'sha kunning lokatsiyasi, rasmi va kundaligi ko\'rinadi', async () => {
+    const user = userEvent.setup();
     renderStudentDetail('/tutor/students/s-341030');
 
-    const diaries = await screen.findByRole('region', { name: 'Kundaliklar' });
-    const cards = await within(diaries).findAllByRole('article', { name: /^Kundalik: / });
-    expect(cards).toHaveLength(15);
+    const table = await screen.findByRole('table', { name: 'Kundalik jadval' });
+    await user.click(within(table).getByText('07.09.2026'));
+    const panel = await screen.findByRole('dialog', { name: /07\.09\.2026 — kun tafsiloti/ });
 
-    const first = cards[0]!;
-    expect(within(first).getByText(/ma'lumotlar bazasi sxemasini/)).toBeInTheDocument();
-    expect(within(first).getByText(/O'rganganim:/)).toBeInTheDocument();
-    expect(within(first).getByRole('link', { name: 'kunlik_hisobot.pdf' })).toHaveAttribute(
-      'href',
-      expect.stringContaining('/api/files/doc-s-341030-'),
+    // Kirish va chiqish bloklari — vaqt, masofa, aniqlik, lokatsiya va xarita.
+    expect(within(panel).getByText(/^Kirish · /)).toBeInTheDocument();
+    expect(within(panel).getByText(/^Chiqish · /)).toBeInTheDocument();
+    expect(within(panel).getAllByText('Lokatsiya')).toHaveLength(2);
+    expect(within(panel).getAllByText(/^41\.\d+, 69\.\d+$/).length).toBeGreaterThan(0);
+    expect(within(panel).getByRole('img', { name: /Kirish nuqtasi/ })).toBeInTheDocument();
+
+    // Talaba yuborgan check-in rasmi shu panelda ham ochiladi.
+    expect(
+      within(panel).getByRole('button', { name: '07.09.2026 check-in rasmi — kattalashtirish' }),
+    ).toBeInTheDocument();
+
+    // Shu kunga yozgan kundaligi — matni, o'rgangani va ball bilan.
+    const diary = within(panel).getByRole('article', { name: 'Kundalik: 07.09.2026' });
+    expect(within(diary).getByText(/O'rganganim:/)).toBeInTheDocument();
+    expect(within(diary).getByText(/yuborilgan \d{2}:\d{2}/)).toBeInTheDocument();
+  });
+
+  it('kun oynasida kundalikni baholash — ball qo\'yilsa holat va jadval yangilanadi', async () => {
+    const user = userEvent.setup();
+    renderStudentDetail('/tutor/students/s-341030');
+
+    const table = await screen.findByRole('table', { name: 'Kundalik jadval' });
+    // 14.09.2026 — davrning 7-ish kuni: kundaligi "Yuborilgan" (hali baholanmagan).
+    await user.click(within(table).getByText('14.09.2026'));
+    const dialog = await screen.findByRole('dialog', { name: /14\.09\.2026 — kun tafsiloti/ });
+    const card = within(dialog).getByRole('article', { name: 'Kundalik: 14.09.2026' });
+    expect(within(card).getByText('Yuborilgan')).toBeInTheDocument();
+
+    const scores = within(card).getByRole('group', { name: '14.09.2026 balli' });
+    await user.click(within(scores).getByRole('button', { name: '5' }));
+
+    await waitFor(() =>
+      expect(within(card).getByText('Tasdiqlangan')).toHaveAttribute('data-status', 'ok'),
     );
-    // Foto hisobot — rasm sifatida (Chip havola emas).
-    expect(within(first).getByRole('button', { name: /ish_jarayoni_.*\.jpg/ })).toBeInTheDocument();
+    expect(within(scores).getByRole('button', { name: '5' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    // Ko'rib chiqilgach tugmalar qulflanadi (backend qayta baholashda 409 beradi).
+    expect(within(scores).getByRole('button', { name: '4' })).toBeDisabled();
+
+    // Jadvaldagi "Kundalik" ustuni ham yangilandi.
+    const row = within(table).getByText('14.09.2026').closest('[role="row"]') as HTMLElement;
+    await waitFor(() => expect(within(row).getByText('Tasdiqlangan')).toBeInTheDocument());
+  });
+
+  it("kun oynasida qayta yozishga qaytarish izohsiz o'tmaydi", async () => {
+    const user = userEvent.setup();
+    renderStudentDetail('/tutor/students/s-341030');
+
+    const table = await screen.findByRole('table', { name: 'Kundalik jadval' });
+    await user.click(within(table).getByText('14.09.2026'));
+    const dialog = await screen.findByRole('dialog', { name: /14\.09\.2026 — kun tafsiloti/ });
+    const card = within(dialog).getByRole('article', { name: 'Kundalik: 14.09.2026' });
+
+    await user.click(within(card).getByRole('button', { name: 'Qayta yozishga qaytarish' }));
+    expect(
+      await within(card).findByText('Qayta yozish sababi (izoh) majburiy.'),
+    ).toBeInTheDocument();
+
+    await user.type(within(card).getByLabelText('Izoh'), 'Batafsilroq yozing');
+    await user.click(within(card).getByRole('button', { name: 'Qayta yozishga qaytarish' }));
+    await waitFor(() =>
+      expect(within(card).getByText('Qayta yozish kerak')).toBeInTheDocument(),
+    );
+  });
+
+  it("kun oynasida kundalik matni va yuborgan PDF'i joyida ochiladi", async () => {
+    const user = userEvent.setup();
+    renderStudentDetail('/tutor/students/s-341030');
+
+    // 12.10.2026 — mock "bugun", eng yangi kundalik: JPG + PDF biriktirilgan.
+    const table = await screen.findByRole('table', { name: 'Kundalik jadval' });
+    await user.click(within(table).getByText('12.10.2026'));
+    const dialog = await screen.findByRole('dialog', { name: /12\.10\.2026 — kun tafsiloti/ });
+    const card = within(dialog).getByRole('article', { name: 'Kundalik: 12.10.2026' });
+
+    expect(within(card).getByText(/ma'lumotlar bazasi sxemasini/)).toBeInTheDocument();
+    expect(within(card).getByText(/O'rganganim:/)).toBeInTheDocument();
+
+    // Fayllar bosilmasdan, joyida ochiq: PDF — iframe, rasm — img (token bilan yuklangan blob).
+    await waitFor(() =>
+      expect(within(card).getByTitle('kunlik_hisobot.pdf')).toHaveAttribute(
+        'src',
+        'blob:mock-photo',
+      ),
+    );
+    expect(within(card).getByRole('img', { name: /ish_jarayoni_.*\.jpg/ })).toHaveAttribute(
+      'src',
+      'blob:mock-photo',
+    );
+    // Fayl nomi — havola: bosilsa yangi oynada to'liq ochiladi; yonida ochish/yuklab olish.
+    expect(within(card).getByRole('link', { name: 'kunlik_hisobot.pdf' })).toHaveAttribute(
+      'href',
+      'blob:mock-photo',
+    );
+    expect(within(card).getAllByRole('link', { name: 'Yangi oynada ochish' })).toHaveLength(2);
+    const downloads = within(card).getAllByRole('link', { name: 'Yuklab olish' });
+    expect(downloads).toHaveLength(2);
+    expect(downloads[1]).toHaveAttribute('download', 'kunlik_hisobot.pdf');
+
+    // Kundaliklar alohida bo'lim sifatida sahifada yo'q — hammasi kun oynasida.
+    expect(screen.queryByRole('region', { name: 'Kundaliklar' })).not.toBeInTheDocument();
   });
 
   it("ariza tasdiqlanmagan bo'lsa korxona bloki bo'sh holatda", async () => {
@@ -155,7 +256,7 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
   it("rad etilgan urinish va radius tashqarisi belgilari alohida ko'rsatiladi", async () => {
     renderStudentDetail('/tutor/students/s-341034');
 
-    const table = await screen.findByRole('table', { name: 'Kun-bakun davomat' });
+    const table = await screen.findByRole('table', { name: 'Kundalik jadval' });
     // 09.09 — ichkaridan qabul qilingan, lekin undan oldin 2 urinish rad etilgan.
     const rejectedRow = within(table).getByText('09.09.2026').closest('[role="row"]')!;
     expect(

@@ -10,3 +10,12 @@ export function useStudentsQuery(params: ListParams) {
     placeholderData: keepPreviousData,
   });
 }
+
+/** Talaba profili (`/admin/students/:studentId`). */
+export function useStudentQuery(id: string) {
+  return useQuery({
+    queryKey: adminKeys.student(id),
+    queryFn: () => studentsApi.detail(id),
+    enabled: id !== '',
+  });
+}

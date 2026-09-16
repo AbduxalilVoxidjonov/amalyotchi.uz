@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import { Button, Card, CardBody, CardHeader, Input, Pill, PillGroup } from '@/shared/ui';
 import { monthLabel, shiftMonth, todayInTashkent } from '../../format';
 import { QueryState } from '../../components/QueryState';
-import { useStudentAttendanceQuery } from '../hooks';
-import type { AttendanceRange, TutorStudentDetail } from '../types';
+import { useStudentAttendanceQuery, useStudentDiariesQuery } from '../hooks';
+import type { AttendanceRange, StudentApiArea, TutorStudentDetail } from '../types';
 import { AttendanceDayTable } from './AttendanceDayTable';
 import styles from './StudentAttendanceSection.module.css';
 
@@ -27,8 +27,18 @@ function defaultCursor(detail: TutorStudentDetail): MonthCursor {
   return { year: Number(end.slice(0, 4)), month: Number(end.slice(5, 7)) };
 }
 
-/** Kun-bakun davomat bo'limi: oy bo'yicha yoki sana oralig'i bilan filtrlash + jadval. */
-export function StudentAttendanceSection({ detail }: { detail: TutorStudentDetail }) {
+/**
+ * "Kundalik jadval" bo'limi: oy bo'yicha yoki sana oralig'i bilan filtrlash + kunlar jadvali.
+ * Qator bosilsa — o'sha kun tafsiloti (lokatsiya, rasm, yuborgan kundaligi).
+ * `area` — profil qaysi rol endpoint'idan o'qiyotgani (tyutor yoki admin).
+ */
+export function StudentAttendanceSection({
+  detail,
+  area = 'tutor',
+}: {
+  detail: TutorStudentDetail;
+  area?: StudentApiArea;
+}) {
   const [mode, setMode] = useState<Mode>('all');
   const [cursor, setCursor] = useState<MonthCursor>(() => defaultCursor(detail));
   const [from, setFrom] = useState('');
@@ -40,7 +50,9 @@ export function StudentAttendanceSection({ detail }: { detail: TutorStudentDetai
     return { from: null, to: null };
   }, [mode, cursor, from, to]);
 
-  const query = useStudentAttendanceQuery(detail.id, range);
+  const query = useStudentAttendanceQuery(detail.id, range, area);
+  // Kundaliklar bo'limi bilan bir xil kalit — TanStack so'rovni takrorlamaydi.
+  const diaries = useStudentDiariesQuery(detail.id, area);
 
   function stepMonth(delta: number) {
     setMode('month');
@@ -48,9 +60,9 @@ export function StudentAttendanceSection({ detail }: { detail: TutorStudentDetai
   }
 
   return (
-    <Card as="section" aria-label="Kun-bakun davomat">
+    <Card as="section" aria-label="Kundalik jadval">
       <CardHeader
-        title="Kun-bakun davomat"
+        title="Kundalik jadval"
         subtitle={
           mode === 'all'
             ? 'Butun amaliyot davri'
@@ -119,7 +131,14 @@ export function StudentAttendanceSection({ detail }: { detail: TutorStudentDetai
             </p>
           }
         >
-          {(days) => <AttendanceDayTable days={days} radiusM={detail.company?.radiusM ?? null} />}
+          {(days) => (
+            <AttendanceDayTable
+              days={days}
+              radiusM={detail.company?.radiusM ?? null}
+              diaries={diaries.data ?? []}
+              area={area}
+            />
+          )}
         </QueryState>
       </CardBody>
     </Card>

@@ -5,7 +5,6 @@ import { Breadcrumb, Button, EmptyState, type BreadcrumbItem } from '@/shared/ui
 import { QueryState } from '../components/QueryState';
 import { StudentAttendanceSection } from './components/StudentAttendanceSection';
 import { StudentDetailView } from './components/StudentDetailView';
-import { StudentDiarySection } from './components/StudentDiarySection';
 import { useStudentQuery } from './hooks';
 import styles from './StudentDetailPage.module.css';
 
@@ -47,7 +46,6 @@ export function StudentDetailPage() {
             <>
               <StudentDetailView detail={detail} />
               <StudentAttendanceSection detail={detail} />
-              <StudentDiarySection studentId={detail.id} />
             </>
           )}
         </QueryState>

@@ -21,7 +21,14 @@ const COLUMNS: DataTableColumn<CompanyStudent>[] = [
     key: 'name',
     header: 'FISH',
     width: 'minmax(190px,1.6fr)',
-    render: (r) => <PersonCell name={r.name} sub={`HEMIS ${r.hemisId}`} />,
+    // Ism — talaba profiliga havola (`/admin/students/:studentId`).
+    render: (r) => (
+      <PersonCell
+        name={r.name}
+        sub={`HEMIS ${r.hemisId}`}
+        to={`/admin/students/${r.studentId}`}
+      />
+    ),
   },
   { key: 'group', header: 'Guruh', width: 'minmax(90px,.7fr)', mono: true, dim: true },
   {

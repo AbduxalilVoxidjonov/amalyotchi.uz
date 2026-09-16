@@ -9,10 +9,7 @@ describe('LeaveRequestsPage (/tutor/leave-requests)', () => {
     const table = await screen.findByRole('table', { name: "Ruxsat so'rovlari" });
     expect(within(table).getByText('15.10–16.10')).toBeInTheDocument();
     expect(within(table).getByText('14.10')).toBeInTheDocument();
-    expect(within(table).getByRole('link', { name: 'spravka.pdf' })).toHaveAttribute(
-      'href',
-      '/api/files/f-lr-1',
-    );
+    expect(within(table).getByRole('button', { name: 'spravka.pdf' })).toBeInTheDocument();
     expect(within(table).getByText('ariza.pdf')).toBeInTheDocument();
     expect(within(table).getAllByText('Kutilmoqda')).toHaveLength(2);
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent("Ruxsat so'rovlari");

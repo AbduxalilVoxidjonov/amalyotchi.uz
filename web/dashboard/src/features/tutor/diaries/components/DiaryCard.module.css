@@ -32,24 +32,6 @@
 .files {
   margin-top: 13px;
 }
-.footer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 15px;
-  padding-top: 14px;
-  border-top: var(--border-row);
-  flex-wrap: wrap;
-}
-.scoreLabel {
-  font-size: var(--fs-sm2);
-  color: var(--color-text-dim);
-  margin-left: 6px;
-}
-.scores {
-  display: inline-flex;
-  gap: 5px;
-}
 .learned,
 .tutorComment {
   margin: 10px 0 0;
@@ -59,12 +41,4 @@
 }
 .learnedLabel {
   color: var(--color-text-dim);
-}
-.commentField {
-  margin-top: 13px;
-}
-.error {
-  margin-left: auto;
-  font-size: var(--fs-sm);
-  color: var(--color-bad-fg);
 }

@@ -1,4 +1,5 @@
 import type { CSSProperties, HTMLAttributes, ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { Avatar, cn } from '@amaliyotchi/shared/ui';
 import styles from './DataTable.module.css';
 
@@ -178,15 +179,25 @@ export interface PersonCellProps {
   name: string;
   /** Mono ikkilamchi (guruh, HEMIS ID). */
   sub?: ReactNode;
+  /** Berilsa — ism havola bo'ladi (masalan talaba profiliga: `/admin/students/{id}`). */
+  to?: string;
 }
 
-/** Avatar + ism katagi (Bugun / Talabalar jadvali). */
-export function PersonCell({ name, sub }: PersonCellProps) {
+/** Avatar + ism katagi (Bugun / Talabalar jadvali). `to` bilan ism "ichiga kiradigan" havola. */
+export function PersonCell({ name, sub, to }: PersonCellProps) {
   return (
     <div className={styles.person}>
       <Avatar name={name} variant="table" />
       <div className={styles.personText}>
-        <div className={styles.personName}>{name}</div>
+        <div className={styles.personName}>
+          {to ? (
+            <Link className={styles.personLink} to={to}>
+              {name}
+            </Link>
+          ) : (
+            name
+          )}
+        </div>
         {sub && <div className={styles.personSub}>{sub}</div>}
       </div>
     </div>

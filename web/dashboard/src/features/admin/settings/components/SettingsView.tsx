@@ -1,3 +1,4 @@
+import { AuthFileButton } from '@/shared/files';
 import { Button, Card, CardFooter, CardHeader, Input, Select } from '@/shared/ui';
 import { ErrorState } from '../../components/PageStatus';
 import { formatDayMonth } from '../../shared/format';
@@ -177,9 +178,7 @@ export function SettingsView({
             {data.templates.map((t) => (
               <li key={t.id} className={styles.templateRow}>
                 {t.name} ·{' '}
-                <a className={styles.file} href={t.url} download={t.fileName}>
-                  {t.fileName}
-                </a>
+                <AuthFileButton url={t.url} name={t.fileName} variant="link" />
               </li>
             ))}
           </ul>

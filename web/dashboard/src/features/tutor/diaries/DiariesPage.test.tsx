@@ -10,10 +10,7 @@ describe('DiariesPage (/tutor/diaries)', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Kundalik hisobotlar');
     expect(within(card).getByText('412-22 · 11.10.2026 · 17:42')).toBeInTheDocument();
     expect(within(card).getByText('Yuborilgan')).toHaveAttribute('data-status', 'info');
-    expect(within(card).getByRole('link', { name: 'ekran_surati_1.png' })).toHaveAttribute(
-      'href',
-      '/api/files/f-d1-1',
-    );
+    expect(within(card).getByRole('button', { name: 'ekran_surati_1.png' })).toBeInTheDocument();
     expect(within(card).getByText(/So‘rov validatsiyasi/)).toBeInTheDocument();
     expect(screen.getByText('Qayta yozish kerak')).toHaveAttribute('data-status', 'late');
 

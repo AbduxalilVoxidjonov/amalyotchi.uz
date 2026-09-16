@@ -5,6 +5,7 @@ import { MOCK_TODAY_DATE } from '../today/mocks';
 import type { AttendanceStatus } from '../today/types';
 import { isCompanyBoundApplication } from './types';
 import type {
+  AttendanceDayDiary,
   AttendancePunch,
   AttendanceSummary,
   StudentAttendanceDay,
@@ -17,7 +18,10 @@ import type {
   TutorStudentDetail,
 } from './types';
 
-/** SPEC-SCREENS §5 mock (6 ta). */
+/**
+ * SPEC-SCREENS §5 mock (6 ta). `buildDetail`/`buildAttendance`/`buildDiaries` admin mock'laridan
+ * ham ishlatiladi (`features/admin/students/mocks.ts`) — ikkala profil bir xil ma'lumotni ko'rsatadi.
+ */
 export const mockStudents: TutorStudent[] = [
   {
     id: 's-341030',
@@ -341,7 +345,7 @@ const CODE_STATUS: Record<string, AttendanceStatus> = {
 };
 
 /** Bitta talabaning davr boshidan bugungacha bo'lgan kunlari (qat'iy, tasodifsiz). */
-function buildAttendance(studentId: string): StudentAttendanceDay[] {
+export function buildAttendance(studentId: string): StudentAttendanceDay[] {
   const seed = PROFILES[studentId];
   const student = mockStudents.find((s) => s.id === studentId);
   if (!seed || !student) return [];
@@ -441,13 +445,7 @@ function buildAttendance(studentId: string): StudentAttendanceDay[] {
       manual,
       manualReason: manual ? 'Korxona rahbari tasdiqlagan — tyutor qo‘lda belgiladi' : null,
       leaveRequestId: status === 'excused' ? `lr-${studentId}-${date}` : null,
-      diary: hasDiary
-        ? {
-            id: `sd-${studentId}-${date}`,
-            status: diaryStatus,
-            score: diaryStatus === 'approved' ? 3 + (w % 3) : null,
-          }
-        : null,
+      diary: hasDiary ? dayDiary(`sd-${studentId}-${date}`, diaryStatus, w) : null,
       attempts: rejectedBefore ? 3 : hasPunch ? 1 : 0,
       rejectedAttempts: rejectedBefore ? 2 : 0,
     });
@@ -497,13 +495,50 @@ const DIARY_LEARNED: (string | null)[] = [
   'Forma validatsiyasi va xato matnlari',
 ];
 
-/** Kundaliklar: davomatdagi `diary` bo'lgan kunlardan oxirgi 15 tasi (sana bo'yicha kamayish). */
-function buildDiaries(studentId: string): DiaryEntry[] {
+/** Mock'da qo'yilgan baholar (`POST /api/{tutor|admin}/diaries/:id/review`) — `buildDiaries` ustiga qo'yiladi. */
+export type DiaryReviewPatch = Pick<DiaryEntry, 'status' | 'score' | 'comment' | 'reviewedAt'>;
+
+const diaryReviews = new Map<string, DiaryReviewPatch>();
+
+/**
+ * Davomat qatoridagi kundalik xulosasi — mock'da qo'yilgan baho bo'lsa o'shani ko'rsatadi
+ * (kun oynasida baholangach jadvaldagi "Kundalik" ustuni ham yangilanadi).
+ */
+function dayDiary(id: string, seedStatus: DiaryStatus, w: number): AttendanceDayDiary {
+  const review = diaryReviews.get(id);
+  if (review) return { id, status: review.status, score: review.score };
+  return { id, status: seedStatus, score: seedStatus === 'approved' ? 3 + (w % 3) : null };
+}
+
+/** Mock baholarni tiklash (testlar orasida) — `resetTutorMocks()` chaqiradi. */
+export function resetStudentDiaryReviewsMock() {
+  diaryReviews.clear();
+}
+
+/** Profil kundaligini id bo'yicha topish (kundaliklar sahifasidagi ro'yxatda yo'q yozuvlar uchun). */
+export function findProfileDiaryMock(diaryId: string): DiaryEntry | undefined {
+  for (const student of mockStudents) {
+    const found = buildDiaries(student.id).find((d) => d.id === diaryId);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+/** Baholashni mock holatiga yozish — keyingi `buildDiaries`/`buildAttendance` shuni qaytaradi. */
+export function applyProfileDiaryReviewMock(diaryId: string, patch: DiaryReviewPatch) {
+  diaryReviews.set(diaryId, patch);
+}
+
+/**
+ * Kundaliklar: davomatdagi `diary` bo'lgan barcha kunlar (sana bo'yicha kamayish) —
+ * backend `GET .../diaries` ham hammasini qaytaradi, shuning uchun kesilmaydi
+ * (kundalik jadvalidagi kun paneli istalgan kunning matnini topa olsin).
+ */
+export function buildDiaries(studentId: string): DiaryEntry[] {
   const student = mockStudents.find((s) => s.id === studentId);
   if (!student) return [];
   const withDiary = buildAttendance(studentId).filter((d) => d.diary !== null);
   return withDiary
-    .slice(-15)
     .reverse()
     .map((day, i) => {
       const diary = day.diary!;
@@ -520,6 +555,7 @@ function buildDiaries(studentId: string): DiaryEntry[] {
           : i % 3 === 1
             ? [{ name: `natija_${day.date}.png`, url: `/api/files/dph2-${studentId}-${day.date}` }]
             : [];
+      const review = diaryReviews.get(diary.id);
       return {
         id: diary.id,
         studentId,
@@ -527,23 +563,28 @@ function buildDiaries(studentId: string): DiaryEntry[] {
         group: student.group,
         date: day.date,
         submittedAt,
-        status: diary.status,
+        status: review?.status ?? diary.status,
         text: DIARY_TEXTS[i % DIARY_TEXTS.length]!,
         learned: DIARY_LEARNED[i % DIARY_LEARNED.length] ?? null,
         files,
-        score: diary.score,
-        comment:
-          diary.status === 'rewrite'
+        score: review ? review.score : diary.score,
+        comment: review
+          ? review.comment
+          : diary.status === 'rewrite'
             ? "Batafsil yozing: qanday hujjatlar bilan ishladingiz, natija nima bo'ldi."
             : diary.status === 'approved' && i % 4 === 0
               ? 'Yaxshi hisobot, fotolar ham biriktirilgan.'
               : null,
-        reviewedAt: diary.status === 'submitted' ? null : `${day.date}T20:05:00+05:00`,
+        reviewedAt: review
+          ? review.reviewedAt
+          : diary.status === 'submitted'
+            ? null
+            : `${day.date}T20:05:00+05:00`,
       } satisfies DiaryEntry;
     });
 }
 
-function buildDetail(studentId: string): TutorStudentDetail | null {
+export function buildDetail(studentId: string): TutorStudentDetail | null {
   const student = mockStudents.find((s) => s.id === studentId);
   const seed = PROFILES[studentId];
   if (!student || !seed) return null;
@@ -611,6 +652,15 @@ const validation = (errors: Record<string, string[]>) =>
 const PNG_1PX =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
+/** Eng kichik yaroqli PDF (mock fayl xizmati uchun). */
+const PDF_STUB = '%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n';
+
+function pdfBytes(): ArrayBuffer {
+  const bytes = new Uint8Array(PDF_STUB.length);
+  for (let i = 0; i < PDF_STUB.length; i++) bytes[i] = PDF_STUB.charCodeAt(i);
+  return bytes.buffer;
+}
+
 function pngBytes(): ArrayBuffer {
   const binary = atob(PNG_1PX);
   const bytes = new Uint8Array(binary.length);
@@ -647,13 +697,16 @@ export const studentsHandlers: HttpHandler[] = [
   }),
 
   /**
-   * Fayl xizmati mock'i (`/api/files/{id}`) — Bearer token bilan so'raladi (`AuthImage`).
-   * `missing*` id'lari 404 qaytaradi: fallback ko'rinishini sinash uchun.
+   * Fayl xizmati mock'i (`/api/files/{id}`) — Bearer token bilan so'raladi
+   * (`AuthImage`, `AuthFileButton`). `doc-`/`contract-` id'lari PDF qaytaradi: talaba kundalikni
+   * rasmga olib PDF qilib yuborgan holat. `missing*` → 404 (fallback ko'rinishini sinash uchun).
    */
   http.get('/api/files/:id', ({ params }) => {
     const id = String(params['id']);
     if (id.startsWith('missing'))
       return HttpResponse.json(problem(404, 'Topilmadi', 'Fayl topilmadi.'), { status: 404 });
+    if (id.startsWith('doc-') || id.startsWith('contract-'))
+      return HttpResponse.arrayBuffer(pdfBytes(), { headers: { 'Content-Type': 'application/pdf' } });
     return HttpResponse.arrayBuffer(pngBytes(), { headers: { 'Content-Type': 'image/png' } });
   }),
 ];

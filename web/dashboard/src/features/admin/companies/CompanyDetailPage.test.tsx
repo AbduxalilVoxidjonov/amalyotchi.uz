@@ -71,6 +71,11 @@ describe('CompanyDetailPage', () => {
     renderPage();
     expect(await screen.findByText('Aliyev Akmal')).toBeInTheDocument();
     const table = studentsTable();
+    // Ism — talaba profiliga havola ("ichiga kirish").
+    expect(table.getByRole('link', { name: 'Aliyev Akmal' })).toHaveAttribute(
+      'href',
+      '/admin/students/c1-s1',
+    );
     expect(table.getByText('HEMIS 341100')).toBeInTheDocument();
     expect(table.getAllByText('412-22').length).toBeGreaterThan(0);
     expect(table.getAllByText('Nodira Saidova').length).toBeGreaterThan(0);
