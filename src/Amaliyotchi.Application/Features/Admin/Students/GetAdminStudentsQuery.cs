@@ -97,11 +97,7 @@ internal sealed class GetAdminStudentsQueryHandler(IApplicationDbContext db, ICl
             var pct = PracticeCalendar.AttendancePct(stats?.Attended ?? 0, elapsed, stats?.Excused ?? 0);
             var suspicious = stats?.Suspicious ?? 0;
 
-            var status = !s.TelegramLinked
-                ? AdminStudentStatus.Unlinked
-                : suspicious >= AdminThresholds.FlaggedSuspiciousDays || (elapsed > 0 && pct < AdminThresholds.FlaggedAttendancePct)
-                    ? AdminStudentStatus.Flagged
-                    : AdminStudentStatus.Active;
+            var status = AdminStudentStatusRule.For(s.TelegramLinked, pct, elapsed, suspicious);
 
             return new StudentRow(
                 s.Id, s.FullName, s.HemisId, s.GroupId, s.Group, s.Course, s.Faculty, s.Company,

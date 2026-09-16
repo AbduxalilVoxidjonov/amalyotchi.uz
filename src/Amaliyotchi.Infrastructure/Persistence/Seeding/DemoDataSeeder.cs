@@ -1,10 +1,12 @@
 using System.Globalization;
+using System.Text;
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Common;
 using Amaliyotchi.Domain.Companies;
 using Amaliyotchi.Domain.Diary;
 using Amaliyotchi.Domain.Enums;
+using Amaliyotchi.Domain.Files;
 using Amaliyotchi.Domain.Grading;
 using Amaliyotchi.Domain.Identity;
 using Amaliyotchi.Domain.Leave;
@@ -23,7 +25,12 @@ namespace Amaliyotchi.Infrastructure.Persistence.Seeding;
 /// tashqarisidagi rad etilgan urinish — tyutor xaritasi va ogohlantirishlar uchun), kundaliklar, ruxsat so'rovlari va baholar.
 /// Idempotent: demo tyutor mavjud bo'lsa faqat yetishmayotgan davomat hodisalari to'ldiriladi (eski seed'dan qolgan baza),
 /// boshqa hech narsa qilinmaydi. Barcha sanalar <see cref="PracticeTime"/> bo'yicha.</summary>
-public sealed class DemoDataSeeder(AppDbContext db, IPasswordHasher passwordHasher, IClock clock, ILogger<DemoDataSeeder> logger)
+public sealed class DemoDataSeeder(
+    AppDbContext db,
+    IPasswordHasher passwordHasher,
+    IClock clock,
+    IFileStorage storage,
+    ILogger<DemoDataSeeder> logger)
 {
     public const string TutorPhone = "+998907654321";
     public const string TutorHemisId = "100000000002";
@@ -383,8 +390,10 @@ public sealed class DemoDataSeeder(AppDbContext db, IPasswordHasher passwordHash
             attendanceCount, events.Accepted, events.Rejected, diaryCount, leaves.Count, grades.Length);
     }
 
-    /// <summary>Eski seed'dan qolgan baza (hodisalarsiz davomat): demo davri bor, lekin unga oid hech qanday
-    /// <see cref="AttendanceEvent"/> yo'q bo'lsa — faqat hodisalar to'ldiriladi.</summary>
+    /// <summary>Eski seed'dan qolgan baza (hodisalarsiz davomat): demo davri bor, lekin davomat qatorlarining
+    /// bir qismida <see cref="AttendanceEvent"/> yo'q bo'lsa — yetishmayotganlari to'ldiriladi.
+    /// Nazorat (talaba, sana, tur) bo'yicha: stendda haqiqiy check-in qilingan kunlar qayta yozilmaydi,
+    /// qolgan kunlar esa koordinatasiz qolmaydi (profildagi kundalik jadvalda "Lokatsiya" bo'sh ko'rinmasin).</summary>
     private async Task TopUpAttendanceEventsAsync(DateOnly today, Random random, CancellationToken cancellationToken)
     {
         var period = await db.PracticePeriods.AsNoTracking()
@@ -392,13 +401,112 @@ public sealed class DemoDataSeeder(AppDbContext db, IPasswordHasher passwordHash
         if (period is null)
             return;
 
-        var start = period.StartDate;
-        if (await db.AttendanceEvents.AnyAsync(e => e.Date >= start, cancellationToken))
+        var existing = await LoadExistingEventKeysAsync(period.StartDate, cancellationToken);
+        var events = await SeedAttendanceEventsAsync(period, today, random, cancellationToken, existing);
+        if (events.Accepted > 0 || events.Rejected > 0)
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            logger.LogInformation("Demo seed: davomat hodisalari to'ldirildi — {Accepted} qabul, {Rejected} rad", events.Accepted, events.Rejected);
+        }
+
+        await TopUpDiaryAttachmentsAsync(period.Id, cancellationToken);
+    }
+
+    /// <summary>Kundaliklarga fayl biriktirish (eski bazada ham): talaba daftardagi kundalikni rasmga olib
+    /// PDF qilib yuboradi — tyutor/admin profilidagi kun oynasida shu fayl ochiladi. Har 3-kundalikka bittadan,
+    /// allaqachon fayli borlari o'tkazib yuboriladi.</summary>
+    private async Task TopUpDiaryAttachmentsAsync(Guid periodId, CancellationToken cancellationToken)
+    {
+        var entries = await db.DiaryEntries
+            .Include(d => d.Attachments)
+            .Where(d => d.PeriodId == periodId)
+            .OrderBy(d => d.Date).ThenBy(d => d.Id)
+            .ToListAsync(cancellationToken);
+
+        var added = 0;
+        var index = 0;
+        foreach (var entry in entries)
+        {
+            index++;
+            if (entry.Attachments.Count > 0 || index % 3 != 1)
+                continue;
+
+            await AttachDiaryPdfAsync(entry, cancellationToken);
+            added++;
+        }
+
+        if (added == 0)
             return;
 
-        var events = await SeedAttendanceEventsAsync(period, today, random, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
-        logger.LogInformation("Demo seed: davomat hodisalari to'ldirildi — {Accepted} qabul, {Rejected} rad", events.Accepted, events.Rejected);
+        logger.LogInformation("Demo seed: {Count} ta kundalikka PDF biriktirildi", added);
+    }
+
+    /// <summary>Kundalik matnidan bir betli PDF yasab, uni saqlash xizmatiga yozadi va yozuvga biriktiradi.</summary>
+    private async Task AttachDiaryPdfAsync(DiaryEntry entry, CancellationToken cancellationToken)
+    {
+        var date = entry.Date.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
+        var bytes = DemoFiles.OnePagePdf(
+            $"Kundalik · {date}",
+            [
+                "Amaliyot kundaligi (daftardan skanerlangan nusxa).",
+                string.Empty,
+                ..Wrap(entry.Text, 78),
+                string.Empty,
+                entry.Learned is { Length: > 0 } learned ? $"O'rganganim: {learned}" : "O'rganganim: —"
+            ]);
+
+        var fileName = $"kundalik_{entry.Date:yyyy-MM-dd}.pdf";
+        var file = await SaveDemoFileAsync(
+            bytes, fileName, "application/pdf", StoredFileKind.DiaryAttachment,
+            entry.StudentUserId, entry.SubmittedAt, pages: 1, cancellationToken);
+
+        entry.AddAttachment(file.Id, fileName, bytes.LongLength);
+    }
+
+    /// <summary>Baytlarni saqlash xizmatiga yozib, <see cref="StoredFile"/> yozuvini qo'shadi (hali saqlanmagan).</summary>
+    private async Task<StoredFile> SaveDemoFileAsync(
+        byte[] bytes, string fileName, string contentType, StoredFileKind kind,
+        Guid uploadedByUserId, DateTimeOffset uploadedAt, int? pages, CancellationToken cancellationToken)
+    {
+        using var content = new MemoryStream(bytes, writable: false);
+        var key = await storage.SaveAsync(content, fileName, contentType, cancellationToken);
+        var file = StoredFile.Create(kind, fileName, contentType, bytes.LongLength, key, uploadedAt, uploadedByUserId, pages);
+        db.StoredFiles.Add(file);
+        return file;
+    }
+
+    /// <summary>Uzun matnni PDF satrlariga bo'lish (so'z chegarasida).</summary>
+    private static IEnumerable<string> Wrap(string text, int width)
+    {
+        var line = new StringBuilder();
+        foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (line.Length > 0 && line.Length + 1 + word.Length > width)
+            {
+                yield return line.ToString();
+                line.Clear();
+            }
+
+            if (line.Length > 0)
+                line.Append(' ');
+            line.Append(word);
+        }
+
+        if (line.Length > 0)
+            yield return line.ToString();
+    }
+
+    /// <summary>Davr boshidan keyingi mavjud hodisalar kaliti: (talaba, sana, tur).</summary>
+    private async Task<HashSet<(Guid StudentUserId, DateOnly Date, AttendanceEventKind Kind)>> LoadExistingEventKeysAsync(
+        DateOnly start, CancellationToken cancellationToken)
+    {
+        var rows = await db.AttendanceEvents.AsNoTracking()
+            .Where(e => e.Date >= start)
+            .Select(e => new { e.StudentUserId, e.Date, e.Kind })
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(r => (r.StudentUserId, r.Date, r.Kind)).ToHashSet();
     }
 
     /// <summary>Davr davomatidan hodisalar: har check-in (kech kelgan bo'lsa <c>IsLate</c>) va check-out uchun
@@ -406,8 +514,12 @@ public sealed class DemoDataSeeder(AppDbContext db, IPasswordHasher passwordHash
     /// Bugun (yoki oxirgi ish kuni) belgilanmagan uchta talaba — avval <see cref="SuspiciousHemisIds"/> — radius tashqarisidan
     /// (1.2–3.4 km) rad etilgan check-in urinishi qiladi: <c>GET /api/tutor/map</c> da "bad", <c>today.alerts</c> da outOfRadius.</summary>
     private async Task<(int Accepted, int Rejected)> SeedAttendanceEventsAsync(
-        PracticePeriod period, DateOnly today, Random random, CancellationToken cancellationToken)
+        PracticePeriod period, DateOnly today, Random random, CancellationToken cancellationToken,
+        HashSet<(Guid StudentUserId, DateOnly Date, AttendanceEventKind Kind)>? existing = null)
     {
+        bool Missing(Guid studentUserId, DateOnly date, AttendanceEventKind kind)
+            => existing is null || !existing.Contains((studentUserId, date, kind));
+
         var periodId = period.Id;
         var companyByStudent = await db.PracticeApplications.AsNoTracking()
             .Where(a => a.PeriodId == periodId && a.Status == ApplicationStatus.Approved)
@@ -425,6 +537,9 @@ public sealed class DemoDataSeeder(AppDbContext db, IPasswordHasher passwordHash
             if (!companyByStudent.TryGetValue(attendance.StudentUserId, out var company) || attendance.CheckInAt is not { } checkInAt)
                 continue;
 
+            if (!Missing(attendance.StudentUserId, attendance.Date, AttendanceEventKind.CheckIn))
+                continue;
+
             var checkInDistance = attendance.CheckInDistanceM ?? 20 + random.Next(0, 60);
             var accuracy = attendance.CheckInAccuracyM ?? 8 + random.Next(0, 18);
             db.AttendanceEvents.Add(RecordAround(
@@ -432,7 +547,8 @@ public sealed class DemoDataSeeder(AppDbContext db, IPasswordHasher passwordHash
                 CheckInVerdict.Accept(attendance.Status == AttendanceStatus.Late), random));
             accepted++;
 
-            if (attendance.CheckOutAt is { } checkOutAt && !attendance.AutoClosed)
+            if (attendance.CheckOutAt is { } checkOutAt && !attendance.AutoClosed
+                && Missing(attendance.StudentUserId, attendance.Date, AttendanceEventKind.CheckOut))
             {
                 db.AttendanceEvents.Add(RecordAround(
                     attendance.StudentUserId, company, attendance.Date, AttendanceEventKind.CheckOut, checkOutAt,
@@ -459,6 +575,9 @@ public sealed class DemoDataSeeder(AppDbContext db, IPasswordHasher passwordHash
                      .ThenBy(p => p.HemisId, StringComparer.Ordinal)
                      .Take(SuspiciousHemisIds.Length))
         {
+            if (!Missing(student.UserId, alertDay, AttendanceEventKind.CheckIn))
+                continue;
+
             var company = companyByStudent[student.UserId];
             var farDistance = 1_200 + random.Next(0, 2_201); // 1.2–3.4 km
             var at = At(alertDay, new TimeOnly(9, 2 + random.Next(0, 36)));
