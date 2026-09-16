@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { Badge, DataTable, PersonCell, ProgressBar, type DataTableColumn } from '@/shared/ui';
 import { fmtDecimal } from '../../format';
 import { studentStateLabel, type TutorStudent } from '../types';
@@ -54,6 +55,7 @@ const COLUMNS: DataTableColumn<TutorStudent>[] = [
 ];
 
 export function StudentsTable({ rows }: { rows: readonly TutorStudent[] }) {
+  const navigate = useNavigate();
   return (
     <DataTable
       aria-label="Talabalarim"
@@ -62,6 +64,8 @@ export function StudentsTable({ rows }: { rows: readonly TutorStudent[] }) {
       rowKey={(r) => r.id}
       minWidth="760px"
       emptyText="Biriktirilgan talabalar yo'q"
+      // Qator bosilsa — talaba profili (`/tutor/students/:studentId`).
+      onRowClick={(r) => void navigate(`/tutor/students/${r.id}`)}
     />
   );
 }

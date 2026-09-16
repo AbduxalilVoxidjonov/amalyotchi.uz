@@ -1,0 +1,62 @@
+.dim {
+  color: var(--color-text-faint);
+}
+.distance[data-out-of-radius] {
+  color: var(--color-bad-fg);
+  font-weight: var(--fw-semibold);
+}
+.diary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.score {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs2);
+  color: var(--color-text-muted);
+}
+.panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.3fr) minmax(200px, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+  margin-top: 14px;
+  padding: 14px;
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-2);
+}
+.panelFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 10px 0 0;
+}
+.panelFacts dt {
+  font-size: var(--fs-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-caps);
+  color: var(--color-text-faint);
+}
+.panelFacts dd {
+  margin: 2px 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs2);
+  color: var(--color-text-2);
+}
+.reason {
+  margin: 10px 0 0;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-prose);
+  color: var(--color-bad-fg);
+}
+.panelPhoto {
+  display: grid;
+  gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .panel {
+    grid-template-columns: 1fr;
+  }
+}

@@ -17,6 +17,22 @@ public enum StudentState
     Suspicious = 3
 }
 
+/// <summary>Talaba holati qoidasi — ro'yxat (<c>GET /api/tutor/students</c>) va profil
+/// (<c>GET /api/tutor/students/{id}</c>) bir xil hisoblasin.</summary>
+public static class StudentStateRule
+{
+    /// <summary>Kamida shuncha shubhali kun bo'lsa "shubhali" holat.</summary>
+    public const int SuspiciousMinCount = 1;
+
+    /// <summary>Davomat &lt; 70% → <c>redFlag</c>; shubhali kunlar bor → <c>suspicious</c>; aks holda <c>active</c>.</summary>
+    public static StudentState For(StudentStats stats)
+        => stats.TotalDays > 0 && stats.AttendancePct < GradeThresholds.MinAttendancePct
+            ? StudentState.RedFlag
+            : stats.SuspiciousCount >= SuspiciousMinCount
+                ? StudentState.Suspicious
+                : StudentState.Active;
+}
+
 public sealed record TutorStudent(
     Guid Id,
     string Name,
@@ -38,9 +54,6 @@ public sealed record GetTutorStudentsQuery : IRequest<IReadOnlyList<TutorStudent
 internal sealed class GetTutorStudentsQueryHandler(IApplicationDbContext db, IScopeResolver scopeResolver, IClock clock)
     : IRequestHandler<GetTutorStudentsQuery, IReadOnlyList<TutorStudent>>
 {
-    /// <summary>Kamida shuncha shubhali kun bo'lsa "shubhali" holat.</summary>
-    public const int SuspiciousMinCount = 1;
-
     public async Task<IReadOnlyList<TutorStudent>> Handle(GetTutorStudentsQuery request, CancellationToken cancellationToken)
     {
         var scope = await scopeResolver.ResolveAsync(cancellationToken);
@@ -84,11 +97,7 @@ internal sealed class GetTutorStudentsQueryHandler(IApplicationDbContext db, ISc
                 period, attendance[student.UserId].ToList(), leaves[student.UserId].ToList(), today, localNow);
             var diary = StudentStatsCalculator.ComputeDiary(diaries[student.UserId].ToList());
 
-            var state = stats.TotalDays > 0 && stats.AttendancePct < GradeThresholds.MinAttendancePct
-                ? StudentState.RedFlag
-                : stats.SuspiciousCount >= SuspiciousMinCount
-                    ? StudentState.Suspicious
-                    : StudentState.Active;
+            var state = StudentStateRule.For(stats);
 
             result.Add(new TutorStudent(
                 student.UserId, student.FullName, student.HemisId, student.GroupName,

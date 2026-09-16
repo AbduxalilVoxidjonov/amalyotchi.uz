@@ -1,0 +1,21 @@
+.trigger {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+}
+.trigger:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+.trigger[data-size='thumb'] {
+  width: 54px;
+}
+.trigger[data-size='card'] {
+  width: 140px;
+}
+.full {
+  width: 100%;
+}

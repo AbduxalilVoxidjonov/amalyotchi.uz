@@ -1,4 +1,7 @@
 import type { StatusKind } from '@/shared/ui';
+import { APPLICATION_STATUS_LABEL, type ApplicationStatus } from '../applications/types';
+import type { DiaryStatus } from '../diaries/types';
+import { ATTENDANCE_STATUS_LABEL, SUSPICIOUS_LABEL, type AttendanceStatus } from '../today/types';
 
 /** Backend `StudentState`: davomat < 70% → redFlag; shubhali kunlar bor → suspicious; aks holda active. */
 export type StudentState = 'active' | 'redFlag' | 'suspicious';
@@ -29,7 +32,218 @@ export const STUDENT_STATE_LABEL: Record<StudentState, { label: string; kind: St
   suspicious: { label: 'Shubhali', kind: 'late' },
 };
 
-export function studentStateLabel(s: TutorStudent): { label: string; kind: StatusKind } {
+export function studentStateLabel(s: Pick<TutorStudent, 'state' | 'suspiciousCount'>): {
+  label: string;
+  kind: StatusKind;
+} {
   const base = STUDENT_STATE_LABEL[s.state];
   return s.state === 'suspicious' ? { ...base, label: `${s.suspiciousCount} shubhali` } : base;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Talaba profili (KONTRAKT §2) — GET /api/tutor/students/:id va uning bo'limlari.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** Backend `StudentStatus` (mavjud domen enum'i, JSON camelCase). */
+export type StudentStatus = 'active' | 'suspended' | 'graduated';
+
+/** Talabaning amaliyot o'tayotgan korxonasi (tasdiqlangan ariza bo'yicha). */
+export interface StudentCompany {
+  id: string;
+  name: string;
+  tin: string;
+  activity: string;
+  address: string;
+  supervisorName: string;
+  supervisorPhone: string;
+  mentorName: string | null;
+  mentorPhone: string | null;
+  lat: number;
+  lng: number;
+  /** Geofence radiusi (m). */
+  radiusM: number;
+}
+
+export interface StudentApplicationContract {
+  name: string;
+  pages: number | null;
+  sizeBytes: number;
+  /** `/api/files/{id}` */
+  url: string;
+}
+
+/**
+ * Talabaning OXIRGI arizasi holati — tyutor arizalar ro'yxatidagi to'rtta holatdan tashqari
+ * domen enum'ida `draft` va `completed` ham bor (`ApplicationStatus.cs`).
+ */
+export type StudentApplicationStatus = ApplicationStatus | 'draft' | 'completed';
+
+export interface StudentApplication {
+  id: string;
+  status: StudentApplicationStatus;
+  /** ISO 8601 */
+  submittedAt: string;
+  decidedAt: string | null;
+  comment: string | null;
+  contract: StudentApplicationContract | null;
+}
+
+export interface StudentPeriod {
+  id: string;
+  name: string;
+  /** DateOnly */
+  startDate: string;
+  endDate: string;
+  /** "09:00" (Toshkent) */
+  dailyStart: string;
+  dailyEnd: string;
+  /** Ish kunlari: 1 = dushanba … 7 = yakshanba (`WorkDays` flags). */
+  workDays: number[];
+  requiredDays: number;
+}
+
+export interface AttendanceSummary {
+  /** Hisobga olinadigan ish kunlari — sababli kunlar bundan chiqarilgan. */
+  totalDays: number;
+  attendedDays: number;
+  lateDays: number;
+  excusedDays: number;
+  absentDays: number;
+  suspiciousDays: number;
+  /** 0–100, 1 kasr. */
+  attendancePct: number;
+}
+
+export interface DiarySummary {
+  count: number;
+  scoredCount: number;
+  avg: number;
+}
+
+export interface StudentGrade {
+  total: number;
+  grade: 2 | 3 | 4 | 5 | null;
+}
+
+/** GET /api/tutor/students/:id → TutorStudentDetail (ko'lamdan tashqari → 404). */
+export interface TutorStudentDetail {
+  id: string;
+  name: string;
+  hemisId: string;
+  group: string;
+  course: number;
+  faculty: string;
+  direction: string;
+  status: StudentStatus;
+  phone: string | null;
+  state: StudentState;
+  suspiciousCount: number;
+  /** Faqat tasdiqlangan (approved/completed) arizadan keladi; aks holda null. */
+  company: StudentCompany | null;
+  application: StudentApplication | null;
+  period: StudentPeriod | null;
+  attendance: AttendanceSummary;
+  diary: DiarySummary;
+  grade: StudentGrade | null;
+}
+
+/**
+ * Bitta belgilanish (check-in yoki check-out) — FAQAT QABUL QILINGAN urinishdan quriladi.
+ * Rad etilgan urinishlar haqida faqat `attempts` / `rejectedAttempts` sonlari bo'ladi
+ * (rad etilgan nuqtaning koordinatasi/masofasi bu yerda ko'rinmaydi).
+ */
+export interface AttendancePunch {
+  /** "09:02" (Toshkent) */
+  at: string;
+  /** To'liq ISO 8601 */
+  atIso: string;
+  distanceM: number | null;
+  accuracyM: number | null;
+  /** `AttendanceEvent.Location` dan; bo'lmasa null. */
+  lat: number | null;
+  lng: number | null;
+  /** `/api/files/{id}` — check-in selfie; bo'lmasa null. */
+  photoUrl: string | null;
+  /** `distanceM > company.radiusM` */
+  outOfRadius: boolean;
+}
+
+export interface AttendanceDayDiary {
+  id: string;
+  status: DiaryStatus;
+  score: number | null;
+}
+
+/** GET /api/tutor/students/:id/attendance?from=&to= → StudentAttendanceDay[] */
+export interface StudentAttendanceDay {
+  /** DateOnly "2026-10-12" */
+  date: string;
+  status: AttendanceStatus;
+  isWorkDay: boolean;
+  checkIn: AttendancePunch | null;
+  checkOut: AttendancePunch | null;
+  /** Check-out bo'lmagani uchun tizim yopgan. */
+  autoClosed: boolean;
+  suspicious: boolean;
+  suspiciousReason: string | null;
+  /** Tyutor qo'lda belgilagan. */
+  manual: boolean;
+  manualReason: string | null;
+  leaveRequestId: string | null;
+  diary: AttendanceDayDiary | null;
+  /** Shu kundagi check-in urinishlari (qabul qilingan + rad etilgan). */
+  attempts: number;
+  /** Ulardan rad etilganlari — masofasi/nuqtasi `checkIn` da ko'rinmaydi. */
+  rejectedAttempts: number;
+}
+
+/** Davomat so'rovi oralig'i (ikkalasi ham null → butun davr). */
+export interface AttendanceRange {
+  from: string | null;
+  to: string | null;
+}
+
+export const STUDENT_STATUS_LABEL: Record<StudentStatus, { label: string; kind: StatusKind }> = {
+  active: { label: "O'qimoqda", kind: 'ok' },
+  // Domen izohi: akademik ta'til yoki vaqtincha chetlashtirilgan — amaliyotga chiqmaydi.
+  suspended: { label: "To'xtatilgan", kind: 'late' },
+  graduated: { label: 'Bitirgan', kind: 'info' },
+};
+
+/** Ariza holati yorliqlari — tyutor ro'yxatidagilar + `draft`/`completed`. */
+export const STUDENT_APPLICATION_STATUS_LABEL: Record<
+  StudentApplicationStatus,
+  { label: string; kind: StatusKind }
+> = {
+  ...APPLICATION_STATUS_LABEL,
+  draft: { label: 'Qoralama', kind: 'neu' },
+  completed: { label: 'Yakunlangan', kind: 'ok' },
+};
+
+/** Korxona faqat shu holatlardagi arizadan keladi (backend `GetTutorStudentDetailQuery`). */
+export function isCompanyBoundApplication(status: StudentApplicationStatus): boolean {
+  return status === 'approved' || status === 'completed';
+}
+
+const WEEK_DAYS_UZ = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'] as const;
+
+/** `[1,2,3,4,5,6]` → "Du, Se, Ch, Pa, Ju, Sh". */
+export function workDaysLabel(days: readonly number[]): string {
+  const names = days
+    .filter((d) => d >= 1 && d <= 7)
+    .map((d) => WEEK_DAYS_UZ[d - 1])
+    .filter((n): n is (typeof WEEK_DAYS_UZ)[number] => Boolean(n));
+  return names.length > 0 ? names.join(', ') : '—';
+}
+
+/** Kun qatori uchun badge: shubhali/radius tashqarisi → "Shubhali", aks holda holat. */
+export function dayStatusLabel(day: StudentAttendanceDay): { label: string; kind: StatusKind } {
+  if (day.suspicious || day.checkIn?.outOfRadius) return SUSPICIOUS_LABEL;
+  return ATTENDANCE_STATUS_LABEL[day.status];
+}
+
+/** "41.3111, 69.2797" (xarita placeholder va lokatsiya katagi uchun). */
+export function fmtCoords(lat: number | null, lng: number | null): string | null {
+  if (lat === null || lng === null) return null;
+  return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 }
