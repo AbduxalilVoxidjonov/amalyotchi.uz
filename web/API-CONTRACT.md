@@ -1,16 +1,16 @@
-# API-CONTRACT v3
+# API-CONTRACT v3.1
 
-Oxirgi yangilanish: 16.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
+Oxirgi yangilanish: 17.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
 esa haqiqiy controller/DTO/validator/handler kodidan olingan — har bir maydon, chegara va status kod kodda bor.
 Frontend (`web/dashboard`, `web/twa`, `web/shared`) shu shaklga moslanishi kerak; v1 bilan farqlar §5 da,
-**v2 bilan farqlar §6 da**.
+**v2 bilan farqlar §6 da**, v3.1 da qo'shilganlari — §6.6.
 
-Jami **77 ta endpoint**: Auth 5 · Admin 41 · Reports 1 · Tutor 19 · Student (TWA) 10 · Files 1.
+Jami **81 ta endpoint**: Auth 5 · Admin 45 · Reports 1 · Tutor 19 · Student (TWA) 10 · Files 1.
 
 > Kontrollerlarda `[Http*]` atributlari **79 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
 > har birida ikkitadan action bor (`multipart/form-data` va `application/json` — `[Consumes]` bilan ajratiladi,
-> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **77**.
+> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **81**.
 
 ---
 
@@ -659,6 +659,50 @@ interface StudentRow {
   status: AdminStudentStatus; /*!telegramLinked → unlinked; suspiciousDays≥2 || (elapsed>0 && pct<70) → flagged; aks holda active*/
 }
 ```
+
+#### GET `/api/admin/students/{id}` · 200 · 404
+
+404 — talaba yo'q (`detail`: `"Talaba topilmadi (id: …)."`). Umumiy bloklar tyutor profili bilan **bir xil**
+(`GET /api/tutor/students/{id}`, §2.5 — ayni handler hisoblaydi), admin ko'lami cheklovsiz bo'lgani uchun
+har qanday talaba ko'rinadi. Farqi — quyidagi qo'shimcha maydonlar.
+
+```ts
+interface AdminStudentTutor {
+  id: string /*tyutorning User.Id — `/admin/tutors/{id}` ga havola*/;
+  fullName: string;
+  phone: string | null;
+}
+
+interface AdminStudentDetail extends /* TutorStudentDetail maydonlari, §2.5 */ {
+  groupId: string;
+  department: string /*kafedra nomi — tyutor profilida yo'q*/;
+  adminStatus: AdminStudentStatus /*ro'yxatdagi holat bilan bir xil qoida (`AdminStudentStatusRule`)*/;
+  telegramLinked: boolean;
+  tutor: AdminStudentTutor | null /*guruhga biriktirilgan faol tyutor; bir nechta bo'lsa FISH bo'yicha birinchisi*/;
+}
+```
+
+`adminStatus` ro'yxatdagi (`StudentRow.status`) bilan **bir qoidadan** hisoblanadi, lekin davomat foizi
+profil statistikasidan olinadi (`attendance.attendancePct`, `attendance.totalDays`) — ro'yxatdagi
+`elapsed` asosidagi yaxlitlash bilan bir necha foizga farq qilishi mumkin.
+
+#### GET `/api/admin/students/{id}/attendance?from=&to=` · 200 · 400 · 404
+
+#### GET `/api/admin/students/{id}/diaries` · 200 · 404
+
+Ikkalasi ham tyutornikidek (`StudentAttendanceDay[]`, `TutorDiaryEntry[]` — §2.5), shu jumladan chegaralar:
+oraliq berilmasa davr boshidan `min(bugun, davr oxiri)` gacha, teskari yoki 400 kundan uzun oraliq → 400,
+faol davr bo'lmasa — bo'sh massiv.
+
+#### POST `/api/admin/diaries/{id}/review` · 200 · 400 · 404 · 409
+
+Tyutornikidek (`POST /api/tutor/diaries/{id}/review`, §2.5) — **ayni buyruq va qoidalar**:
+`approve` (ball ixtiyoriy) · `score` (ball 1–5 majburiy) · `rewrite` (izoh majburiy);
+ko'rib chiqilgan yozuvni qayta baholash → **409**. Tekshiruvchi sifatida joriy foydalanuvchi
+(admin) yoziladi, audit jurnaliga `DiaryReviewed` tushadi. Admin ko'lami cheklovsiz.
+
+Javob — `TutorDiaryEntry`. Frontend'da ikkala rol bitta komponentdan foydalanadi
+(talaba profilidagi kun oynasi), yo'l `area: 'tutor' | 'admin'` bilan tanlanadi.
 
 #### GET `/api/admin/companies` — `q`: nom, STIR, manzil
 
@@ -1893,3 +1937,57 @@ validatsiyasi, rad etish sabablari (§3.2) va idempotentlik ham avvalgidek.
 
 Korxona **yaratish/tahrirlash** (admin), talaba **ariza yuborish** (`POST /api/student/place`) va shartnoma
 fayli yuklash, davomatni qo'lda tuzatish — endpoint'lari hali yo'q.
+
+### 6.6 v3 → v3.1 (17.09.2026): admin talaba profili
+
+Admin panelida talabaning "ichiga kirish" yo'li yo'q edi — `GET /api/admin/students` faqat ro'yxat berardi.
+Uchta endpoint qo'shildi (Admin 41 → 44, jami 77 → 80):
+
+| #   | Endpoint                                             | Policy      | Javob                                  | Bo'lim |
+| --- | ---------------------------------------------------- | ----------- | -------------------------------------- | ------ |
+| N9  | `GET /api/admin/students/{id}`                       | `AdminOnly` | `AdminStudentDetail` · 404             | §2.3   |
+| N10 | `GET /api/admin/students/{id}/attendance?from=&to=`  | `AdminOnly` | `StudentAttendanceDay[]` · 400 · 404   | §2.3   |
+| N11 | `GET /api/admin/students/{id}/diaries`               | `AdminOnly` | `TutorDiaryEntry[]` · 404              | §2.3   |
+
+- Yangi TS tiplar: `AdminStudentDetail`, `AdminStudentTutor`.
+- Javob shakli tyutor profili bilan bir xil (backend'da ayni handler), shuning uchun frontend'da
+  `StudentDetailView`/`StudentAttendanceSection`/`StudentDiarySection` komponentlari qayta ishlatiladi —
+  davomat/kundalik so'rovlari `area: 'tutor' | 'admin'` bilan yo'naltiriladi.
+- Ro'yxatdagi talaba ismi endi `/admin/students/{id}` ga havola (tyutor/korxona jadvallaridagidek).
+- **Korxona detalidagi talabalar jadvalida** ham ism profil havolasi: admin → `/admin/students/{studentId}`,
+  tyutor → `/tutor/students/{studentId}` (`CompanyStudent.studentId` allaqachon javobda bor edi).
+  UI kitdagi `PersonCell` ixtiyoriy `to` prop oldi.
+- UI: "Kun-bakun davomat" bo'limi **"Kundalik jadval"** deb nomlandi (ikkala profilda). Sana bosilsa —
+  kun **oynasi** (modal): kirish va chiqish alohida (vaqt, masofa, aniqlik, **talaba yuborgan koordinata** +
+  xarita, **yuborgan selfi**) va **shu kunga yozgan kundaligi** — matn, o'rgangani, **biriktirilgan fayllar
+  joyida ochiq** (PDF `<iframe>`, rasm `<img>` — bosish kerak emas) + **fayl nomi havola**: bosilsa blob
+  yangi oynada to'liq ochiladi ("Yangi oynada ochish" / "Yuklab olish"), ball va tyutor izohi.
+  Endpoint'lar o'zgarmadi — hammasi `StudentAttendanceDay` va `TutorDiaryEntry` ichidagi maydonlardan.
+- Profildagi alohida **"Kundaliklar" ro'yxati olib tashlandi** (ikkala profilda): o'sha ma'lumot kundalik
+  jadvalining kun oynasida, sana bo'yicha ko'rinadi. `GET .../diaries` endpoint'i o'zgarmadi — kun oynasi
+  o'sha javobdan kerakli kunni oladi (bitta so'rov, TanStack keshi jadval bilan bo'linadi).
+- **Kundalikni baholash kun oynasidan** — tyutor ham, admin ham: `POST /api/{tutor|admin}/diaries/{id}/review`
+  (N12, quyida). Ball qo'yilgach jadvaldagi "Kundalik" ustuni, kundalik statistikasi va yakuniy baho yangilanadi.
+
+| #   | Endpoint                                | Policy      | Javob                                | Bo'lim |
+| --- | --------------------------------------- | ----------- | ------------------------------------ | ------ |
+| N12 | `POST /api/admin/diaries/{id}/review`   | `AdminOnly` | `TutorDiaryEntry` · 400 · 404 · 409  | §2.3   |
+
+### 6.7 Fayllarni ochish — `/api/files/{id}` token talab qiladi
+
+`GET /api/files/{id}` — `Authenticated` policy ostida va javobda `Content-Disposition: attachment`.
+Demak oddiy `<a href="/api/files/…" target="_blank">` **ishlamaydi**: yangi oynaga token ketmaydi (401),
+ketgan taqdirda ham brauzer ko'rsatmay yuklab oladi. Talaba kundalikni daftardan **rasmga olib PDF qilib**
+yuboradi, tyutor/admin esa uni ko'rishi kerak — shuning uchun dashboard'da barcha fayl havolalari
+`shared/files/AuthFileButton` ga o'tkazildi:
+
+1. token bilan `fetch` → `blob` → `URL.createObjectURL`;
+2. `application/pdf` → modal ichida `<iframe>`, `image/*` → `<img>`, boshqasi → yuklab olish;
+3. `frame-src 'self' blob:` — `dashboard/nginx.conf` CSP'siga qo'shildi (aks holda blob iframe bloklanadi).
+
+Ta'sir qilgan joylar: kundalik fayllari (tyutor sahifasi va talaba profili), shartnoma ("shartnomani ochish",
+"brauzerda ochish"), ruxsat so'rovi hujjati, admin sozlamalaridagi shablonlar. **TWA'da o'sha naqsh hali eski**
+(`twa/src/features/diary/components/DiaryEntryCard.tsx`, `leave/components/LeaveRequestList.tsx`).
+
+Demo seed endi har 3-kundalikka bir betli PDF biriktiradi (`DemoFiles.OnePagePdf`) — stendda fayl oqimini
+ko'rish uchun; selfi va shartnoma fayllari seed qilinmaydi (ular haqiqiy yuklashdan keladi).
