@@ -68,8 +68,15 @@ export interface TodayDto {
   diary: TodayDiaryDto;
 }
 
-/** POST /api/student/checkin | /checkout — `{ lat, lng, accuracy, occurredAt }` (CheckInCommand/CheckOutCommand). */
-export type CheckinRequest = GeoPoint;
+/**
+ * POST /api/student/checkin | /checkout — **multipart/form-data** (kontrakt §1.3):
+ * `lat`, `lng`, `accuracy`, `occurredAt` + ixtiyoriy `photo` (selfie).
+ * `photo` majburiyligi server sozlamasiga bog'liq (`checkinPhotoRequired`) — rasmsiz yuborilsa
+ * 400 + `errors.Photo` qaytishi mumkin.
+ */
+export interface CheckinRequest extends GeoPoint {
+  photo: File | null;
+}
 
 /** Holat → o'zbekcha yorliq va rang (SPEC-TOKENS 1.5). */
 export const ATTENDANCE_STATUS: Record<

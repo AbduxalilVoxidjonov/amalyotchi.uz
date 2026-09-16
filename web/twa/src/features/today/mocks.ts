@@ -1,7 +1,8 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
 import { STUDENT_ENDPOINTS } from '@/shared/api/endpoints';
 import { problem, requireBearer } from '@/mocks/problem';
-import { isCheckedIn, isFinished, type CheckinRequest, type TodayDto } from './types';
+import { PHOTO_CONTENT_TYPES, PHOTO_MAX_BYTES } from './photo';
+import { isCheckedIn, isFinished, type TodayDto } from './types';
 
 /** Mock korxona koordinatasi (SPEC isJoyim: 41.3111, 69.2797) — dev'da DevTools → Sensors bilan qo'ying. */
 export const MOCK_PLACE = { lat: 41.3111, lng: 69.2797, radiusM: 150 } as const;
@@ -50,8 +51,23 @@ function initialToday(): TodayDto {
 
 export let mockToday: TodayDto = initialToday();
 
+/**
+ * Backend sozlamasi `checkinPhotoRequired` (SettingKeys, default "false") ko'zgusi —
+ * testda `setCheckinPhotoRequired(true)` bilan yoqiladi.
+ */
+export let mockCheckinPhotoRequired = false;
+
+/** Oxirgi qabul qilingan selfie (test tekshiruvi uchun). */
+export let lastCheckinPhoto: { name: string; type: string; size: number } | null = null;
+
+export function setCheckinPhotoRequired(value: boolean) {
+  mockCheckinPhotoRequired = value;
+}
+
 export function resetTodayMocks() {
   mockToday = initialToday();
+  mockCheckinPhotoRequired = false;
+  lastCheckinPhoto = null;
 }
 
 /** Kundalik yuborilganda bosh ekran hisoblagichini yangilash (diary mock chaqiradi). */
@@ -63,17 +79,84 @@ export function markDiarySubmitted() {
   };
 }
 
-function isValidPoint(body: Partial<CheckinRequest>): body is CheckinRequest {
-  return (
-    typeof body.lat === 'number' &&
-    typeof body.lng === 'number' &&
-    typeof body.accuracy === 'number' &&
-    typeof body.occurredAt === 'string'
-  );
+interface ParsedCheckinForm {
+  lat: number;
+  lng: number;
+  accuracy: number;
+  occurredAt: string;
+  photo: File | null;
 }
 
 /**
- * Check-in mock: haqiqiy masofa hisoblanadi (haversine); radius tashqarisi → 409 ProblemDetails
+ * Kontrakt §1.3 — multipart/form-data: `lat`, `lng`, `accuracy`, `occurredAt`, ixtiyoriy `photo`.
+ * Xato → 400 ProblemDetails (`errors.Lat` / `errors.Photo`) — backend validatori bilan bir xil.
+ */
+async function parseCheckinForm(
+  request: Request,
+): Promise<{ form: ParsedCheckinForm } | { response: Response }> {
+  const data = await request.formData().catch(() => null);
+  if (!data) {
+    return {
+      response: problem(400, "Ma'lumotlar noto'g'ri", "Kiritilgan ma'lumotlarda xatolik bor.", {
+        errors: { Lat: ["Kenglik (lat) -90 va 90 oralig'ida bo'lishi kerak."] },
+      }),
+    };
+  }
+  const num = (key: string) => {
+    const raw = data.get(key);
+    return typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : Number.NaN;
+  };
+  const lat = num('lat');
+  const lng = num('lng');
+  const accuracy = num('accuracy');
+  const occurredAtRaw = data.get('occurredAt');
+  const occurredAt = typeof occurredAtRaw === 'string' ? occurredAtRaw : '';
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    !Number.isFinite(accuracy) ||
+    occurredAt === ''
+  ) {
+    return {
+      response: problem(400, "Ma'lumotlar noto'g'ri", "Kiritilgan ma'lumotlarda xatolik bor.", {
+        errors: { Lat: ["Kenglik (lat) -90 va 90 oralig'ida bo'lishi kerak."] },
+      }),
+    };
+  }
+
+  // MSW (undici) `File` ni o'z realmida yaratadi — `instanceof File` ishonchsiz, shuning uchun
+  // matn bo'lmagan qiymat fayl deb qabul qilinadi.
+  const raw = data.get('photo');
+  const photo = raw !== null && typeof raw !== 'string' && raw.size > 0 ? raw : null;
+  if (photo) {
+    if (!(PHOTO_CONTENT_TYPES as readonly string[]).includes(photo.type.toLowerCase())) {
+      return {
+        response: problem(400, "Ma'lumotlar noto'g'ri", "Kiritilgan ma'lumotlarda xatolik bor.", {
+          errors: { Photo: ['Rasm formati qabul qilinmaydi (JPEG, PNG, WEBP, HEIC).'] },
+        }),
+      };
+    }
+    if (photo.size > PHOTO_MAX_BYTES) {
+      return {
+        response: problem(400, "Ma'lumotlar noto'g'ri", "Kiritilgan ma'lumotlarda xatolik bor.", {
+          errors: { Photo: ['Rasm hajmi 5 MB dan oshmasligi kerak.'] },
+        }),
+      };
+    }
+  } else if (mockCheckinPhotoRequired) {
+    return {
+      response: problem(400, "Ma'lumotlar noto'g'ri", 'Check-in uchun rasm majburiy.', {
+        errors: { Photo: ['Check-in uchun rasm majburiy.'] },
+      }),
+    };
+  }
+
+  lastCheckinPhoto = photo ? { name: photo.name, type: photo.type, size: photo.size } : null;
+  return { form: { lat, lng, accuracy, occurredAt, photo } };
+}
+
+/**
+ * Check-in mock (multipart/form-data): haqiqiy masofa hisoblanadi (haversine); radius tashqarisi → 409 ProblemDetails
  * ("Ziddiyat"), allaqachon belgilangan → 409, oyna yopiq → 400 ("Noto'g'ri amal") — backend
  * `CheckInPolicy` xabarlari bilan bir xil. `occurredAt` soati 09:15 dan keyin → `late`
  * (mock soddaligi uchun UTC+5 qo'lda).
@@ -86,12 +169,9 @@ export const todayHandlers: HttpHandler[] = [
   http.post(STUDENT_ENDPOINTS.checkin, async ({ request }) => {
     const denied = requireBearer(request);
     if (denied) return denied;
-    const body = (await request.json().catch(() => ({}))) as Partial<CheckinRequest>;
-    if (!isValidPoint(body)) {
-      return problem(400, "Ma'lumotlar noto'g'ri", "Kiritilgan ma'lumotlarda xatolik bor.", {
-        errors: { Lat: ["Kenglik (lat) -90 va 90 oralig'ida bo'lishi kerak."] },
-      });
-    }
+    const parsed = await parseCheckinForm(request);
+    if ('response' in parsed) return parsed.response;
+    const body = parsed.form;
     if (mockToday.checkin.checkInAt) {
       return problem(409, 'Ziddiyat', 'Bugun allaqachon belgilangansiz.');
     }
@@ -132,10 +212,9 @@ export const todayHandlers: HttpHandler[] = [
   http.post(STUDENT_ENDPOINTS.checkout, async ({ request }) => {
     const denied = requireBearer(request);
     if (denied) return denied;
-    const body = (await request.json().catch(() => ({}))) as Partial<CheckinRequest>;
-    if (!isValidPoint(body)) {
-      return problem(400, "Ma'lumotlar noto'g'ri", "Kiritilgan ma'lumotlarda xatolik bor.");
-    }
+    const parsed = await parseCheckinForm(request);
+    if ('response' in parsed) return parsed.response;
+    const body = parsed.form;
     if (isFinished(mockToday.checkin)) {
       return problem(409, 'Ziddiyat', 'Bugun allaqachon ketganingiz belgilangan.');
     }

@@ -6,9 +6,9 @@
 export const STUDENT_ENDPOINTS = {
   /** GET → TodayDto */
   today: '/api/student/today',
-  /** POST {lat,lng,accuracy,occurredAt} → TodayDto | 400 (oyna/ish kuni/GPS) | 409 (radius, allaqachon) */
+  /** POST multipart(lat,lng,accuracy,occurredAt,photo?) → TodayDto | 400 (oyna/GPS/`errors.Photo`) | 409 (radius, allaqachon) */
   checkin: '/api/student/checkin',
-  /** POST {lat,lng,accuracy,occurredAt} → TodayDto | 400 (oyna) | 409 (check-in yo'q / allaqachon ketgan / radius) */
+  /** POST multipart(lat,lng,accuracy,occurredAt,photo?) → TodayDto | 400 (oyna/`errors.Photo`) | 409 (check-in yo'q / ketgan / radius) */
   checkout: '/api/student/checkout',
   /** GET → PracticePlaceDto | 404 (joy biriktirilmagan) */
   place: '/api/student/place',

@@ -1,15 +1,16 @@
+import { useRef } from 'react';
 import { Badge, Button, Card, Eyebrow, FactGrid, type FactItem } from '@/shared/ui';
 import { formatDate, formatMeters, formatTime } from '@/shared/lib/format';
+import type { CheckinFlow } from '../hooks';
+import { PHOTO_ACCEPT } from '../photo';
 import { ATTENDANCE_STATUS, isCheckedIn, isFinished, type TodayDto } from '../types';
+import { SelfieCapture } from './SelfieCapture';
 import styles from './CheckinCard.module.css';
 
 export interface CheckinCardProps {
   today: TodayDto;
-  /** Joylashuv aniqlanmoqda / server javobi kutilmoqda. */
-  pending: boolean;
-  /** Oxirgi urinish xatosi (GeoError yoki ApiError matni). */
-  error: string | null;
-  onToggle: () => void;
+  /** Selfie oqimi (`useCheckinFlow`) — xato/yuklanish holatlari shu yerda. */
+  flow: CheckinFlow;
 }
 
 /** Sarlavha + izoh — holat (v2 enum) va oynadan hisoblanadi; server `note` bo'lsa u ustun. */
@@ -62,14 +63,26 @@ function describe(today: TodayDto): { title: string; note: string } {
   }
 }
 
-/** SPEC-SCREENS §8 chap section — check-in (presentation). */
-export function CheckinCard({ today, pending, error, onToggle }: CheckinCardProps) {
+/** SPEC-SCREENS §8 chap section — check-in + selfie (presentation). */
+export function CheckinCard({ today, flow }: CheckinCardProps) {
   const { checkin, window: win } = today;
+  const cameraRef = useRef<HTMLInputElement>(null);
   const checkedIn = isCheckedIn(checkin);
   const finished = isFinished(checkin);
   const canAct = checkedIn || checkin.status === 'pending';
   const { title, note } = describe(today);
   const status = ATTENDANCE_STATUS[checkin.status];
+
+  /**
+   * Kamera SHU foydalanuvchi harakatida ochiladi (`input.click()`) — `await` dan keyin
+   * chaqirilsa iOS/Telegram WebView bloklaydi. Joylashuv so'rovi `flow.start` da parallel boshlanadi.
+   */
+  function openCamera() {
+    const el = cameraRef.current;
+    if (!el) return;
+    el.value = '';
+    el.click();
+  }
 
   const facts: FactItem[] = [
     { k: 'Holat', v: status.label, tone: status.tone },
@@ -88,30 +101,38 @@ export function CheckinCard({ today, pending, error, onToggle }: CheckinCardProp
       </h2>
       <p className={styles.note}>{note}</p>
 
+      <input
+        ref={cameraRef}
+        type="file"
+        hidden
+        accept={PHOTO_ACCEPT}
+        capture="user"
+        aria-label="Selfie olish"
+        onChange={(e) => flow.selectPhoto(e.target.files?.[0])}
+      />
+
       {finished ? (
         <div className={styles.done}>
           <Badge status={checkin.autoClosed && !checkin.checkOutAt ? 'late' : 'ok'} size="lg">
             {checkin.autoClosed && !checkin.checkOutAt ? 'Avtomatik yopildi' : 'Yakunlandi'}
           </Badge>
         </div>
-      ) : canAct ? (
+      ) : canAct && flow.phase === 'idle' ? (
         <Button
           variant="checkin"
           tone={checkedIn ? 'dark' : 'accent'}
           className={styles.button}
-          onClick={onToggle}
-          disabled={pending || !win.isOpen}
-          aria-busy={pending || undefined}
+          onClick={() => {
+            flow.start(checkedIn ? 'checkout' : 'checkin');
+            openCamera();
+          }}
+          disabled={!win.isOpen}
         >
-          {pending ? 'Joylashuv aniqlanmoqda…' : checkedIn ? 'KETDIM' : 'KELDIM'}
+          {checkedIn ? 'KETDIM' : 'KELDIM'}
         </Button>
       ) : null}
 
-      {error && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
+      {canAct && flow.phase !== 'idle' && <SelfieCapture flow={flow} onOpenCamera={openCamera} />}
 
       <FactGrid items={facts} columns={2} className={styles.facts} />
 
