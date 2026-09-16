@@ -1,11 +1,16 @@
-# API-CONTRACT v2
+# API-CONTRACT v3
 
-Oxirgi yangilanish: 15.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
+Oxirgi yangilanish: 16.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
 esa haqiqiy controller/DTO/validator/handler kodidan olingan — har bir maydon, chegara va status kod kodda bor.
-Frontend (`web/dashboard`, `web/twa`, `web/shared`) shu shaklga moslanishi kerak; v1 bilan farqlar §5 da.
+Frontend (`web/dashboard`, `web/twa`, `web/shared`) shu shaklga moslanishi kerak; v1 bilan farqlar §5 da,
+**v2 bilan farqlar §6 da**.
 
-Jami **69 ta endpoint**: Auth 5 · Admin 39 · Reports 1 · Tutor 13 · Student (TWA) 10 · Files 1.
+Jami **77 ta endpoint**: Auth 5 · Admin 41 · Reports 1 · Tutor 19 · Student (TWA) 10 · Files 1.
+
+> Kontrollerlarda `[Http*]` atributlari **79 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
+> har birida ikkitadan action bor (`multipart/form-data` va `application/json` — `[Consumes]` bilan ajratiladi,
+> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **77**.
 
 ---
 
@@ -15,7 +20,10 @@ Jami **69 ta endpoint**: Auth 5 · Admin 39 · Reports 1 · Tutor 13 · Student 
 
 - Base path: `/api`. Dev API: `http://localhost:5080`. CORS `Cors:Origins` dan (default `http://localhost:5173`).
 - So'rov/javob — JSON (`application/json`). Istisno: `POST /api/student/diary` — `multipart/form-data`;
-  `GET /api/files/{id}` — fayl (`Content-Disposition: attachment`, range qo'llanadi).
+  `POST /api/student/checkin` va `POST /api/student/checkout` — `multipart/form-data` **yoki** `application/json`
+  (§2.6); `GET /api/files/{id}` — fayl (`Content-Disposition: attachment`, range qo'llanadi).
+- **`Content-Type` har doim aniq yuborilsin.** Checkin/checkout yo'llarida sarlavha yo'q yoki qo'llab-quvvatlanmaydigan
+  tur (masalan `text/plain`) bo'lsa → **415** (§2.6), so'rov bajarilmaydi.
 - Health: `GET /health` (auth'siz) → `{ status, durationMs, checks[] }`.
 - ID'lar — GUID string (UUIDv7). Route'da `{id:guid}` — noto'g'ri format → 404 (route mos kelmaydi).
 
@@ -201,8 +209,11 @@ Response 200 `UserSummaryDto`. 401 (token yo'q), 404 (foydalanuvchi o'chirilgan)
 
 Response 200 — fayl oqimi, `Content-Type` bazadan, `Content-Disposition: attachment; filename="<asl nom>"`,
 `Accept-Ranges`. **404** — fayl yo'q, diskda yo'q yoki ko'lamdan tashqarida. Ko'lam: shablon (`kind=template`) — hamma
-autentifikatsiyalangan; admin — hammasi; talaba — o'zi yuklagan yoki o'z arizasi/kundaligi/ruxsatiga biriktirilgan;
-tyutor — ko'lamdagi talabalar fayllari.
+autentifikatsiyalangan; admin — hammasi; talaba — o'zi yuklagan yoki o'z arizasi/kundaligi/ruxsati/**check-in
+selfisiga** biriktirilgan; tyutor — ko'lamdagi talabalar fayllari.
+
+`kind = checkInPhoto` (§3.1) fayllari uchun ega — selfi biriktirilgan `AttendanceEvent` ning talabasi (rad etilgan
+urinishniki ham). Havola shakli o'zgarmagan: `"/api/files/<guid>"`, Bearer talab qiladi — oddiy `<img src>` ishlamaydi.
 
 > DTO'lardagi barcha `url`/`templateUrl` qiymatlari **nisbiy**: `"/api/files/<guid>"`. Bearer kerak — oddiy
 > `<a href>` ishlamaydi, `fetch` + `Authorization` + blob URL orqali oching.
@@ -662,9 +673,77 @@ interface CompanyRow {
   students: number /*arizasi approved*/;
   suspiciousDays: number;
   isActive: boolean;
-  flag: CompanyFlag | null; /*suspiciousDays≥3 → suspicious; radiusM>500 → largeRadius; aks holda null*/
+  maxStudents: number /*amaldagi `maxStudentsPerCompany` sozlamasi — hamma qatorda bir xil*/;
+  overLimit: boolean /*students > maxStudents*/;
+  flag: CompanyFlag | null; /*ustuvorlik: suspicious → tooManyStudents → largeRadius → null*/
 }
 ```
+
+Bayroq (`CompanyFlags.Resolve`) — **aynan shu tartibda**, birinchi mos kelgani qaytadi:
+`suspiciousDays ≥ 3` → `suspicious`; `overLimit` → `tooManyStudents`; `radiusM > 500` → `largeRadius`; aks holda `null`.
+`maxStudents` — global `maxStudentsPerCompany` sozlamasi (§3.1, default `10`), har qatorga takrorlanadi.
+
+#### GET `/api/admin/companies/{id}` · 200 · 404
+
+404 — korxona yo'q yoki o'chirilgan (`detail`: `"Korxona topilmadi (id: …)."`). Shakl tyutornikidek
+(`GET /api/tutor/companies/{id}`, §2.5) — farq faqat ko'lamda: admin uchun `students === totalStudents`.
+
+```ts
+interface CompanyDetail {
+  id: string;
+  name: string;
+  tin: string;
+  activity: string;
+  address: string;
+  lat: number;
+  lng: number;
+  radiusM: number;
+  supervisorName: string;
+  supervisorPhone: string;
+  mentorName: string | null;
+  mentorPhone: string | null;
+  isActive: boolean;
+  students: number /*so'rovchi ko'lamidagi biriktirilgan (approved) talabalar; admin uchun = totalStudents*/;
+  totalStudents: number /*butun tizim bo'yicha — STIR nazorati shu songa tayanadi*/;
+  suspiciousDays: number;
+  maxStudents: number;
+  overLimit: boolean /*totalStudents > maxStudents*/;
+  flag: CompanyFlag | null;
+  /** Amaliyot davrlari kesimi: shu korxonada qaysi davrda nechta talaba. startDate desc, keyin nom. */
+  periods: { id: string; name: string; startDate: string; endDate: string; students: number }[];
+}
+```
+
+#### GET `/api/admin/companies/{id}/students` · 200 · 404
+
+Sahifalanmagan massiv. Ro'yxatga shu korxonaga **qoralamadan boshqa** (`status !== 'draft'`) arizasi bor talabalar
+kiradi — shuning uchun `CompanyRow.students` (faqat `approved`) ro'yxat uzunligidan kichik bo'lishi mumkin; holatni
+har qatordagi `applicationStatus` ko'rsatadi. Bir talabaning shu korxonaga bir nechta arizasi bo'lsa — `approved`
+ustun, aks holda eng so'nggisi (`submittedAt` desc). Tartib: **FISH**, keyin `hemisId`. 404 — korxona yo'q.
+
+```ts
+interface CompanyStudent {
+  studentId: string /*User.Id*/;
+  name: string;
+  hemisId: string;
+  group: string;
+  course: number;
+  faculty: string;
+  tutorName: string | null /*guruhga biriktirilgan faol tyutor; bir nechta bo'lsa alifbo bo'yicha birinchisi*/;
+  applicationStatus: ApplicationStatus;
+  periodName: string | null /*ariza davri nomi*/;
+  attendancePct: number /*1 kasr*/;
+  attendedDays: number;
+  totalDays: number;
+  diaryCount: number;
+  state: StudentState /*'active' | 'redFlag' | 'suspicious'*/;
+  suspiciousCount: number;
+}
+```
+
+`attendancePct` / `attendedDays` / `totalDays` / `diaryCount` / `suspiciousCount` — **faol amaliyot davri** bo'yicha
+(`StudentStatsCalculator`, `GET /api/tutor/students` bilan bir xil manba; faol davri yo'q talabada nollar).
+`state` — o'sha qoida: `totalDays>0 && pct<70` → `redFlag`; `suspiciousCount≥1` → `suspicious`; aks holda `active`.
 
 #### GET `/api/admin/audit` — `q`: entityName, entityId, reason, foydalanuvchi ismi; `&action=<AuditAction>`
 
@@ -727,8 +806,15 @@ interface DocTemplateDto {
 
 Sozlamalar (kalit · tur · birlik · default · min–max): `geofenceRadius` int m `200` 50–1000 · `lateTolerance` int min `15` 0–120 ·
 `minGpsAccuracy` int m `100` 10–1000 · `autoCheckout` int min `60` 0–360 · `workDays` weekdays `1,2,3,4,5,6` ·
-`dailyReportRequired` bool `true` · `minReportLength` int chars `150` 0–5000 · `checkInWindow` int min `90` 15–480.
+`dailyReportRequired` bool `true` · `minReportLength` int chars `150` 0–5000 · `checkInWindow` int min `90` 15–480 ·
+**`checkinPhotoRequired`** bool `false` · **`maxStudentsPerCompany`** int `10` 1–200.
+Ro'yxat tartibi — shu; ikkita oxirgi kalit v3 da qo'shildi (§6).
 Bazada yo'q kalit default bilan qaytadi (`updatedAt: null`).
+
+| Kalit                   | Ta'sir                                                                                                            |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `checkinPhotoRequired`  | `true` bo'lsa `POST /api/student/checkin` va `/checkout` selfisiz qabul qilinmaydi → 400 `errors.Photo` (§2.6)      |
+| `maxStudentsPerCompany` | `CompanyRow`/`CompanyDetail`/`TutorCompany` dagi `maxStudents` va `overLimit`; bayroq `tooManyStudents` (§2.3)      |
 
 ---
 
@@ -897,6 +983,204 @@ interface TutorStudent {
 ```
 
 `state`: `totalDays>0 && pct<70` → `redFlag`; `suspiciousCount≥1` → `suspicious`; aks holda `active`. FISH bo'yicha tartib.
+
+#### GET `/api/tutor/students/{id}`
+
+Ko'lamdan tashqari (yoki mavjud bo'lmagan) `id` → **404** (`"Talaba topilmadi (id: …)."` — mavjudligi oshkor qilinmaydi).
+
+```ts
+interface TutorStudentDetail {
+  id: string;
+  name: string;
+  hemisId: string;
+  group: string;
+  course: number;
+  faculty: string;
+  direction: string;
+  status: StudentStatus /*'active' | 'suspended' | 'graduated' — akademik holat*/;
+  phone: string | null;
+  state: StudentState /*'active' | 'redFlag' | 'suspicious'*/;
+  suspiciousCount: number;
+  company: StudentCompany | null;
+  application: StudentApplication | null;
+  period: StudentPeriod | null;
+  attendance: AttendanceSummary;
+  diary: DiarySummary;
+  grade: StudentGrade | null;
+}
+
+interface StudentCompany {
+  id: string;
+  name: string;
+  tin: string;
+  activity: string;
+  address: string;
+  supervisorName: string;
+  supervisorPhone: string;
+  mentorName: string | null;
+  mentorPhone: string | null;
+  lat: number;
+  lng: number;
+  radiusM: number /*korxonaning JORIY geofence radiusi, ariza taklifi emas*/;
+}
+
+interface StudentApplication {
+  id: string;
+  status: ApplicationStatus;
+  submittedAt: string /*ISO*/;
+  decidedAt: string | null;
+  comment: string | null /*DecisionComment*/;
+  contract: { name: string; pages: number | null; sizeBytes: number; url: string } | null;
+}
+
+interface StudentPeriod {
+  id: string;
+  name: string;
+  startDate: string /*DateOnly*/;
+  endDate: string;
+  dailyStart: string /*"09:00" (Toshkent)*/;
+  dailyEnd: string /*"17:00"*/;
+  workDays: number[] /*1 = Dushanba … 7 = Yakshanba*/;
+  requiredDays: number;
+}
+
+interface AttendanceSummary {
+  totalDays: number /*hisobga olinadigan ish kunlari (sababli kunlarsiz)*/;
+  attendedDays: number /*present + late*/;
+  lateDays: number;
+  excusedDays: number;
+  absentDays: number /*totalDays − attendedDays*/;
+  suspiciousDays: number;
+  attendancePct: number /*1 kasr*/;
+}
+
+interface DiarySummary {
+  count: number;
+  scoredCount: number;
+  avg: number /*1 kasr, faqat baholanganlar bo'yicha*/;
+}
+
+interface StudentGrade {
+  total: number /*har doim son*/;
+  grade: 2 | 3 | 4 | 5 | null /*null — davomat 70% dan past, qayta topshiradi*/;
+}
+```
+
+Qoidalar:
+
+- `state` — `GET /api/tutor/students` dagi bilan **bir xil** (`StudentStateRule`): `totalDays>0 && pct<70` → `redFlag`;
+  `suspiciousCount≥1` → `suspicious`; aks holda `active`.
+- `period` — talaba **guruhining faol davri** (`PeriodLookup.ForGroup`). Faol davr yo'q bo'lsa `period = null`,
+  `grade = null`, `attendance` nollar bilan keladi.
+- `application` — faol davrdagi ariza, bo'lmasa oxirgi ariza (`submittedAt` desc), holatidan qat'i nazar.
+- `company` — faqat `approved` yoki `completed` arizadagi korxona; aks holda `null`.
+- `attendance` / `diary` — `StudentStatsCalculator` (ro'yxat va baholash bilan bir xil manba).
+- `grade` — `GradeCalculator.Compute(…)` (§4.4).
+- `contract.url` — `"/api/files/<guid>"`, Bearer kerak (§2.2).
+
+#### GET `/api/tutor/students/{id}/attendance` — `?from=&to=`
+
+| Query  | Tip        | Majburiy | Default                          |
+| ------ | ---------- | -------- | -------------------------------- |
+| `from` | `DateOnly` | yo'q     | davrning boshlanish sanasi       |
+| `to`   | `DateOnly` | yo'q     | `min(bugun, davr tugash sanasi)` |
+
+Har **kalendar kun** uchun bitta element (dam olish kunlari ham), `date` bo'yicha o'sish tartibida.
+Talabaning faol davri bo'lmasa — **bo'sh massiv** (xato emas).
+
+```ts
+interface StudentAttendanceDay {
+  date: string /*"2026-10-12"*/;
+  status: AttendanceStatus /*pending | present | late | absent | excused | dayOff*/;
+  isWorkDay: boolean;
+  checkIn: AttendancePunch | null;
+  checkOut: AttendancePunch | null;
+  autoClosed: boolean;
+  suspicious: boolean;
+  suspiciousReason: string | null;
+  manual: boolean;
+  manualReason: string | null;
+  leaveRequestId: string | null;
+  diary: { id: string; status: DiaryStatus; score: number | null } | null;
+  attempts: number /*shu kundagi urinishlar (AttendanceEvent)*/;
+  rejectedAttempts: number /*ulardan rad etilganlari*/;
+}
+
+interface AttendancePunch {
+  at: string /*"09:02" (Toshkent)*/;
+  atIso: string /*to'liq ISO, +05:00*/;
+  distanceM: number | null;
+  accuracyM: number | null;
+  lat: number | null;
+  lng: number | null;
+  photoUrl: string | null /*"/api/files/<guid>" — check-in selfisi, Bearer kerak*/;
+  outOfRadius: boolean /*distanceM > korxona radiusM*/;
+}
+```
+
+Qoidalar:
+
+- Bazada qatori yo'q kun ham qaytariladi — holat `AttendanceStatusResolver` bilan hisoblanadi (ish kuni emas →
+  `dayOff`; tasdiqlangan ruxsat → `excused`; o'tgan kun → `absent`; bugun oyna yopilmagan bo'lsa → `pending`).
+- `checkIn`/`checkOut` — **qabul qilingan** belgilar (`DailyAttendance`). Rad etilgan urinishlar faqat
+  `attempts` / `rejectedAttempts` da aks etadi.
+- `lat`/`lng` — `AttendanceEvent.Location` dan; `DailyAttendance` da koordinata saqlanmaydi, shuning uchun qo'lda
+  kiritilgan kunda `null`.
+- `photoUrl` — check-in/check-out selfisi (`StoredFileKind.checkInPhoto`, §2.6). Rasm bo'lmasa `null`.
+- `outOfRadius` — tasdiqlangan arizadagi korxona radiusi bilan solishtiriladi; korxona yo'q bo'lsa `false`.
+- `leaveRequestId` — kun sababli bo'lsa: qatordagi ruxsat yoki kunni qoplagan tasdiqlangan ruxsat.
+
+Xatolar:
+
+| Holat                                      | Status  | `detail` / `errors`                                                        |
+| ------------------------------------------ | ------- | -------------------------------------------------------------------------- |
+| `from > to`                                | **400** | "'from' sanasi 'to' sanasidan keyin bo'lishi mumkin emas." (`errors.To`)   |
+| oraliq > **400 kun**                       | **400** | "So'ralgan oraliq 400 kundan uzun bo'lmasligi kerak." (`errors.From`)      |
+| sana formati noto'g'ri                     | **400** | ASP.NET model binding (`type` bilan)                                       |
+| ko'lamdan tashqari / mavjud bo'lmagan `id` | **404** | "Talaba topilmadi (id: …)."                                                |
+
+> Bitta chegara berilganda ikkinchisi **bugungi kun** bilan taxminlanadi (validator), shuning uchun faqat `from`
+> yuborilsa ham 400 kunlik chegara ishlaydi.
+
+#### GET `/api/tutor/students/{id}/diaries`
+
+Javob — **mavjud** `TutorDiaryEntry[]` (`GET /api/tutor/diaries` bilan bir xil shakl, fayl havolalari bilan).
+Tartib: `date` desc, keyin `submittedAt` desc. Ko'lamdan tashqari talaba → **404**.
+
+#### GET `/api/tutor/companies`
+
+Ko'lamdagi talabalar biriktirilgan korxonalar, **nom** bo'yicha. Ko'lamda bitta ham `approved` arizali talabasi
+bo'lmagan korxona ro'yxatga **kirmaydi** (bo'sh massiv bo'lishi mumkin — xato emas). Sahifalanmagan.
+
+```ts
+interface TutorCompany {
+  id: string;
+  name: string;
+  tin: string;
+  address: string;
+  lat: number;
+  lng: number;
+  radiusM: number;
+  students: number /*FAQAT ko'lamdagi talabalar*/;
+  totalStudents: number /*butun tizim bo'yicha shu korxonada*/;
+  maxStudents: number;
+  overLimit: boolean /*totalStudents > maxStudents — ko'lamdagi son EMAS*/;
+  attendancePct: number /*ko'lamdagi talabalar jamlanmasi: ∑kelgan / ∑hisobga olingan kun × 100, 1 kasr*/;
+  suspiciousDays: number /*ko'lamdagi talabalarning shubhali kunlari*/;
+  flag: CompanyFlag | null;
+}
+```
+
+#### GET `/api/tutor/companies/{id}` · 200 · 404
+
+Shakl — `CompanyDetail` (§2.3, admin bilan **bir xil**). Farqi: `students`, `suspiciousDays` va `periods[].students`
+**ko'lam kesimida**; `totalStudents` va `overLimit` esa butun tizim bo'yicha (STIR nazorati).
+Ko'lamda biriktirilgan talabasi yo'q korxona (yoki mavjud bo'lmagan `id`) → **404**.
+
+#### GET `/api/tutor/companies/{id}/students` · 200 · 404
+
+Shakl — `CompanyStudent[]` (§2.3 bilan bir xil), faqat **ko'lamdagi** talabalar. FISH bo'yicha tartib.
+Ko'lamda biriktirilgan talabasi yo'q korxona → **404**.
 
 #### GET `/api/tutor/diaries` — `?status=<DiaryStatus>`
 
@@ -1075,19 +1359,52 @@ interface TodayDiaryDto {
 `place` — faqat ariza `approved` va korxona bor bo'lsa. Davr yo'q → `checkin.status="pending"`, `note="Faol amaliyot davri yo'q."`, `place=null`.
 "Chiqdi" holati alohida status emas — `checkOutAt !== null` (yoki `autoClosed`).
 
-#### POST `/api/student/checkin` · POST `/api/student/checkout`
+#### POST `/api/student/checkin` · POST `/api/student/checkout` · multipart **yoki** JSON
 
-Body (ikkalasi bir xil, `GeoRequestValidator`):
+Ikkala endpoint ham **ikki formatni** qabul qiladi. Yo'l bitta, ammo kontrollerda ikkita action bor va ular
+`[Consumes]` bilan ajratiladi — shuning uchun `Content-Type` **aniq yuborilishi shart** (pastdagi "Transport xatolari").
 
-| Maydon       | Tip          | Majburiy | Validatsiya                                               |
-| ------------ | ------------ | -------- | --------------------------------------------------------- |
-| `lat`        | number       | ha       | −90..90 (`errors.Lat`)                                    |
-| `lng`        | number       | ha       | −180..180 (`errors.Lng`)                                  |
-| `accuracy`   | number (m)   | ha       | 0..100000 (`errors.Accuracy`)                             |
-| `occurredAt` | ISO datetime | ha       | ≤ server + 1 min; ≥ server − 10 min (`errors.OccurredAt`) |
+| `Content-Type`          | Rasm                | Izoh                                                                       |
+| ----------------------- | ------------------- | -------------------------------------------------------------------------- |
+| `multipart/form-data`   | ixtiyoriy `photo`   | **Asosiy yo'l** — TWA doim shu bilan yuboradi                               |
+| `application/json`      | yo'q                | Eski klientlar va offline navbat; `checkinPhotoRequired=true` bo'lsa → 400 |
 
-Response 200 `TodayDto` (yangilangan). **Har urinish** (rad etilgani ham) `AttendanceEvent` ga yoziladi. Idempotent:
-bir xil `occurredAt` bilan qabul qilingan urinish qayta kelsa — xato emas, joriy holat.
+Maydonlar (ikkalasi bir xil, `GeoRequestValidator`):
+
+| Maydon       | Tip          | Majburiy         | Validatsiya                                                                     |
+| ------------ | ------------ | ---------------- | ------------------------------------------------------------------------------- |
+| `lat`        | number       | ha               | −90..90 (`errors.Lat`)                                                          |
+| `lng`        | number       | ha               | −180..180 (`errors.Lng`)                                                        |
+| `accuracy`   | number (m)   | ha               | 0..100000 (`errors.Accuracy`)                                                   |
+| `occurredAt` | ISO datetime | ha               | ≤ server + 1 min; ≥ server − 10 min (`errors.OccurredAt`)                       |
+| `photo`      | fayl         | sozlamaga qarab  | faqat multipart; ≤ **5 MB**, `image/jpeg,image/png,image/webp,image/heic,image/heif` |
+
+So'rov tanasining chegarasi — **6 MB** (`RequestSizeLimit` + `RequestFormLimits`), oshsa **413** (Kestrel, ProblemDetails'siz).
+
+```ts
+/** Multipart tana; `photo` — File yoki Blob. */
+interface CheckinFormData {
+  lat: number;
+  lng: number;
+  accuracy: number;
+  occurredAt: string; // ISO 8601
+  photo?: File; // checkinPhotoRequired=true bo'lsa majburiy
+}
+```
+
+```ts
+const body = new FormData();
+body.append('lat', String(lat));
+body.append('lng', String(lng));
+body.append('accuracy', String(accuracy));
+body.append('occurredAt', new Date().toISOString());
+if (photo) body.append('photo', photo, 'selfi.jpg');
+await api.post('/api/student/checkin', body); // Content-Type'ni brauzer o'zi qo'yadi (boundary bilan)
+```
+
+Response 200 `TodayDto` (yangilangan, **ikkala format uchun bir xil**). **Har urinish** (rad etilgani ham)
+`AttendanceEvent` ga yoziladi — rasmi bilan birga. Idempotent: bir xil `occurredAt` bilan qabul qilingan urinish
+qayta kelsa — xato emas, joriy holat (takror rasm ham saqlanmaydi).
 
 Xato → status (`CheckInRejectReason.ToException`), `detail` = §3.2 xabari:
 
@@ -1105,6 +1422,36 @@ Xato → status (`CheckInRejectReason.ToException`), `detail` = §3.2 xabari:
 | `outOfRadius` (masofa > radius)         | **409** |                                         |         |
 
 Tekshiruv tartibi aynan shu (birinchi mos kelgan sabab qaytadi). Qabul: `localNow ≥ 09:15` → `late`, aks holda `present`.
+
+**Rasm (selfi) xatolari** — hammasi **400**, `errors.Photo`:
+
+| Holat                                                                  | `detail` / `errors.Photo`                                        |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `checkinPhotoRequired=true`, rasm yuborilmagan (JSON yoki bo'sh `photo`) | "Check-in uchun rasm majburiy." / "Check-out uchun rasm majburiy." |
+| Noto'g'ri fayl turi                                                    | "Faqat rasm (JPEG, PNG, WebP, HEIC) qabul qilinadi."              |
+| 5 MB dan katta yoki bo'sh fayl                                         | "Rasm 5 MB dan oshmasligi va bo'sh bo'lmasligi kerak."            |
+| Fayl nomi bo'sh yoki 255 belgidan uzun                                 | "Rasm nomi bo'sh yoki juda uzun."                                 |
+
+**Muhim:** rad etilgan urinishning rasmi ham **saqlanadi** (policy 400/409 da) — tyutor shubhani tekshirishi uchun;
+u `GET /api/tutor/students/{id}/attendance` da `attempts`/`rejectedAttempts` orqali ko'rinadi. Faqat validatsiya
+xatosida (`errors.Photo`) hech narsa saqlanmaydi. Qabul qilingan urinish rasmi esa `AttendancePunch.photoUrl` da.
+
+**Transport xatolari** (`Content-Type` bilan bog'liq):
+
+| So'rov                                                                | Status      | Izoh                                                              |
+| --------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------ |
+| `Content-Type: multipart/form-data`                                   | 200/400/409 | selfi bilan yoki selfisiz — asosiy yo'l                            |
+| `Content-Type: application/json`                                      | 200/400/409 | rasmsiz JSON action                                                |
+| Boshqa tur (masalan `text/plain`, `application/x-www-form-urlencoded`) | **415**     | `[Consumes]` rad etadi, javob — ASP.NET'ning `ProblemDetails` i    |
+| `Content-Type` **umuman yo'q**                                        | **415**     | bir xil — boshqa hech qanday qo'shimcha xulq yo'q                  |
+
+Kontrollerda multipart action `[Consumes("multipart/form-data")]` bilan, JSON action esa **`[Consumes]` siz**
+(cheklovsiz fallback) — shuning uchun marshrutlash noaniq bo'lmaydi va noto'g'ri tur har doim toza **415** beradi.
+
+> **Baribir `Content-Type` ni har doim yuboring** — 415 ham xato, so'rov bajarilmaydi.
+> `FormData` bilan `fetch` buni o'zi qo'yadi (boundary bilan); JSON yuborganda
+> `headers: { 'Content-Type': 'application/json' }` ni **qo'lda** qo'shing — aks holda `fetch`
+> `text/plain;charset=UTF-8` qo'yadi va **415** keladi.
 
 #### GET `/api/student/place` · 404
 
@@ -1270,21 +1617,21 @@ interface PortfolioDto {
 | `ApplicationDecision` (request)    | `approve` · `return` · `reject`                                                                                                                                                                                                                                                                                                           | tutor decision                                                                         |
 | `PracticePeriodStatus`             | `planned` · `active` · `closed`                                                                                                                                                                                                                                                                                                           | admin groups `period.status`                                                           |
 | `WorkDays`                         | bitmask; sozlamada `"1,2,3,4,5,6"` (1=Du … 7=Ya)                                                                                                                                                                                                                                                                                          | settings `workDays`                                                                    |
-| `StudentStatus` (domain, akademik) | `active` · `suspended` · `graduated`                                                                                                                                                                                                                                                                                                      | API'ga chiqmaydi                                                                       |
+| `StudentStatus` (domain, akademik) | `active` · `suspended` · `graduated`                                                                                                                                                                                                                                                                                                      | `TutorStudentDetail.status`                                                            |
 | `TodayFilter` (query)              | `present` · `late` · `absent` · `excused` · `pending` · `suspicious`                                                                                                                                                                                                                                                                      | tutor today `?status=`                                                                 |
 | `TodayAlertKind`                   | `outOfRadius` · `notCheckedIn` · `newLeaveRequests` · `newApplications`                                                                                                                                                                                                                                                                   | tutor today alerts                                                                     |
-| `StudentState`                     | `active` · `redFlag` · `suspicious`                                                                                                                                                                                                                                                                                                       | tutor students                                                                         |
+| `StudentState`                     | `active` · `redFlag` · `suspicious`                                                                                                                                                                                                                                                                                                       | tutor students (+ detail), company students                                            |
 | `MapPointKind`                     | `ok` · `late` · `bad`                                                                                                                                                                                                                                                                                                                     | tutor map                                                                              |
 | `FacultyStatus`                    | `active` · `attention`                                                                                                                                                                                                                                                                                                                    | admin faculties                                                                        |
 | `TutorStatus`                      | `active` · `late`                                                                                                                                                                                                                                                                                                                         | admin tutors, dashboard                                                                |
 | `TutorScopeLevel`                  | `faculty` · `department` · `direction` · `group`                                                                                                                                                                                                                                                                                          | admin tutors `scopes[].level`, `PUT .../scopes` body                                   |
 | `AdminStudentStatus`               | `active` · `flagged` · `unlinked`                                                                                                                                                                                                                                                                                                         | admin students                                                                         |
-| `CompanyFlag`                      | `largeRadius` · `suspicious` · `null`                                                                                                                                                                                                                                                                                                     | admin companies                                                                        |
+| `CompanyFlag`                      | `suspicious` · `tooManyStudents` · `largeRadius` · `null` — ustuvorlik aynan shu tartibda                                                                                                                                                                                                                                                 | admin companies, tutor companies                                                       |
 | `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorScopesChanged` | admin audit `action`, `?action=`                                                       |
 | `SettingType`                      | `int` · `bool` · `weekdays`                                                                                                                                                                                                                                                                                                               | settings `type`                                                                        |
-| `SettingKey` (string const)        | `geofenceRadius` · `lateTolerance` · `minGpsAccuracy` · `autoCheckout` · `workDays` · `dailyReportRequired` · `minReportLength` · `checkInWindow`                                                                                                                                                                                         | settings                                                                               |
+| `SettingKey` (string const)        | `geofenceRadius` · `lateTolerance` · `minGpsAccuracy` · `autoCheckout` · `workDays` · `dailyReportRequired` · `minReportLength` · `checkInWindow` · `checkinPhotoRequired` · `maxStudentsPerCompany`                                                                                                                                      | settings                                                                               |
 | `DocumentTemplateKind`             | `contract` · `referral` · `reference`                                                                                                                                                                                                                                                                                                     | settings templates                                                                     |
-| `StoredFileKind`                   | `contract` · `diaryAttachment` · `leaveDocument` · `template`                                                                                                                                                                                                                                                                             | ichki (files ko'lami)                                                                  |
+| `StoredFileKind`                   | `contract` · `diaryAttachment` · `leaveDocument` · `template` · `checkInPhoto`                                                                                                                                                                                                                                                            | ichki (files ko'lami); `AttendancePunch.photoUrl`                                      |
 | Grade                              | `2` · `3` · `4` · `5` · `null`                                                                                                                                                                                                                                                                                                            | grading, portfolio (number)                                                            |
 
 ### 3.2 `CheckInRejectReason` xabarlari (`detail` da keladi)
@@ -1311,7 +1658,9 @@ Shu xabarlar `TodayDto.checkin.note` da ham keladi (amal hozir mumkin bo'lmasa).
 `DIARY_MIN_CHARS` — sozlama `minReportLength` (default **150**, `TodayDto.diary.minChars` dan oling) · `DIARY_MAX_CHARS 10000` ·
 `DIARY_MAX_FILES 5` · `DIARY_MAX_FILE_BYTES 5 MB` · `RADIUS 50..1000 / step 50` · `DEFAULT_RADIUS 200` ·
 `CHECKLIST_ITEMS 7` (indeks 0..6) · `COMMENT_MAX 1000` (ariza, kundalik, ruxsat) · `LEAVE_REASON 10..1000` · `LEAVE_MAX_DAYS 31` ·
-`TUTOR_POINTS 0..20` · `REFERENCE_POINTS 0..10` · `DIARY_SCORE 1..5` · `PAGE_SIZE default 20, max 100` · `Q_MAX 100`.
+`TUTOR_POINTS 0..20` · `REFERENCE_POINTS 0..10` · `DIARY_SCORE 1..5` · `PAGE_SIZE default 20, max 100` · `Q_MAX 100` ·
+`CHECKIN_PHOTO_MAX_BYTES 5 MB` · `CHECKIN_REQUEST_MAX_BYTES 6 MB` · `ATTENDANCE_RANGE_MAX_DAYS 400` (`GET /api/tutor/students/{id}/attendance`) ·
+`maxStudentsPerCompany` — sozlama (default **10**, 1..200).
 
 ---
 
@@ -1479,3 +1828,68 @@ Har qator: **v1 shakl → v2 haqiqiy shakl → nima qilish kerak**. Ustun "Qayer
 8. `map?date=` → ishlaydi. 9. decision 409 → bor. 10. download/`?action=` → download yo'q, `?action=` bor.
 9. `radiusM` dublikati → saqlangan (`checkin.radiusM` nullable, `place.radiusM`). 12. Nav badge'lar → `tutor/today.alerts`
    va `applications.counts` dan olsa bo'ladi; alohida endpoint yo'q.
+
+---
+
+## 6. v2 → v3 o'zgarishlar (frontend agentlari uchun)
+
+15.09.2026 (v2) dan keyin backend'ga tushgan hamma narsa. **Breaking** — mavjud frontend kodini buzadi.
+
+### 6.1 Yangi endpoint'lar (8 ta)
+
+| #   | Endpoint                                            | Policy      | Javob                                   | Bo'lim |
+| --- | --------------------------------------------------- | ----------- | --------------------------------------- | ------ |
+| N1  | `GET /api/admin/companies/{id}`                     | `AdminOnly` | `CompanyDetail` · 404                  | §2.3   |
+| N2  | `GET /api/admin/companies/{id}/students`            | `AdminOnly` | `CompanyStudent[]` · 404               | §2.3   |
+| N3  | `GET /api/tutor/students/{id}`                      | `TutorOnly` | `TutorStudentDetail` · 404             | §2.5   |
+| N4  | `GET /api/tutor/students/{id}/attendance?from=&to=` | `TutorOnly` | `StudentAttendanceDay[]` · 400 · 404  | §2.5   |
+| N5  | `GET /api/tutor/students/{id}/diaries`              | `TutorOnly` | `TutorDiaryEntry[]` · 404              | §2.5   |
+| N6  | `GET /api/tutor/companies`                          | `TutorOnly` | `TutorCompany[]`                        | §2.5   |
+| N7  | `GET /api/tutor/companies/{id}`                     | `TutorOnly` | `CompanyDetail` · 404                  | §2.5   |
+| N8  | `GET /api/tutor/companies/{id}/students`            | `TutorOnly` | `CompanyStudent[]` · 404               | §2.5   |
+
+Jami endpoint: **69 → 77** (Admin 39 → 41, Tutor 13 → 19; Auth/Reports/Student/Files o'zgarmadi).
+
+Yangi TS tiplar: `CompanyDetail`, `CompanyStudent`, `TutorCompany`, `TutorStudentDetail`, `StudentCompany`,
+`StudentApplication`, `StudentPeriod`, `AttendanceSummary`, `DiarySummary`, `StudentGrade`, `StudentAttendanceDay`,
+`AttendancePunch`, `CheckinFormData`.
+
+### 6.2 Qo'shilgan maydonlar va qiymatlar (buzmaydi)
+
+| #   | Qayer                                | O'zgarish                                                                                          | Nima qilish                                                     |
+| --- | ------------------------------------ | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| A1  | `CompanyRow` (`GET /api/admin/companies`) | + `maxStudents: number`, + `overLimit: boolean`                                                  | tipga qo'shing; `overLimit` da ogohlantirish belgisi              |
+| A2  | `CompanyFlag`                        | + **`tooManyStudents`**; ustuvorlik `suspicious` → `tooManyStudents` → `largeRadius` → `null`      | union tipga qiymat va label/rang qo'shing                        |
+| A3  | `SettingKey`                         | + **`checkinPhotoRequired`** (bool, default `false`), + **`maxStudentsPerCompany`** (int, `10`, 1–200) | union tipga qo'shing; settings sahifasida ikkita qator ko'payadi |
+| A4  | `StoredFileKind`                     | + **`checkInPhoto`**                                                                                | `GET /api/files/{id}` ko'lami kengaydi (§2.2)                    |
+| A5  | `AdminSettingsDto.settings[]`        | ro'yxat oxiriga 2 element qo'shildi                                                                 | ro'yxatni qotirmang — serverdan kelganini ko'rsating            |
+| A6  | `StudentStatus`                      | ilgari API'ga chiqmasdi, endi `TutorStudentDetail.status` da keladi                                 | `active \| suspended \| graduated` label'ini qo'shing             |
+
+### 6.3 Breaking — check-in/check-out `multipart/form-data` ga o'tdi
+
+| #   | Nima                                                                                         | Ta'sir                                                                                          |
+| --- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| B1  | `POST /api/student/checkin` va `/checkout` endi ikkita action: `multipart/form-data` (`[Consumes]` bilan) va JSON (cheklovsiz fallback) | `Content-Type` **majburiy** bo'lib qoldi                 |
+| B2  | **`Content-Type` yuborilmasa yoki noto'g'ri bo'lsa → 415** (v2 da tana JSON deb qabul qilinardi) | `fetch`/axios sozlamasini tekshiring; xulq to'g'ri va integratsiya testi bilan qoplangan        |
+| B3  | JSON yuborishda sarlavha qo'lda qo'yilmasa `fetch` `text/plain` qo'yadi → **415**              | `headers: { 'Content-Type': 'application/json' }` ni aniq yozing                                  |
+| B4  | `checkinPhotoRequired=true` bo'lsa **JSON yo'li umuman ishlamaydi** → 400 `errors.Photo`       | TWA'da selfi oqimini yoqing; offline navbat ham multipart bo'lsin                                 |
+| B5  | Multipart tana 6 MB dan oshsa → **413** (ProblemDetails'siz, Kestrel)                         | rasmni klientda 5 MB gacha siqing                                                                 |
+
+Qolganlari o'zgarmagan: javob — o'sha `TodayDto`; `lat`/`lng`/`accuracy`/`occurredAt` maydonlari, ularning
+validatsiyasi, rad etish sabablari (§3.2) va idempotentlik ham avvalgidek.
+
+### 6.4 Xulq-atvor o'zgarishlari
+
+- Rad etilgan check-in urinishining **rasmi ham saqlanadi** (tyutor shubhani tekshirishi uchun); faqat
+  `errors.Photo` validatsiyasida hech narsa saqlanmaydi.
+- `GET /api/files/{id}` ko'lami `checkInPhoto` ni ham qamraydi: talaba — o'z selfilari, tyutor — ko'lamidagi
+  talabalar selfilari, admin — hammasi; aks holda **404**.
+- Korxona endpoint'larida tyutor uchun **404 (403 emas)**: ko'lamida biriktirilgan talabasi bo'lmagan korxona
+  "yo'q" hisoblanadi.
+- Yangi migratsiya: `20260916115017_CheckInPhotos` (`attendance_events.photo_file_id`,
+  `daily_attendances.check_in_photo_file_id`, `daily_attendances.check_out_photo_file_id`).
+
+### 6.5 Hali ham yo'q (frontend mock'da qolsin)
+
+Korxona **yaratish/tahrirlash** (admin), talaba **ariza yuborish** (`POST /api/student/place`) va shartnoma
+fayli yuklash, davomatni qo'lda tuzatish — endpoint'lari hali yo'q.
