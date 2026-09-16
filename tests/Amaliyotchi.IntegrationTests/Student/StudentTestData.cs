@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Headers;
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Domain.Attendance;
@@ -121,6 +122,61 @@ public static class StudentTestData
             await db.SaveChangesAsync();
             return attendance;
         });
+
+    /// <summary>Check-in/check-out multipart formasi: <c>lat</c>, <c>lng</c>, <c>accuracy</c>, <c>occurredAt</c>
+    /// va ixtiyoriy <c>photo</c>. <c>occurredAt</c> berilmasa — API soati bo'yicha 2 soniya oldin.</summary>
+    public static MultipartFormDataContent GeoForm(
+        this ApiFactory factory,
+        double lat = CompanyLat,
+        double lng = CompanyLng,
+        double accuracy = 10,
+        DateTimeOffset? occurredAt = null,
+        (string Name, string ContentType, byte[] Bytes)? photo = null)
+    {
+        var form = new MultipartFormDataContent
+        {
+            { new StringContent(lat.ToString(CultureInfo.InvariantCulture)), "lat" },
+            { new StringContent(lng.ToString(CultureInfo.InvariantCulture)), "lng" },
+            { new StringContent(accuracy.ToString(CultureInfo.InvariantCulture)), "accuracy" },
+            { new StringContent((occurredAt ?? factory.Clock.UtcNow.AddSeconds(-2)).ToString("O", CultureInfo.InvariantCulture)), "occurredAt" }
+        };
+
+        if (photo is var (name, contentType, bytes))
+        {
+            var part = new ByteArrayContent(bytes);
+            part.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+            form.Add(part, "photo", name);
+        }
+
+        return form;
+    }
+
+    /// <summary>Global sozlamani vaqtincha o'zgartiradi; <c>Dispose</c> da avvalgi qiymat qaytariladi
+    /// (integratsiya testlari bitta kolleksiyada ketma-ket ishlaydi).</summary>
+    public static async Task<IAsyncDisposable> UseSettingAsync(this ApiFactory factory, string key, string value)
+    {
+        var previous = await factory.WithDbAsync(async db =>
+        {
+            var setting = await db.AppSettings.SingleAsync(s => s.Key == key);
+            var old = setting.Value;
+            setting.Update(value, DateTimeOffset.UtcNow, null);
+            await db.SaveChangesAsync();
+            return old;
+        });
+
+        return new SettingReset(factory, key, previous);
+    }
+
+    private sealed class SettingReset(ApiFactory factory, string key, string previous) : IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync() =>
+            await factory.WithDbAsync(async db =>
+            {
+                var setting = await db.AppSettings.SingleAsync(s => s.Key == key);
+                setting.Update(previous, DateTimeOffset.UtcNow, null);
+                await db.SaveChangesAsync();
+            });
+    }
 
     public static MultipartFormDataContent DiaryForm(string text, string? learned = null, params (string Name, string ContentType, byte[] Bytes)[] files)
     {

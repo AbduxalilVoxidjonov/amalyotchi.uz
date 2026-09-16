@@ -22,6 +22,12 @@ public sealed class DailyAttendance : AuditableEntity
     public DateTimeOffset? CheckOutAt { get; private set; }
     public double? CheckOutDistanceM { get; private set; }
 
+    /// <summary>Qabul qilingan check-in selfisi (<c>StoredFileKind.CheckInPhoto</c>); rasm yuborilmagan bo'lsa — null.</summary>
+    public Guid? CheckInPhotoFileId { get; private set; }
+
+    /// <summary>Qabul qilingan check-out selfisi; rasm yuborilmagan bo'lsa — null.</summary>
+    public Guid? CheckOutPhotoFileId { get; private set; }
+
     /// <summary>Check-out qilinmagani uchun tizim avtomatik yopgan.</summary>
     public bool AutoClosed { get; private set; }
 
@@ -43,7 +49,8 @@ public sealed class DailyAttendance : AuditableEntity
     /// <summary>Qabul qilingan check-in'dan yozuv yaratadi. Rad etilgan verdict bilan chaqirish — xato:
     /// rad etilgan urinish faqat <see cref="AttendanceEvent"/> ga yoziladi.</summary>
     public static DailyAttendance CheckIn(
-        Guid studentUserId, Guid periodId, DateOnly date, DateTimeOffset at, double distanceM, double accuracyM, CheckInVerdict verdict)
+        Guid studentUserId, Guid periodId, DateOnly date, DateTimeOffset at, double distanceM, double accuracyM,
+        CheckInVerdict verdict, Guid? photoFileId = null)
     {
         ArgumentNullException.ThrowIfNull(verdict);
         if (!verdict.Accepted)
@@ -54,10 +61,11 @@ public sealed class DailyAttendance : AuditableEntity
         attendance.CheckInAt = at;
         attendance.CheckInDistanceM = distanceM;
         attendance.CheckInAccuracyM = accuracyM;
+        attendance.CheckInPhotoFileId = photoFileId;
         return attendance;
     }
 
-    public void CheckOut(DateTimeOffset at, double distanceM)
+    public void CheckOut(DateTimeOffset at, double distanceM, Guid? photoFileId = null)
     {
         if (!HasCheckedIn)
             throw new ConflictException(CheckInRejectReason.NoCheckIn.Message());
@@ -68,6 +76,7 @@ public sealed class DailyAttendance : AuditableEntity
 
         CheckOutAt = at;
         CheckOutDistanceM = distanceM;
+        CheckOutPhotoFileId = photoFileId;
     }
 
     /// <summary>Tasdiqlangan ruxsat uchun "sababli" kun yaratadi.</summary>

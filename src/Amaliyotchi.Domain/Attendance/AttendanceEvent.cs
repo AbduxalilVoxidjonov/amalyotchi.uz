@@ -33,6 +33,10 @@ public sealed class AttendanceEvent : BaseEntity, IAuditExempt
     public bool Accepted { get; private set; }
     public CheckInRejectReason RejectReason { get; private set; }
 
+    /// <summary>Urinish paytida olingan selfi (<c>StoredFileKind.CheckInPhoto</c>). Rasm yuborilmagan bo'lsa — null.
+    /// Rad etilgan urinishning rasmi ham saqlanadi: tyutor shubhani shu bo'yicha tekshiradi.</summary>
+    public Guid? PhotoFileId { get; private set; }
+
     public static AttendanceEvent Record(
         Guid studentUserId,
         Guid companyId,
@@ -44,7 +48,8 @@ public sealed class AttendanceEvent : BaseEntity, IAuditExempt
         double accuracyM,
         double distanceM,
         int radiusM,
-        CheckInVerdict verdict)
+        CheckInVerdict verdict,
+        Guid? photoFileId = null)
     {
         ArgumentNullException.ThrowIfNull(verdict);
         if (studentUserId == Guid.Empty)
@@ -63,7 +68,8 @@ public sealed class AttendanceEvent : BaseEntity, IAuditExempt
             DistanceM = distanceM,
             RadiusM = radiusM,
             Accepted = verdict.Accepted,
-            RejectReason = verdict.Reason
+            RejectReason = verdict.Reason,
+            PhotoFileId = photoFileId
         };
     }
 }

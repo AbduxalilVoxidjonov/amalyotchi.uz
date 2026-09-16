@@ -1,5 +1,6 @@
 using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Companies;
+using Amaliyotchi.Domain.Files;
 using Amaliyotchi.Domain.Identity;
 using Amaliyotchi.Domain.Leave;
 using Amaliyotchi.Domain.Practice;
@@ -39,6 +40,16 @@ public sealed class DailyAttendanceConfiguration : IEntityTypeConfiguration<Dail
             .HasForeignKey(x => x.LeaveRequestId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne<StoredFile>()
+            .WithMany()
+            .HasForeignKey(x => x.CheckInPhotoFileId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<StoredFile>()
+            .WithMany()
+            .HasForeignKey(x => x.CheckOutPhotoFileId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasIndex(x => new { x.StudentUserId, x.Date }).IsUnique();
         builder.HasIndex(x => new { x.PeriodId, x.Date });
         builder.HasIndex(x => x.Date);
@@ -71,6 +82,11 @@ public sealed class AttendanceEventConfiguration : IEntityTypeConfiguration<Atte
         builder.HasOne<Company>()
             .WithMany()
             .HasForeignKey(x => x.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<StoredFile>()
+            .WithMany()
+            .HasForeignKey(x => x.PhotoFileId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(x => new { x.Date, x.StudentUserId });

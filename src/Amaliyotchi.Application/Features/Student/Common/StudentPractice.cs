@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Amaliyotchi.Application.Features.Student.Common;
 
 /// <summary>Tizim sozlamalaridan talaba oqimiga kerakli qismi (yo'q kalit → domain default).</summary>
-internal sealed record StudentSettings(double MinGpsAccuracyM, int MinReportLength);
+internal sealed record StudentSettings(double MinGpsAccuracyM, int MinReportLength, bool CheckInPhotoRequired);
 
 /// <summary>Bitta talabaning amaliyot holati: profil (foydalanuvchi + guruh), faol davr, davr bo'yicha ariza
 /// (korxona bilan), bayramlar, sozlamalar. Barcha talaba handler'lari shu yerdan boshlanadi —
@@ -103,7 +103,7 @@ internal static class StudentPracticeLoader
     public static async Task<StudentSettings> LoadStudentSettingsAsync(
         this IApplicationDbContext db, CancellationToken cancellationToken)
     {
-        string[] keys = [SettingKeys.MinGpsAccuracy, SettingKeys.MinReportLength];
+        string[] keys = [SettingKeys.MinGpsAccuracy, SettingKeys.MinReportLength, SettingKeys.CheckInPhotoRequired];
         var values = await db.AppSettings
             .AsNoTracking()
             .Where(s => keys.Contains(s.Key))
@@ -111,7 +111,16 @@ internal static class StudentPracticeLoader
 
         return new StudentSettings(
             Int(values, SettingKeys.MinGpsAccuracy),
-            Int(values, SettingKeys.MinReportLength));
+            Int(values, SettingKeys.MinReportLength),
+            Bool(values, SettingKeys.CheckInPhotoRequired));
+    }
+
+    /// <summary>Mantiqiy sozlama: yo'q yoki buzuq qiymat → ta'rifdagi standart.</summary>
+    private static bool Bool(IReadOnlyDictionary<string, string> values, string key)
+    {
+        var definition = SettingKeys.Get(key);
+        var raw = values.GetValueOrDefault(key) ?? definition.DefaultValue;
+        return string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
     }
 
     private static int Int(IReadOnlyDictionary<string, string> values, string key)

@@ -1,5 +1,6 @@
 using Amaliyotchi.Application.Common.Security;
 using Amaliyotchi.Application.Features.Student;
+using Amaliyotchi.Application.Features.Student.Common;
 using Amaliyotchi.Application.Features.Student.Diary;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;

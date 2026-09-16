@@ -59,6 +59,8 @@ public static class SettingKeys
     public const string DailyReportRequired = "dailyReportRequired";
     public const string MinReportLength = "minReportLength";
     public const string CheckInWindow = "checkInWindow";
+    public const string CheckInPhotoRequired = "checkinPhotoRequired";
+    public const string MaxStudentsPerCompany = "maxStudentsPerCompany";
 
     public const string UnitMeters = "m";
     public const string UnitMinutes = "min";
@@ -82,7 +84,11 @@ public static class SettingKeys
         new(MinReportLength, "Hisobotning minimal uzunligi", SettingType.Int, UnitChars,
             "Shundan qisqa hisobot qabul qilinmaydi.", "150", 0, 5000),
         new(CheckInWindow, "Check-in oynasi", SettingType.Int, UnitMinutes,
-            "Ish boshlanishidan shuncha daqiqa o'tgach check-in yopiladi va talaba \"kelmadi\" bo'ladi.", "90", 15, 480)
+            "Ish boshlanishidan shuncha daqiqa o'tgach check-in yopiladi va talaba \"kelmadi\" bo'ladi.", "90", 15, 480),
+        new(CheckInPhotoRequired, "Check-in uchun rasm majburiy", SettingType.Bool, null,
+            "Yoqilgan bo'lsa check-in/check-out so'roviga selfi biriktirilmasa urinish qabul qilinmaydi.", "false"),
+        new(MaxStudentsPerCompany, "Korxonaga maksimal talaba", SettingType.Int, null,
+            "Shu sondan ko'p talaba bitta korxonaga biriktirilsa ogohlantirish chiqadi.", "10", 1, 200)
     ];
 
     private static readonly Dictionary<string, SettingDefinition> ByKey =

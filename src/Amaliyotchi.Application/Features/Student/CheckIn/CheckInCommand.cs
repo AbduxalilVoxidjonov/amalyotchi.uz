@@ -1,4 +1,5 @@
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Features.Student.Common;
 using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Exceptions;
 using Amaliyotchi.Domain.Practice;
@@ -6,10 +7,10 @@ using MediatR;
 
 namespace Amaliyotchi.Application.Features.Student.CheckIn;
 
-/// <summary><c>POST /api/student/checkin</c>. Javob — yangilangan <see cref="TodayDto"/>.
-/// 400: oyna ochilmagan/yopiq, ish kuni emas, GPS aniqligi yomon, davr; 409: radius tashqarisi, allaqachon belgilangan.
-/// Har urinish (rad etilgani ham) <see cref="AttendanceEvent"/> ga yoziladi.</summary>
-public sealed record CheckInCommand(double Lat, double Lng, double Accuracy, DateTimeOffset OccurredAt)
+/// <summary><c>POST /api/student/checkin</c> (multipart yoki JSON). Javob — yangilangan <see cref="TodayDto"/>.
+/// 400: oyna ochilmagan/yopiq, ish kuni emas, GPS aniqligi yomon, davr, rasm qoidalari; 409: radius tashqarisi,
+/// allaqachon belgilangan. Har urinish (rad etilgani ham) <see cref="AttendanceEvent"/> ga rasmi bilan yoziladi.</summary>
+public sealed record CheckInCommand(double Lat, double Lng, double Accuracy, DateTimeOffset OccurredAt, UploadedFile? Photo = null)
     : IRequest<TodayDto>, IGeoRequest;
 
 public sealed class CheckInCommandValidator : GeoRequestValidator<CheckInCommand>
@@ -17,13 +18,14 @@ public sealed class CheckInCommandValidator : GeoRequestValidator<CheckInCommand
     public CheckInCommandValidator(IClock clock) : base(clock) { }
 }
 
-internal sealed class CheckInCommandHandler(IApplicationDbContext db, ICurrentUser currentUser, IClock clock)
+internal sealed class CheckInCommandHandler(
+    IApplicationDbContext db, ICurrentUser currentUser, IClock clock, IFileStorage storage)
     : IRequestHandler<CheckInCommand, TodayDto>
 {
     public Task<TodayDto> Handle(CheckInCommand request, CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId ?? throw new ForbiddenException("Avtorizatsiya talab qilinadi.");
-        var attempt = new AttendanceAttempt(db, clock, userId);
+        var attempt = new AttendanceAttempt(db, clock, storage, userId);
 
         return attempt.RunAsync(
             request,
@@ -46,7 +48,7 @@ internal sealed class CheckInCommandHandler(IApplicationDbContext db, ICurrentUs
             apply: (s, verdict, attempt) =>
             {
                 var attendance = DailyAttendance.CheckIn(
-                    userId, s.Period.Id, s.Today, s.ReceivedAt, s.DistanceM, request.Accuracy, verdict);
+                    userId, s.Period.Id, s.Today, s.ReceivedAt, s.DistanceM, request.Accuracy, verdict, attempt.PhotoFileId);
 
                 var suspicion = SuspiciousDetector.Inspect(s.Location, s.ReceivedAt, s.Today, s.RecentEvents);
                 if (suspicion is not null)
