@@ -1,0 +1,98 @@
+/* Excel import modali — TutorForms.module.css bilan bir xil ritm */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.label {
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}
+.file {
+  font-size: var(--fs-sm2);
+  color: var(--color-text);
+}
+.file::file-selector-button {
+  margin-right: 10px;
+  padding: 6px 10px;
+  border: var(--border-input);
+  border-radius: var(--radius-md2);
+  background: var(--color-surface-input);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+.file::file-selector-button:hover {
+  background: var(--color-surface-hover);
+}
+.hint {
+  margin: 0;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  line-height: var(--lh-note);
+}
+.error {
+  margin: 0;
+  font-size: var(--fs-sm2);
+  color: var(--color-bad-fg);
+}
+.success {
+  margin: 0;
+  font-size: var(--fs-sm2);
+  color: var(--color-ok-fg);
+}
+.report {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: var(--border-input);
+}
+.tableWrap {
+  max-height: 260px;
+  overflow: auto;
+  border: var(--border-input);
+  border-radius: var(--radius-md2);
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm2);
+}
+.caption {
+  padding: 8px 10px;
+  text-align: left;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}
+.table th,
+.table td {
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+  border-top: var(--border-input);
+}
+.table th {
+  position: sticky;
+  top: 0;
+  background: var(--color-surface-input);
+  font-size: var(--fs-xs2);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-faint);
+}
+.num,
+.value {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}

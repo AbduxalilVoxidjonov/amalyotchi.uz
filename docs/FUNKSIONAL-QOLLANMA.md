@@ -64,7 +64,7 @@ Talaba interfeysi: Telegram Web App (TWA) · Tyutor/Admin interfeysi: veb-dashbo
 [1] TYUTOR amaliyot davrini ochadi
      sana oralig'i + kunlik soatlar + kechikish chegarasi + kurs/guruhlar
                      ↓
-[2] TYUTOR talabalar ro'yxatini yuklaydi (Excel/HEMIS/qo'lda)
+[2] TYUTOR talabalar ro'yxatini yuklaydi (Excel shablon / qo'lda)
      har bir talabaga Telegram orqali taklif havolasi boradi
                      ↓
 [3] TALABA kiradi → profilni to'ldiradi → korxonani kiritadi
@@ -193,8 +193,8 @@ Uchta usul:
 
 | Usul | Qachon ishlatiladi | Qanday |
 |---|---|---|
-| **Excel import** | Guruh bo'yicha ommaviy kiritish | Tizim shablon `.xlsx` beradi: FISH, HEMIS ID, kurs, guruh, telefon. Tyutor to'ldirib yuklaydi. Tizim xatolarni ko'rsatadi (takroriy ID, bo'sh maydon) va faqat to'g'rilarini qabul qiladi |
-| **HEMIS integratsiyasi** | Agar API ruxsati bo'lsa | Guruh tanlanadi → talabalar avtomatik tortiladi, rasm bilan |
+| **Excel import** | Guruh bo'yicha ommaviy kiritish | Tizim shablon `.xlsx` beradi: **FISH, HEMIS ID, guruh, telefon** (kurs guruhdan olinadi, alohida ustun emas) + "Yo'riqnoma" va mavjud guruhlar ro'yxati varaqlari. To'ldirilgan fayl yuklanadi; tizim xatolarni qator-baqator ko'rsatadi (takroriy ID, bo'sh maydon, noma'lum guruh) va faqat to'g'rilarini qabul qiladi. **Qurilgan** — hozircha admin panelida (`/admin/students` → "Shablon" va "Excel import") |
+| ~~HEMIS integratsiyasi~~ | — | **MVP ga kirmaydi**: HEMIS API ruxsati yo'q, bu 2-faza (`QURISH-TARTIBI` M17). Talabalar bazasi Excel import orqali quriladi |
 | **Qo'lda kiritish** | 1–2 ta talaba qo'shish | Forma to'ldiriladi |
 
 Har bir talaba yaratilgach, tizim unga **shaxsiy taklif havolasi** beradi (Telegram deep-link yoki SMS).

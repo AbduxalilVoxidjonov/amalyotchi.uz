@@ -63,5 +63,8 @@ public enum AuditAction
     TutorActivated = 44,
     TutorDeactivated = 45,
     TutorPasswordReset = 46,
-    TutorScopesChanged = 47
+    TutorScopesChanged = 47,
+
+    /// <summary>Admin Excel shabloni orqali talabalarni ommaviy import qildi.</summary>
+    StudentsImported = 48
 }

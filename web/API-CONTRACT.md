@@ -1,16 +1,16 @@
-# API-CONTRACT v3.1
+# API-CONTRACT v3.2
 
 Oxirgi yangilanish: 17.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
 esa haqiqiy controller/DTO/validator/handler kodidan olingan — har bir maydon, chegara va status kod kodda bor.
 Frontend (`web/dashboard`, `web/twa`, `web/shared`) shu shaklga moslanishi kerak; v1 bilan farqlar §5 da,
-**v2 bilan farqlar §6 da**, v3.1 da qo'shilganlari — §6.6.
+**v2 bilan farqlar §6 da**, v3.1 da qo'shilganlari — §6.6, v3.2 (talabalar Excel importi) — §6.8.
 
-Jami **81 ta endpoint**: Auth 5 · Admin 45 · Reports 1 · Tutor 19 · Student (TWA) 10 · Files 1.
+Jami **83 ta endpoint**: Auth 5 · Admin 47 · Reports 1 · Tutor 19 · Student (TWA) 10 · Files 1.
 
-> Kontrollerlarda `[Http*]` atributlari **79 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
+> Kontrollerlarda `[Http*]` atributlari **81 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
 > har birida ikkitadan action bor (`multipart/form-data` va `application/json` — `[Consumes]` bilan ajratiladi,
-> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **81**.
+> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **83**.
 
 ---
 
@@ -659,6 +659,65 @@ interface StudentRow {
   status: AdminStudentStatus; /*!telegramLinked → unlinked; suspiciousDays≥2 || (elapsed>0 && pct<70) → flagged; aks holda active*/
 }
 ```
+
+#### GET `/api/admin/students/import/template` · 200
+
+To'ldirish uchun **`.xlsx` shablon** (`Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`,
+`Content-Disposition: attachment; filename="talabalar-import-shablon.xlsx"`). Uchta varaq:
+
+| Varaq | Mazmuni |
+|---|---|
+| **Talabalar** | Faqat sarlavha qatori: `FISH *` · `HEMIS ID *` · `Guruh *` · `Telefon`. HEMIS ID va telefon ustunlari **matn** formatida (uzun raqam `3,42201E+11` ga aylanib ketmasin) |
+| **Yo'riqnoma** | To'ldirish qoidalari va namuna qatorlar |
+| **Guruhlar** | Mavjud **faol** guruhlar: `Guruh · Kurs · Yo'nalish · Kafedra · Fakultet` (faol o'quv yilidagi, zanjiri to'liq faol bo'lganlari) |
+
+Endpoint `AdminOnly`, ya'ni oddiy `<a href>` bilan ochilmaydi (401) — frontend `shared/files/downloadAuthFile`
+orqali token bilan oladi (§6.7 bilan bir xil sabab).
+
+#### POST `/api/admin/students/import` · `multipart/form-data` · 200 · 400
+
+Forma: **`file`** — shablon bo'yicha to'ldirilgan `.xlsx` (≤ 5 MB, ≤ 1000 ma'lumot qatori).
+
+Fayl **ustun tartibi bo'yicha emas, sarlavha nomlari bo'yicha** o'qiladi: varaq "Talabalar" deb nomlangan bo'lsa
+o'sha, aks holda birinchi varaq; sarlavha qatori birinchi 20 qator ichidan qidiriladi (tepada sarlavha/izoh bo'lishi mumkin);
+ustun nomi normallashtiriladi (faqat harf-raqam, katta-kichik farqsiz), shuning uchun `FISH`, `F.I.SH *`, `FIO`
+yoki `HEMIS ID`, `hemisid` — bir xil. Tanilmagan ustunlar (masalan `Kurs`, `T/R`) e'tiborsiz qoldiriladi —
+**kurs guruhdan olinadi**. Butunlay bo'sh qatorlar tashlab yuboriladi, raqam sifatida kiritilgan HEMIS ID/telefon
+butun son ko'rinishiga keltiriladi.
+
+```ts
+interface StudentImportError {
+  row: number    /*Exceldagi qator raqami*/;
+  column: string /*"FISH" | "HEMIS ID" | "Guruh" | "Telefon"*/;
+  value: string | null;
+  message: string;
+}
+
+interface StudentImportResult {
+  totalRows: number /*o'qilgan ma'lumot qatorlari*/;
+  created: number;
+  failed: number    /*created + failed === totalRows*/;
+  errors: StudentImportError[] /*bir qatorda bir nechta xato bo'lsa — bir nechta yozuv*/;
+}
+```
+
+**Qisman import:** xato qatorlar tashlab yuboriladi, to'g'rilari saqlanadi — javob doimo **200**
+(hatto hammasi xato bo'lsa ham; `created: 0`). Qator xatolari:
+
+| Ustun | Xato |
+|---|---|
+| FISH | `"FISH bo'sh."` · `"FISH 200 ta belgidan oshmasligi kerak."` |
+| HEMIS ID | `"HEMIS ID bo'sh."` · `"HEMIS ID 5–20 ta raqamdan iborat bo'lishi kerak."` · `"Bu HEMIS ID faylda takrorlanmoqda."` · `"Bu HEMIS ID bilan talaba allaqachon bor."` |
+| Guruh | `"Guruh bo'sh."` · `"Bunday faol guruh yo'q — shablonning «Guruhlar» varag'idan tanlang."` · bir nechta yo'nalishda bir xil nomli guruh bo'lsa — `"Bu nomli guruh bir nechta yo'nalishda bor (…) — nomini aniqlashtiring."` |
+| Telefon | `"Telefon raqami noto'g'ri. Namuna: +998901234567"` · `"Bu telefon raqami faylda takrorlanmoqda."` · `"Bu telefon raqami bilan foydalanuvchi bor."` |
+
+**400** (butun faylga tegishli): fayl tanlanmagan/bo'sh, hajmi 5 MB dan katta, kengaytmasi `.xlsx` emas
+(validatsiya — `errors` bilan); fayl o'qilmadi (`"Faylni o'qib bo'lmadi — u haqiqiy .xlsx (Excel) fayli bo'lishi kerak."`),
+sarlavha qatori topilmadi, qatorlar 1000 tadan ko'p.
+
+Yaratilgan talaba: `User` (rol `student`, parolsiz, Telegramsiz — ro'yxatda holati **`unlinked`**), fakulteti
+guruh zanjiridan olinadi; `StudentProfile` (`hemisId`, guruh, holat `active`). Import audit jurnaliga bitta
+`studentsImported` yozuvi bilan tushadi (`changes`: fayl nomi va sanoqlar). Taklif tokeni hozircha berilmaydi.
 
 #### GET `/api/admin/students/{id}` · 200 · 404
 
@@ -1991,3 +2050,19 @@ Ta'sir qilgan joylar: kundalik fayllari (tyutor sahifasi va talaba profili), sha
 
 Demo seed endi har 3-kundalikka bir betli PDF biriktiradi (`DemoFiles.OnePagePdf`) — stendda fayl oqimini
 ko'rish uchun; selfi va shartnoma fayllari seed qilinmaydi (ular haqiqiy yuklashdan keladi).
+
+### 6.8 v3.1 → v3.2 (17.09.2026): talabalar Excel importi
+
+- **HEMIS'dan tortish yo'q.** `/admin/students` toolbar'idagi "HEMIS dan tortish" tugmasi olib tashlandi —
+  HEMIS API integratsiyasi 2-faza (`QURISH-TARTIBI` M17). Talabalar bazasi **Excel import** orqali quriladi.
+- Yangi endpoint'lar (2 ta):
+
+| #   | Endpoint                                       | Policy      | Javob                                  | Bo'lim |
+| --- | ---------------------------------------------- | ----------- | -------------------------------------- | ------ |
+| N13 | `GET /api/admin/students/import/template`      | `AdminOnly` | `.xlsx` fayl (3 varaq)                 | §2.3   |
+| N14 | `POST /api/admin/students/import` (multipart)  | `AdminOnly` | `StudentImportResult` · 400            | §2.3   |
+
+- Frontend: `/admin/students` toolbar'ida **"Shablon"** (yuklab olish) va **"Excel import"** (modal) tugmalari.
+  Modal: shablonni yuklab olish → faylni tanlash → import → hisobot (qo'shildi / qabul qilinmadi / jami +
+  rad etilgan qatorlar jadvali). Shablon token talab qilgani uchun `shared/files/downloadAuthFile` bilan olinadi.
+- `AuditAction` ga `studentsImported = 48` qo'shildi (baza qiymatlari o'zgarmagan).

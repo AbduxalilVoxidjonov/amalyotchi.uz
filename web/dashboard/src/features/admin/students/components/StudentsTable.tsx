@@ -2,6 +2,7 @@ import { Badge, Button, ProgressBar, type DataTableColumn } from '@/shared/ui';
 import { AdminTable, type TableStateProps } from '../../components/AdminTable';
 import { RowLink } from '../../components/RowLink';
 import { STUDENT_STATUS_LABEL, type Student } from '../types';
+import styles from './StudentsTable.module.css';
 
 /** SPEC §9.6 ustunlari. ❓ `bar:0` — dizaynda foiz bo'sh; matn o'rni (38px) saqlanadi — track'lar teng. */
 const COLUMNS: DataTableColumn<Student>[] = [
@@ -46,14 +47,20 @@ const COLUMNS: DataTableColumn<Student>[] = [
 ];
 
 export interface StudentsTableProps extends TableStateProps<Student> {
+  /** Shablonni yuklab olish (`GET .../import/template`). */
+  onDownloadTemplate: () => void;
+  templateLoading?: boolean;
+  /** Shablon yuklanmasa — tugmalar yonidagi xabar. */
+  templateError?: string | null;
   onImportExcel: () => void;
-  onPullHemis: () => void;
   onExport: () => void;
 }
 
 export function StudentsTable({
+  onDownloadTemplate,
+  templateLoading = false,
+  templateError = null,
   onImportExcel,
-  onPullHemis,
   onExport,
   ...state
 }: StudentsTableProps) {
@@ -66,11 +73,16 @@ export function StudentsTable({
       emptyTitle="Talabalar yo'q"
       actions={
         <>
+          {templateError && (
+            <span role="alert" className={styles.error}>
+              {templateError}
+            </span>
+          )}
+          <Button size="xs" onClick={onDownloadTemplate} disabled={templateLoading}>
+            {templateLoading ? 'Tayyorlanmoqda…' : 'Shablon'}
+          </Button>
           <Button size="xs" onClick={onImportExcel}>
             Excel import
-          </Button>
-          <Button size="xs" onClick={onPullHemis}>
-            HEMIS dan tortish
           </Button>
           <Button size="xs" onClick={onExport}>
             Excel

@@ -6,9 +6,15 @@ import {
   buildDiaries,
   mockStudents as tutorMockStudents,
 } from '@/features/tutor/students/mocks';
+import { problemResponse } from '../shared/mockProblem';
 import { paginateMock } from '../shared/paginate';
-import { STUDENTS_ENDPOINT } from './api';
-import type { AdminStudentDetail, AdminStudentTutor, Student } from './types';
+import {
+  STUDENTS_ENDPOINT,
+  STUDENTS_IMPORT_ENDPOINT,
+  STUDENTS_TEMPLATE_ENDPOINT,
+  STUDENTS_TEMPLATE_FILE_NAME,
+} from './api';
+import type { AdminStudentDetail, AdminStudentTutor, Student, StudentImportResult } from './types';
 
 /** Backend `StudentRow` shaklida (SPEC-SCREENS §9.6 raqamlari). */
 export const mockStudents: Student[] = [
@@ -142,7 +148,42 @@ function buildAdminDetail(adminId: string): AdminStudentDetail | null {
   };
 }
 
+/** Mock hisobot: bir nechta qator qabul qilinadi, xatolari ro'yxat bo'lib qaytadi (backend shakli). */
+export const mockImportResult: StudentImportResult = {
+  totalRows: 5,
+  created: 3,
+  failed: 2,
+  errors: [
+    { row: 4, column: 'HEMIS ID', value: '12ab', message: "HEMIS ID 5–20 ta raqamdan iborat bo'lishi kerak." },
+    {
+      row: 6,
+      column: 'Guruh',
+      value: '999-99',
+      message: "Bunday faol guruh yo'q — shablonning «Guruhlar» varag'idan tanlang.",
+    },
+  ],
+};
+
 export const studentsHandlers: HttpHandler[] = [
+  // Shablon — haqiqiy .xlsx emas, faqat oqimni tekshirish uchun (blob + fayl nomi).
+  http.get(STUDENTS_TEMPLATE_ENDPOINT, () =>
+    new HttpResponse('mock-xlsx', {
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': `attachment; filename="${STUDENTS_TEMPLATE_FILE_NAME}"`,
+      },
+    }),
+  ),
+
+  http.post(STUDENTS_IMPORT_ENDPOINT, async ({ request }) => {
+    const form = await request.formData().catch(() => null);
+    // Fayl nomi jsdom/undici serializatsiyasida yo'qolishi mumkin — faqat mavjudligini tekshiramiz.
+    if (!form?.has('file')) {
+      return problemResponse(400, "Ma'lumotlar noto'g'ri", 'Excel fayl tanlanmagan.');
+    }
+    return HttpResponse.json(mockImportResult);
+  }),
+
   http.get(`${STUDENTS_ENDPOINT}/:id/attendance`, ({ params, request }) => {
     const source = sourceId(String(params['id']));
     if (!source) return notFound();

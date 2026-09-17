@@ -1,0 +1,6 @@
+/* Toolbar tugmalari yonidagi xato (shablon yuklanmadi) */
+.error {
+  align-self: center;
+  font-size: var(--fs-xs2);
+  color: var(--color-bad-fg);
+}

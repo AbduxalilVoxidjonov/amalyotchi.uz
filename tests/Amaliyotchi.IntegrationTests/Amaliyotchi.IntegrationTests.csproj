@@ -12,5 +12,7 @@
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Testcontainers.PostgreSql" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <!-- Talabalar importi testlari: shablonni o'qish va yuklanadigan .xlsx ni yasash -->
+    <PackageReference Include="ClosedXML" />
   </ItemGroup>
 </Project>

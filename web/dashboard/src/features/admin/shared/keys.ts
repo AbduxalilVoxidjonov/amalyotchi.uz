@@ -33,6 +33,8 @@ export const adminKeys = {
   tutor: (id: string) => ['admin', 'tutor', id] as const,
   tutorScopeTree: (id: string) => ['admin', 'tutor', id, 'scope-tree'] as const,
   students: (params: ListParams) => ['admin', 'students', params] as const,
+  /** Barcha `students(params)` so'rovlarini invalidate qilish uchun (Excel importdan keyin). */
+  studentsAll: () => ['admin', 'students'] as const,
   /** `GET /students/{id}` — talaba profili (davomat/kundalik kalitlari `tutorKeys.students` da). */
   student: (id: string) => ['admin', 'student', id] as const,
   companies: (params: ListParams) => ['admin', 'companies', params] as const,
