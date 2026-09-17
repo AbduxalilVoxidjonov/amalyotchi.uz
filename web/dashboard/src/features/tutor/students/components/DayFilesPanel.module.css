@@ -1,0 +1,52 @@
+/* Kun oynasining chap ustuni — talaba yuborgan fayllar (kattaroq ko'rinishda). */
+.count {
+  font-weight: var(--fw-regular);
+  color: var(--color-text-faint);
+  text-transform: none;
+  letter-spacing: normal;
+}
+.list {
+  display: grid;
+  gap: 14px;
+  margin-top: 10px;
+}
+.item {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border: var(--border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.title {
+  font-size: var(--fs-sm2);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+}
+.note {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}
+/* Kundalik fayllari (AuthFileEmbed o'zining figure'i bilan keladi) */
+.attachments {
+  padding: 12px;
+  border: var(--border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.empty {
+  margin: 10px 0 0;
+  padding: 14px;
+  border: var(--border-dashed);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+  color: var(--color-text-faint);
+}

@@ -21,6 +21,7 @@ import {
   type StudentAttendanceDay,
 } from '../types';
 import { PhotoPreview } from './PhotoPreview';
+import { DayFilesPanel, type DaySelfie } from './DayFilesPanel';
 import { DiaryDayCard } from './DiaryDayCard';
 import styles from './AttendanceDayTable.module.css';
 
@@ -160,7 +161,8 @@ export interface AttendanceDayTableProps {
   area?: StudentApiArea;
 }
 
-/** Bitta belgilanish (kirish/chiqish): vaqt, masofa, aniqlik, nuqta va o'sha paytdagi selfi. */
+/** Bitta belgilanish (kirish/chiqish): vaqt, masofa, aniqlik va nuqta.
+ * Selfi bu yerda emas — u chapdagi "Yuborilgan fayllar" ustunida, kattaroq ko'rinishda. */
 function PunchBlock({
   kind,
   punch,
@@ -171,7 +173,6 @@ function PunchBlock({
   date: string;
 }) {
   const title = kind === 'in' ? 'Kirish' : 'Chiqish';
-  const label = `${fmtDateOnly(date)} ${kind === 'in' ? 'check-in' : 'check-out'} rasmi`;
 
   if (!punch) {
     return (
@@ -213,22 +214,40 @@ function PunchBlock({
         height={140}
       />
 
-      {punch.photoUrl ? (
-        <div className={styles.panelPhoto}>
-          <Eyebrow margin="none">Yuborgan rasmi</Eyebrow>
-          <PhotoPreview url={punch.photoUrl} label={label} size="card" />
-        </div>
-      ) : (
-        <p className={styles.punchEmpty}>Rasm yuborilmagan</p>
-      )}
+      {!punch.photoUrl && <p className={styles.punchEmpty}>Selfi yuborilmagan</p>}
     </div>
   );
 }
 
+/** Kun oynasining chap ustuni uchun selfilar (bo'lganlari). */
+function daySelfies(day: StudentAttendanceDay): DaySelfie[] {
+  const date = fmtDateOnly(day.date);
+  const items: DaySelfie[] = [];
+  if (day.checkIn?.photoUrl) {
+    items.push({
+      url: day.checkIn.photoUrl,
+      title: 'Kirish selfisi',
+      note: day.checkIn.at,
+      label: `${date} check-in rasmi`,
+    });
+  }
+  if (day.checkOut?.photoUrl) {
+    items.push({
+      url: day.checkOut.photoUrl,
+      title: 'Chiqish selfisi',
+      note: day.checkOut.at,
+      label: `${date} check-out rasmi`,
+    });
+  }
+  return items;
+}
+
 /**
  * Kundalik jadval (KONTRAKT §2.2) — har bir amaliyot kuni bir qator.
- * Sana bosilsa, o'sha kun **oynada** (modal) ochiladi: talaba yuborgan lokatsiya, rasm va
- * shu kunga yozgan kundaligi (matn, o'rgangani, fayllari, ball va tyutor izohi).
+ * Sana bosilsa, o'sha kun **oynada** (modal) ochiladi. Oyna ikki ustunli (keng ekranda):
+ * CHAPDA — talaba o'sha kuni yuborgan fayllar kattaroq ko'rinishda (check-in/check-out selfisi,
+ * kundalikka biriktirilgan PDF/rasm), O'NGDA — qolgan ma'lumot: belgilanish vaqti, masofa, aniqlik,
+ * xarita, kun sanoqlari va kundalik matni (baholash bilan). Fayl bo'lmasa — bitta ustun.
  */
 export function AttendanceDayTable({
   days,
@@ -241,6 +260,11 @@ export function AttendanceDayTable({
   const diary = selected ? (diaries.find((e) => e.date === selected.date) ?? null) : null;
   const status = selected ? dayStatusLabel(selected) : null;
   const review = useDiaryReview(area);
+
+  // Chap ustun — talaba yuborgan fayllar; ular bo'lmasa oyna bir ustunli qoladi.
+  const selfies = selected ? daySelfies(selected) : [];
+  const attachments = diary?.files ?? [];
+  const hasFiles = selfies.length > 0 || attachments.length > 0;
 
   return (
     <>
@@ -265,7 +289,7 @@ export function AttendanceDayTable({
           review.reset();
           setSelectedDate(null);
         }}
-        width="min(1040px, 94vw)"
+        width="min(1180px, 96vw)"
         title={
           selected && status ? (
             <span className={styles.modalTitle}>
@@ -278,58 +302,68 @@ export function AttendanceDayTable({
         }
       >
         {selected && (
-          <div className={styles.panel}>
-            <div className={styles.punches}>
-              <PunchBlock kind="in" punch={selected.checkIn} date={selected.date} />
-              <PunchBlock kind="out" punch={selected.checkOut} date={selected.date} />
-            </div>
+          <div className={styles.panel} data-files={hasFiles || undefined}>
+            <DayFilesPanel
+              className={styles.filesCol}
+              selfies={selfies}
+              attachments={attachments}
+            />
 
-            <div className={styles.panelMain}>
-              <dl className={styles.panelFacts}>
-                <div>
-                  <dt>Urinishlar</dt>
-                  <dd>
-                    {selected.attempts} ta
-                    {selected.rejectedAttempts > 0 && ` · ${selected.rejectedAttempts} rad etilgan`}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Ish kuni</dt>
-                  <dd>{selected.isWorkDay ? 'Ha' : "Yo'q"}</dd>
-                </div>
-                {radiusM !== null && (
+            <section className={styles.detailsCol} aria-label="Kun ma'lumotlari">
+              <div className={styles.punches}>
+                <PunchBlock kind="in" punch={selected.checkIn} date={selected.date} />
+                <PunchBlock kind="out" punch={selected.checkOut} date={selected.date} />
+              </div>
+
+              <div className={styles.panelMain}>
+                <dl className={styles.panelFacts}>
                   <div>
-                    <dt>Radius</dt>
-                    <dd>{fmtDistance(radiusM)}</dd>
+                    <dt>Urinishlar</dt>
+                    <dd>
+                      {selected.attempts} ta
+                      {selected.rejectedAttempts > 0 &&
+                        ` · ${selected.rejectedAttempts} rad etilgan`}
+                    </dd>
                   </div>
+                  <div>
+                    <dt>Ish kuni</dt>
+                    <dd>{selected.isWorkDay ? 'Ha' : "Yo'q"}</dd>
+                  </div>
+                  {radiusM !== null && (
+                    <div>
+                      <dt>Radius</dt>
+                      <dd>{fmtDistance(radiusM)}</dd>
+                    </div>
+                  )}
+                </dl>
+                {selected.suspiciousReason && (
+                  <p className={styles.reason}>{selected.suspiciousReason}</p>
                 )}
-              </dl>
-              {selected.suspiciousReason && (
-                <p className={styles.reason}>{selected.suspiciousReason}</p>
-              )}
-              {selected.manualReason && <p className={styles.reason}>{selected.manualReason}</p>}
-            </div>
+                {selected.manualReason && <p className={styles.reason}>{selected.manualReason}</p>}
+              </div>
 
-            <div className={styles.panelDiary}>
-              <Eyebrow margin="none">Shu kunga yuborgan kundaligi</Eyebrow>
-              {diary ? (
-                <DiaryDayCard
-                  entry={diary}
-                  review={{
-                    pending: review.isPending,
-                    error: review.error ? errorMessage(review.error) : undefined,
-                    onReview: (body) => review.mutate({ id: diary.id, body }),
-                  }}
-                />
-              ) : selected.diary ? (
-                <p className={styles.punchEmpty}>
-                  Kundalik yuborilgan ({DIARY_STATUS_LABEL[selected.diary.status].label}), lekin
-                  matni yuklanmadi — sahifani yangilang.
-                </p>
-              ) : (
-                <p className={styles.punchEmpty}>Bu kunga kundalik yuborilmagan.</p>
-              )}
-            </div>
+              <div className={styles.panelDiary}>
+                <Eyebrow margin="none">Shu kunga yuborgan kundaligi</Eyebrow>
+                {diary ? (
+                  <DiaryDayCard
+                    entry={diary}
+                    showFiles={false}
+                    review={{
+                      pending: review.isPending,
+                      error: review.error ? errorMessage(review.error) : undefined,
+                      onReview: (body) => review.mutate({ id: diary.id, body }),
+                    }}
+                  />
+                ) : selected.diary ? (
+                  <p className={styles.punchEmpty}>
+                    Kundalik yuborilgan ({DIARY_STATUS_LABEL[selected.diary.status].label}), lekin
+                    matni yuklanmadi — sahifani yangilang.
+                  </p>
+                ) : (
+                  <p className={styles.punchEmpty}>Bu kunga kundalik yuborilmagan.</p>
+                )}
+              </div>
+            </section>
           </div>
         )}
       </Modal>

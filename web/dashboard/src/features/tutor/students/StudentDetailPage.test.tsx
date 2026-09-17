@@ -141,12 +141,14 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
     expect(within(panel).getAllByText(/^41\.\d+, 69\.\d+$/).length).toBeGreaterThan(0);
     expect(within(panel).getByRole('img', { name: /Kirish nuqtasi/ })).toBeInTheDocument();
 
-    // Talaba yuborgan check-in rasmi shu panelda ham ochiladi.
+    // Talaba yuborgan selfi — chapdagi "Yuborilgan fayllar" ustunida (kattaroq ko'rinishda).
+    const files = within(panel).getByRole('region', { name: 'Yuborilgan fayllar' });
+    expect(within(files).getByText('Kirish selfisi')).toBeInTheDocument();
     expect(
-      within(panel).getByRole('button', { name: '07.09.2026 check-in rasmi — kattalashtirish' }),
+      within(files).getByRole('button', { name: '07.09.2026 check-in rasmi — kattalashtirish' }),
     ).toBeInTheDocument();
 
-    // Shu kunga yozgan kundaligi — matni, o'rgangani va ball bilan.
+    // Shu kunga yozgan kundaligi — matni, o'rgangani va ball bilan (o'ng ustunda).
     const diary = within(panel).getByRole('article', { name: 'Kundalik: 07.09.2026' });
     expect(within(diary).getByText(/O'rganganim:/)).toBeInTheDocument();
     expect(within(diary).getByText(/yuborilgan \d{2}:\d{2}/)).toBeInTheDocument();
@@ -202,7 +204,7 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
     );
   });
 
-  it("kun oynasida kundalik matni va yuborgan PDF'i joyida ochiladi", async () => {
+  it("kun oynasida fayllar chapda, qolgan ma'lumot o'ngda — PDF joyida ochiladi", async () => {
     const user = userEvent.setup();
     renderStudentDetail('/tutor/students/s-341030');
 
@@ -210,29 +212,37 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
     const table = await screen.findByRole('table', { name: 'Kundalik jadval' });
     await user.click(within(table).getByText('12.10.2026'));
     const dialog = await screen.findByRole('dialog', { name: /12\.10\.2026 — kun tafsiloti/ });
-    const card = within(dialog).getByRole('article', { name: 'Kundalik: 12.10.2026' });
 
+    // Ikki ustun: fayllar (chapda, DOM'da birinchi) va kun ma'lumotlari (o'ngda).
+    const files = within(dialog).getByRole('region', { name: 'Yuborilgan fayllar' });
+    const details = within(dialog).getByRole('region', { name: "Kun ma'lumotlari" });
+    expect(files.compareDocumentPosition(details) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // Kundalik matni va baholash — o'ng ustunda.
+    const card = within(details).getByRole('article', { name: 'Kundalik: 12.10.2026' });
     expect(within(card).getByText(/ma'lumotlar bazasi sxemasini/)).toBeInTheDocument();
     expect(within(card).getByText(/O'rganganim:/)).toBeInTheDocument();
+    // Fayllar endi kartada takrorlanmaydi.
+    expect(within(card).queryByRole('link', { name: 'kunlik_hisobot.pdf' })).not.toBeInTheDocument();
 
     // Fayllar bosilmasdan, joyida ochiq: PDF — iframe, rasm — img (token bilan yuklangan blob).
     await waitFor(() =>
-      expect(within(card).getByTitle('kunlik_hisobot.pdf')).toHaveAttribute(
+      expect(within(files).getByTitle('kunlik_hisobot.pdf')).toHaveAttribute(
         'src',
         'blob:mock-photo',
       ),
     );
-    expect(within(card).getByRole('img', { name: /ish_jarayoni_.*\.jpg/ })).toHaveAttribute(
+    expect(within(files).getByRole('img', { name: /ish_jarayoni_.*\.jpg/ })).toHaveAttribute(
       'src',
       'blob:mock-photo',
     );
     // Fayl nomi — havola: bosilsa yangi oynada to'liq ochiladi; yonida ochish/yuklab olish.
-    expect(within(card).getByRole('link', { name: 'kunlik_hisobot.pdf' })).toHaveAttribute(
+    expect(within(files).getByRole('link', { name: 'kunlik_hisobot.pdf' })).toHaveAttribute(
       'href',
       'blob:mock-photo',
     );
-    expect(within(card).getAllByRole('link', { name: 'Yangi oynada ochish' })).toHaveLength(2);
-    const downloads = within(card).getAllByRole('link', { name: 'Yuklab olish' });
+    expect(within(files).getAllByRole('link', { name: 'Yangi oynada ochish' })).toHaveLength(2);
+    const downloads = within(files).getAllByRole('link', { name: 'Yuklab olish' });
     expect(downloads).toHaveLength(2);
     expect(downloads[1]).toHaveAttribute('download', 'kunlik_hisobot.pdf');
 

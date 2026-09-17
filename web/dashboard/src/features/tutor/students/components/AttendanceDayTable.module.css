@@ -15,10 +15,31 @@
   font-size: var(--fs-xs2);
   color: var(--color-text-muted);
 }
-/* Kun tafsiloti — modal ichidagi mazmun (jadval ostida emas, alohida oynada). */
+/* Kun tafsiloti — modal ichidagi mazmun (jadval ostida emas, alohida oynada).
+   Keng ekranda ikki ustun: chapda talaba yuborgan fayllar (kattaroq), o'ngda qolgan ma'lumot.
+   Fayl bo'lmasa (`data-files` yo'q) — bitta ustun, yarim bo'sh oyna qolmasin. */
 .panel {
   display: grid;
+  gap: 16px;
+  align-items: start;
+}
+@media (min-width: 981px) {
+  .panel[data-files] {
+    grid-template-columns: minmax(360px, 1.05fr) minmax(330px, 1fr);
+  }
+  /* O'ng ustun torroq — kirish/chiqish bloklari yonma-yon emas, ustma-ust turadi
+     (faktlar va xarita siqilib qolmasin). */
+  .panel[data-files] .punches {
+    grid-template-columns: 1fr;
+  }
+}
+.filesCol {
+  min-width: 0;
+}
+.detailsCol {
+  display: grid;
   gap: 14px;
+  min-width: 0;
 }
 .modalTitle {
   display: inline-flex;
@@ -74,13 +95,13 @@
   line-height: var(--lh-prose);
   color: var(--color-bad-fg);
 }
-.panelPhoto {
-  display: grid;
-  gap: 8px;
-}
-
-@media (max-width: 900px) {
+@media (max-width: 980px) {
   .punches {
     grid-template-columns: 1fr;
+  }
+  /* Tor ekranda ustunlar ustma-ust tushadi: avval kun ma'lumoti, keyin fayllar —
+     fayllar baland bo'ladi, ular tepada bo'lsa vaqt/masofa ko'rinmay qoladi. */
+  .panel[data-files] > .filesCol {
+    order: 2;
   }
 }

@@ -22,6 +22,11 @@ export interface DiaryDayCardProps {
         onReview: (body: DiaryReviewRequest) => void;
       }
     | undefined;
+  /**
+   * `false` — biriktirilgan fayllar bu kartada ko'rsatilmaydi. Kun oynasida ular chapdagi
+   * "Yuborilgan fayllar" ustunida (selfilar bilan birga, kattaroq) turadi.
+   */
+  showFiles?: boolean;
 }
 
 /**
@@ -30,7 +35,7 @@ export interface DiaryDayCardProps {
  * PDF qilib yuboradi — `AuthFileEmbed` uni token bilan yuklab, shu yerda ko'rsatadi), tyutor izohi
  * va baholash qatori. Kundaliklar sahifasidagi karta — `diaries/components/DiaryCard.tsx`.
  */
-export function DiaryDayCard({ entry, review }: DiaryDayCardProps) {
+export function DiaryDayCard({ entry, review, showFiles = true }: DiaryDayCardProps) {
   const s = DIARY_STATUS_LABEL[entry.status];
 
   return (
@@ -61,9 +66,7 @@ export function DiaryDayCard({ entry, review }: DiaryDayCardProps) {
         </p>
       )}
 
-      {entry.files.map((f) => (
-        <AuthFileEmbed key={f.url} url={f.url} name={f.name} />
-      ))}
+      {showFiles && entry.files.map((f) => <AuthFileEmbed key={f.url} url={f.url} name={f.name} />)}
 
       {entry.comment && (
         <p className={styles.note}>
