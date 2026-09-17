@@ -18,4 +18,19 @@ public sealed class StudentPlaceController(ISender sender) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PracticePlaceDto>> Get(CancellationToken cancellationToken)
         => Ok(await sender.Send(new GetPracticePlaceQuery(), cancellationToken));
+
+    /// <summary>Amaliyot joyini tanlash: talaba faqat <c>{ tin }</c> (STIR) yuboradi, korxona
+    /// ma'lumoti admin oldindan kiritgan yozuvdan olinadi. Ariza tyutorga <c>Submitted</c> holatida
+    /// boradi. Faol korxona topilmasa → 404; faol davr yo'q yoki ariza allaqachon bor → 409.</summary>
+    [HttpPost]
+    [ProducesResponseType<PracticePlaceDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<PracticePlaceDto>> Submit(
+        SubmitPracticePlaceCommand command, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(command, cancellationToken);
+        return StatusCode(StatusCodes.Status201Created, result);
+    }
 }

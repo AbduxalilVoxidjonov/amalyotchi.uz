@@ -109,6 +109,14 @@ public sealed class Company : AuditableEntity, ISoftDeletable
 
     public void Activate() => IsActive = true;
 
+    /// <summary>Arxivlash (soft delete). Chaqiruvchi oldindan korxona faol emasligini va unga
+    /// biriktirilgan talaba yo'qligini tekshirishi shart — bu qoidalar Application qatlamida (409).</summary>
+    public void Delete(DateTimeOffset now)
+    {
+        IsDeleted = true;
+        DeletedAt = now;
+    }
+
     private static string Required(string? value, string label, int maxLength)
     {
         var trimmed = value?.Trim();

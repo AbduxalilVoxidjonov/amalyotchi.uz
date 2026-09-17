@@ -1,3 +1,5 @@
+using Amaliyotchi.Application.Common.Models;
+
 namespace Amaliyotchi.Application.Features.Admin.Students;
 
 /// <summary>Excel (xlsx) bilan ishlash porti. Amalga oshirilishi Infrastructure'da (ClosedXML) —

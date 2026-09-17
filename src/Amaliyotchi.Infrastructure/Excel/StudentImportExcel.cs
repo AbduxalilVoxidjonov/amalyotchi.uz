@@ -1,5 +1,4 @@
-using System.Globalization;
-using System.Text;
+using Amaliyotchi.Application.Common.Models;
 using Amaliyotchi.Application.Features.Admin.Students;
 using Amaliyotchi.Domain.Exceptions;
 using ClosedXML.Excel;
@@ -15,13 +14,8 @@ internal sealed class StudentImportExcel : IStudentImportExcel
     private const string GuideSheetName = "Yo'riqnoma";
     private const string GroupsSheetName = "Guruhlar";
 
-    public const string UnreadableMessage =
-        "Faylni o'qib bo'lmadi — u haqiqiy .xlsx (Excel) fayli bo'lishi kerak.";
     public const string HeaderNotFoundMessage =
         "Sarlavha qatori topilmadi. Shablondagi «FISH», «HEMIS ID», «Guruh» ustun nomlarini o'zgartirmang.";
-
-    public static string TooManyRowsMessage(int maxRows) =>
-        $"Faylda {maxRows} tadan ortiq qator bor — uni bo'lib yuklang.";
 
     /// <summary>Sarlavhani tanish uchun nomlar. Har maydon uchun aniqrog'i birinchi: masalan "hemisid"
     /// topilmasa, oxirgi chora sifatida "id" ham qabul qilinadi.</summary>
@@ -33,9 +27,6 @@ internal sealed class StudentImportExcel : IStudentImportExcel
         ("group", ["guruh", "guruhnomi", "gurux", "group"]),
         ("phone", ["telefon", "telefonraqami", "telraqami", "tel", "phonenumber", "phone"])
     ];
-
-    private static readonly XLColor HeaderFill = XLColor.FromHtml("#E8EEF7");
-    private static readonly XLColor TitleColor = XLColor.FromHtml("#1F3864");
 
     public byte[] BuildTemplate(IReadOnlyList<StudentImportGroupRef> groups)
     {
@@ -51,47 +42,33 @@ internal sealed class StudentImportExcel : IStudentImportExcel
 
     public IReadOnlyList<StudentImportRow> Read(Stream stream, int maxRows)
     {
-        XLWorkbook workbook;
-        try
+        using var workbook = ExcelIo.Open(stream);
+        var sheet = ExcelIo.Sheet(workbook, DataSheetName);
+        var header = ExcelIo.FindHeader(sheet, HeaderAliases, ["fullName", "hemisId"], ExcelImport.HeaderSearchRows)
+            ?? throw new DomainException(HeaderNotFoundMessage);
+
+        var lastRow = sheet.LastRowUsed()?.RowNumber() ?? header.RowNumber;
+        var rows = new List<StudentImportRow>();
+
+        for (var number = header.RowNumber + 1; number <= lastRow; number++)
         {
-            workbook = new XLWorkbook(stream);
+            var row = sheet.Row(number);
+            var fullName = ExcelIo.Text(row, header.Column("fullName"));
+            var hemisId = ExcelIo.Text(row, header.Column("hemisId"));
+            var group = ExcelIo.Text(row, header.Column("group"));
+            var phone = ExcelIo.Text(row, header.Column("phone"));
+
+            // Butunlay bo'sh qator (orada qoldirilgan bo'shliq) xato hisoblanmaydi.
+            if (fullName is null && hemisId is null && group is null && phone is null)
+                continue;
+
+            if (rows.Count == maxRows)
+                throw new DomainException(ExcelIo.TooManyRowsMessage(maxRows));
+
+            rows.Add(new StudentImportRow(number, fullName, hemisId, group, phone));
         }
-        catch (Exception exception) when (exception is not OutOfMemoryException)
-        {
-            throw new DomainException(UnreadableMessage);
-        }
 
-        using (workbook)
-        {
-            var sheet = workbook.Worksheets
-                            .FirstOrDefault(w => string.Equals(w.Name, DataSheetName, StringComparison.OrdinalIgnoreCase))
-                        ?? workbook.Worksheets.FirstOrDefault()
-                        ?? throw new DomainException(UnreadableMessage);
-
-            var header = FindHeader(sheet) ?? throw new DomainException(HeaderNotFoundMessage);
-            var lastRow = sheet.LastRowUsed()?.RowNumber() ?? header.RowNumber;
-
-            var rows = new List<StudentImportRow>();
-            for (var number = header.RowNumber + 1; number <= lastRow; number++)
-            {
-                var row = sheet.Row(number);
-                var fullName = Text(row, header.FullName);
-                var hemisId = Text(row, header.HemisId);
-                var group = Text(row, header.Group);
-                var phone = Text(row, header.Phone);
-
-                // Butunlay bo'sh qator (orada qoldirilgan bo'shliq) xato hisoblanmaydi.
-                if (fullName is null && hemisId is null && group is null && phone is null)
-                    continue;
-
-                if (rows.Count == maxRows)
-                    throw new DomainException(TooManyRowsMessage(maxRows));
-
-                rows.Add(new StudentImportRow(number, fullName, hemisId, group, phone));
-            }
-
-            return rows;
-        }
+        return rows;
     }
 
     /* ── Shablon ─────────────────────────────────────────────────────────── */
@@ -112,10 +89,7 @@ internal sealed class StudentImportExcel : IStudentImportExcel
         {
             var cell = sheet.Cell(1, i + 1);
             cell.Value = headers[i];
-            cell.Style.Font.Bold = true;
-            cell.Style.Fill.BackgroundColor = HeaderFill;
-            cell.Style.Border.BottomBorder = XLBorderStyleValues.Thin;
-            cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+            ExcelIo.StyleHeader(cell);
         }
 
         sheet.Column(1).Width = 34;
@@ -137,11 +111,7 @@ internal sealed class StudentImportExcel : IStudentImportExcel
         var sheet = workbook.Worksheets.Add(GuideSheetName);
         var row = 1;
 
-        var title = sheet.Cell(row++, 1);
-        title.Value = "Talabalarni Excel orqali qo'shish";
-        title.Style.Font.Bold = true;
-        title.Style.Font.FontSize = 14;
-        title.Style.Font.FontColor = TitleColor;
+        ExcelIo.WriteTitle(sheet.Cell(row++, 1), "Talabalarni Excel orqali qo'shish");
         row++;
 
         string[] steps =
@@ -153,7 +123,7 @@ internal sealed class StudentImportExcel : IStudentImportExcel
             "5. Guruh — «Guruhlar» varag'idagi nomlardan biri (masalan 412-22). Kurs guruhdan olinadi, alohida ustun shart emas.",
             "6. Telefon — ixtiyoriy. Namuna: +998901234567 yoki 901234567.",
             "7. Xato qatorlar qabul qilinmaydi — tizim ularni ro'yxat qilib ko'rsatadi, to'g'rilarini saqlaydi.",
-            $"8. Bir faylda ko'pi bilan {StudentImportLimits.MaxRows} ta qator, hajmi {StudentImportLimits.MaxFileBytes / (1024 * 1024)} MB gacha.",
+            $"8. Bir faylda ko'pi bilan {ExcelImport.MaxRows} ta qator, hajmi {ExcelImport.MaxFileBytes / (1024 * 1024)} MB gacha.",
             "9. Talaba qo'shilgach «Ulanmagan» holatida bo'ladi — u Telegram orqali ulangach «Faol» bo'ladi."
         ];
 
@@ -200,9 +170,7 @@ internal sealed class StudentImportExcel : IStudentImportExcel
         {
             var cell = sheet.Cell(1, i + 1);
             cell.Value = headers[i];
-            cell.Style.Font.Bold = true;
-            cell.Style.Fill.BackgroundColor = HeaderFill;
-            cell.Style.Border.BottomBorder = XLBorderStyleValues.Thin;
+            ExcelIo.StyleHeader(cell);
         }
 
         if (groups.Count == 0)
@@ -232,94 +200,4 @@ internal sealed class StudentImportExcel : IStudentImportExcel
         sheet.SheetView.FreezeRows(1);
     }
 
-    /* ── O'qish ──────────────────────────────────────────────────────────── */
-
-    private sealed record HeaderMap(int RowNumber, int FullName, int HemisId, int? Group, int? Phone);
-
-    /// <summary>Birinchi qatorlar ichidan sarlavhani qidiradi: FISH va HEMIS ID ustunlari topilgan
-    /// birinchi qator sarlavha hisoblanadi (tepasida sarlavha matni yoki izoh bo'lishi mumkin).</summary>
-    private static HeaderMap? FindHeader(IXLWorksheet sheet)
-    {
-        foreach (var row in sheet.RowsUsed().Take(StudentImportLimits.HeaderSearchRows))
-        {
-            var byName = new Dictionary<string, int>(StringComparer.Ordinal);
-            foreach (var cell in row.CellsUsed())
-            {
-                var key = NormalizeHeader(cell.GetString());
-                if (key.Length > 0)
-                    byName.TryAdd(key, cell.Address.ColumnNumber);
-            }
-
-            if (byName.Count == 0)
-                continue;
-
-            var columns = new Dictionary<string, int>(StringComparer.Ordinal);
-            var used = new HashSet<int>();
-            foreach (var (field, aliases) in HeaderAliases)
-            {
-                foreach (var alias in aliases)
-                {
-                    if (!byName.TryGetValue(alias, out var column) || !used.Add(column))
-                        continue;
-                    columns[field] = column;
-                    break;
-                }
-            }
-
-            if (columns.TryGetValue("fullName", out var fullName) && columns.TryGetValue("hemisId", out var hemisId))
-            {
-                return new HeaderMap(
-                    row.RowNumber(),
-                    fullName,
-                    hemisId,
-                    columns.TryGetValue("group", out var group) ? group : null,
-                    columns.TryGetValue("phone", out var phone) ? phone : null);
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>Sarlavhani solishtirish kaliti: faqat harf va raqamlar qoladi —
-    /// "F.I.SH *", "FISH", "fish" bir xil; "HEMIS ID" → "hemisid".</summary>
-    private static string NormalizeHeader(string raw)
-    {
-        var builder = new StringBuilder(raw.Length);
-        foreach (var symbol in raw.Trim().ToLowerInvariant())
-        {
-            if (char.IsLetterOrDigit(symbol))
-                builder.Append(symbol);
-        }
-
-        return builder.ToString();
-    }
-
-    private static string? Text(IXLRow row, int? column)
-        => column is { } number ? CellText(row.Cell(number)) : null;
-
-    /// <summary>Katakni matnga aylantiradi. Raqam sifatida kiritilgan HEMIS ID/telefon
-    /// (3,42201E+11) butun son ko'rinishida qaytadi; formula kataklarida keshlangan qiymat olinadi.</summary>
-    private static string? CellText(IXLCell cell)
-    {
-        var value = cell.HasFormula ? cell.CachedValue : cell.Value;
-
-        var text = value switch
-        {
-            { IsBlank: true } => null,
-            { IsError: true } => null,
-            { IsNumber: true } => FormatNumber(value.GetNumber()),
-            { IsText: true } => value.GetText(),
-            { IsDateTime: true } => value.GetDateTime().ToString("dd.MM.yyyy", CultureInfo.InvariantCulture),
-            { IsBoolean: true } => value.GetBoolean() ? "1" : "0",
-            _ => cell.GetFormattedString()
-        };
-
-        text = text?.Trim();
-        return string.IsNullOrEmpty(text) ? null : text;
-    }
-
-    private static string FormatNumber(double value)
-        => value == Math.Floor(value) && Math.Abs(value) < 1e15
-            ? ((long)value).ToString(CultureInfo.InvariantCulture)
-            : value.ToString("0.############", CultureInfo.InvariantCulture);
 }

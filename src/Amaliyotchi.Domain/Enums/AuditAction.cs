@@ -66,5 +66,17 @@ public enum AuditAction
     TutorScopesChanged = 47,
 
     /// <summary>Admin Excel shabloni orqali talabalarni ommaviy import qildi.</summary>
-    StudentsImported = 48
+    StudentsImported = 48,
+
+    /// <summary>Admin korxona yaratdi/tahrirladi, faol holatini o'zgartirdi, arxivladi
+    /// yoki Excel shabloni orqali ommaviy yukladi.</summary>
+    CompanyCreated = 49,
+    CompanyUpdated = 50,
+    CompanyActivated = 51,
+    CompanyDeactivated = 52,
+    CompanyDeleted = 53,
+    CompaniesImported = 54,
+
+    /// <summary>Admin tanlangan talabalarni korxonaga biriktirdi (ariza avtomatik tasdiqlanadi).</summary>
+    StudentsAssignedToCompany = 55
 }

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using Amaliyotchi.Application.Common.Models;
 using Amaliyotchi.Application.Features.Admin.Common;
 using Amaliyotchi.Application.Features.Admin.Students;
 using Amaliyotchi.Domain.Enums;
@@ -31,7 +32,7 @@ public sealed class AdminStudentImportTests(ApiFixture fixture)
         var response = await client.GetAsync(TemplateUrl);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        response.Content.Headers.ContentType!.MediaType.Should().Be(StudentImportLimits.ContentType);
+        response.Content.Headers.ContentType!.MediaType.Should().Be(ExcelImport.ContentType);
         response.Content.Headers.ContentDisposition!.FileName.Should().Contain("shablon");
 
         using var workbook = new XLWorkbook(new MemoryStream(await response.Content.ReadAsByteArrayAsync()));
@@ -78,7 +79,7 @@ public sealed class AdminStudentImportTests(ApiFixture fixture)
         var response = await client.PostAsync(ImportUrl, ImportForm(file));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = (await response.Content.ReadAsync<StudentImportResult>())!;
+        var result = (await response.Content.ReadAsync<ImportResult>())!;
         result.TotalRows.Should().Be(8);
         result.Created.Should().Be(2);
         result.Failed.Should().Be(6);
@@ -139,7 +140,7 @@ public sealed class AdminStudentImportTests(ApiFixture fixture)
 
         var client = await Factory.LoginAsAdminAsync();
         var result = (await (await client.PostAsync(ImportUrl, ImportForm(file)))
-            .Content.ReadAsync<StudentImportResult>())!;
+            .Content.ReadAsync<ImportResult>())!;
 
         result.Created.Should().Be(2);
         result.Errors.Should().BeEmpty();
@@ -202,7 +203,7 @@ public sealed class AdminStudentImportTests(ApiFixture fixture)
 
     /* ── yordamchilar ────────────────────────────────────────────────────── */
 
-    private static void ShouldBeError(StudentImportError error, int row, string column, string message)
+    private static void ShouldBeError(ImportError error, int row, string column, string message)
     {
         error.Row.Should().Be(row);
         error.Column.Should().Be(column);
@@ -239,7 +240,7 @@ public sealed class AdminStudentImportTests(ApiFixture fixture)
     private static MultipartFormDataContent ImportForm(byte[] content, string fileName = "talabalar.xlsx")
     {
         var part = new ByteArrayContent(content);
-        part.Headers.ContentType = new MediaTypeHeaderValue(StudentImportLimits.ContentType);
+        part.Headers.ContentType = new MediaTypeHeaderValue(ExcelImport.ContentType);
         return new MultipartFormDataContent { { part, "file", fileName } };
     }
 }

@@ -35,7 +35,7 @@ public sealed class AdminStudentsController(ISender sender) : ControllerBase
     public async Task<IActionResult> ImportTemplate(CancellationToken cancellationToken)
     {
         var content = await sender.Send(new GetStudentImportTemplateQuery(), cancellationToken);
-        return File(content, StudentImportLimits.ContentType, StudentImportLimits.TemplateFileName);
+        return File(content, ExcelImport.ContentType, StudentImportLimits.TemplateFileName);
     }
 
     /// <summary>Shablon bo'yicha to'ldirilgan Excel'dan talabalarni ommaviy qo'shish. Xato qatorlar
@@ -43,12 +43,12 @@ public sealed class AdminStudentsController(ISender sender) : ControllerBase
     /// sarlavha topilmasa yoki qatorlar chegaradan ko'p bo'lsa → 400.</summary>
     [HttpPost("import")]
     [Consumes("multipart/form-data")]
-    [RequestSizeLimit(StudentImportLimits.MaxFileBytes + 64 * 1024)]
-    [RequestFormLimits(MultipartBodyLengthLimit = StudentImportLimits.MaxFileBytes + 64 * 1024)]
-    [ProducesResponseType<StudentImportResult>(StatusCodes.Status200OK)]
+    [RequestSizeLimit(ExcelImport.MaxFileBytes + 64 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = ExcelImport.MaxFileBytes + 64 * 1024)]
+    [ProducesResponseType<ImportResult>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<StudentImportResult>> Import(
+    public async Task<ActionResult<ImportResult>> Import(
         [FromForm] StudentImportForm form, CancellationToken cancellationToken)
     {
         var file = form.File is { } uploaded
@@ -57,6 +57,19 @@ public sealed class AdminStudentsController(ISender sender) : ControllerBase
 
         return Ok(await sender.Send(new ImportStudentsCommand(file), cancellationToken));
     }
+
+    /// <summary>Belgilangan talabalarni korxonaga biriktirish: har biriga tasdiqlangan ariza
+    /// yaratiladi (talaba ariza bermaydi). Korxona topilmasa → 404, faol bo'lmasa → 409;
+    /// alohida talabalar sabab bilan hisobotda tashlab yuboriladi.</summary>
+    [HttpPost("assign-company")]
+    [ProducesResponseType<AssignCompanyResult>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<AssignCompanyResult>> AssignCompany(
+        AssignStudentsToCompanyCommand command, CancellationToken cancellationToken)
+        => Ok(await sender.Send(command, cancellationToken));
 
     /// <summary>Talaba profili: akademik ma'lumot, tyutor, korxona, ariza, amaliyot davri,
     /// davomat/kundalik statistikasi va joriy baho. Talaba topilmasa → 404.</summary>

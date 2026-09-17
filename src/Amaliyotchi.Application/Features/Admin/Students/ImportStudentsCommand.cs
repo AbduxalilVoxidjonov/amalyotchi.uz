@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Amaliyotchi.Application.Common.Models;
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Features.Student.Common;
 using Amaliyotchi.Domain.Enums;
@@ -12,11 +13,11 @@ using Phone = Amaliyotchi.Domain.ValueObjects.PhoneNumber;
 
 namespace Amaliyotchi.Application.Features.Admin.Students;
 
-/// <summary><c>POST /api/admin/students/import</c> (multipart, <c>file</c>) → 200 <see cref="StudentImportResult"/>.
+/// <summary><c>POST /api/admin/students/import</c> (multipart, <c>file</c>) → 200 <see cref="ImportResult"/>.
 /// Shablon bo'yicha to'ldirilgan <c>.xlsx</c> dan talabalarni ommaviy qo'shadi. Xato qatorlar tashlab yuboriladi
 /// va hisobotda ko'rsatiladi, TO'G'RILARI saqlanadi (qisman import — FUNKSIONAL-QOLLANMA T2).
 /// Fayl o'qilmasa yoki sarlavha qatori topilmasa → 400.</summary>
-public sealed record ImportStudentsCommand(UploadedFile? File) : IRequest<StudentImportResult>;
+public sealed record ImportStudentsCommand(UploadedFile? File) : IRequest<ImportResult>;
 
 /// <summary>Qator xatolari matni — hisobotda foydalanuvchiga shu ko'rinishda chiqadi.</summary>
 public static class StudentImportMessages
@@ -36,18 +37,18 @@ public static class StudentImportMessages
 
 internal sealed class ImportStudentsCommandHandler(
     IApplicationDbContext db, IStudentImportExcel excel, IAuditWriter audit)
-    : IRequestHandler<ImportStudentsCommand, StudentImportResult>
+    : IRequestHandler<ImportStudentsCommand, ImportResult>
 {
     private const int FullNameMaxLength = 200;
 
-    public async Task<StudentImportResult> Handle(ImportStudentsCommand request, CancellationToken cancellationToken)
+    public async Task<ImportResult> Handle(ImportStudentsCommand request, CancellationToken cancellationToken)
     {
         // Validator allaqachon tekshirgan; bu — nullable kontrakt uchun himoya tarmog'i.
         var file = request.File ?? throw new DomainException(ImportStudentsCommandValidator.RequiredMessage);
 
         IReadOnlyList<StudentImportRow> rows;
         await using (var stream = file.OpenRead())
-            rows = excel.Read(stream, StudentImportLimits.MaxRows);
+            rows = excel.Read(stream, ExcelImport.MaxRows);
 
         var groups = await StudentImportGroups.LoadAsync(db, cancellationToken);
         var byName = groups
@@ -65,7 +66,7 @@ internal sealed class ImportStudentsCommandHandler(
         var fileHemis = new HashSet<string>(StringComparer.Ordinal);
         var filePhones = new HashSet<string>(StringComparer.Ordinal);
 
-        var errors = new List<StudentImportError>();
+        var errors = new List<ImportError>();
         var created = 0;
 
         foreach (var row in rows)
@@ -148,10 +149,10 @@ internal sealed class ImportStudentsCommandHandler(
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        return new StudentImportResult(rows.Count, created, rows.Count - created, errors);
+        return new ImportResult(rows.Count, created, rows.Count - created, errors);
     }
 
-    private static StudentImportError Error(StudentImportRow row, string column, string? value, string message)
+    private static ImportError Error(StudentImportRow row, string column, string? value, string message)
         => new(row.RowNumber, column, value, message);
 
     /// <summary>Bir xil nomli guruh bir nechta yo'nalishda bo'lsa — qaysi biri ekani noaniq, qator rad etiladi.</summary>

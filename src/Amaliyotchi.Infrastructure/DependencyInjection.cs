@@ -1,4 +1,5 @@
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Features.Admin.Companies;
 using Amaliyotchi.Application.Features.Admin.Students;
 using Amaliyotchi.Infrastructure.Excel;
 using Amaliyotchi.Infrastructure.Identity;
@@ -61,8 +62,9 @@ public static class DependencyInjection
             .ValidateOnStart();
         services.AddSingleton<IFileStorage, LocalFileStorage>();
 
-        // Talabalar importi: shablon yasash va yuklangan .xlsx ni o'qish (holatsiz — singleton).
+        // Excel importlari: shablon yasash va yuklangan .xlsx ni o'qish (holatsiz — singleton).
         services.AddSingleton<IStudentImportExcel, StudentImportExcel>();
+        services.AddSingleton<ICompanyImportExcel, CompanyImportExcel>();
 
         services.AddOptions<SeedOptions>().Bind(configuration.GetSection(SeedOptions.SectionName));
         services.AddScoped<DbSeeder>();

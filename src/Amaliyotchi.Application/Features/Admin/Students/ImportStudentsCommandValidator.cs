@@ -1,3 +1,4 @@
+using Amaliyotchi.Application.Common.Models;
 using FluentValidation;
 
 namespace Amaliyotchi.Application.Features.Admin.Students;
@@ -8,9 +9,9 @@ public sealed class ImportStudentsCommandValidator : AbstractValidator<ImportStu
     public const string RequiredMessage = "Excel fayl tanlanmagan.";
     public const string EmptyMessage = "Fayl bo'sh.";
     public static readonly string TooLargeMessage =
-        $"Fayl hajmi {StudentImportLimits.MaxFileBytes / (1024 * 1024)} MB dan oshmasligi kerak.";
+        $"Fayl hajmi {ExcelImport.MaxFileBytes / (1024 * 1024)} MB dan oshmasligi kerak.";
     public static readonly string ExtensionMessage =
-        $"Faqat {StudentImportLimits.FileExtension} fayl qabul qilinadi (eski .xls formati emas).";
+        $"Faqat {ExcelImport.FileExtension} fayl qabul qilinadi (eski .xls formati emas).";
 
     public ImportStudentsCommandValidator()
     {
@@ -20,12 +21,12 @@ public sealed class ImportStudentsCommandValidator : AbstractValidator<ImportStu
         RuleFor(x => x.File!.Length)
             .Cascade(CascadeMode.Stop)
             .GreaterThan(0).WithMessage(EmptyMessage)
-            .LessThanOrEqualTo(StudentImportLimits.MaxFileBytes).WithMessage(TooLargeMessage)
+            .LessThanOrEqualTo(ExcelImport.MaxFileBytes).WithMessage(TooLargeMessage)
             .When(x => x.File is not null);
 
         RuleFor(x => x.File!.FileName)
             .Must(name => name is not null
-                && name.EndsWith(StudentImportLimits.FileExtension, StringComparison.OrdinalIgnoreCase))
+                && name.EndsWith(ExcelImport.FileExtension, StringComparison.OrdinalIgnoreCase))
             .WithMessage(ExtensionMessage)
             .When(x => x.File is not null);
     }
