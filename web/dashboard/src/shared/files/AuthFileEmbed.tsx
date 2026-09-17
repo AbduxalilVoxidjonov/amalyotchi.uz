@@ -7,6 +7,8 @@ export interface AuthFileEmbedProps {
   url: string;
   /** Fayl nomi (sarlavha va `alt`/`title`). */
   name: string;
+  /** md — odatiy (420px) · lg — fayllar ustuni uchun kattaroq (640px). */
+  size?: 'md' | 'lg';
 }
 
 /**
@@ -15,7 +17,7 @@ export interface AuthFileEmbedProps {
  * uni darhol o'qiydi. Fayl nomi ham havola — bosilsa yangi oynada to'liq ochiladi.
  * Boshqa turlar brauzerda ko'rsatilmaydi — yuklab olish havolasi qoladi.
  */
-export function AuthFileEmbed({ url, name }: AuthFileEmbedProps) {
+export function AuthFileEmbed({ url, name, size = 'md' }: AuthFileEmbedProps) {
   const file = useAuthFile(url);
   const { load } = file;
 
@@ -27,7 +29,7 @@ export function AuthFileEmbed({ url, name }: AuthFileEmbedProps) {
   const isImage = file.contentType?.startsWith('image/') ?? false;
 
   return (
-    <figure className={styles.embed}>
+    <figure className={styles.embed} data-size={size}>
       <figcaption className={styles.embedHead}>
         {/* Fayl nomi — havola: bosilsa yangi oynada to'liq ochiladi (blob token bilan olingan). */}
         {file.objectUrl ? (

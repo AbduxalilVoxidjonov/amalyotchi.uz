@@ -141,14 +141,14 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
     expect(within(panel).getAllByText(/^41\.\d+, 69\.\d+$/).length).toBeGreaterThan(0);
     expect(within(panel).getByRole('img', { name: /Kirish nuqtasi/ })).toBeInTheDocument();
 
-    // Talaba yuborgan selfi — chapdagi "Yuborilgan fayllar" ustunida (kattaroq ko'rinishda).
+    // Talaba yuborgan selfi — o'ngdagi "Yuborilgan fayllar" ustunida (kattaroq ko'rinishda).
     const files = within(panel).getByRole('region', { name: 'Yuborilgan fayllar' });
     expect(within(files).getByText('Kirish selfisi')).toBeInTheDocument();
     expect(
       within(files).getByRole('button', { name: '07.09.2026 check-in rasmi — kattalashtirish' }),
     ).toBeInTheDocument();
 
-    // Shu kunga yozgan kundaligi — matni, o'rgangani va ball bilan (o'ng ustunda).
+    // Shu kunga yozgan kundaligi — matni, o'rgangani va ball bilan (chap ustunda).
     const diary = within(panel).getByRole('article', { name: 'Kundalik: 07.09.2026' });
     expect(within(diary).getByText(/O'rganganim:/)).toBeInTheDocument();
     expect(within(diary).getByText(/yuborilgan \d{2}:\d{2}/)).toBeInTheDocument();
@@ -204,7 +204,7 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
     );
   });
 
-  it("kun oynasida fayllar chapda, qolgan ma'lumot o'ngda — PDF joyida ochiladi", async () => {
+  it("kun oynasida ma'lumot chapda, fayllar o'ngda — PDF joyida ochiladi", async () => {
     const user = userEvent.setup();
     renderStudentDetail('/tutor/students/s-341030');
 
@@ -213,12 +213,12 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
     await user.click(within(table).getByText('12.10.2026'));
     const dialog = await screen.findByRole('dialog', { name: /12\.10\.2026 — kun tafsiloti/ });
 
-    // Ikki ustun: fayllar (chapda, DOM'da birinchi) va kun ma'lumotlari (o'ngda).
-    const files = within(dialog).getByRole('region', { name: 'Yuborilgan fayllar' });
+    // Ikki ustun: kun ma'lumotlari (chapda, DOM'da birinchi) va fayllar (o'ngda).
     const details = within(dialog).getByRole('region', { name: "Kun ma'lumotlari" });
-    expect(files.compareDocumentPosition(details) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const files = within(dialog).getByRole('region', { name: 'Yuborilgan fayllar' });
+    expect(details.compareDocumentPosition(files) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
-    // Kundalik matni va baholash — o'ng ustunda.
+    // Kundalik matni va baholash — chap ustunda.
     const card = within(details).getByRole('article', { name: 'Kundalik: 12.10.2026' });
     expect(within(card).getByText(/ma'lumotlar bazasi sxemasini/)).toBeInTheDocument();
     expect(within(card).getByText(/O'rganganim:/)).toBeInTheDocument();

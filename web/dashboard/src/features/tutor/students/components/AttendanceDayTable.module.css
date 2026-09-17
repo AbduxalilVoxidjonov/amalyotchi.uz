@@ -16,8 +16,9 @@
   color: var(--color-text-muted);
 }
 /* Kun tafsiloti — modal ichidagi mazmun (jadval ostida emas, alohida oynada).
-   Keng ekranda ikki ustun: chapda talaba yuborgan fayllar (kattaroq), o'ngda qolgan ma'lumot.
-   Fayl bo'lmasa (`data-files` yo'q) — bitta ustun, yarim bo'sh oyna qolmasin. */
+   Keng ekranda ikki ustun: CHAPDA kun ma'lumotlari, O'NGDA talaba yuborgan fayllar —
+   fayl ustuni kengroq (aniq ko'rinadigan o'lchamda). Fayl bo'lmasa (`data-files` yo'q) —
+   bitta ustun, yarim bo'sh oyna qolmasin. */
 .panel {
   display: grid;
   gap: 16px;
@@ -25,9 +26,9 @@
 }
 @media (min-width: 981px) {
   .panel[data-files] {
-    grid-template-columns: minmax(360px, 1.05fr) minmax(330px, 1fr);
+    grid-template-columns: minmax(330px, 1fr) minmax(430px, 1.35fr);
   }
-  /* O'ng ustun torroq — kirish/chiqish bloklari yonma-yon emas, ustma-ust turadi
+  /* Chap ustun torroq — kirish/chiqish bloklari yonma-yon emas, ustma-ust turadi
      (faktlar va xarita siqilib qolmasin). */
   .panel[data-files] .punches {
     grid-template-columns: 1fr;
@@ -95,13 +96,10 @@
   line-height: var(--lh-prose);
   color: var(--color-bad-fg);
 }
+/* Tor ekranda ustunlar ustma-ust tushadi — DOM tartibi bo'yicha: avval kun ma'lumoti,
+   keyin fayllar (fayllar baland, ular tepada bo'lsa vaqt/masofa ko'rinmay qoladi). */
 @media (max-width: 980px) {
   .punches {
     grid-template-columns: 1fr;
-  }
-  /* Tor ekranda ustunlar ustma-ust tushadi: avval kun ma'lumoti, keyin fayllar —
-     fayllar baland bo'ladi, ular tepada bo'lsa vaqt/masofa ko'rinmay qoladi. */
-  .panel[data-files] > .filesCol {
-    order: 2;
   }
 }

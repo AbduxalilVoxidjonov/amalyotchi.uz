@@ -23,7 +23,7 @@ export interface DiaryDayCardProps {
       }
     | undefined;
   /**
-   * `false` — biriktirilgan fayllar bu kartada ko'rsatilmaydi. Kun oynasida ular chapdagi
+   * `false` — biriktirilgan fayllar bu kartada ko'rsatilmaydi. Kun oynasida ular o'ngdagi
    * "Yuborilgan fayllar" ustunida (selfilar bilan birga, kattaroq) turadi.
    */
   showFiles?: boolean;

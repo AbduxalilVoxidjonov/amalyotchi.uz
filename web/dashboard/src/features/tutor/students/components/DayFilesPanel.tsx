@@ -24,9 +24,9 @@ export interface DayFilesPanelProps {
 }
 
 /**
- * Kun oynasining CHAP ustuni: talaba o'sha kuni yuborgan hamma fayl bir joyda va kattaroq —
+ * Kun oynasining O'NG ustuni: talaba o'sha kuni yuborgan hamma fayl bir joyda va kattaroq —
  * check-in/check-out selfisi va kundalikka biriktirilgan fayllar (PDF/rasm joyida ochiq).
- * Qolgan ma'lumot (vaqt, masofa, xarita, kundalik matni, baholash) o'ng ustunda turadi.
+ * Qolgan ma'lumot (vaqt, masofa, xarita, kundalik matni, baholash) chap ustunda turadi.
  */
 export function DayFilesPanel({ selfies, attachments, className }: DayFilesPanelProps) {
   const total = selfies.length + attachments.length;
@@ -58,7 +58,7 @@ export function DayFilesPanel({ selfies, attachments, className }: DayFilesPanel
             <div className={styles.attachments}>
               <Eyebrow margin="none">Kundalik fayllari</Eyebrow>
               {attachments.map((file) => (
-                <AuthFileEmbed key={file.url} url={file.url} name={file.name} />
+                <AuthFileEmbed key={file.url} url={file.url} name={file.name} size="lg" />
               ))}
             </div>
           )}

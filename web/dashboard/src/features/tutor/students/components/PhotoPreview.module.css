@@ -22,7 +22,7 @@
 /* Kun oynasidagi selfi — ustun kengligida, lekin oynani cho'zib yubormaydi
    (AuthFileEmbed dagi fayllar bilan bir xil balandlik chegarasi). */
 .trigger[data-size='wide'] img {
-  max-height: 420px;
+  max-height: 560px;
   object-fit: contain;
 }
 .full {

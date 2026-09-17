@@ -98,6 +98,13 @@ a.embedName:hover {
   border-radius: var(--radius-md);
   background: var(--color-surface-2);
 }
+/* lg — kun oynasining fayllar ustuni: hujjat matni bosmasdan o'qilsin. */
+.embed[data-size='lg'] .embedFrame {
+  height: 640px;
+}
+.embed[data-size='lg'] .embedImage {
+  max-height: 640px;
+}
 .errorBlock {
   margin: 0;
   font-size: var(--fs-sm2);

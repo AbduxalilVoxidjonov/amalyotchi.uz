@@ -7,7 +7,7 @@ import styles from './PhotoPreview.module.css';
 const PLACEHOLDER_HEIGHT: Record<'thumb' | 'card' | 'wide', number> = {
   thumb: 54,
   card: 120,
-  wide: 260,
+  wide: 320,
 };
 
 export interface PhotoPreviewProps {

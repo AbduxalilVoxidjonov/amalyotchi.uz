@@ -162,7 +162,7 @@ export interface AttendanceDayTableProps {
 }
 
 /** Bitta belgilanish (kirish/chiqish): vaqt, masofa, aniqlik va nuqta.
- * Selfi bu yerda emas — u chapdagi "Yuborilgan fayllar" ustunida, kattaroq ko'rinishda. */
+ * Selfi bu yerda emas — u o'ngdagi "Yuborilgan fayllar" ustunida, kattaroq ko'rinishda. */
 function PunchBlock({
   kind,
   punch,
@@ -219,7 +219,7 @@ function PunchBlock({
   );
 }
 
-/** Kun oynasining chap ustuni uchun selfilar (bo'lganlari). */
+/** Kun oynasining o'ng ustuni uchun selfilar (bo'lganlari). */
 function daySelfies(day: StudentAttendanceDay): DaySelfie[] {
   const date = fmtDateOnly(day.date);
   const items: DaySelfie[] = [];
@@ -245,9 +245,10 @@ function daySelfies(day: StudentAttendanceDay): DaySelfie[] {
 /**
  * Kundalik jadval (KONTRAKT §2.2) — har bir amaliyot kuni bir qator.
  * Sana bosilsa, o'sha kun **oynada** (modal) ochiladi. Oyna ikki ustunli (keng ekranda):
- * CHAPDA — talaba o'sha kuni yuborgan fayllar kattaroq ko'rinishda (check-in/check-out selfisi,
- * kundalikka biriktirilgan PDF/rasm), O'NGDA — qolgan ma'lumot: belgilanish vaqti, masofa, aniqlik,
- * xarita, kun sanoqlari va kundalik matni (baholash bilan). Fayl bo'lmasa — bitta ustun.
+ * CHAPDA — kun ma'lumotlari: belgilanish vaqti, masofa, aniqlik, xarita, kun sanoqlari va
+ * kundalik matni (baholash bilan); O'NGDA — talaba o'sha kuni yuborgan fayllar aniq ko'rinadigan
+ * o'lchamda (check-in/check-out selfisi, kundalikka biriktirilgan PDF/rasm). Fayl bo'lmasa —
+ * bitta ustun.
  */
 export function AttendanceDayTable({
   days,
@@ -261,7 +262,7 @@ export function AttendanceDayTable({
   const status = selected ? dayStatusLabel(selected) : null;
   const review = useDiaryReview(area);
 
-  // Chap ustun — talaba yuborgan fayllar; ular bo'lmasa oyna bir ustunli qoladi.
+  // O'ng ustun — talaba yuborgan fayllar; ular bo'lmasa oyna bir ustunli qoladi.
   const selfies = selected ? daySelfies(selected) : [];
   const attachments = diary?.files ?? [];
   const hasFiles = selfies.length > 0 || attachments.length > 0;
@@ -289,7 +290,7 @@ export function AttendanceDayTable({
           review.reset();
           setSelectedDate(null);
         }}
-        width="min(1180px, 96vw)"
+        width="min(1280px, 96vw)"
         title={
           selected && status ? (
             <span className={styles.modalTitle}>
@@ -303,12 +304,6 @@ export function AttendanceDayTable({
       >
         {selected && (
           <div className={styles.panel} data-files={hasFiles || undefined}>
-            <DayFilesPanel
-              className={styles.filesCol}
-              selfies={selfies}
-              attachments={attachments}
-            />
-
             <section className={styles.detailsCol} aria-label="Kun ma'lumotlari">
               <div className={styles.punches}>
                 <PunchBlock kind="in" punch={selected.checkIn} date={selected.date} />
@@ -364,6 +359,12 @@ export function AttendanceDayTable({
                 )}
               </div>
             </section>
+
+            <DayFilesPanel
+              className={styles.filesCol}
+              selfies={selfies}
+              attachments={attachments}
+            />
           </div>
         )}
       </Modal>

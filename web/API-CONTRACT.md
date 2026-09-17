@@ -2066,7 +2066,8 @@ ko'rish uchun; selfi va shartnoma fayllari seed qilinmaydi (ular haqiqiy yuklash
   Modal: shablonni yuklab olish → faylni tanlash → import → hisobot (qo'shildi / qabul qilinmadi / jami +
   rad etilgan qatorlar jadvali). Shablon token talab qilgani uchun `shared/files/downloadAuthFile` bilan olinadi.
 - `AuditAction` ga `studentsImported = 48` qo'shildi (baza qiymatlari o'zgarmagan).
-- **Kun oynasi tartibi o'zgardi** (faqat UI, API shakli emas): talaba yuborgan fayllar — check-in/check-out
-  selfisi va kundalik fayllari — chap ustunda, kattaroq ko'rinishda bir joyga yig'ildi (`DayFilesPanel`);
-  qolgan ma'lumot (vaqt, masofa, aniqlik, xarita, sanoqlar, kundalik matni va baholash) o'ng ustunda.
-  Shu sababli `DiaryDayCard` endi `showFiles={false}` bilan chaqiriladi — fayllar kartada takrorlanmaydi.
+- **Kun oynasi tartibi o'zgardi** (faqat UI, API shakli emas): chap ustunda — kun ma'lumotlari (vaqt,
+  masofa, aniqlik, xarita, sanoqlar, kundalik matni va baholash); o'ng ustunda (kengroq) — talaba yuborgan
+  fayllar bir joyda va aniq ko'rinadigan o'lchamda: check-in/check-out selfisi va kundalik fayllari
+  (`DayFilesPanel`). Shu sababli `DiaryDayCard` endi `showFiles={false}` bilan chaqiriladi — fayllar
+  kartada takrorlanmaydi; `AuthFileEmbed` ga `size="lg"` (PDF 640px) qo'shildi.
