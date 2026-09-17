@@ -19,8 +19,6 @@ export function StudentsPage() {
         templateLoading={template.isLoading}
         templateError={template.error}
         onImportExcel={() => setImportOpen(true)}
-        // TODO: eksport oqimi dizaynda yo'q (❓) — hozircha no-op.
-        onExport={() => undefined}
       />
       <StudentImportModal open={importOpen} onClose={() => setImportOpen(false)} />
     </>

@@ -2062,7 +2062,8 @@ ko'rish uchun; selfi va shartnoma fayllari seed qilinmaydi (ular haqiqiy yuklash
 | N13 | `GET /api/admin/students/import/template`      | `AdminOnly` | `.xlsx` fayl (3 varaq)                 | §2.3   |
 | N14 | `POST /api/admin/students/import` (multipart)  | `AdminOnly` | `StudentImportResult` · 400            | §2.3   |
 
-- Frontend: `/admin/students` toolbar'ida **"Shablon"** (yuklab olish) va **"Excel import"** (modal) tugmalari.
+- Frontend: `/admin/students` toolbar'ida **"Shablon"** (yuklab olish) va **"Excel import"** (modal) tugmalari;
+  hech narsa qilmaydigan "Excel" (eksport) tugmasi olib tashlandi — davomat eksporti M14 da (`GET /api/reports`).
   Modal: shablonni yuklab olish → faylni tanlash → import → hisobot (qo'shildi / qabul qilinmadi / jami +
   rad etilgan qatorlar jadvali). Shablon token talab qilgani uchun `shared/files/downloadAuthFile` bilan olinadi.
 - `AuditAction` ga `studentsImported = 48` qo'shildi (baza qiymatlari o'zgarmagan).

@@ -53,7 +53,6 @@ export interface StudentsTableProps extends TableStateProps<Student> {
   /** Shablon yuklanmasa — tugmalar yonidagi xabar. */
   templateError?: string | null;
   onImportExcel: () => void;
-  onExport: () => void;
 }
 
 export function StudentsTable({
@@ -61,7 +60,6 @@ export function StudentsTable({
   templateLoading = false,
   templateError = null,
   onImportExcel,
-  onExport,
   ...state
 }: StudentsTableProps) {
   return (
@@ -83,9 +81,6 @@ export function StudentsTable({
           </Button>
           <Button size="xs" onClick={onImportExcel}>
             Excel import
-          </Button>
-          <Button size="xs" onClick={onExport}>
-            Excel
           </Button>
         </>
       }

@@ -28,6 +28,8 @@ describe('StudentsPage', () => {
     expect(await screen.findByRole('button', { name: 'Shablon' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Excel import' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'HEMIS dan tortish' })).not.toBeInTheDocument();
+    // Ishlamaydigan "Excel" (eksport) tugmasi ham yo'q — faqat shablon va import.
+    expect(screen.queryByRole('button', { name: 'Excel' })).not.toBeInTheDocument();
   });
 
   it('talaba ismi profil sahifasiga havola', async () => {
