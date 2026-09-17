@@ -100,10 +100,10 @@ a.embedName:hover {
 }
 /* lg — kun oynasining fayllar ustuni: hujjat matni bosmasdan o'qilsin. */
 .embed[data-size='lg'] .embedFrame {
-  height: 640px;
+  height: min(78vh, 720px);
 }
 .embed[data-size='lg'] .embedImage {
-  max-height: 640px;
+  max-height: min(78vh, 720px);
 }
 .errorBlock {
   margin: 0;

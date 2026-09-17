@@ -290,7 +290,7 @@ export function AttendanceDayTable({
           review.reset();
           setSelectedDate(null);
         }}
-        width="min(1280px, 96vw)"
+        width="min(1720px, 98vw)"
         title={
           selected && status ? (
             <span className={styles.modalTitle}>

@@ -7,7 +7,7 @@ import styles from './PhotoPreview.module.css';
 const PLACEHOLDER_HEIGHT: Record<'thumb' | 'card' | 'wide', number> = {
   thumb: 54,
   card: 120,
-  wide: 320,
+  wide: 360,
 };
 
 export interface PhotoPreviewProps {
@@ -37,8 +37,8 @@ export function PhotoPreview({ url, label, size = 'thumb' }: PhotoPreviewProps) 
       >
         <AuthImage src={url} alt={label} height={PLACEHOLDER_HEIGHT[size]} />
       </button>
-      <Modal open={open} onClose={() => setOpen(false)} title={label} width="640px">
-        <AuthImage src={url} alt={label} height={320} className={styles.full} />
+      <Modal open={open} onClose={() => setOpen(false)} title={label} width="min(1100px, 94vw)">
+        <AuthImage src={url} alt={label} height={420} className={styles.full} />
       </Modal>
     </>
   );

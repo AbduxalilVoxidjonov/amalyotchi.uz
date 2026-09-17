@@ -17,7 +17,8 @@
 }
 /* Kun tafsiloti — modal ichidagi mazmun (jadval ostida emas, alohida oynada).
    Keng ekranda ikki ustun: CHAPDA kun ma'lumotlari, O'NGDA talaba yuborgan fayllar —
-   fayl ustuni kengroq (aniq ko'rinadigan o'lchamda). Fayl bo'lmasa (`data-files` yo'q) —
+   fayl ustuni kengroq (aniq ko'rinadigan o'lchamda). Oyna deyarli butun ekran eniga cho'ziladi
+   (98vw, 1720px gacha) — fayllar iloji boricha katta ko'rinsin. Fayl bo'lmasa (`data-files` yo'q) —
    bitta ustun, yarim bo'sh oyna qolmasin. */
 .panel {
   display: grid;

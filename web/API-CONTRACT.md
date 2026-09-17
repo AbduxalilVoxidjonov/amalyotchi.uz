@@ -2069,5 +2069,7 @@ ko'rish uchun; selfi va shartnoma fayllari seed qilinmaydi (ular haqiqiy yuklash
 - **Kun oynasi tartibi o'zgardi** (faqat UI, API shakli emas): chap ustunda — kun ma'lumotlari (vaqt,
   masofa, aniqlik, xarita, sanoqlar, kundalik matni va baholash); o'ng ustunda (kengroq) — talaba yuborgan
   fayllar bir joyda va aniq ko'rinadigan o'lchamda: check-in/check-out selfisi va kundalik fayllari
-  (`DayFilesPanel`). Shu sababli `DiaryDayCard` endi `showFiles={false}` bilan chaqiriladi — fayllar
-  kartada takrorlanmaydi; `AuthFileEmbed` ga `size="lg"` (PDF 640px) qo'shildi.
+  (`DayFilesPanel`). Oyna deyarli butun ekran eniga cho'ziladi (`min(1720px, 98vw)`), fayl ustuni
+  kengroq ulush oladi (1fr/1.35fr). Shu sababli `DiaryDayCard` endi `showFiles={false}` bilan
+  chaqiriladi — fayllar kartada takrorlanmaydi; `AuthFileEmbed` ga `size="lg"` (PDF/rasm
+  `min(78vh, 720px)`) qo'shildi, boshqa joylardagi fayllar avvalgi 420px o'lchamida qoldi.

@@ -7,7 +7,7 @@ export interface AuthFileEmbedProps {
   url: string;
   /** Fayl nomi (sarlavha va `alt`/`title`). */
   name: string;
-  /** md — odatiy (420px) · lg — fayllar ustuni uchun kattaroq (640px). */
+  /** md — odatiy (420px) · lg — fayllar ustuni uchun kattaroq (720px). */
   size?: 'md' | 'lg';
 }
 
