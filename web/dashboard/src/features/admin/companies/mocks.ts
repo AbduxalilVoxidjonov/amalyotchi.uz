@@ -1,11 +1,13 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
 import { problemResponse } from '../shared/mockProblem';
 import { paginateMock } from '../shared/paginate';
-import { COMPANIES_ENDPOINT } from './api';
+import type { ImportResult } from '../shared/types';
+import { COMPANIES_ENDPOINT, COMPANIES_TEMPLATE_FILE_NAME } from './api';
 import type {
   ApplicationStatus,
   Company,
   CompanyDetail,
+  CompanyInput,
   CompanyStudent,
   CompanyStudentState,
 } from './types';
@@ -204,10 +206,21 @@ const FALLBACK_EXTRA: CompanyExtra = {
   periods: [],
 };
 
+/** Mock holati — POST/PUT/PATCH/DELETE shu ro'yxatni o'zgartiradi. Testlarda `resetCompaniesMock()`. */
+let state: Company[] = structuredClone(mockCompanies);
+let extraState: Record<string, CompanyExtra> = structuredClone(EXTRA);
+let nextId = mockCompanies.length + 1;
+
+export function resetCompaniesMock() {
+  state = structuredClone(mockCompanies);
+  extraState = structuredClone(EXTRA);
+  nextId = mockCompanies.length + 1;
+}
+
 export function mockCompanyDetail(id: string): CompanyDetail | null {
-  const row = mockCompanies.find((c) => c.id === id);
+  const row = state.find((c) => c.id === id);
   if (!row) return null;
-  const extra = EXTRA[id] ?? FALLBACK_EXTRA;
+  const extra = extraState[id] ?? FALLBACK_EXTRA;
   return {
     id: row.id,
     name: row.name,
@@ -300,7 +313,7 @@ function buildStudents(companyId: string): CompanyStudent[] {
   const periods = detail?.periods ?? [];
   const totalDays = 36;
   // HEMIS ID: har korxona uchun alohida yuzlik (c1 → 341100, c2 → 341200, ...).
-  const hemisBase = 341000 + (mockCompanies.findIndex((c) => c.id === companyId) + 1) * 100;
+  const hemisBase = 341000 + (state.findIndex((c) => c.id === companyId) + 1) * 100;
   return names.map((name, i) => {
     const pct = [94, 86, 64, 100, 78, 89, 72, 58, 91][i % 9] ?? 80;
     const suspicious = i % 5 === 4 ? 3 : 0;
@@ -330,20 +343,208 @@ export function mockCompanyStudents(companyId: string): CompanyStudent[] {
   return buildStudents(companyId).sort((a, b) => a.name.localeCompare(b.name, 'uz'));
 }
 
+/** Backend `CompanyValidationRules` bilan bir xil (`schema.ts` dagi zod bilan mos), kalitlar camelCase. */
+function validateInput(body: Partial<CompanyInput>): Record<string, string[]> {
+  const errors: Record<string, string[]> = {};
+  const text = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  const phoneOk = (v: unknown) => typeof v === 'string' && /^\+998\d{9}$/.test(v);
+
+  if (!text(body.name)) errors['name'] = ['Korxona nomini kiriting.'];
+  if (!text(body.tin)) errors['tin'] = ['STIR ni kiriting.'];
+  else if (!/^\d{9}$/.test(text(body.tin)))
+    errors['tin'] = ["STIR 9 ta raqamdan iborat bo'lishi kerak. Namuna: 123456789"];
+  if (!text(body.activity)) errors['activity'] = ['Faoliyat turini kiriting.'];
+  if (!text(body.address)) errors['address'] = ['Manzilni kiriting.'];
+  if (typeof body.lat !== 'number' || body.lat < -90 || body.lat > 90)
+    errors['lat'] = ["Kenglik (lat) -90 va 90 oralig'ida bo'lishi kerak."];
+  if (typeof body.lng !== 'number' || body.lng < -180 || body.lng > 180)
+    errors['lng'] = ["Uzunlik (lng) -180 va 180 oralig'ida bo'lishi kerak."];
+  if (body.radiusM != null && (body.radiusM < 50 || body.radiusM > 1000))
+    errors['radiusM'] = ["Radius 50–1000 m oralig'ida bo'lishi kerak."];
+  if (!text(body.supervisorName)) errors['supervisorName'] = ['Rahbar FISH ni kiriting.'];
+  if (!phoneOk(body.supervisorPhone))
+    errors['supervisorPhone'] = ["Telefon raqami noto'g'ri. Namuna: +998901234567"];
+  if (body.mentorPhone != null && !phoneOk(body.mentorPhone))
+    errors['mentorPhone'] = ["Telefon raqami noto'g'ri. Namuna: +998901234567"];
+  return errors;
+}
+
+function validationProblem(errors: Record<string, string[]>) {
+  return problemResponse(400, "Ma'lumotlar noto'g'ri", "Kiritilgan ma'lumotlarda xatolik bor.", {
+    errors,
+  });
+}
+
+/** `geofenceRadius` sozlamasining demo qiymati — `radiusM` berilmasa shu ishlatiladi. */
+const DEFAULT_RADIUS_M = 200;
+
+function applyInput(row: Company, extra: CompanyExtra, body: CompanyInput) {
+  row.name = body.name.trim();
+  row.tin = body.tin.trim();
+  row.activity = body.activity.trim();
+  row.address = body.address.trim();
+  row.radiusM = body.radiusM ?? DEFAULT_RADIUS_M;
+  row.flag = row.radiusM > 400 ? 'largeRadius' : row.flag;
+  extra.lat = body.lat;
+  extra.lng = body.lng;
+  extra.supervisorName = body.supervisorName.trim();
+  extra.supervisorPhone = body.supervisorPhone;
+  extra.mentorName = body.mentorName?.trim() || null;
+  extra.mentorPhone = body.mentorPhone || null;
+}
+
+/** Import hisoboti namunasi: 6 qatordan 2 tasi rad etilgan (uchta xato yozuvi bilan). */
+export const mockCompanyImportResult: ImportResult = {
+  totalRows: 6,
+  created: 4,
+  failed: 2,
+  errors: [
+    {
+      row: 3,
+      column: 'STIR',
+      value: '30451288',
+      message: "STIR 9 ta raqamdan iborat bo'lishi kerak. Namuna: 123456789",
+    },
+    {
+      row: 3,
+      column: 'Rahbar telefoni',
+      value: '901234567',
+      message: "Telefon raqami noto'g'ri. Namuna: +998901234567",
+    },
+    {
+      row: 5,
+      column: 'Kenglik (lat)',
+      value: '',
+      message: "Kenglik (lat) -90 va 90 oralig'ida bo'lishi kerak.",
+    },
+  ],
+};
+
 export const companiesHandlers: HttpHandler[] = [
+  // `/import/template` va `/import` — `:id` dan OLDIN (aks holda ular id deb o'qiladi).
+  http.get(
+    `${COMPANIES_ENDPOINT}/import/template`,
+    () =>
+      new HttpResponse('mock-xlsx', {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="${COMPANIES_TEMPLATE_FILE_NAME}"`,
+        },
+      }),
+  ),
+
+  http.post(`${COMPANIES_ENDPOINT}/import`, async ({ request }) => {
+    const form = await request.formData().catch(() => null);
+    // Fayl nomi jsdom/undici serializatsiyasida yo'qolishi mumkin — faqat mavjudligini tekshiramiz.
+    if (!form?.has('file')) {
+      return problemResponse(400, "Ma'lumotlar noto'g'ri", 'Excel fayl tanlanmagan.');
+    }
+    return HttpResponse.json(mockCompanyImportResult);
+  }),
+
   http.get(`${COMPANIES_ENDPOINT}/:id/students`, ({ params }) => {
     const id = String(params['id']);
-    if (!mockCompanies.some((c) => c.id === id)) {
+    if (!state.some((c) => c.id === id)) {
       return problemResponse(404, 'Topilmadi', 'Korxona topilmadi.');
     }
     return HttpResponse.json(mockCompanyStudents(id));
   }),
+
+  http.post(COMPANIES_ENDPOINT, async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as Partial<CompanyInput>;
+    const errors = validateInput(body);
+    if (Object.keys(errors).length > 0) return validationProblem(errors);
+
+    const input = body as CompanyInput;
+    const tin = input.tin.trim();
+    if (state.some((c) => c.tin === tin)) {
+      return problemResponse(409, 'Ziddiyat', `STIR ${tin} bilan korxona allaqachon mavjud.`);
+    }
+    const id = `c${nextId++}`;
+    const row: Company = {
+      id,
+      name: '',
+      tin,
+      activity: '',
+      address: '',
+      radiusM: DEFAULT_RADIUS_M,
+      students: 0,
+      suspiciousDays: 0,
+      maxStudents: MOCK_MAX_STUDENTS,
+      overLimit: false,
+      isActive: true,
+      flag: null,
+    };
+    const extra: CompanyExtra = { ...structuredClone(FALLBACK_EXTRA) };
+    applyInput(row, extra, input);
+    state = [...state, row];
+    extraState[id] = extra;
+    return HttpResponse.json(mockCompanyDetail(id), { status: 201 });
+  }),
+
+  http.put(`${COMPANIES_ENDPOINT}/:id`, async ({ request, params }) => {
+    const id = String(params['id']);
+    const existing = state.find((c) => c.id === id);
+    if (!existing) return problemResponse(404, 'Topilmadi', 'Korxona topilmadi.');
+
+    const body = (await request.json().catch(() => ({}))) as Partial<CompanyInput>;
+    const errors = validateInput(body);
+    if (Object.keys(errors).length > 0) return validationProblem(errors);
+
+    const input = body as CompanyInput;
+    const tin = input.tin.trim();
+    if (state.some((c) => c.id !== id && c.tin === tin)) {
+      return problemResponse(409, 'Ziddiyat', `STIR ${tin} bilan korxona allaqachon mavjud.`);
+    }
+    const row = { ...existing };
+    const extra = { ...(extraState[id] ?? structuredClone(FALLBACK_EXTRA)) };
+    applyInput(row, extra, input);
+    state = state.map((c) => (c.id === id ? row : c));
+    extraState[id] = extra;
+    return HttpResponse.json(mockCompanyDetail(id));
+  }),
+
+  http.patch(`${COMPANIES_ENDPOINT}/:id/status`, async ({ request, params }) => {
+    const id = String(params['id']);
+    const existing = state.find((c) => c.id === id);
+    if (!existing) return problemResponse(404, 'Topilmadi', 'Korxona topilmadi.');
+
+    const body = (await request.json().catch(() => ({}))) as { isActive?: boolean };
+    state = state.map((c) => (c.id === id ? { ...c, isActive: Boolean(body.isActive) } : c));
+    return HttpResponse.json(mockCompanyDetail(id));
+  }),
+
+  http.delete(`${COMPANIES_ENDPOINT}/:id`, ({ params }) => {
+    const id = String(params['id']);
+    const existing = state.find((c) => c.id === id);
+    if (!existing) return problemResponse(404, 'Topilmadi', 'Korxona topilmadi.');
+    if (existing.isActive) {
+      return problemResponse(
+        409,
+        'Ziddiyat',
+        "Avval korxonani faolsizlantiring — keyin o'chirish mumkin.",
+      );
+    }
+    if (existing.students > 0) {
+      return problemResponse(
+        409,
+        'Ziddiyat',
+        `Korxonaga ${existing.students} ta talaba biriktirilgan — uni o'chirib bo'lmaydi. ` +
+          "Talabalarni boshqa korxonaga ko'chiring yoki korxonani faqat faolsizlantiring.",
+      );
+    }
+    state = state.filter((c) => c.id !== id);
+    delete extraState[id];
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   http.get(`${COMPANIES_ENDPOINT}/:id`, ({ params }) => {
     const detail = mockCompanyDetail(String(params['id']));
     if (!detail) return problemResponse(404, 'Topilmadi', 'Korxona topilmadi.');
     return HttpResponse.json(detail);
   }),
+
   http.get(COMPANIES_ENDPOINT, ({ request }) =>
-    HttpResponse.json(paginateMock(request.url, mockCompanies, (c) => [c.name, c.tin, c.address])),
+    HttpResponse.json(paginateMock(request.url, state, (c) => [c.name, c.tin, c.address])),
   ),
 ];

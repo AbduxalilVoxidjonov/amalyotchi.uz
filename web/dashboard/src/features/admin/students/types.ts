@@ -31,28 +31,6 @@ export const STUDENT_STATUS_LABEL: Record<
 };
 
 /* ────────────────────────────────────────────────────────────────────────────
- * Excel import — `GET /api/admin/students/import/template`, `POST .../import`.
- * ──────────────────────────────────────────────────────────────────────────── */
-
-/** Qabul qilinmagan qator (bir qatorda bir nechta xato bo'lsa — bir nechta yozuv). */
-export interface StudentImportError {
-  /** Exceldagi qator raqami. */
-  row: number;
-  /** Ustun nomi: "FISH" · "HEMIS ID" · "Guruh" · "Telefon". */
-  column: string;
-  value: string | null;
-  message: string;
-}
-
-/** Import hisoboti: xato qatorlar tashlab yuboriladi, to'g'rilari saqlanadi (`created + failed = totalRows`). */
-export interface StudentImportResult {
-  totalRows: number;
-  created: number;
-  failed: number;
-  errors: StudentImportError[];
-}
-
-/* ────────────────────────────────────────────────────────────────────────────
  * Talaba profili (`/admin/students/:studentId`) — `GET /api/admin/students/{id}`.
  * Bloklar tyutor profilidagi bilan bir xil (ayni backend handler), shuning uchun
  * turlar `features/tutor/students/types` dan olinadi; bu yerda faqat admin qo'shimchalari.
@@ -74,4 +52,32 @@ export interface AdminStudentDetail extends TutorStudentDetail {
   adminStatus: StudentStatus;
   telegramLinked: boolean;
   tutor: AdminStudentTutor | null;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Ommaviy biriktirish — `POST /api/admin/students/assign-company`.
+ * Admin jadvalda bir nechta talabani belgilaydi va bitta korxonaga biriktiradi.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** So'rov tanasi (backend bir marta 200 tagacha talabani qabul qiladi). */
+export interface AssignCompanyInput {
+  studentIds: string[];
+  companyId: string;
+}
+
+/** Biriktirilmagan talaba va sababi (masalan "Allaqachon shu korxonaga biriktirilgan."). */
+export interface AssignCompanyError {
+  studentId: string;
+  studentName: string;
+  message: string;
+}
+
+/** Hisobot: `assigned + skipped = total`; xato qatorlar tashlanadi, qolganlari biriktiriladi. */
+export interface AssignCompanyResult {
+  total: number;
+  assigned: number;
+  skipped: number;
+  /** Tanlangan korxona nomi (hisobot sarlavhasida ko'rsatiladi). */
+  companyName: string;
+  errors: AssignCompanyError[];
 }

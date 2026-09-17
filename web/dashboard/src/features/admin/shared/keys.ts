@@ -38,6 +38,8 @@ export const adminKeys = {
   /** `GET /students/{id}` — talaba profili (davomat/kundalik kalitlari `tutorKeys.students` da). */
   student: (id: string) => ['admin', 'student', id] as const,
   companies: (params: ListParams) => ['admin', 'companies', params] as const,
+  /** Barcha `companies(params)` so'rovlarini invalidate qilish uchun (mutatsiya/importdan keyin). */
+  companiesAll: () => ['admin', 'companies'] as const,
   /** `GET /companies/{id}` — detail sahifasi. */
   company: (id: string) => ['admin', 'company', id] as const,
   companyStudents: (id: string) => ['admin', 'company', id, 'students'] as const,

@@ -4,3 +4,17 @@
   font-size: var(--fs-xs2);
   color: var(--color-bad-fg);
 }
+
+/* Belgilash ustuni — matnli label yo'q, faqat katakcha markazda */
+.check {
+  gap: 0;
+  justify-content: center;
+}
+
+/* Tanlov paneli: "N ta tanlandi" */
+.selected {
+  align-self: center;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-dim);
+  white-space: nowrap;
+}

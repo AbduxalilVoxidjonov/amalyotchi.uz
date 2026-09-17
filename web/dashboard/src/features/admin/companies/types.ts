@@ -94,6 +94,24 @@ export interface CompanyDetail {
   periods: CompanyPeriod[];
 }
 
+/**
+ * POST / PUT body (backend `CreateCompanyCommand` / `UpdateCompanyCommand`).
+ * `radiusM: null` — server `geofenceRadius` sozlamasidan oladi; mentor maydonlari ixtiyoriy.
+ */
+export interface CompanyInput {
+  name: string;
+  tin: string;
+  activity: string;
+  address: string;
+  lat: number;
+  lng: number;
+  radiusM: number | null;
+  supervisorName: string;
+  supervisorPhone: string;
+  mentorName: string | null;
+  mentorPhone: string | null;
+}
+
 /** GET /api/admin/companies/{id}/students → CompanyStudent[] (FISH bo'yicha tartib). */
 export interface CompanyStudent {
   studentId: string;

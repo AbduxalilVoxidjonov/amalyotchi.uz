@@ -90,4 +90,59 @@ describe('StudentsPage', () => {
     );
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
+
+  it("№ ustuni sahifadagi tartib raqamlarini ko'rsatadi", async () => {
+    renderWithProviders(<StudentsPage />);
+    await screen.findByText('Aliyev Akmal');
+
+    const table = screen.getByRole('table', { name: 'Talabalar' });
+    for (const n of ['1', '2', '3', '4', '5']) {
+      expect(within(table).getByText(n)).toBeInTheDocument();
+    }
+  });
+
+  it("ikkita qator belgilansa tanlov paneli chiqadi", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<StudentsPage />);
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Aliyev Akmal ni belgilash' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Sobirov Diyor ni belgilash' }));
+
+    expect(screen.getByText('2 ta tanlandi')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Korxonaga biriktirish' })).toBeInTheDocument();
+  });
+
+  it("hammasini belgilash tugmasi sahifadagi barcha qatorlarni tanlaydi", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<StudentsPage />);
+
+    await screen.findByText('Aliyev Akmal');
+    await user.click(screen.getByRole('checkbox', { name: 'Hammasini belgilash' }));
+
+    expect(screen.getByText('5 ta tanlandi')).toBeInTheDocument();
+  });
+
+  it('Korxonaga biriktirish: korxona tanlanadi, hisobot ko‘rsatiladi', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<StudentsPage />);
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Aliyev Akmal ni belgilash' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Sobirov Diyor ni belgilash' }));
+    await user.click(screen.getByRole('button', { name: 'Korxonaga biriktirish' }));
+
+    const dialog = await screen.findByRole('dialog');
+    await user.click(await within(dialog).findByRole('radio', { name: 'Tech Solutions MChJ' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Biriktirish' }));
+
+    const report = await within(dialog).findByRole('region', { name: 'Biriktirish natijasi' });
+    expect(within(report).getByRole('status')).toHaveTextContent(
+      'Biriktirildi: 1 · Biriktirilmadi: 1 · Jami: 2',
+    );
+    expect(within(report).getByText('Sobirov Diyor')).toBeInTheDocument();
+    expect(
+      within(report).getByText('Allaqachon shu korxonaga biriktirilgan.'),
+    ).toBeInTheDocument();
+    // Muvaffaqiyatdan keyin tanlov tozalanadi.
+    expect(screen.queryByText('2 ta tanlandi')).not.toBeInTheDocument();
+  });
 });

@@ -10,7 +10,11 @@ export const STUDENT_ENDPOINTS = {
   checkin: '/api/student/checkin',
   /** POST multipart(lat,lng,accuracy,occurredAt,photo?) → TodayDto | 400 (oyna/`errors.Photo`) | 409 (check-in yo'q / ketgan / radius) */
   checkout: '/api/student/checkout',
-  /** GET → PracticePlaceDto | 404 (joy biriktirilmagan) */
+  /**
+   * GET → PracticePlaceDto | 404 (joy biriktirilmagan)
+   * POST {tin} → PracticePlaceDto (201, status=submitted) | 400 (STIR formati) | 404 (korxona yo'q)
+   *            | 409 (faol davr yo'q · ariza ko'rib chiqilmoqda · joy allaqachon biriktirilgan)
+   */
   place: '/api/student/place',
   /** GET → DiaryEntryDto[] · POST multipart(text, learned?, files[]) → DiaryEntryDto (201) | 400 | 409 (bugungisi bor) */
   diary: '/api/student/diary',
@@ -20,4 +24,13 @@ export const STUDENT_ENDPOINTS = {
   leaveRequests: '/api/student/leave-requests',
   /** GET → PortfolioDto | 404 (faol davr yo'q) */
   portfolio: '/api/student/portfolio',
+} as const;
+
+/**
+ * Rolga bog'liq bo'lmagan (har qanday avtorizatsiyalangan foydalanuvchi) endpointlar.
+ * Manba: `src/Amaliyotchi.Api/Controllers/CompaniesController.cs`.
+ */
+export const COMPANY_ENDPOINTS = {
+  /** GET ?tin=123456789 → CompanyLookupDto | 400 (STIR formati) | 404 (faol korxona yo'q) */
+  lookup: '/api/companies/lookup',
 } as const;

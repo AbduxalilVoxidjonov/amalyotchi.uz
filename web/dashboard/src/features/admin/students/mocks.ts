@@ -6,15 +6,24 @@ import {
   buildDiaries,
   mockStudents as tutorMockStudents,
 } from '@/features/tutor/students/mocks';
+import { mockCompanies } from '../companies/mocks';
 import { problemResponse } from '../shared/mockProblem';
 import { paginateMock } from '../shared/paginate';
+import type { ImportResult } from '../shared/types';
 import {
+  STUDENTS_ASSIGN_COMPANY_ENDPOINT,
   STUDENTS_ENDPOINT,
   STUDENTS_IMPORT_ENDPOINT,
   STUDENTS_TEMPLATE_ENDPOINT,
   STUDENTS_TEMPLATE_FILE_NAME,
 } from './api';
-import type { AdminStudentDetail, AdminStudentTutor, Student, StudentImportResult } from './types';
+import type {
+  AdminStudentDetail,
+  AdminStudentTutor,
+  AssignCompanyError,
+  AssignCompanyInput,
+  Student,
+} from './types';
 
 /** Backend `StudentRow` shaklida (SPEC-SCREENS §9.6 raqamlari). */
 export const mockStudents: Student[] = [
@@ -149,7 +158,7 @@ function buildAdminDetail(adminId: string): AdminStudentDetail | null {
 }
 
 /** Mock hisobot: bir nechta qator qabul qilinadi, xatolari ro'yxat bo'lib qaytadi (backend shakli). */
-export const mockImportResult: StudentImportResult = {
+export const mockImportResult: ImportResult = {
   totalRows: 5,
   created: 3,
   failed: 2,
@@ -182,6 +191,47 @@ export const studentsHandlers: HttpHandler[] = [
       return problemResponse(400, "Ma'lumotlar noto'g'ri", 'Excel fayl tanlanmagan.');
     }
     return HttpResponse.json(mockImportResult);
+  }),
+
+  // Ommaviy biriktirish: birinchi talaba biriktiriladi, ikkinchisi (bo'lsa) sabab bilan tashlanadi
+  // — hisobot oqimini (biriktirildi + rad etilganlar jadvali) tekshirish uchun.
+  http.post(STUDENTS_ASSIGN_COMPANY_ENDPOINT, async ({ request }) => {
+    const body = (await request.json().catch(() => null)) as AssignCompanyInput | null;
+    const ids = body?.studentIds ?? [];
+    if (ids.length === 0) {
+      return problemResponse(400, "Ma'lumotlar noto'g'ri", 'Kamida bitta talabani belgilang.');
+    }
+    if (ids.length > 200) {
+      return problemResponse(
+        400,
+        "Ma'lumotlar noto'g'ri",
+        "Bir marta 200 tadan ko'p talabani biriktirib bo'lmaydi.",
+      );
+    }
+
+    const company = mockCompanies.find((c) => c.id === body?.companyId);
+    if (!company) return problemResponse(404, 'Topilmadi', 'Korxona topilmadi.');
+    if (!company.isActive) {
+      return problemResponse(
+        409,
+        'Amal bajarilmadi',
+        'Korxona faol emas — avval uni faollashtiring.',
+      );
+    }
+
+    const errors: AssignCompanyError[] = ids.slice(1, 2).map((id) => ({
+      studentId: id,
+      studentName: mockStudents.find((s) => s.id === id)?.fullName ?? id,
+      message: 'Allaqachon shu korxonaga biriktirilgan.',
+    }));
+
+    return HttpResponse.json({
+      total: ids.length,
+      assigned: ids.length - errors.length,
+      skipped: errors.length,
+      companyName: company.name,
+      errors,
+    });
   }),
 
   http.get(`${STUDENTS_ENDPOINT}/:id/attendance`, ({ params, request }) => {

@@ -3,6 +3,7 @@ import { AdminTable, type TableStateProps } from '../../components/AdminTable';
 import { RowLink } from '../../components/RowLink';
 import { formatTin } from '../../shared/format';
 import { COMPANY_FLAG_LABEL, studentsOfLimit, type Company } from '../types';
+import styles from './CompaniesTable.module.css';
 
 /**
  * SPEC §9.7 ustunlari. STIR — xom 9 raqamdan formatlanadi; korxona nomi detail sahifasiga havola
@@ -62,11 +63,29 @@ const COLUMNS: DataTableColumn<Company>[] = [
 ];
 
 export interface CompaniesTableProps extends TableStateProps<Company> {
-  onExport: () => void;
-  onShowSuspicious: () => void;
+  onCreate: () => void;
+  /** Shablonni yuklab olish (`GET .../import/template`). */
+  onDownloadTemplate: () => void;
+  templateLoading?: boolean;
+  /** Shablon yuklanmasa — tugmalar yonidagi xabar. */
+  templateError?: string | null;
+  onImportExcel: () => void;
+  onEdit: (company: Company) => void;
+  onToggleStatus: (company: Company) => void;
+  onDelete: (company: Company) => void;
 }
 
-export function CompaniesTable({ onExport, onShowSuspicious, ...state }: CompaniesTableProps) {
+export function CompaniesTable({
+  onCreate,
+  onDownloadTemplate,
+  templateLoading = false,
+  templateError = null,
+  onImportExcel,
+  onEdit,
+  onToggleStatus,
+  onDelete,
+  ...state
+}: CompaniesTableProps) {
   return (
     <AdminTable
       aria-label="Korxonalar"
@@ -75,13 +94,34 @@ export function CompaniesTable({ onExport, onShowSuspicious, ...state }: Compani
       minWidth="880px"
       emptyTitle="Korxonalar yo'q"
       rowDim={(r) => !r.isActive}
+      rowActions={(r) => (
+        <>
+          <Button size="xs" onClick={() => onEdit(r)}>
+            Tahrirlash
+          </Button>
+          <Button size="xs" onClick={() => onToggleStatus(r)}>
+            {r.isActive ? 'Faolsizlantirish' : 'Faollashtirish'}
+          </Button>
+          <Button size="xs" variant="danger" onClick={() => onDelete(r)}>
+            O'chirish
+          </Button>
+        </>
+      )}
       actions={
         <>
-          <Button size="xs" onClick={onExport}>
-            Excel
+          {templateError && (
+            <span role="alert" className={styles.error}>
+              {templateError}
+            </span>
+          )}
+          <Button size="xs" variant="primary" onClick={onCreate}>
+            Yangi korxona
           </Button>
-          <Button size="xs" onClick={onShowSuspicious}>
-            Shubhali to'planishlar
+          <Button size="xs" onClick={onDownloadTemplate} disabled={templateLoading}>
+            {templateLoading ? 'Tayyorlanmoqda…' : 'Shablon'}
+          </Button>
+          <Button size="xs" onClick={onImportExcel}>
+            Excel import
           </Button>
         </>
       }

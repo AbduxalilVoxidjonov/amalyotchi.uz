@@ -1,16 +1,17 @@
-# API-CONTRACT v3.2
+# API-CONTRACT v3.3
 
 Oxirgi yangilanish: 17.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
 esa haqiqiy controller/DTO/validator/handler kodidan olingan — har bir maydon, chegara va status kod kodda bor.
 Frontend (`web/dashboard`, `web/twa`, `web/shared`) shu shaklga moslanishi kerak; v1 bilan farqlar §5 da,
-**v2 bilan farqlar §6 da**, v3.1 da qo'shilganlari — §6.6, v3.2 (talabalar Excel importi) — §6.8.
+**v2 bilan farqlar §6 da**, v3.1 da qo'shilganlari — §6.6, v3.2 (talabalar Excel importi) — §6.8,
+v3.3 (korxona CRUD, STIR oqimi, ommaviy biriktirish) — §6.9.
 
-Jami **83 ta endpoint**: Auth 5 · Admin 47 · Reports 1 · Tutor 19 · Student (TWA) 10 · Files 1.
+Jami **92 ta endpoint**: Auth 5 · Admin 54 · Reports 1 · Tutor 19 · Student (TWA) 11 · Files 1 · Companies 1.
 
-> Kontrollerlarda `[Http*]` atributlari **81 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
+> Kontrollerlarda `[Http*]` atributlari **94 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
 > har birida ikkitadan action bor (`multipart/form-data` va `application/json` — `[Consumes]` bilan ajratiladi,
-> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **83**.
+> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **92**.
 
 ---
 
@@ -719,6 +720,30 @@ Yaratilgan talaba: `User` (rol `student`, parolsiz, Telegramsiz — ro'yxatda ho
 guruh zanjiridan olinadi; `StudentProfile` (`hemisId`, guruh, holat `active`). Import audit jurnaliga bitta
 `studentsImported` yozuvi bilan tushadi (`changes`: fayl nomi va sanoqlar). Taklif tokeni hozircha berilmaydi.
 
+#### POST `/api/admin/students/assign-company` · 200 · 400 · 404 · 409
+
+Talabalar ro'yxatida belgilangan (checkbox) talabalarni korxonaga **biriktiradi**: har biriga
+**tasdiqlangan** ariza yaratiladi (talaba ariza bermaydi, tyutor moderatsiyasi talab qilinmaydi;
+qaror izohi — `"Admin tomonidan biriktirildi."`, radius korxonanikidan olinadi).
+
+```ts
+// so'rov
+{ studentIds: string[] /*1..200*/, companyId: string }
+
+interface AssignCompanyError { studentId: string; studentName: string; message: string }
+interface AssignCompanyResult {
+  total: number; assigned: number; skipped: number;  // assigned + skipped === total
+  companyName: string;
+  errors: AssignCompanyError[];
+}
+```
+
+**404** — korxona yo'q; **409** — korxona faol emas; **400** — ro'yxat bo'sh yoki 200 tadan ko'p.
+Alohida talaba sabab bilan tashlab yuboriladi (qisman bajarilish): `"Allaqachon shu korxonaga biriktirilgan."` ·
+`"Boshqa korxonaga biriktirilgan: <nom>."` · `"Guruhiga faol amaliyot davri biriktirilmagan."` ·
+`"Ko'rib chiqilmagan arizasi bor — avval tyutor qaror qabul qilsin."` · `"Talaba hisobi faol emas."` ·
+`"Talaba topilmadi."`
+
 #### GET `/api/admin/students/{id}` · 200 · 404
 
 404 — talaba yo'q (`detail`: `"Talaba topilmadi (id: …)."`). Umumiy bloklar tyutor profili bilan **bir xil**
@@ -816,6 +841,56 @@ interface CompanyDetail {
   periods: { id: string; name: string; startDate: string; endDate: string; students: number }[];
 }
 ```
+
+#### POST `/api/admin/companies` · 201 · 400 · 409
+
+Korxonani **admin oldindan** kiritadi — talaba keyin faqat STIR yozadi (§2.7, §2.6).
+
+```ts
+interface CompanyInput {
+  name: string;            // ≤ 200
+  tin: string;             // 9 raqam (bo'shliq/tire tozalanadi)
+  activity: string;        // ≤ 200
+  address: string;         // ≤ 500
+  lat: number;             // -90..90
+  lng: number;             // -180..180
+  radiusM?: number | null; // 50..1000; berilmasa `geofenceRadius` sozlamasidan
+  supervisorName: string;
+  supervisorPhone: string; // +998901234567 (9 xonali ham qabul qilinadi)
+  mentorName?: string | null;
+  mentorPhone?: string | null;
+}
+```
+
+Javob — `CompanyDetail` (yuqoridagi shakl). **409** — STIR band: `"STIR 123456789 bilan korxona allaqachon mavjud."`
+(arxivlangan korxonaning STIR'i qayta ishlatilishi mumkin). **400** — `errors` kalitlari kichik harf bilan:
+`name · tin · activity · address · lat · lng · radiusM · supervisorName · supervisorPhone · mentorPhone`.
+
+#### PUT `/api/admin/companies/{id}` · 200 · 400 · 404 · 409
+
+Body — `CompanyInput` (id route'dan). Radius o'zgarsa audit jurnaliga `radiusChanged` ham tushadi.
+
+#### PATCH `/api/admin/companies/{id}/status` · 200 · 404
+
+`{ isActive }` → `CompanyDetail`. **Faolsizlantirilgan korxona STIR qidiruvida ko'rinmaydi**
+(`GET /api/companies/lookup` → 404), ya'ni talaba uni tanlay olmaydi; mavjud arizalar va davomat buzilmaydi.
+
+#### DELETE `/api/admin/companies/{id}` · 204 · 404 · 409
+
+Soft delete (arxivlash), ikki qavat himoya:
+- korxona hali **faol** bo'lsa → 409 `"Avval korxonani faolsizlantiring — keyin o'chirish mumkin."`
+- unga **talaba biriktirilgan** bo'lsa (qoralamadan boshqa arizasi bor) → 409
+  `"Korxonaga N ta talaba biriktirilgan — uni o'chirib bo'lmaydi. …"` (davomat/kundalik tarixi korxonaga bog'liq)
+
+#### GET `/api/admin/companies/import/template` · 200 · POST `/api/admin/companies/import` · 200 · 400
+
+Ko'p korxonani bir faylda yuklash. Shablon — `.xlsx`, ikki varaq: **"Korxonalar"** (sarlavha qatori:
+`Nomi *` · `STIR *` · `Faoliyat turi *` · `Manzil *` · `Kenglik (lat) *` · `Uzunlik (lng) *` · `Radius (m)` ·
+`Rahbar FISH *` · `Rahbar telefoni *` · `Mentor FISH` · `Mentor telefoni`) va **"Yo'riqnoma"**.
+Import talabalar importi bilan **bir xil qoidaga** bo'ysunadi (§2.3, sarlavha nomlari bo'yicha o'qish,
+≤ 1000 qator, ≤ 5 MB, qisman import) va **`ImportResult`** qaytaradi. Qator xatolari: STIR bo'sh/noto'g'ri/takror
+(faylda yoki bazada), majburiy maydon bo'sh, kenglik/uzunlik oralig'idan tashqarida, radius 50–1000 emas,
+telefon formati. Yuklangan korxona darhol **faol** bo'ladi va STIR qidiruvida chiqadi.
 
 #### GET `/api/admin/companies/{id}/students` · 200 · 404
 
@@ -1556,6 +1631,26 @@ Kontrollerda multipart action `[Consumes("multipart/form-data")]` bilan, JSON ac
 > `headers: { 'Content-Type': 'application/json' }` ni **qo'lda** qo'shing — aks holda `fetch`
 > `text/plain;charset=UTF-8` qo'yadi va **415** keladi.
 
+#### POST `/api/student/place` · 201 · 400 · 404 · 409
+
+Talaba amaliyot joyini **STIR orqali** tanlaydi — korxona nomi, manzili, koordinatasi va radiusi
+QO'LDA kiritilmaydi, admin oldindan yaratgan yozuvdan olinadi (§2.7).
+
+```ts
+// so'rov
+{ tin: string }   // 9 raqam
+```
+
+Javob — `PracticePlaceDto` (quyidagi shakl), `status: "submitted"` — ariza tyutorga boradi,
+`proposedRadiusM` korxonanikidan olinadi, shartnoma fayli bu bosqichda biriktirilmaydi.
+
+- **404** — STIR bilan **faol** korxona yo'q (faolsizlantirilgan/arxivlangani ham topilmaydi)
+- **409** — `"Sizga faol amaliyot davri biriktirilmagan — tyutoringizga murojaat qiling."` ·
+  `"Arizangiz ko'rib chiqilmoqda — tyutor qaroridan keyin o'zgartirish mumkin."` ·
+  `"Sizga allaqachon amaliyot joyi biriktirilgan. O'zgartirish uchun tyutoringizga murojaat qiling."`
+- Ariza **qayta ishlashga qaytarilgan** (`revisionNeeded`) bo'lsa — yangi STIR bilan qayta yuboriladi
+  (server o'zi `Resubmit` qiladi), rad etilgan bo'lsa yangi ariza yaratiladi.
+
 #### GET `/api/student/place` · 404
 
 404 — davr yoki ariza yoki korxona yo'q ("Amaliyot joyi hali biriktirilmagan.").
@@ -1699,6 +1794,36 @@ interface PortfolioDto {
 ```
 
 ---
+
+
+### 2.7 Companies — `CompaniesController` (`/api/companies`) · `Authenticated`
+
+#### GET `/api/companies/lookup?tin=123456789` · 200 · 400 · 404
+
+Har qanday rol uchun ochiq STIR qidiruvi — **talaba korxona ma'lumotini qo'lda kiritmasligi** uchun
+(TWA: STIR → korxona kartasi → tasdiqlash → `POST /api/student/place`).
+
+```ts
+interface CompanyLookupDto {
+  id: string;
+  name: string;
+  tin: string;
+  activity: string;
+  address: string;
+  lat: number;
+  lng: number;
+  radiusM: number;
+  supervisorName: string;
+  supervisorPhone: string;
+  mentorName: string | null;
+  mentorPhone: string | null;
+}
+```
+
+Faqat **faol** korxona qaytadi. Faolsizlantirilgan (`PATCH …/status { isActive: false }`) yoki arxivlangan
+korxona bu yerda umuman ko'rinmaydi → **404** `"Bu STIR bilan faol korxona topilmadi. Korxona avval tizimga
+kiritilishi kerak — tyutoringizga murojaat qiling."` STIR formati noto'g'ri bo'lsa → **400**.
+
 
 ## 3. Enum'lar (JSON — camelCase string)
 
@@ -2074,3 +2199,31 @@ ko'rish uchun; selfi va shartnoma fayllari seed qilinmaydi (ular haqiqiy yuklash
   kengroq ulush oladi (1fr/1.35fr). Shu sababli `DiaryDayCard` endi `showFiles={false}` bilan
   chaqiriladi — fayllar kartada takrorlanmaydi; `AuthFileEmbed` ga `size="lg"` (PDF/rasm
   `min(78vh, 720px)`) qo'shildi, boshqa joylardagi fayllar avvalgi 420px o'lchamida qoldi.
+
+### 6.9 v3.2 → v3.3 (18.09.2026): korxona CRUD, STIR oqimi va ommaviy biriktirish
+
+Endi korxonani **admin oldindan kiritadi**, talaba esa faqat STIR yozadi — qo'lda ma'lumot kiritish yo'q.
+Ikkinchi yo'l: admin talabalar ro'yxatidan bir nechtasini belgilab, to'g'ridan-to'g'ri korxonaga biriktiradi.
+
+| #   | Endpoint                                             | Policy          | Javob                        | Bo'lim |
+| --- | ---------------------------------------------------- | --------------- | ---------------------------- | ------ |
+| N15 | `POST /api/admin/companies`                          | `AdminOnly`     | `CompanyDetail` · 400 · 409  | §2.3   |
+| N16 | `PUT /api/admin/companies/{id}`                      | `AdminOnly`     | `CompanyDetail` · 404 · 409  | §2.3   |
+| N17 | `PATCH /api/admin/companies/{id}/status`             | `AdminOnly`     | `CompanyDetail` · 404        | §2.3   |
+| N18 | `DELETE /api/admin/companies/{id}`                   | `AdminOnly`     | 204 · 404 · 409              | §2.3   |
+| N19 | `GET /api/admin/companies/import/template`           | `AdminOnly`     | `.xlsx`                      | §2.3   |
+| N20 | `POST /api/admin/companies/import` (multipart)       | `AdminOnly`     | `ImportResult` · 400         | §2.3   |
+| N21 | `POST /api/admin/students/assign-company`            | `AdminOnly`     | `AssignCompanyResult` · 409  | §2.3   |
+| N22 | `GET /api/companies/lookup?tin=`                     | `Authenticated` | `CompanyLookupDto` · 404     | §2.7   |
+| N23 | `POST /api/student/place`                            | `StudentOnly`   | `PracticePlaceDto` · 409     | §2.6   |
+
+- **Nofaol korxona ko'rinmaydi**: `GET /api/companies/lookup` faqat `isActive` korxonani topadi, shuning uchun
+  faolsizlantirish — talabalarni yangi arizalardan to'sishning oddiy yo'li. O'chirish esa faqat
+  faolsizlantirilgan va **talabasi yo'q** korxona uchun mumkin (409 qoidalari §2.3).
+- `ImportResult`/`ImportError` endi **umumiy shakl** (`Common/Models`): talabalar importi ham, korxonalar
+  importi ham shu javobni qaytaradi (JSON maydonlari o'zgarmagan).
+- Yangi `AuditAction` qiymatlari: `companyCreated=49 · companyUpdated=50 · companyActivated=51 ·
+  companyDeactivated=52 · companyDeleted=53 · companiesImported=54 · studentsAssignedToCompany=55`.
+- Frontend: korxonalar toolbar'idan ishlamaydigan "Excel" va "Shubhali to'planishlar" tugmalari olib tashlandi,
+  o'rniga "Yangi korxona", "Shablon", "Excel import"; talabalar jadvalida `№` ustuni, qator belgilash (checkbox)
+  va "Korxonaga biriktirish"; TWA'da STIR orqali joy tanlash oqimi.

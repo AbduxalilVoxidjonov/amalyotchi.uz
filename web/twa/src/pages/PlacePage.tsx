@@ -12,12 +12,12 @@ import {
 import { errorMessage, isApiError } from '@/shared/api/client';
 import { openExternal } from '@/shared/auth/telegram';
 import { formatDate, formatPeriod, formatPhone } from '@/shared/lib/format';
+import { PlaceSelectForm } from '@/features/place/components/PlaceSelectForm';
 import { usePlaceQuery } from '@/features/place/hooks';
-import { APPLICATION_STATUS, type PracticePlaceDto } from '@/features/place/types';
+import { APPLICATION_STATUS, formatTin, type PracticePlaceDto } from '@/features/place/types';
 import pages from './pages.module.css';
 import styles from './PlacePage.module.css';
 
-const formatTin = (tin: string) => tin.replace(/(\d{3})(?=\d)/g, '$1 ').trim();
 const formatSize = (bytes: number) => `${(bytes / 1_048_576).toFixed(1).replace('.', ',')} MB`;
 const formatCoords = (p: PracticePlaceDto) => `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`;
 const person = (name: string | null, phone: string | null) =>
@@ -29,12 +29,12 @@ export function PlacePage() {
 
   if (place.isPending) return <LoadingState height={320} />;
   if (place.isError) {
+    // Joy hali biriktirilmagan → korxonani STIR orqali tanlash formasi.
     if (isApiError(place.error) && place.error.kind === 'not-found') {
       return (
-        <EmptyState
-          title="Amaliyot joyi hali biriktirilmagan"
-          description="Korxona tasdiqlangach, ma'lumotlar shu yerda ko'rinadi. Savol bo'lsa tyutorga murojaat qiling."
-        />
+        <div className={pages.stack}>
+          <PlaceSelectForm />
+        </div>
       );
     }
     return (
@@ -43,6 +43,8 @@ export function PlacePage() {
   }
   const p = place.data;
   const status = APPLICATION_STATUS[p.status];
+  // Qaytarilgan/rad etilgan ariza — talaba boshqa STIR bilan qayta yuborishi mumkin.
+  const canResubmit = p.status === 'revisionNeeded' || p.status === 'rejected';
   const fields = [
     { k: 'Korxona', v: p.company },
     { k: 'STIR', v: formatTin(p.tin) },
@@ -62,9 +64,14 @@ export function PlacePage() {
           title="Korxona ma'lumotlari"
           actions={<Badge status={status.kind}>{status.label}</Badge>}
         />
-        {p.comment && (p.status === 'revisionNeeded' || p.status === 'rejected') && (
+        {p.comment && canResubmit && (
           <p className={styles.pendingNote} role="status">
             Tyutor izohi: {p.comment}
+          </p>
+        )}
+        {p.status === 'submitted' && (
+          <p className={styles.pendingNote} role="status">
+            Ariza tyutorga yuborildi — ko'rib chiqilmoqda.
           </p>
         )}
         <dl className={styles.fields}>
@@ -80,6 +87,8 @@ export function PlacePage() {
           bo'lsa tyutorga murojaat qiling.
         </p>
       </Card>
+
+      {canResubmit && <PlaceSelectForm resubmit />}
 
       <Card padded aria-labelledby="contract-title">
         <h2 id="contract-title" className={pages.sectionTitle}>

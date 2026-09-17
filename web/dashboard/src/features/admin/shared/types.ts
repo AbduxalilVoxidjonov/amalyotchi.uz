@@ -21,3 +21,25 @@ export const DEFAULT_PAGE_SIZE = 20;
 export function toQuery(params: ListParams): QueryParams {
   return { q: params.q || undefined, page: params.page, pageSize: params.pageSize };
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Excel import (talabalar va korxonalar uchun bir xil shakl — backend `ImportResult`).
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** Qabul qilinmagan qator (bir qatorda bir nechta xato bo'lsa — bir nechta yozuv). */
+export interface ImportError {
+  /** Exceldagi qator raqami. */
+  row: number;
+  /** Ustun nomi ("FISH", "STIR", "Manzil", ...). */
+  column: string;
+  value: string | null;
+  message: string;
+}
+
+/** Xato qatorlar tashlab yuboriladi, to'g'rilari saqlanadi (`created + failed = totalRows`). */
+export interface ImportResult {
+  totalRows: number;
+  created: number;
+  failed: number;
+  errors: ImportError[];
+}

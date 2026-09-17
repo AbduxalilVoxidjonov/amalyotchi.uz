@@ -1,37 +1,53 @@
-import { useEffect, useId, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useId, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import type { UseMutationResult } from '@tanstack/react-query';
 import { errorMessage } from '@/shared/api';
 import { Button, Modal } from '@/shared/ui';
-import { useImportStudents, useStudentImportTemplate } from '../hooks';
-import type { StudentImportResult } from '../types';
-import styles from './StudentImportModal.module.css';
-
-export interface StudentImportModalProps {
-  open: boolean;
-  onClose: () => void;
-}
+import type { ImportResult } from '../shared/types';
+import type { TemplateDownload } from '../shared/useTemplateDownload';
+import styles from './ExcelImportModal.module.css';
 
 const ACCEPT = '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
+export interface ExcelImportModalProps {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  description: string;
+  /** Ustunlar haqida qisqa izoh (shablon tugmasi ostida). */
+  hint: ReactNode;
+  /** Bo'sh fayl (0 qator) holatidagi maslahat. */
+  emptyHint: string;
+  template: TemplateDownload;
+  mutation: UseMutationResult<ImportResult, Error, File>;
+}
+
 /**
- * "Excel import" oqimi: shablonni yuklab olish → to'ldirish → yuklash → hisobot.
+ * Umumiy "Excel import" oqimi (talabalar va korxonalar bir xil ishlatadi):
+ * shablonni yuklab olish → to'ldirish → faylni tanlash → hisobot.
  * Server xato qatorlarni tashlab yuboradi va to'g'rilarini saqlaydi, shuning uchun hisobotda
  * qo'shilganlar soni ham, rad etilgan qatorlar ro'yxati ham ko'rsatiladi.
  */
-export function StudentImportModal({ open, onClose }: StudentImportModalProps) {
+export function ExcelImportModal({
+  open,
+  onClose,
+  title,
+  description,
+  hint,
+  emptyHint,
+  template,
+  mutation,
+}: ExcelImportModalProps) {
   const fileId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [result, setResult] = useState<StudentImportResult | null>(null);
-
-  const template = useStudentImportTemplate();
-  const importStudents = useImportStudents();
+  const [result, setResult] = useState<ImportResult | null>(null);
 
   // Har ochilishda toza holat (oldingi hisobot qolib ketmasin).
   useEffect(() => {
     if (!open) return;
     setFile(null);
     setResult(null);
-    importStudents.reset();
+    mutation.reset();
     if (inputRef.current) inputRef.current.value = '';
     // Faqat ochilish paytida; mutatsiya obyekti har renderda yangi.
   }, [open]);
@@ -39,12 +55,12 @@ export function StudentImportModal({ open, onClose }: StudentImportModalProps) {
   function handleFile(e: ChangeEvent<HTMLInputElement>) {
     setFile(e.target.files?.[0] ?? null);
     setResult(null);
-    importStudents.reset();
+    mutation.reset();
   }
 
   function handleImport() {
     if (!file) return;
-    importStudents.mutate(file, {
+    mutation.mutate(file, {
       onSuccess: (imported) => {
         setResult(imported);
         setFile(null);
@@ -54,31 +70,31 @@ export function StudentImportModal({ open, onClose }: StudentImportModalProps) {
   }
 
   function handleClose() {
-    if (importStudents.isPending) return;
+    if (mutation.isPending) return;
     onClose();
   }
 
-  const error = importStudents.isError ? errorMessage(importStudents.error) : undefined;
+  const error = mutation.isError ? errorMessage(mutation.error) : undefined;
 
   return (
     <Modal
       open={open}
       onClose={handleClose}
-      title="Talabalarni Excel orqali qo'shish"
-      description="Shablonni yuklab oling, to'ldiring va shu yerga yuklang. Xato qatorlar qabul qilinmaydi — ular ro'yxat bo'lib chiqadi, to'g'rilari saqlanadi."
+      title={title}
+      description={description}
       width="min(720px, 94vw)"
       footer={
         <>
-          <Button type="button" onClick={handleClose} disabled={importStudents.isPending}>
+          <Button type="button" onClick={handleClose} disabled={mutation.isPending}>
             Yopish
           </Button>
           <Button
             type="button"
             variant="primary"
             onClick={handleImport}
-            disabled={!file || importStudents.isPending}
+            disabled={!file || mutation.isPending}
           >
-            {importStudents.isPending ? 'Yuklanmoqda…' : 'Import qilish'}
+            {mutation.isPending ? 'Yuklanmoqda…' : 'Import qilish'}
           </Button>
         </>
       }
@@ -88,11 +104,7 @@ export function StudentImportModal({ open, onClose }: StudentImportModalProps) {
           <Button type="button" onClick={template.download} disabled={template.isLoading}>
             {template.isLoading ? 'Tayyorlanmoqda…' : 'Shablonni yuklab olish'}
           </Button>
-          <p className={styles.hint}>
-            Ustunlar: <b>FISH*</b>, <b>HEMIS ID*</b>, <b>Guruh*</b>, Telefon. Sarlavha nomlarini
-            o‘zgartirmang — fayl ustun nomlari bo‘yicha o‘qiladi, tartibi muhim emas. Guruhlar
-            ro‘yxati shablonning «Guruhlar» varag‘ida.
-          </p>
+          <p className={styles.hint}>{hint}</p>
           {template.error && (
             <p role="alert" className={styles.error}>
               {template.error}
@@ -111,7 +123,7 @@ export function StudentImportModal({ open, onClose }: StudentImportModalProps) {
             type="file"
             accept={ACCEPT}
             onChange={handleFile}
-            disabled={importStudents.isPending}
+            disabled={mutation.isPending}
           />
         </div>
 
@@ -121,22 +133,20 @@ export function StudentImportModal({ open, onClose }: StudentImportModalProps) {
           </p>
         )}
 
-        {result && <ImportReport result={result} />}
+        {result && <ImportReport result={result} emptyHint={emptyHint} />}
       </div>
     </Modal>
   );
 }
 
-function ImportReport({ result }: { result: StudentImportResult }) {
+function ImportReport({ result, emptyHint }: { result: ImportResult; emptyHint: string }) {
   return (
     <section className={styles.report} aria-label="Import natijasi">
       <p className={result.created > 0 ? styles.success : styles.error} role="status">
         Qo‘shildi: {result.created} · Qabul qilinmadi: {result.failed} · Jami: {result.totalRows}
       </p>
 
-      {result.totalRows === 0 && (
-        <p className={styles.hint}>Faylda talaba qatori topilmadi — shablonni to‘ldirganingizni tekshiring.</p>
-      )}
+      {result.totalRows === 0 && <p className={styles.hint}>{emptyHint}</p>}
 
       {result.errors.length > 0 && (
         <div className={styles.tableWrap}>

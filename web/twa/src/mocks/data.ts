@@ -1,6 +1,7 @@
 import type { AuthResultDto, UserSummaryDto } from '@amaliyotchi/shared';
 import { resetDiaryMocks } from '@/features/diary/mocks';
 import { resetLeaveMocks } from '@/features/leave/mocks';
+import { resetPlaceMocks } from '@/features/place/mocks';
 import { resetTodayMocks } from '@/features/today/mocks';
 
 export const mockStudent: UserSummaryDto = {
@@ -47,10 +48,14 @@ export function issueSession(user: UserSummaryDto, ttlSeconds = 1800): AuthResul
   };
 }
 
-/** Testlarda har testdan keyin: sessiyalar + o'zgaruvchan talaba holati (check-in, kundalik, ruxsat). */
+/**
+ * Testlarda har testdan keyin: sessiyalar + o'zgaruvchan talaba holati
+ * (check-in, kundalik, ruxsat, amaliyot joyi arizasi).
+ */
 export function resetMockState() {
   mockSessions.clear();
   resetTodayMocks();
   resetDiaryMocks();
   resetLeaveMocks();
+  resetPlaceMocks();
 }

@@ -1,13 +1,10 @@
-import { useCallback, useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { downloadAuthFile } from '@/shared/files';
+import { companiesApi } from '../companies/api';
 import { adminKeys } from '../shared/keys';
 import type { ListParams } from '../shared/types';
-import {
-  STUDENTS_TEMPLATE_ENDPOINT,
-  STUDENTS_TEMPLATE_FILE_NAME,
-  studentsApi,
-} from './api';
+import { useTemplateDownload, type TemplateDownload } from '../shared/useTemplateDownload';
+import { STUDENTS_TEMPLATE_ENDPOINT, STUDENTS_TEMPLATE_FILE_NAME, studentsApi } from './api';
+import type { AssignCompanyInput } from './types';
 
 export function useStudentsQuery(params: ListParams) {
   return useQuery({
@@ -40,25 +37,38 @@ export function useImportStudents() {
   });
 }
 
-export interface TemplateDownload {
-  download: () => void;
-  isLoading: boolean;
-  /** Yuklab olinmasa — tugma yonida ko'rsatiladigan xabar. */
-  error: string | null;
+/** "Shablon" tugmasi: talabalar import shablonini yuklab oladi. */
+export function useStudentImportTemplate(): TemplateDownload {
+  return useTemplateDownload(STUDENTS_TEMPLATE_ENDPOINT, STUDENTS_TEMPLATE_FILE_NAME);
 }
 
-/** "Shablon" tugmasi: `.xlsx` ni token bilan olib, brauzerga saqlatadi. */
-export function useStudentImportTemplate(): TemplateDownload {
-  const [isLoading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+/**
+ * Biriktirish modalidagi korxona qidiruvi (`GET /api/admin/companies?q=`).
+ * `features/admin/companies` hook'lari o'rniga shu yerda — modal ochilgandagina so'raladi.
+ */
+export function useCompanyPickerQuery(params: ListParams, enabled: boolean) {
+  return useQuery({
+    queryKey: adminKeys.companies(params),
+    queryFn: () => companiesApi.list(params),
+    placeholderData: keepPreviousData,
+    enabled,
+  });
+}
 
-  const download = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    downloadAuthFile(STUDENTS_TEMPLATE_ENDPOINT, STUDENTS_TEMPLATE_FILE_NAME)
-      .catch(() => setError("Shablonni yuklab bo'lmadi. Qaytadan urinib ko'ring."))
-      .finally(() => setLoading(false));
-  }, []);
-
-  return { download, isLoading, error };
+/**
+ * Ommaviy biriktirish: belgilangan talabalar bitta korxonaga biriktiriladi.
+ * Muvaffaqiyatda talabalar ro'yxati, dashboard va korxonalar (talaba soni o'zgaradi) yangilanadi.
+ */
+export function useAssignCompany() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ['admin', 'students', 'assign-company'],
+    mutationFn: (input: AssignCompanyInput) => studentsApi.assignCompany(input),
+    onSuccess: (result) => {
+      if (result.assigned === 0) return;
+      void queryClient.invalidateQueries({ queryKey: adminKeys.studentsAll() });
+      void queryClient.invalidateQueries({ queryKey: adminKeys.dashboard() });
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'companies'] });
+    },
+  });
 }
