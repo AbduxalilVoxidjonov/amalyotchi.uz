@@ -1,8 +1,32 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { MapPickerProps } from '@/shared/ui/map-picker';
 import { renderWithProviders } from '../shared/renderWithProviders';
 import { CompaniesPage } from './CompaniesPage';
 import { resetCompaniesMock } from './mocks';
+
+/** Klik bilan tanlanadigan sinov koordinatasi (mock `MapPicker` shuni qaytaradi). */
+const PICKED = { lat: 41.35, lng: 69.28 };
+
+/**
+ * Haqiqiy Leaflet jsdom'da ishlamaydi (konteyner o'lchami, tile so'rovlari) — formaga
+ * soddalashtirilgan stub qo'yiladi: tugma bosilsa `PICKED` koordinatasi `onChange` ga ketadi.
+ * Shuning uchun `MapPicker` alohida modul yo'lida (`@/shared/ui/map-picker`) va forma uni
+ * barrel orqali emas, to'g'ridan-to'g'ri shu yo'ldan import qiladi.
+ */
+vi.mock('@/shared/ui/map-picker', () => ({
+  MapPicker: ({ value, onChange, label, radiusM, error, disabled }: MapPickerProps) => (
+    <div>
+      <button type="button" disabled={disabled} onClick={() => onChange(PICKED)}>
+        {label}
+      </button>
+      <output data-testid="map-point" data-radius={radiusM ?? ''}>
+        {value ? `${value.lat}, ${value.lng}` : 'Xaritadan joyni belgilang'}
+      </output>
+      {error ? <p>{error}</p> : null}
+    </div>
+  ),
+}));
 
 /** Nom bo'yicha qatorni topib, shu qator ichida qidirish uchun. */
 function rowFor(name: string) {
@@ -22,8 +46,7 @@ async function fillForm(
   await user.type(within(dialog).getByLabelText('STIR'), values.tin);
   await user.type(within(dialog).getByLabelText('Faoliyat turi'), 'Dasturiy ta’minot');
   await user.type(within(dialog).getByLabelText('Manzil'), 'Toshkent, Yunusobod 4');
-  await user.type(within(dialog).getByLabelText('Kenglik (lat)'), '41.3500');
-  await user.type(within(dialog).getByLabelText('Uzunlik (lng)'), '69.2800');
+  await user.click(within(dialog).getByRole('button', { name: 'Korxona joylashuvi' }));
   await user.type(within(dialog).getByLabelText('Radius (m)'), '180');
   await user.type(within(dialog).getByLabelText('Rahbar FISH'), 'Sobirov Jahongir');
   await user.type(within(dialog).getByLabelText('Rahbar telefoni'), '+998 90 777-88-99');
@@ -108,6 +131,37 @@ describe('CompaniesPage', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
+  it('yaratish: joylashuv tanlanmasa saqlash bloklanadi va xato chiqadi', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<CompaniesPage />);
+    await screen.findByText('Tech Solutions MChJ');
+
+    await user.click(screen.getByRole('button', { name: 'Yangi korxona' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Yangi korxona' });
+    // Xaritaga tegilmaydi — qolgan hamma maydon to'g'ri.
+    await user.type(within(dialog).getByLabelText('Nomi'), 'Xaritasiz MChJ');
+    await user.type(within(dialog).getByLabelText('STIR'), '309445566');
+    await user.type(within(dialog).getByLabelText('Faoliyat turi'), 'Savdo');
+    await user.type(within(dialog).getByLabelText('Manzil'), 'Toshkent, Chilonzor 5');
+    await user.type(within(dialog).getByLabelText('Rahbar FISH'), 'Nazarov Otabek');
+    await user.type(within(dialog).getByLabelText('Rahbar telefoni'), '+998 90 111-22-33');
+    await user.click(within(dialog).getByRole('button', { name: 'Saqlash' }));
+
+    expect(
+      within(dialog).getByText('Xaritadan korxona joylashuvini belgilang.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.queryByText('Xaritasiz MChJ')).not.toBeInTheDocument();
+
+    // Xaritadan nuqta tanlangach saqlash o'tadi.
+    await user.click(within(dialog).getByRole('button', { name: 'Korxona joylashuvi' }));
+    expect(within(dialog).getByTestId('map-point')).toHaveTextContent('41.35, 69.28');
+    await user.click(within(dialog).getByRole('button', { name: 'Saqlash' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(await screen.findByText('Xaritasiz MChJ')).toBeInTheDocument();
+  });
+
   it('409: STIR takrori → server xabari dialog ichida', async () => {
     const user = userEvent.setup();
     renderWithProviders(<CompaniesPage />);
@@ -136,7 +190,9 @@ describe('CompaniesPage', () => {
       expect(within(dialog).getByLabelText('Nomi')).toHaveValue('Tech Solutions MChJ'),
     );
     expect(within(dialog).getByLabelText('STIR')).toHaveValue('304512889');
-    expect(within(dialog).getByLabelText('Kenglik (lat)')).toHaveValue('41.3111');
+    // Koordinata endi maydon emas — xaritadagi mavjud nuqta sifatida ko'rsatiladi.
+    expect(within(dialog).queryByLabelText('Kenglik (lat)')).not.toBeInTheDocument();
+    expect(within(dialog).getByTestId('map-point')).toHaveTextContent('41.3111, 69.2797');
     expect(within(dialog).getByLabelText('Rahbar telefoni')).toHaveValue('+998 90 123-45-67');
 
     await user.clear(within(dialog).getByLabelText('Nomi'));

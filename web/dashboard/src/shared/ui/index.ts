@@ -12,6 +12,7 @@ export * from './chip';
 export * from './data-table';
 export * from './empty-state';
 export * from './fact-grid';
+export * from './map-picker';
 export * from './map-placeholder';
 export * from './modal';
 export * from './pill';

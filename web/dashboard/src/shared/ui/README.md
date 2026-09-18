@@ -16,7 +16,7 @@ Manba: `design/SPEC-TOKENS.md` (19 komponent). Vizual ko'rgazma: `npm run dev` �
     `ProgressBar` (+`pctColor`), `Avatar` (+`initialsOf`), `Eyebrow`, `cn`.
   - `@/shared/ui` (shu papka) — yuqoridagilarni re-export qiladi **+** dashboard'ga xos: `Pill`/`PillGroup`,
     `DataTable`/`PersonCell`, `StatTile`/`StatGrid`, `FactGrid`, `SidebarNav`, `Topbar`(=`PageHeader`),
-    `Alert`/`AlertList`/`AlertRow`, `Chip`/`ChipRow`/`FileBox`, `MapPlaceholder`, `EmptyState`,
+    `Alert`/`AlertList`/`AlertRow`, `Chip`/`ChipRow`/`FileBox`, `MapPlaceholder`, `MapPicker`, `EmptyState`,
     `Modal`/`ConfirmDialog`, `Breadcrumb`.
 - Import har doim `import { Button, DataTable } from '@/shared/ui'` (dashboard) yoki
   `from '@amaliyotchi/shared/ui'` (twa). Tree-shake ishlaydi (`sideEffects: false`).
@@ -39,7 +39,8 @@ Manba: `design/SPEC-TOKENS.md` (19 komponent). Vizual ko'rgazma: `npm run dev` �
 | `Alert`                     | `title` + `AlertList > AlertRow action`                                                                                                                                                                |
 | `Avatar`                    | `name` yoki `initials`, `variant` table·card·detail·sidebar                                                                                                                                            |
 | `Chip`                      | `variant` file·fmt; `FileBox name meta action`                                                                                                                                                         |
-| `MapPlaceholder`            | `title coords note height`                                                                                                                                                                             |
+| `MapPlaceholder`            | `title coords note height` — faqat ko'rsatish (haqiqiy xarita emas)                                                                                                                                     |
+| `MapPicker`                 | `value onChange radiusM label height disabled error` — Leaflet/OSM, klik yoki markerni sudrash bilan koordinata tanlash; Leaflet qatlami `lazy` chunk, testda `vi.mock('@/shared/ui/map-picker')`                                                                                                                                                                             |
 | `Eyebrow`                   | `as spacing tone margin`                                                                                                                                                                               |
 | `EmptyState`                | `title description action tone`                                                                                                                                                                        |
 | `Modal`                     | `open onClose title description children footer width` — a11y: `role="dialog"`, Esc/overlay yopadi, fokus ichkarida qulflanadi, `body` scroll qulflanadi                                             |

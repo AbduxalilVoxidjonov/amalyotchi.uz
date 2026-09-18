@@ -2227,3 +2227,13 @@ Ikkinchi yo'l: admin talabalar ro'yxatidan bir nechtasini belgilab, to'g'ridan-t
 - Frontend: korxonalar toolbar'idan ishlamaydigan "Excel" va "Shubhali to'planishlar" tugmalari olib tashlandi,
   o'rniga "Yangi korxona", "Shablon", "Excel import"; talabalar jadvalida `№` ustuni, qator belgilash (checkbox)
   va "Korxonaga biriktirish"; TWA'da STIR orqali joy tanlash oqimi.
+- **Koordinata qo'lda yozilmaydi**: korxona formasida `lat`/`lng` inputlari o'rniga **xarita** (Leaflet + OSM,
+  `@/shared/ui/map-picker`) — klik yoki markerni sudrash bilan nuqta tanlanadi, radius doira bo'lib ko'rinadi.
+  **API shakli o'zgarmagan** — serverga baribir `lat`/`lng` sonlari ketadi; Excel importda koordinata ustunlari
+  qoladi (u yerda xarita yo'q). Nuqta tanlanmasa klient validatsiyasi to'xtatadi:
+  `"Xaritadan korxona joylashuvini belgilang."`
+- **Koordinata qo'lda yozilmaydi**: korxona formasida `lat`/`lng` inputlari o'rniga **xarita** (Leaflet + OSM,
+  `@/shared/ui/map-picker`) — klik yoki markerni sudrash bilan nuqta tanlanadi, radius doira bo'lib ko'rinadi.
+  **API shakli o'zgarmagan** — serverga baribir `lat`/`lng` sonlari ketadi; Excel importda koordinata ustunlari
+  qoladi (u yerda xarita yo'q). Nuqta tanlanmasa 400 emas, klient validatsiyasi:
+  `"Xaritadan korxona joylashuvini belgilang."`

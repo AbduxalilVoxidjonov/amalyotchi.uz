@@ -1,6 +1,8 @@
 import { useEffect, useId, useState, type ChangeEvent, type FormEvent } from 'react';
 import { errorMessage, isApiError } from '@/shared/api';
 import { Button, Input, Modal } from '@/shared/ui';
+// Barrel (`@/shared/ui`) orqali emas — to'g'ridan-to'g'ri modul yo'li: testlarda `vi.mock` oson bo'lsin.
+import { MapPicker } from '@/shared/ui/map-picker';
 import { formatPhone } from '../../shared/format';
 import { useCreateCompany, useUpdateCompany } from '../hooks';
 import { companySchema, firstIssues, type CompanyFormValues } from '../schema';
@@ -33,14 +35,16 @@ export interface CompanyFormModalProps {
 }
 
 type FieldKey = keyof CompanyFormValues;
+/** Koordinata maydonlari son — ular `MapPicker` orqali o'zgaradi, `field()` esa faqat matn uchun. */
+type TextFieldKey = Exclude<FieldKey, 'lat' | 'lng'>;
 
 const EMPTY_VALUES: CompanyFormValues = {
   name: '',
   tin: '',
   activity: '',
   address: '',
-  lat: '',
-  lng: '',
+  lat: null,
+  lng: null,
   radiusM: '',
   supervisorName: '',
   supervisorPhone: '',
@@ -54,8 +58,8 @@ function toValues(initial: CompanyFormInitial): CompanyFormValues {
     tin: initial.tin,
     activity: initial.activity,
     address: initial.address,
-    lat: String(initial.lat),
-    lng: String(initial.lng),
+    lat: initial.lat,
+    lng: initial.lng,
     radiusM: String(initial.radiusM),
     supervisorName: initial.supervisorName,
     supervisorPhone: formatPhone(initial.supervisorPhone),
@@ -100,7 +104,8 @@ export function CompanyFormModal({
     onClose();
   }
 
-  function field(key: FieldKey) {
+  /** Matn maydonlari uchun `onChange` (koordinata xaritadan keladi, `radiusM` ham matn). */
+  function field(key: TextFieldKey) {
     return (e: ChangeEvent<HTMLInputElement>) =>
       setValues((v) => ({ ...v, [key]: e.target.value }));
   }
@@ -120,6 +125,14 @@ export function CompanyFormModal({
       createCompany.mutate(body, { onSuccess: onClose });
     }
   }
+
+  // Xaritadagi jonli doira: radius maydoni to'g'ri son bo'lsa o'sha, aks holda doira ko'rsatilmaydi.
+  const radiusPreview =
+    /^\d+$/.test(values.radiusM.trim()) && Number(values.radiusM) >= 1
+      ? Number(values.radiusM)
+      : undefined;
+  const point =
+    values.lat !== null && values.lng !== null ? { lat: values.lat, lng: values.lng } : null;
 
   const apiError = isApiError(mutation.error) ? mutation.error : undefined;
   const errorFor = (key: FieldKey) => fieldErrors[key] ?? apiError?.fieldError(key);
@@ -205,31 +218,13 @@ export function CompanyFormModal({
           error={shownErrors.address}
           disabled={busy}
         />
-        <div className={styles.row3}>
-          <Input
-            id="company-lat"
-            label="Kenglik (lat)"
-            variant="form"
-            mono
-            inputMode="decimal"
-            autoComplete="off"
-            placeholder="41.3111"
-            value={values.lat}
-            onChange={field('lat')}
-            error={shownErrors.lat}
-            disabled={busy}
-          />
-          <Input
-            id="company-lng"
-            label="Uzunlik (lng)"
-            variant="form"
-            mono
-            inputMode="decimal"
-            autoComplete="off"
-            placeholder="69.2797"
-            value={values.lng}
-            onChange={field('lng')}
-            error={shownErrors.lng}
+        <div className={styles.location}>
+          <MapPicker
+            label="Korxona joylashuvi"
+            value={point}
+            onChange={(next) => setValues((v) => ({ ...v, lat: next.lat, lng: next.lng }))}
+            radiusM={radiusPreview}
+            error={shownErrors.lat ?? shownErrors.lng}
             disabled={busy}
           />
           <Input
@@ -240,7 +235,8 @@ export function CompanyFormModal({
             inputMode="numeric"
             autoComplete="off"
             placeholder="200"
-            hint="Ixtiyoriy — 50–1000."
+            hint="Ixtiyoriy — 50–1000. Xaritadagi doira shu radiusni ko‘rsatadi."
+            wrapperClassName={styles.radius}
             value={values.radiusM}
             onChange={field('radiusM')}
             error={shownErrors.radiusM}

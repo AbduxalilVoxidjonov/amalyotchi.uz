@@ -34,20 +34,15 @@ const tinField = z
     "STIR 9 ta raqamdan iborat bo'lishi kerak. Namuna: 123456789",
   );
 
-/** Koordinata: "41,3111" ham qabul qilinadi (vergul → nuqta). */
-function coordField(required: string, message: string, min: number, max: number) {
-  return z
-    .string()
-    .trim()
-    .transform((s) => s.replace(',', '.'))
-    .refine((s) => s !== '', required)
-    .refine((s) => {
-      if (s === '') return true;
-      if (!/^-?\d+(\.\d+)?$/.test(s)) return false;
-      const n = Number(s);
-      return n >= min && n <= max;
-    }, message)
-    .transform(Number);
+/** Xaritadan nuqta tanlanmagan holat — `lat`/`lng` `null` bo'ladi. */
+export const MAP_POINT_REQUIRED = 'Xaritadan korxona joylashuvini belgilang.';
+
+/**
+ * Koordinata endi qo'lda emas, `MapPicker` dan keladi — shuning uchun qiymat son (yoki tanlanmagan
+ * bo'lsa `null`). Serverga baribir `lat`/`lng` sonlari ketadi (backend kontrakti o'zgarmagan).
+ */
+function coordField(rangeMessage: string, min: number, max: number) {
+  return z.number({ error: MAP_POINT_REQUIRED }).min(min, rangeMessage).max(max, rangeMessage);
 }
 
 /** Radius ixtiyoriy: bo'sh bo'lsa `null` (server sozlamadan oladi), aks holda 50–1000. */
@@ -87,18 +82,8 @@ export const companySchema = z.object({
     'Faoliyat turi 200 belgidan oshmasligi kerak.',
   ),
   address: textField('Manzilni kiriting.', 500, 'Manzil 500 belgidan oshmasligi kerak.'),
-  lat: coordField(
-    'Kenglikni (lat) kiriting.',
-    "Kenglik (lat) -90 va 90 oralig'ida bo'lishi kerak.",
-    -90,
-    90,
-  ),
-  lng: coordField(
-    'Uzunlikni (lng) kiriting.',
-    "Uzunlik (lng) -180 va 180 oralig'ida bo'lishi kerak.",
-    -180,
-    180,
-  ),
+  lat: coordField("Kenglik (lat) -90 va 90 oralig'ida bo'lishi kerak.", -90, 90),
+  lng: coordField("Uzunlik (lng) -180 va 180 oralig'ida bo'lishi kerak.", -180, 180),
   radiusM: radiusField,
   supervisorName: textField(
     'Rahbar FISH ni kiriting.',
@@ -110,8 +95,14 @@ export const companySchema = z.object({
   mentorPhone: optionalPhoneField,
 });
 
-/** Forma holati — barcha maydonlar matn (`<input value>`). */
-export type CompanyFormValues = z.input<typeof companySchema>;
+/**
+ * Forma holati — matn maydonlari `<input value>`, koordinata esa xaritadan kelgan son
+ * (hali tanlanmagan bo'lsa `null` → zod `MAP_POINT_REQUIRED` xatosini beradi).
+ */
+export type CompanyFormValues = Omit<z.input<typeof companySchema>, 'lat' | 'lng'> & {
+  lat: number | null;
+  lng: number | null;
+};
 
 /** Zod xatolarini `{ maydon: birinchi xabar }` ko'rinishiga yig'adi (tyutor formasidagi bilan bir xil). */
 export function firstIssues<K extends string>(issues: readonly z.ZodIssue[]) {
