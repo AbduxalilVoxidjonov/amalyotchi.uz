@@ -63,6 +63,22 @@
   font-size: var(--fs-xs2);
   color: var(--color-text-faint);
 }
+/* "Hozirgi joylashuvim" tugmasi + koordinata matni bitta qatorda. */
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.actions .coords {
+  margin-left: auto;
+}
+/* Aniqlik ogohlantirishi (tugma ostida). */
+.hint {
+  margin: 0;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}
 .coords {
   margin: 0;
   font-family: var(--font-mono);
