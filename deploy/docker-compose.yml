@@ -100,7 +100,8 @@ services:
       # Brauzerdan to'g'ridan-to'g'ri 5080 ga murojaat uchun (dev server); nginx orqali /api/ same-origin — CORS kerak emas.
       Cors__Origins__0: ${CORS_ORIGIN:-http://localhost:5173}
     ports:
-      - "5080:8080"   # to'g'ridan-to'g'ri debug: http://localhost:5080/health
+      # Host portlari .env orqali sozlanadi (band bo'lsa API_PORT/DASHBOARD_PORT/TWA_PORT ni o'zgartiring).
+      - "${API_PORT:-5080}:8080"   # to'g'ridan-to'g'ri debug: http://localhost:5080/health
     volumes:
       - api-data:/app/data
     networks:
@@ -124,7 +125,7 @@ services:
       api:
         condition: service_healthy
     ports:
-      - "8080:80"     # http://localhost:8080
+      - "${DASHBOARD_PORT:-8090}:80"   # http://localhost:8090 (.env: DASHBOARD_PORT)
     networks:
       - amaliyotchi
     restart: unless-stopped
@@ -139,7 +140,7 @@ services:
       api:
         condition: service_healthy
     ports:
-      - "8081:80"     # http://localhost:8081 (Telegram uchun HTTPS tunnel — README)
+      - "${TWA_PORT:-8091}:80"        # http://localhost:8091 (.env: TWA_PORT; Telegram uchun HTTPS tunnel — README)
     networks:
       - amaliyotchi
     restart: unless-stopped

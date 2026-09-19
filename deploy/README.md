@@ -16,16 +16,18 @@ docker compose -f deploy/docker-compose.yml ps
 
 Birinchi build 3–6 daqiqa (SDK image + NuGet restore + web `npm ci`). Keyingi buildlarda faqat o'zgargan layer'lar.
 
-Ochish: dashboard <http://localhost:8080> (admin `+998901234567` / `admin12345` — `.env` dagi `ADMIN_*`),
-TWA <http://localhost:8081>, API health <http://localhost:5080/health>.
+Ochish: dashboard <http://localhost:8090> (admin `+998901234567` / `admin12345` — `.env` dagi `ADMIN_*`),
+TWA <http://localhost:8091>, API health <http://localhost:5080/health>.
+
+Host portlari band bo'lsa `deploy/.env` da `DASHBOARD_PORT` / `TWA_PORT` / `API_PORT` ni o'zgartiring (konteyner ichidagi portlar o'zgarmaydi).
 
 ## Portlar
 
 | Servis    | Konteyner              | Host port | Ichki | Izoh                                      |
 |-----------|------------------------|-----------|-------|-------------------------------------------|
-| dashboard | amaliyotchi-dashboard  | 8080      | 80    | nginx, `/api/` → `api:8080`               |
-| twa       | amaliyotchi-twa        | 8081      | 80    | nginx, `/api/` → `api:8080`               |
-| api       | amaliyotchi-api        | 5080      | 8080  | to'g'ridan-to'g'ri debug, `/health`       |
+| dashboard | amaliyotchi-dashboard  | 8090 (`DASHBOARD_PORT`) | 80    | nginx, `/api/` → `api:8080`     |
+| twa       | amaliyotchi-twa        | 8091 (`TWA_PORT`)       | 80    | nginx, `/api/` → `api:8080`     |
+| api       | amaliyotchi-api        | 5080 (`API_PORT`)       | 8080  | to'g'ridan-to'g'ri debug, `/health` |
 | postgres  | amaliyotchi-postgres   | 5432      | 5432  | `amaliyotchi` / `POSTGRES_PASSWORD`       |
 | seq       | amaliyotchi-seq        | 5341      | 80    | loglar UI                                 |
 | minio     | amaliyotchi-minio      | 9000/9001 | —     | S3 API / konsol (`amaliyotchi`/`amaliyotchi123`) |
@@ -41,6 +43,9 @@ TWA <http://localhost:8081>, API health <http://localhost:5080/health>.
 | `SEED_DEMO`          | `true`               | demo ma'lumot — **production'da `false`**                    |
 | `ADMIN_HEMIS_ID/PASSWORD` | `100000000001` / `admin12345` | birinchi admin (baza bo'sh bo'lganda bir marta), HEMIS ID — login  |
 | `DOCKER_SUBNET`      | `172.30.0.0/16`      | compose tarmog'i = API `ForwardedHeaders:KnownNetworks`      |
+| `DASHBOARD_PORT`     | `8090`               | dashboard host porti (ixtiyoriy; hostda band bo'lsa o'zgartiring) |
+| `TWA_PORT`           | `8091`               | TWA host porti (ixtiyoriy)                                  |
+| `API_PORT`           | `5080`               | API debug host porti (ixtiyoriy); konteyner ichida hamma vaqt `8080` |
 
 API konfiguratsiyasi to'liq muhit o'zgaruvchilari orqali (`Section__Key`), `appsettings.Docker.json` yo'q.
 Boshqa kalitlar — `src/Amaliyotchi.Api/appsettings.json`.
@@ -81,10 +86,10 @@ Telegram Mini App faqat HTTPS manzilni ochadi. Lokal stendni tunnel bilan chiqar
 Web App URL sifatida bering:
 
 ```bash
-# ngrok
-ngrok http 8081
+# ngrok (TWA host porti — .env dagi TWA_PORT, default 8091)
+ngrok http 8091
 # yoki cloudflared (hisobsiz vaqtinchalik domen)
-cloudflared tunnel --url http://localhost:8081
+cloudflared tunnel --url http://localhost:8091
 ```
 
 `TELEGRAM_BOT_TOKEN` ni `.env` ga yozib `api` ni qayta ko'taring: `docker compose -f deploy/docker-compose.yml up -d api`.
@@ -98,7 +103,7 @@ Tunnel `X-Forwarded-Proto: https` yuboradi — nginx uni API ga uzatadi; API com
   dashboard orqali almashtiring.
 - **`SEED_DEMO=false`** — demo ma'lumot faqat stend uchun (API `Seed:Demo` default `false`, compose'da lokal qulaylik uchun `true`).
 - **`ForwardedHeaders:KnownNetworks`** — faqat haqiqiy proksi turgan tarmoq (compose subneti). Tashqi reverse proxy
-  (Caddy/nginx hostda) bo'lsa uning IP sini `ForwardedHeaders__KnownProxies__0` ga qo'shing. `5080` portini production'da
+  (Caddy/nginx hostda) bo'lsa uning IP sini `ForwardedHeaders__KnownProxies__0` ga qo'shing. `API_PORT` (default `5080`) portini production'da
   yopib qo'ying (`ports` ni olib tashlang) — u proksisiz to'g'ridan-to'g'ri kirish.
 - Postgres/MinIO/Redis/Seq portlarini tashqariga ochmang (`ports` ni olib tashlang yoki `127.0.0.1:` bilan cheklang).
 - Fayllar `api-data` volume'da (`/app/data/files`) — zaxira nusxasini `postgres-data` bilan birga oling.
