@@ -19,7 +19,8 @@ Birinchi build 3–6 daqiqa (SDK image + NuGet restore + web `npm ci`). Keyingi 
 Ochish: dashboard <http://localhost:8090> (admin `+998901234567` / `admin12345` — `.env` dagi `ADMIN_*`),
 TWA <http://localhost:8091>, API health <http://localhost:5080/health>.
 
-Host portlari band bo'lsa `deploy/.env` da `DASHBOARD_PORT` / `TWA_PORT` / `API_PORT` ni o'zgartiring (konteyner ichidagi portlar o'zgarmaydi).
+Barcha host portlari `deploy/.env` orqali sozlanadi (band bo'lsa o'zgartiring) — konteyner ichidagi portlar hech qachon o'zgarmaydi,
+servislar bir-biriga ichki nom bilan ulanadi (`postgres:5432`, `redis:6379`, `minio:9000`, `api:8080`).
 
 ## Portlar
 
@@ -28,10 +29,10 @@ Host portlari band bo'lsa `deploy/.env` da `DASHBOARD_PORT` / `TWA_PORT` / `API_
 | dashboard | amaliyotchi-dashboard  | 8090 (`DASHBOARD_PORT`) | 80    | nginx, `/api/` → `api:8080`     |
 | twa       | amaliyotchi-twa        | 8091 (`TWA_PORT`)       | 80    | nginx, `/api/` → `api:8080`     |
 | api       | amaliyotchi-api        | 5080 (`API_PORT`)       | 8080  | to'g'ridan-to'g'ri debug, `/health` |
-| postgres  | amaliyotchi-postgres   | 5432      | 5432  | `amaliyotchi` / `POSTGRES_PASSWORD`       |
-| seq       | amaliyotchi-seq        | 5341      | 80    | loglar UI                                 |
-| minio     | amaliyotchi-minio      | 9000/9001 | —     | S3 API / konsol (`amaliyotchi`/`amaliyotchi123`) |
-| redis     | amaliyotchi-redis      | 6379      | 6379  |                                           |
+| postgres  | amaliyotchi-postgres   | 55432 (`POSTGRES_PORT`) | 5432  | `amaliyotchi` / `POSTGRES_PASSWORD`; 5432 odatda band |
+| seq       | amaliyotchi-seq        | 5341 (`SEQ_PORT`)       | 80    | loglar UI                                 |
+| minio     | amaliyotchi-minio      | 9000 (`MINIO_PORT`) / 9001 (`MINIO_CONSOLE_PORT`) | 9000/9001 | S3 API / konsol (`amaliyotchi`/`amaliyotchi123`) |
+| redis     | amaliyotchi-redis      | 56379 (`REDIS_PORT`)    | 6379  | 6379 odatda band                          |
 
 ## Muhit o'zgaruvchilari (`deploy/.env`)
 
@@ -46,6 +47,10 @@ Host portlari band bo'lsa `deploy/.env` da `DASHBOARD_PORT` / `TWA_PORT` / `API_
 | `DASHBOARD_PORT`     | `8090`               | dashboard host porti (ixtiyoriy; hostda band bo'lsa o'zgartiring) |
 | `TWA_PORT`           | `8091`               | TWA host porti (ixtiyoriy)                                  |
 | `API_PORT`           | `5080`               | API debug host porti (ixtiyoriy); konteyner ichida hamma vaqt `8080` |
+| `POSTGRES_PORT`      | `55432`              | postgres host porti (ixtiyoriy); ichida hamma vaqt `5432`   |
+| `REDIS_PORT`         | `56379`              | redis host porti (ixtiyoriy); ichida hamma vaqt `6379`      |
+| `SEQ_PORT`           | `5341`               | Seq UI host porti (ixtiyoriy)                               |
+| `MINIO_PORT` / `MINIO_CONSOLE_PORT` | `9000` / `9001` | MinIO S3 API va konsol host portlari (ixtiyoriy) |
 
 API konfiguratsiyasi to'liq muhit o'zgaruvchilari orqali (`Section__Key`), `appsettings.Docker.json` yo'q.
 Boshqa kalitlar — `src/Amaliyotchi.Api/appsettings.json`.

@@ -14,7 +14,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-amaliyotchi}
       TZ: UTC
     ports:
-      - "5432:5432"
+      # Host porti .env orqali (standart 5432 ko'pincha band bo'ladi — POSTGRES_PORT).
+      - "${POSTGRES_PORT:-55432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
@@ -34,8 +35,8 @@ services:
       MINIO_ROOT_USER: amaliyotchi
       MINIO_ROOT_PASSWORD: amaliyotchi123
     ports:
-      - "9000:9000"   # S3 API
-      - "9001:9001"   # veb-konsol
+      - "${MINIO_PORT:-9000}:9000"           # S3 API (.env: MINIO_PORT)
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"   # veb-konsol (.env: MINIO_CONSOLE_PORT)
     volumes:
       - minio-data:/data
     networks:
@@ -46,7 +47,7 @@ services:
     image: redis:7-alpine
     container_name: amaliyotchi-redis
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-56379}:6379"   # .env: REDIS_PORT
     networks:
       - amaliyotchi
     restart: unless-stopped
@@ -60,7 +61,7 @@ services:
       # (production: SEQ_FIRSTRUN_ADMINPASSWORD bering va portni tashqariga ochmang).
       SEQ_FIRSTRUN_NOAUTHENTICATION: "True"
     ports:
-      - "5341:80"     # UI: http://localhost:5341 (konteyner ichida ingestion 5341, UI 80)
+      - "${SEQ_PORT:-5341}:80"   # UI: http://localhost:5341 (.env: SEQ_PORT; konteyner ichida ingestion 5341, UI 80)
     volumes:
       - seq-data:/data
     networks:
