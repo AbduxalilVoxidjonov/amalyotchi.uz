@@ -5,10 +5,23 @@
   color: var(--color-bad-fg);
 }
 
-/* Belgilash ustuni — matnli label yo'q, faqat katakcha markazda */
+/* Belgilash ustuni — matnli label yo'q, faqat katakcha.
+ * `display: flex` (inline-flex emas): qator katagida label `cellText` blokining satr qutisiga
+ * tushib, baseline bo'yicha pastga siljimasin — sarlavha va qatorlarda bir xil markazlanadi. */
 .check {
+  display: flex;
+  align-items: center;
   gap: 0;
-  justify-content: center;
+  width: 15px;
+  height: 15px;
+}
+/* Bo'sh matn span'i — joy egallamasin */
+.check > span {
+  display: none;
+}
+/* Qator katagidagi `cellText` (`overflow: hidden`) fokus halqasini kesmasin */
+[role='cell'] > :has(> .check) {
+  overflow: visible;
 }
 
 /* Tanlov paneli: "N ta tanlandi" */

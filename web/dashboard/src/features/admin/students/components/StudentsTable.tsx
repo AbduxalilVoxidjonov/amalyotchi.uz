@@ -122,7 +122,10 @@ export function StudentsTable({
             onChange={onToggleAll}
           />
         ),
-        width: '36px',
+        // Katak padding'i: chapda `--row-pad-x` (birinchi ustun), o'ngda 12px (`--col-gap`).
+        // Trek = padding + 15px katakcha — aks holda kontent qutisi katakchadan tor bo'lib,
+        // qatorlarda u `cellText` ning `overflow: hidden` i bilan kesiladi.
+        width: 'calc(var(--row-pad-x) + 15px + 12px)',
         render: (r) => (
           <SelectBox
             checked={selectedIds.has(r.id)}
