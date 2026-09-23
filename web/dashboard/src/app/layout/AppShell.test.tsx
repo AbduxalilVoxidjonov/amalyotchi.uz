@@ -35,6 +35,7 @@ describe('AppShell', () => {
       'Tyutorlar18',
       'Korxonalar412',
       'Talabalar1284',
+      'Amaliyot davrlari',
       'Hisobotlar',
       'Audit jurnali',
       'Sozlamalar',

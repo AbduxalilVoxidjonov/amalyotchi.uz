@@ -1,17 +1,18 @@
-# API-CONTRACT v3.3
+# API-CONTRACT v3.4
 
-Oxirgi yangilanish: 17.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
+Oxirgi yangilanish: 23.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
 esa haqiqiy controller/DTO/validator/handler kodidan olingan — har bir maydon, chegara va status kod kodda bor.
 Frontend (`web/dashboard`, `web/twa`, `web/shared`) shu shaklga moslanishi kerak; v1 bilan farqlar §5 da,
 **v2 bilan farqlar §6 da**, v3.1 da qo'shilganlari — §6.6, v3.2 (talabalar Excel importi) — §6.8,
-v3.3 (korxona CRUD, STIR oqimi, ommaviy biriktirish) — §6.9.
+v3.3 (korxona CRUD, STIR oqimi, ommaviy biriktirish) — §6.9,
+v3.4 (admin amaliyot davrlari) — §6.10.
 
-Jami **92 ta endpoint**: Auth 5 · Admin 54 · Reports 1 · Tutor 19 · Student (TWA) 11 · Files 1 · Companies 1.
+Jami **99 ta endpoint**: Auth 5 · Admin 61 · Reports 1 · Tutor 19 · Student (TWA) 11 · Files 1 · Companies 1.
 
-> Kontrollerlarda `[Http*]` atributlari **94 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
+> Kontrollerlarda `[Http*]` atributlari **101 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
 > har birida ikkitadan action bor (`multipart/form-data` va `application/json` — `[Consumes]` bilan ajratiladi,
-> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **92**.
+> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **99**.
 
 ---
 
@@ -998,6 +999,120 @@ Bazada yo'q kalit default bilan qaytadi (`updatedAt: null`).
 
 ---
 
+### 2.3.4 Amaliyot davrlari — `AdminPracticePeriodsController` (`/api/admin/practice-periods`)
+
+Admin davr yaratadi, sanalarini o'zgartiradi, guruhlarni biriktiradi/ajratadi, yopadi va o'chiradi. Ro'yxat
+**sahifalanmagan** (davrlar o'nlab). Sanalar `YYYY-MM-DD`, vaqt `HH:mm`.
+
+```ts
+type PracticePeriodStatus = 'planned' | 'active' | 'closed';
+
+interface PracticePeriodListItem {
+  id: string;
+  name: string;
+  startDate: string;          // YYYY-MM-DD
+  endDate: string;
+  status: PracticePeriodStatus;
+  groupsCount: number;
+  studentsCount: number;      // biriktirilgan guruhlardagi faol (StudentStatus.active) talabalar
+  createdAt: string;          // ISO datetime
+}
+
+interface PracticePeriodGroup {
+  id: string;                 // StudentGroup id
+  code: string;               // "412-22"
+  course: number;
+  studentsCount: number;
+  facultyId: string;  facultyName: string;
+  departmentId: string; departmentName: string;
+  directionId: string;  directionName: string;
+}
+
+interface PracticePeriodDetail extends PracticePeriodListItem {
+  dailyStart: string;         // "09:00"
+  dailyEnd: string;           // "17:00"
+  workDays: string;           // "1,2,3,4,5,6"
+  requiredDays: number;
+  dailyReportRequired: boolean;
+  groups: PracticePeriodGroup[]; // code bo'yicha tartiblangan
+}
+
+interface PracticePeriodCreate { name: string; startDate: string; endDate: string; groupIds: string[]; }
+interface PracticePeriodUpdate { name: string; startDate: string; endDate: string; }
+interface PracticePeriodGroupsUpdate { groupIds: string[]; } // to'liq ro'yxat (set semantikasi)
+```
+
+**Holat (`status`) — hisoblanadi**: `closed` — faqat `/close` orqali; aks holda `startDate > bugun` (Toshkent) →
+`planned`, qolgani → `active` (tugash sanasi o'tgan, lekin yopilmagan davr ham `active`). Bazada saqlanadigan
+`PracticePeriod.Status` — hayot sikli: admin yaratgan davr darhol `Active` (ochiq) saqlanadi, `/close` → `Closed`.
+Talaba/tyutor oqimlari (check-in, `PeriodLookup`, ariza) saqlangan `Active` ga tayanadi; boshlanmagan davrda
+check-in `periodNotStarted` bilan rad etiladi, ariza esa oldindan topshirilishi mumkin.
+
+#### GET `/api/admin/practice-periods?status=planned|active|closed` · 200 · 400
+
+`PracticePeriodListItem[]`, `startDate` kamayish tartibida (keyin nom). `status` ixtiyoriy, hisoblangan holat bo'yicha;
+noma'lum qiymat → 400 (ASP.NET, §1.7). O'chirilgan davrlar chiqmaydi.
+
+#### GET `/api/admin/practice-periods/{id}` · 200 · 404
+
+`PracticePeriodDetail`. 404 — yo'q yoki o'chirilgan (`detail`: "Amaliyot davri topilmadi."). Keyin o'chirilgan guruh
+ham tafsilotda ko'rinadi (tarix).
+
+#### POST `/api/admin/practice-periods` · 201 · 400 · 409
+
+Body `PracticePeriodCreate` → 201 `PracticePeriodDetail` (+ `Location: /api/admin/practice-periods/{id}`).
+- Validatsiya (400 `errors`): `Name` trim 1–200; `StartDate`/`EndDate` majburiy, `EndDate >= StartDate`;
+  `GroupIds` kamida 1 ta, bo'sh GUID yo'q (takrorlar olib tashlanadi).
+- Guruh topilmasa yoki faol emas → 400 `errors.GroupIds` (`detail`: "N ta guruh topilmadi." / "Faol bo'lmagan
+  guruhlar: 412-22.").
+- Joriy (faol) o'quv yili yo'q → 400 (`detail`: "Joriy (faol) o'quv yili yo'q — avval o'quv yilini faollashtiring.").
+- **Ustma-ust** → 409 (pastda).
+- Nusxalanadigan qiymatlar (keyin sozlama o'zgarsa davr o'zgarmaydi): `lateTolerance`, `checkInWindow`,
+  `autoCheckout`, `workDays`, `dailyReportRequired` — global sozlamalardan (§2.3 settings); `dailyStart`/`dailyEnd`
+  uchun sozlama kaliti yo'q — standart `09:00`/`17:00`. `requiredDays` = `startDate..endDate` dagi ish kunlari
+  (`workDays` bo'yicha, bayramlarsiz).
+- O'quv yili body'da yuborilmaydi — joriy faol o'quv yili olinadi.
+
+#### PUT `/api/admin/practice-periods/{id}` · 200 · 400 · 404 · 409
+
+Body `PracticePeriodUpdate` (`id` route'dan) → `PracticePeriodDetail`.
+- Yopilgan davr → 409 ("Yopilgan davrni tahrirlab bo'lmaydi.").
+- `active` davrda `startDate` o'zgarsa → 400 ("Faol davrning boshlanish sanasini o'zgartirib bo'lmaydi.");
+  `endDate` uzaytiriladi/qisqartiriladi, lekin **bugundan oldin emas** → aks holda 400.
+- `planned` davrda ikkala sana ham o'zgaradi (faqat `endDate >= startDate`).
+- Sana o'zgarsa: ustma-ust qayta tekshiriladi (409) va `requiredDays` qayta hisoblanadi (vaqt qoidalari o'zgarmaydi).
+
+#### PUT `/api/admin/practice-periods/{id}/groups` · 200 · 400 · 404 · 409
+
+Body `{ groupIds }` — **to'liq ro'yxat**: yo'qlari ajratiladi, yangilari biriktiriladi → `PracticePeriodDetail`.
+Bo'sh ro'yxat ruxsat etiladi. Yopilgan davr → 409. Yangi guruh topilmasa/faol emas → 400 `errors.GroupIds`;
+yangi guruh ustma-ust tushsa → 409. Ajratilayotgan guruh talabalarining **shu davrda davomat yozuvi** bo'lsa → 409
+(`detail`: "Quyidagi guruhlar talabalarining shu davrda davomat yozuvlari bor — ularni ajratib bo'lmaydi: 412-22").
+
+#### POST `/api/admin/practice-periods/{id}/close` · 200 · 404 · 409
+
+Body yo'q → `PracticePeriodDetail` (`status: 'closed'`). Allaqachon yopilgan → 409 ("Davr allaqachon yopilgan.").
+Yopilgan davr talaba/tyutor oqimlaridan chiqadi (check-in to'xtaydi), tarix saqlanadi. Qayta ochish yo'q.
+
+#### DELETE `/api/admin/practice-periods/{id}` · 204 · 404 · 409
+
+Soft delete. Davrda **birorta davomat yozuvi** bo'lsa → 409 ("Davrda davomat yozuvlari bor — uni o'chirib bo'lmaydi,
+"Yopish" dan foydalaning."). O'chirilgan davr ro'yxatda, ustma-ust tekshiruvida va talaba oqimida ko'rinmaydi.
+
+**Ustma-ust tushish (409)** — bitta guruh sanalari kesishadigan (`a.start <= b.end && a.end >= b.start`, chegaralar
+kiradi) ikki **yopilmagan, o'chirilmagan** davrda bo'la olmaydi. Create, PUT (sana o'zgarsa) va PUT `/groups`
+(yangi guruhlar uchun) da tekshiriladi. `detail`:
+`"Quyidagi guruhlar shu sanalarda boshqa davrga biriktirilgan: 412-22 (Kuzgi amaliyot 2026), 413-22 (…)"`.
+
+**Audit**: `practicePeriodCreated` · `practicePeriodUpdated` · `practicePeriodGroupsChanged`
+(`changes`: `{"added":[…],"removed":[…]}`) · `practicePeriodClosed` · `practicePeriodDeleted`.
+
+**Guruh tanlash** (mavjud endpointlar, §2.3.1): `GET /api/admin/faculties` → `.../departments` → `.../directions` →
+`GET /api/admin/directions/{directionId}/groups`. `GroupRow.period` endi faol davr bo'lmasa **eng yaqin
+rejalashtirilgan** (`status: 'planned'`) davrni ham ko'rsatadi — band guruhni belgilash uchun (shakl o'zgarmagan).
+
+---
+
 ### 2.4 Reports — `ReportsController` · `TutorOrAdmin`
 
 #### GET `/api/reports`
@@ -1848,7 +1963,7 @@ kiritilishi kerak — tyutoringizga murojaat qiling."` STIR formati noto'g'ri bo
 | `LeaveDecision` (request)          | `approve` · `reject`                                                                                                                                                                                                                                                                                                                      | tutor leave decision                                                                   |
 | `ApplicationStatus`                | `draft` · `submitted` · `revisionNeeded` · `approved` · `rejected` · `completed`                                                                                                                                                                                                                                                          | applications, TWA place                                                                |
 | `ApplicationDecision` (request)    | `approve` · `return` · `reject`                                                                                                                                                                                                                                                                                                           | tutor decision                                                                         |
-| `PracticePeriodStatus`             | `planned` · `active` · `closed`                                                                                                                                                                                                                                                                                                           | admin groups `period.status`                                                           |
+| `PracticePeriodStatus`             | `planned` · `active` · `closed` — admin API'da hisoblanadi (§2.3.4)                                                                                                                                                                                                                                                                       | admin groups `period.status`, admin practice-periods                                   |
 | `WorkDays`                         | bitmask; sozlamada `"1,2,3,4,5,6"` (1=Du … 7=Ya)                                                                                                                                                                                                                                                                                          | settings `workDays`                                                                    |
 | `StudentStatus` (domain, akademik) | `active` · `suspended` · `graduated`                                                                                                                                                                                                                                                                                                      | `TutorStudentDetail.status`                                                            |
 | `TodayFilter` (query)              | `present` · `late` · `absent` · `excused` · `pending` · `suspicious`                                                                                                                                                                                                                                                                      | tutor today `?status=`                                                                 |
@@ -1860,7 +1975,7 @@ kiritilishi kerak — tyutoringizga murojaat qiling."` STIR formati noto'g'ri bo
 | `TutorScopeLevel`                  | `faculty` · `department` · `direction` · `group`                                                                                                                                                                                                                                                                                          | admin tutors `scopes[].level`, `PUT .../scopes` body                                   |
 | `AdminStudentStatus`               | `active` · `flagged` · `unlinked`                                                                                                                                                                                                                                                                                                         | admin students                                                                         |
 | `CompanyFlag`                      | `suspicious` · `tooManyStudents` · `largeRadius` · `null` — ustuvorlik aynan shu tartibda                                                                                                                                                                                                                                                 | admin companies, tutor companies                                                       |
-| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorScopesChanged` | admin audit `action`, `?action=`                                                       |
+| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorScopesChanged` · `studentsImported` · `company*` (§6.9) · `studentsAssignedToCompany` · `practicePeriodCreated` · `practicePeriodUpdated` · `practicePeriodGroupsChanged` · `practicePeriodClosed` · `practicePeriodDeleted` | admin audit `action`, `?action=`                                                       |
 | `SettingType`                      | `int` · `bool` · `weekdays`                                                                                                                                                                                                                                                                                                               | settings `type`                                                                        |
 | `SettingKey` (string const)        | `geofenceRadius` · `lateTolerance` · `minGpsAccuracy` · `autoCheckout` · `workDays` · `dailyReportRequired` · `minReportLength` · `diaryPdfRequired` · `checkInWindow` · `checkinPhotoRequired` · `maxStudentsPerCompany`                                                                                                                                      | settings                                                                               |
 | `DocumentTemplateKind`             | `contract` · `referral` · `reference`                                                                                                                                                                                                                                                                                                     | settings templates                                                                     |
@@ -2244,3 +2359,26 @@ Ikkinchi yo'l: admin talabalar ro'yxatidan bir nechtasini belgilab, to'g'ridan-t
   **API shakli o'zgarmagan** — serverga baribir `lat`/`lng` sonlari ketadi; Excel importda koordinata ustunlari
   qoladi (u yerda xarita yo'q). Nuqta tanlanmasa 400 emas, klient validatsiyasi:
   `"Xaritadan korxona joylashuvini belgilang."`
+
+### 6.10 v3.3 → v3.4 (23.09.2026): admin amaliyot davrlari
+
+Davrlar endi faqat seed'da emas — admin o'zi yaratadi va boshqaradi (§2.3.4).
+
+| #   | Endpoint                                             | Policy      | Javob                                      | Bo'lim  |
+| --- | ---------------------------------------------------- | ----------- | ------------------------------------------ | ------- |
+| N24 | `GET /api/admin/practice-periods?status=`            | `AdminOnly` | `PracticePeriodListItem[]` · 400           | §2.3.4  |
+| N25 | `GET /api/admin/practice-periods/{id}`               | `AdminOnly` | `PracticePeriodDetail` · 404               | §2.3.4  |
+| N26 | `POST /api/admin/practice-periods`                   | `AdminOnly` | 201 `PracticePeriodDetail` · 400 · 409     | §2.3.4  |
+| N27 | `PUT /api/admin/practice-periods/{id}`               | `AdminOnly` | `PracticePeriodDetail` · 400 · 404 · 409   | §2.3.4  |
+| N28 | `PUT /api/admin/practice-periods/{id}/groups`        | `AdminOnly` | `PracticePeriodDetail` · 400 · 404 · 409   | §2.3.4  |
+| N29 | `POST /api/admin/practice-periods/{id}/close`        | `AdminOnly` | `PracticePeriodDetail` · 404 · 409         | §2.3.4  |
+| N30 | `DELETE /api/admin/practice-periods/{id}`            | `AdminOnly` | 204 · 404 · 409                            | §2.3.4  |
+
+- Jami endpoint: **92 → 99** (Admin 54 → 61).
+- Yangi `AuditAction` qiymatlari: `practicePeriodCreated=56 · practicePeriodUpdated=57 · practicePeriodGroupsChanged=58 ·
+  practicePeriodClosed=59 · practicePeriodDeleted=60` (bazada int — migratsiya yo'q).
+- `PracticePeriodStatus` admin API'da **hisoblanadi** (`planned` = boshlanmagan ochiq davr); bazadagi qiymat va
+  talaba/tyutor oqimlari o'zgarmagan.
+- `GroupRow.period` (§2.3.2): faol davri yo'q guruhda endi eng yaqin `planned` davr keladi (avval `null` edi) — shakl
+  o'zgarmagan, faqat qiymat.
+- Qo'shimcha qoidalar: qayta `/close` → 409; PUT `/groups` da bo'sh ro'yxat ruxsat etiladi.

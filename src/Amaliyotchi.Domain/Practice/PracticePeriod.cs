@@ -58,11 +58,7 @@ public sealed class PracticePeriod : AuditableEntity, ISoftDeletable
         int requiredDays,
         bool dailyReportRequired)
     {
-        var trimmed = name?.Trim();
-        if (string.IsNullOrEmpty(trimmed))
-            throw new DomainException("Davr nomi bo'sh bo'lishi mumkin emas.");
-        if (trimmed.Length > NameMaxLength)
-            throw new DomainException($"Davr nomi {NameMaxLength} belgidan oshmasligi kerak.");
+        var trimmed = NormalizeName(name);
         if (academicYearId == Guid.Empty)
             throw new DomainException("O'quv yili ko'rsatilmagan.");
         if (endDate < startDate)
@@ -103,6 +99,35 @@ public sealed class PracticePeriod : AuditableEntity, ISoftDeletable
 
     public bool IncludesGroup(Guid studentGroupId) => _groups.Any(g => g.StudentGroupId == studentGroupId);
 
+    /// <summary>Davr ochiqmi (yopilmagan). Saqlanadigan <see cref="Status"/> — davrning hayot sikli:
+    /// admin yaratgan davr darhol <see cref="PracticePeriodStatus.Active"/> (ochiq) bo'ladi, faqat <see cref="Close"/>
+    /// uni yopadi. "Rejalashtirilgan" ko'rinishi sanadan hisoblanadi — <see cref="EffectiveStatus"/>.</summary>
+    public bool IsOpen => Status != PracticePeriodStatus.Closed;
+
+    /// <summary>Foydalanuvchiga ko'rinadigan holat: yopilgan → <c>Closed</c>; boshlanish sanasi bugundan keyin →
+    /// <c>Planned</c>; aks holda <c>Active</c>.</summary>
+    public PracticePeriodStatus EffectiveStatus(DateOnly today) => ResolveStatus(Status, StartDate, today);
+
+    /// <summary><see cref="EffectiveStatus"/> ning statik shakli — so'rov proyeksiyalari uchun.</summary>
+    public static PracticePeriodStatus ResolveStatus(PracticePeriodStatus stored, DateOnly startDate, DateOnly today)
+        => stored == PracticePeriodStatus.Closed
+            ? PracticePeriodStatus.Closed
+            : startDate > today ? PracticePeriodStatus.Planned : PracticePeriodStatus.Active;
+
+    /// <summary>[start, end] oralig'idagi ish kunlari soni (hafta kuni bo'yicha, bayramlarsiz) — <see cref="RequiredDays"/>.</summary>
+    public static int CountWorkDays(DateOnly startDate, DateOnly endDate, WorkDays workDays, Func<DateOnly, bool> isHoliday)
+    {
+        ArgumentNullException.ThrowIfNull(isHoliday);
+        var count = 0;
+        for (var date = startDate; date <= endDate; date = date.AddDays(1))
+        {
+            if (workDays.Includes(date) && !isHoliday(date))
+                count++;
+        }
+
+        return count;
+    }
+
     public PracticePeriodGroup AttachGroup(Guid studentGroupId)
     {
         if (Status == PracticePeriodStatus.Closed)
@@ -115,10 +140,14 @@ public sealed class PracticePeriod : AuditableEntity, ISoftDeletable
         return link;
     }
 
-    public void DetachGroup(Guid studentGroupId)
+    /// <summary>Guruhni davrdan ajratish. Shu guruh talabalarining shu davrda davomat yozuvi bo'lsa — ajratib bo'lmaydi
+    /// (tarix davrga bog'liq). Davomat bor-yo'qligini handler bazadan aniqlaydi.</summary>
+    public void DetachGroup(Guid studentGroupId, bool hasAttendanceRecords)
     {
         if (Status == PracticePeriodStatus.Closed)
             throw new ConflictException("Yopilgan davrdan guruhni ajratib bo'lmaydi.");
+        if (hasAttendanceRecords)
+            throw new ConflictException("Guruh talabalarining shu davrda davomat yozuvlari bor — guruhni ajratib bo'lmaydi.");
 
         _groups.RemoveAll(g => g.StudentGroupId == studentGroupId);
     }
@@ -130,7 +159,12 @@ public sealed class PracticePeriod : AuditableEntity, ISoftDeletable
         Status = PracticePeriodStatus.Active;
     }
 
-    public void Close() => Status = PracticePeriodStatus.Closed;
+    public void Close()
+    {
+        if (Status == PracticePeriodStatus.Closed)
+            throw new ConflictException("Davr allaqachon yopilgan.");
+        Status = PracticePeriodStatus.Closed;
+    }
 
     public void Extend(DateOnly newEndDate)
     {
@@ -141,11 +175,54 @@ public sealed class PracticePeriod : AuditableEntity, ISoftDeletable
         EndDate = newEndDate;
     }
 
+    /// <summary>Sanalarni o'zgartirish. Yopilgan davr → 409. Boshlangan (faol) davrda boshlanish sanasi o'zgarmaydi,
+    /// tugash sanasi esa uzaytiriladi/qisqartiriladi, lekin bugundan oldinga emas. Rejalashtirilgan davrda ikkala sana
+    /// ham erkin (faqat <c>end &gt;= start</c>). <paramref name="requiredDays"/> — yangi oraliq bo'yicha qayta hisoblangan.</summary>
+    public void Reschedule(DateOnly startDate, DateOnly endDate, int requiredDays, DateOnly today)
+    {
+        if (Status == PracticePeriodStatus.Closed)
+            throw new ConflictException("Yopilgan davrni tahrirlab bo'lmaydi.");
+        if (endDate < startDate)
+            throw new DomainException("Tugash sanasi boshlanish sanasidan oldin bo'lishi mumkin emas.");
+        if (requiredDays < 0)
+            throw new DomainException("Talab qilinadigan kunlar soni manfiy bo'lishi mumkin emas.");
+
+        if (EffectiveStatus(today) == PracticePeriodStatus.Active)
+        {
+            if (startDate != StartDate)
+                throw new DomainException("Faol davrning boshlanish sanasini o'zgartirib bo'lmaydi.");
+            if (endDate != EndDate && endDate < today)
+                throw new DomainException("Faol davrning tugash sanasi bugundan oldin bo'lishi mumkin emas.");
+        }
+
+        StartDate = startDate;
+        EndDate = endDate;
+        RequiredDays = requiredDays;
+    }
+
     public void Rename(string name)
+    {
+        if (Status == PracticePeriodStatus.Closed)
+            throw new ConflictException("Yopilgan davrni tahrirlab bo'lmaydi.");
+        Name = NormalizeName(name);
+    }
+
+    /// <summary>Soft delete. Davrda davomat yozuvi bo'lsa — o'chirib bo'lmaydi, uni yopish kerak.</summary>
+    public void Delete(DateTimeOffset now, bool hasAttendanceRecords)
+    {
+        if (hasAttendanceRecords)
+            throw new ConflictException("Davrda davomat yozuvlari bor — uni o'chirib bo'lmaydi, \"Yopish\" dan foydalaning.");
+        IsDeleted = true;
+        DeletedAt = now;
+    }
+
+    private static string NormalizeName(string? name)
     {
         var trimmed = name?.Trim();
         if (string.IsNullOrEmpty(trimmed))
             throw new DomainException("Davr nomi bo'sh bo'lishi mumkin emas.");
-        Name = trimmed;
+        if (trimmed.Length > NameMaxLength)
+            throw new DomainException($"Davr nomi {NameMaxLength} belgidan oshmasligi kerak.");
+        return trimmed;
     }
 }

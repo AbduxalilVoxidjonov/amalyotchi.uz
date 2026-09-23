@@ -1,0 +1,107 @@
+/* Admin · Amaliyot davri sahifasi */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.title {
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+.actions {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.flash {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--color-ok-bg);
+  color: var(--color-ok-fg);
+  font-size: var(--fs-sm2);
+}
+.flashClose {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: var(--fs-md);
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.flashClose:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.facts {
+  margin: 0;
+}
+.mono {
+  font-family: var(--font-mono);
+}
+.weekdays {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.weekday {
+  min-width: 28px;
+  padding: 2px 6px;
+  text-align: center;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  background: var(--color-neu-bg);
+  color: var(--color-text-disabled);
+}
+.weekday[data-on] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+.tableTitle {
+  margin: 0;
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+}
+.link {
+  color: inherit;
+}
+.link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.empty[data-tone] {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+.modalBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

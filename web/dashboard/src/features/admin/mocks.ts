@@ -6,6 +6,7 @@ import { departmentsHandlers } from './faculties/departments/mocks';
 import { directionsHandlers } from './faculties/directions/mocks';
 import { groupsHandlers } from './faculties/groups/mocks';
 import { facultiesHandlers } from './faculties/mocks';
+import { practicePeriodsHandlers } from './practice-periods/mocks';
 import { settingsHandlers } from './settings/mocks';
 import { studentsHandlers } from './students/mocks';
 import { tutorsHandlers } from './tutors/mocks';
@@ -23,6 +24,7 @@ export const adminHandlers: HttpHandler[] = [
   ...tutorsHandlers,
   ...studentsHandlers,
   ...companiesHandlers,
+  ...practicePeriodsHandlers,
   ...auditHandlers,
   ...settingsHandlers,
 ];

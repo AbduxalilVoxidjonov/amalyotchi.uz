@@ -1,0 +1,20 @@
+.dates {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.range {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+}
+.days {
+  font-size: var(--fs-xs);
+  color: var(--color-text-faint);
+}
+/* Jadval ichidagi bo'sh holat — jadvalning o'zi kartochka */
+.empty[data-tone] {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}

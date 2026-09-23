@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Admin.Groups;
 
-/// <summary>Guruhga biriktirilgan faol amaliyot davri (yo'q bo'lsa <c>null</c>).</summary>
+/// <summary>Guruhga biriktirilgan faol amaliyot davri; bo'lmasa — eng yaqin rejalashtirilgan (<c>planned</c>) davr; yo'q bo'lsa <c>null</c>.</summary>
 public sealed record GroupPeriodDto(Guid Id, string Name, PracticePeriodStatus Status, DateOnly StartDate, DateOnly EndDate);
 
 /// <summary>Kontrakt <c>Group</c> (<c>code</c> = guruh nomi "412-22") + fakultet, tyutor id, davr.
@@ -122,6 +122,24 @@ internal static class GroupRowQueries
                                        select new { GroupId = grp.Key, Count = grp.Select(a => a.StudentUserId).Distinct().Count() })
             .ToDictionaryAsync(x => x.GroupId, x => x.Count, cancellationToken);
 
+        // Faol davri yo'q guruh uchun — eng yaqin rejalashtirilgan (hali boshlanmagan, ochiq) davr: guruh band ekanini
+        // davr tanlash oynasida ko'rsatish uchun. Davomat foizi bunda 0 (davr boshlanmagan).
+        var withoutPractice = groupIds.Where(id => calendar.For(id) is null).ToList();
+        var upcoming = withoutPractice.Count == 0
+            ? []
+            : (await (from link in db.PracticePeriodGroups.AsNoTracking()
+                      join p in db.PracticePeriods on link.PeriodId equals p.Id
+                      where withoutPractice.Contains(link.StudentGroupId)
+                            && p.Status != PracticePeriodStatus.Closed && p.StartDate > today
+                      select new { link.StudentGroupId, p.Id, p.Name, p.StartDate, p.EndDate })
+                .ToListAsync(cancellationToken))
+                .GroupBy(x => x.StudentGroupId)
+                .ToDictionary(
+                    grp => grp.Key,
+                    grp => grp.OrderBy(x => x.StartDate)
+                        .Select(x => new GroupPeriodDto(x.Id, x.Name, PracticePeriodStatus.Planned, x.StartDate, x.EndDate))
+                        .First());
+
         var rows = page.Items.Select(g =>
         {
             var practice = calendar.For(g.Id);
@@ -136,7 +154,9 @@ internal static class GroupRowQueries
                 g.TutorId,
                 g.TutorId is { } tutorId ? tutorNames.GetValueOrDefault(tutorId) : null,
                 g.Students, pct,
-                practice is null ? null : new GroupPeriodDto(practice.PeriodId, practice.PeriodName, practice.Status, practice.StartDate, practice.EndDate),
+                practice is null
+                    ? upcoming.GetValueOrDefault(g.Id)
+                    : new GroupPeriodDto(practice.PeriodId, practice.PeriodName, practice.Status, practice.StartDate, practice.EndDate),
                 g.IsActive);
         }).ToList();
 

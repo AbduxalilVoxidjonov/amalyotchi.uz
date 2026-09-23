@@ -78,5 +78,12 @@ public enum AuditAction
     CompaniesImported = 54,
 
     /// <summary>Admin tanlangan talabalarni korxonaga biriktirdi (ariza avtomatik tasdiqlanadi).</summary>
-    StudentsAssignedToCompany = 55
+    StudentsAssignedToCompany = 55,
+
+    /// <summary>Admin amaliyot davrini yaratdi/tahrirladi, guruhlarini almashtirdi, yopdi yoki o'chirdi.</summary>
+    PracticePeriodCreated = 56,
+    PracticePeriodUpdated = 57,
+    PracticePeriodGroupsChanged = 58,
+    PracticePeriodClosed = 59,
+    PracticePeriodDeleted = 60
 }

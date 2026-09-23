@@ -1,0 +1,22 @@
+.banner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-bad-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bad-bg);
+  color: var(--color-bad-fg);
+  font-size: var(--fs-sm2);
+}
+.title {
+  font-weight: var(--fw-semibold);
+}
+.message {
+  margin: 0;
+  line-height: var(--lh-note);
+}
+.list {
+  margin: 0;
+  padding-left: 18px;
+}
