@@ -33,8 +33,9 @@ describe('AppShell', () => {
       'Dashboard',
       'Fakultetlar11',
       'Tyutorlar18',
-      'Talabalar1284',
       'Korxonalar412',
+      'Talabalar1284',
+      'Amaliyotchiga',
       'Hisobotlar',
       'Audit jurnali',
       'Sozlamalar',
@@ -47,6 +48,22 @@ describe('AppShell', () => {
     expect(screen.getByText('Admin · 2026-2027')).toBeInTheDocument();
     expect(screen.getByText('Admin Adminov')).toBeInTheDocument();
     expect(await screen.findByText('Jami amaliyotchi')).toBeInTheDocument(); // AdminDashboardPage
+  });
+
+  it('admin: "Amaliyotchiga" havolasi → /admin/placements placeholder sahifasi', async () => {
+    loginAs(0);
+    const router = renderApp('/admin');
+    const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
+    await userEvent.click(within(nav).getByRole('link', { name: 'Amaliyotchiga' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/admin/placements'));
+    expect(within(nav).getByRole('link', { name: 'Amaliyotchiga' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Amaliyotchiga'),
+    );
+    expect(await screen.findByText("Bo'lim tayyorlanmoqda")).toBeInTheDocument();
   });
 
   it('tyutor: tyutor nav; nav havolasi → shell ichidagi sahifa + title', async () => {

@@ -120,8 +120,9 @@ web/
 | `admin/faculties/` | `/admin/faculties` | Fakultetlar jadvali | `GET /api/admin/faculties` |
 | `admin/groups/` | `/admin/groups` | Guruhlar | `GET /api/admin/groups` |
 | `admin/tutors/` | `/admin/tutors` | Tyutorlar | `GET /api/admin/tutors` |
-| `admin/students/` | `/admin/students` | Talabalar | `GET /api/admin/students` |
 | `admin/companies/` | `/admin/companies` | Korxonalar | `GET /api/admin/companies` |
+| `admin/students/` | `/admin/students` | Talabalar | `GET /api/admin/students` |
+| `admin/placements/` | `/admin/placements` | Amaliyotchiga (placeholder, mazmuni keyin aniqlanadi) | — |
 | `admin/audit/` | `/admin/audit` | Audit jurnali | `GET /api/admin/audit` |
 | `admin/settings/` | `/admin/settings` | Sozlamalar (form, bayramlar, shablonlar) | `GET/PUT /api/admin/settings` |
 | `reports/` | `/admin/reports`, `/tutor/reports` | Hisobotlar katalogi (ikkala rol) | `GET /api/reports` |

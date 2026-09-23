@@ -32,6 +32,7 @@ const StudentsPage = lazy(() => import('@/features/admin/students/StudentsPage')
 const AdminStudentDetailPage = lazy(() => import('@/features/admin/students/StudentDetailPage'));
 const CompaniesPage = lazy(() => import('@/features/admin/companies/CompaniesPage'));
 const CompanyDetailPage = lazy(() => import('@/features/admin/companies/CompanyDetailPage'));
+const PlacementsPage = lazy(() => import('@/features/admin/placements/PlacementsPage'));
 const AuditPage = lazy(() => import('@/features/admin/audit/AuditPage'));
 const SettingsPage = lazy(() => import('@/features/admin/settings/SettingsPage'));
 const ReportsPage = lazy(() => import('@/features/reports/ReportsPage'));
@@ -91,6 +92,7 @@ export const routes: RouteObject[] = [
           { path: 'students/:studentId', element: <AdminStudentDetailPage /> },
           { path: 'companies', element: <CompaniesPage /> },
           { path: 'companies/:companyId', element: <CompanyDetailPage /> },
+          { path: 'placements', element: <PlacementsPage /> },
           { path: 'reports', element: <ReportsPage /> },
           { path: 'audit', element: <AuditPage /> },
           { path: 'settings', element: <SettingsPage /> },
