@@ -8,11 +8,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Admin.Groups;
 
-/// <summary>Guruhga biriktirilgan faol amaliyot davri; bo'lmasa — eng yaqin rejalashtirilgan (<c>planned</c>) davr; yo'q bo'lsa <c>null</c>.</summary>
+/// <summary>Guruhning sukut bo'yicha davri (<see cref="PeriodPurpose.Default"/>): davom etayotgan → oxirgi tugagan →
+/// eng yaqin rejalashtirilgan; davri yo'q guruhda <c>null</c>. <c>status</c> — ko'rinadigan holat (planned/active/closed).</summary>
 public sealed record GroupPeriodDto(Guid Id, string Name, PracticePeriodStatus Status, DateOnly StartDate, DateOnly EndDate);
 
 /// <summary>Kontrakt <c>Group</c> (<c>code</c> = guruh nomi "412-22") + fakultet, tyutor id, davr.
-/// <paramref name="AttendancePct"/> — faol davr boshidan kechagacha (kelgan kunlar / (o'tgan ish kunlari − sababli)).</summary>
+/// <paramref name="AttendancePct"/> — <paramref name="Period"/> davri boshidan kechagacha (davr oxiridan oshmaydi):
+/// kelgan kunlar / (o'tgan ish kunlari × davrda arizasi tasdiqlangan talabalar − sababli).</summary>
 public sealed record GroupRow(
     Guid Id,
     string Code,
@@ -102,52 +104,52 @@ internal static class GroupRowQueries
         var calendar = await PracticeCalendar.LoadAsync(db, clock, cancellationToken);
         var today = calendar.Today;
 
-        var attendance = await (from a in db.DailyAttendances.AsNoTracking()
-                                join p in db.StudentProfiles on a.StudentUserId equals p.UserId
-                                where groupIds.Contains(p.StudentGroupId) && a.Date < today
-                                group a by p.StudentGroupId into grp
-                                select new
-                                {
-                                    GroupId = grp.Key,
-                                    Attended = grp.Count(a => a.Status == AttendanceStatus.Present || a.Status == AttendanceStatus.Late),
-                                    Excused = grp.Count(a => a.Status == AttendanceStatus.Excused)
-                                })
-            .ToDictionaryAsync(x => x.GroupId, cancellationToken);
+        // Guruh davri — sukut bo'yicha qoida (davom etayotgan → oxirgi tugagan → eng yaqin kelgusi): tanaffusda foiz
+        // tugagan davr bo'yicha qoladi. Davomat va ariza shu davr kesimida (guruh × davr bo'yicha yig'iladi).
+        var periodIds = groupIds.Select(calendar.For).Where(p => p is not null).Select(p => p!.PeriodId).Distinct().ToList();
 
-        // Maxraj — faqat amaliyotga chiqqan (arizasi tasdiqlangan) talabalar; arizasiz talaba foizni tushirmaydi.
-        var practicingByGroup = await (from app in db.PracticeApplications.AsNoTracking()
-                                       join p in db.StudentProfiles on app.StudentUserId equals p.UserId
-                                       where groupIds.Contains(p.StudentGroupId) && app.Status == ApplicationStatus.Approved
-                                       group app by p.StudentGroupId into grp
-                                       select new { GroupId = grp.Key, Count = grp.Select(a => a.StudentUserId).Distinct().Count() })
-            .ToDictionaryAsync(x => x.GroupId, x => x.Count, cancellationToken);
-
-        // Faol davri yo'q guruh uchun — eng yaqin rejalashtirilgan (hali boshlanmagan, ochiq) davr: guruh band ekanini
-        // davr tanlash oynasida ko'rsatish uchun. Davomat foizi bunda 0 (davr boshlanmagan).
-        var withoutPractice = groupIds.Where(id => calendar.For(id) is null).ToList();
-        var upcoming = withoutPractice.Count == 0
+        var attendance = periodIds.Count == 0
             ? []
-            : (await (from link in db.PracticePeriodGroups.AsNoTracking()
-                      join p in db.PracticePeriods on link.PeriodId equals p.Id
-                      where withoutPractice.Contains(link.StudentGroupId)
-                            && p.Status != PracticePeriodStatus.Closed && p.StartDate > today
-                      select new { link.StudentGroupId, p.Id, p.Name, p.StartDate, p.EndDate })
-                .ToListAsync(cancellationToken))
-                .GroupBy(x => x.StudentGroupId)
-                .ToDictionary(
-                    grp => grp.Key,
-                    grp => grp.OrderBy(x => x.StartDate)
-                        .Select(x => new GroupPeriodDto(x.Id, x.Name, PracticePeriodStatus.Planned, x.StartDate, x.EndDate))
-                        .First());
+            : await (from a in db.DailyAttendances.AsNoTracking()
+                     join p in db.StudentProfiles on a.StudentUserId equals p.UserId
+                     where groupIds.Contains(p.StudentGroupId) && periodIds.Contains(a.PeriodId) && a.Date < today
+                     group a by new { p.StudentGroupId, a.PeriodId } into grp
+                     select new
+                     {
+                         grp.Key.StudentGroupId,
+                         grp.Key.PeriodId,
+                         Attended = grp.Count(a => a.Status == AttendanceStatus.Present || a.Status == AttendanceStatus.Late),
+                         Excused = grp.Count(a => a.Status == AttendanceStatus.Excused)
+                     })
+                .ToListAsync(cancellationToken);
+
+        // Maxraj — faqat amaliyotga chiqqan (davrdagi arizasi tasdiqlangan) talabalar; arizasiz talaba foizni tushirmaydi.
+        var practicing = periodIds.Count == 0
+            ? []
+            : await (from app in db.PracticeApplications.AsNoTracking()
+                     join p in db.StudentProfiles on app.StudentUserId equals p.UserId
+                     where groupIds.Contains(p.StudentGroupId) && periodIds.Contains(app.PeriodId)
+                           && (app.Status == ApplicationStatus.Approved || app.Status == ApplicationStatus.Completed)
+                     group app by new { p.StudentGroupId, app.PeriodId } into grp
+                     select new
+                     {
+                         grp.Key.StudentGroupId,
+                         grp.Key.PeriodId,
+                         Count = grp.Select(a => a.StudentUserId).Distinct().Count()
+                     })
+                .ToListAsync(cancellationToken);
 
         var rows = page.Items.Select(g =>
         {
             var practice = calendar.For(g.Id);
-            var stats = attendance.GetValueOrDefault(g.Id);
-            var pct = practice is null
-                ? 0
-                : PracticeCalendar.AttendancePct(
-                    stats?.Attended ?? 0, practice.ElapsedWorkDays * practicingByGroup.GetValueOrDefault(g.Id), stats?.Excused ?? 0);
+            var pct = 0;
+            if (practice is not null)
+            {
+                var stats = attendance.FirstOrDefault(a => a.StudentGroupId == g.Id && a.PeriodId == practice.PeriodId);
+                var students = practicing.FirstOrDefault(a => a.StudentGroupId == g.Id && a.PeriodId == practice.PeriodId)?.Count ?? 0;
+                pct = PracticeCalendar.AttendancePct(
+                    stats?.Attended ?? 0, practice.ElapsedWorkDays * students, stats?.Excused ?? 0);
+            }
 
             return new GroupRow(
                 g.Id, g.Name, g.Course, g.Direction, g.Faculty, g.FacultyCode,
@@ -155,7 +157,7 @@ internal static class GroupRowQueries
                 g.TutorId is { } tutorId ? tutorNames.GetValueOrDefault(tutorId) : null,
                 g.Students, pct,
                 practice is null
-                    ? upcoming.GetValueOrDefault(g.Id)
+                    ? null
                     : new GroupPeriodDto(practice.PeriodId, practice.PeriodName, practice.Status, practice.StartDate, practice.EndDate),
                 g.IsActive);
         }).ToList();

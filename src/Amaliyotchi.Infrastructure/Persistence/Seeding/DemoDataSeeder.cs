@@ -37,6 +37,11 @@ public sealed class DemoDataSeeder(
     public const string TutorPassword = "tutor12345";
     public const string PeriodName = "Ishlab chiqarish amaliyoti 2026";
 
+    /// <summary>Demo ikkinchi davr — bir o'quv yilida kuzgi + bahorgi davr stsenariysi uchun.</summary>
+    public const string SpringPeriodName = "Bahorgi amaliyot 2027";
+    public static readonly DateOnly SpringPeriodStart = new(2027, 2, 1);
+    public static readonly DateOnly SpringPeriodEnd = new(2027, 3, 15);
+
     /// <summary>Talabalar hech qachon bir xil raqam olmasin (unique index) — 341030..341035 asosiylar uchun.</summary>
     private const long FirstTelegramId = 100_000_001;
 
@@ -209,6 +214,23 @@ public sealed class DemoDataSeeder(
         period.AttachGroup(group413.Id);
         period.Activate();
         db.PracticePeriods.Add(period);
+
+        // 5a. Ikkinchi (bahorgi) davr — bir o'quv yilida ikki davr stsenariysi: o'sha guruhlar, hali boshlanmagan
+        // (ko'rinadigan holat "planned"; saqlanadigan holat admin API'dagidek ochiq — Active). Faqat bo'sh bazada
+        // (demo seed birinchi marta) va joriy davr bilan kesishmasa qo'shiladi.
+        if (SpringPeriodStart > period.EndDate)
+        {
+            var spring = PracticePeriod.Create(
+                SpringPeriodName, year.Id, SpringPeriodStart, SpringPeriodEnd, admin.Id,
+                CheckInRules.Default, WorkDays.MondayToSaturday,
+                requiredDays: PracticePeriod.CountWorkDays(SpringPeriodStart, SpringPeriodEnd, WorkDays.MondayToSaturday, _ => false),
+                dailyReportRequired: true);
+            spring.AttachGroup(group412.Id);
+            spring.AttachGroup(group413.Id);
+            spring.Activate();
+            db.PracticePeriods.Add(spring);
+        }
+
         await db.SaveChangesAsync(cancellationToken);
 
         // 6. Arizalar: 30 tasdiqlangan (6 asosiy + 24), 4 yangi, 2 qaytarilgan, 2 rad etilgan

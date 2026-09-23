@@ -19,16 +19,18 @@ public sealed class TutorStudentsController(ISender sender) : ControllerBase
         => Ok(await sender.Send(new GetTutorStudentsQuery(), cancellationToken));
 
     /// <summary>Talaba profili: akademik ma'lumot, korxona, ariza, amaliyot davri, davomat/kundalik
-    /// statistikasi va joriy baho. Ko'lamdan tashqari talaba → 404.</summary>
+    /// statistikasi va baho — tanlangan davr bo'yicha (<c>?periodId=</c>, berilmasa sukut bo'yicha davr).
+    /// Ko'lamdan tashqari talaba yoki begona <c>periodId</c> → 404.</summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType<TutorStudentDetail>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<TutorStudentDetail>> Detail(Guid id, CancellationToken cancellationToken)
-        => Ok(await sender.Send(new GetTutorStudentDetailQuery(id), cancellationToken));
+    public async Task<ActionResult<TutorStudentDetail>> Detail(Guid id, [FromQuery] Guid? periodId, CancellationToken cancellationToken)
+        => Ok(await sender.Send(new GetTutorStudentDetailQuery(id, periodId), cancellationToken));
 
     /// <summary>Talabaning kun-bakun davomati: holat, check-in/out vaqti, masofa, koordinata, rasm va
     /// urinishlar soni. <c>?from=&amp;to=</c> — ixtiyoriy (berilmasa davr boshidan bugungacha);
-    /// teskari yoki 400 kundan uzun oraliq → 400. Faol davr bo'lmasa — bo'sh massiv.</summary>
+    /// teskari yoki 400 kundan uzun oraliq → 400. <c>?periodId=</c> — davr (berilmasa sukut bo'yicha), oraliq davr chegaralariga qisiladi.
+    /// Davr bo'lmasa — bo'sh massiv.</summary>
     [HttpGet("{id:guid}/attendance")]
     [ProducesResponseType<IReadOnlyList<StudentAttendanceDay>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -37,13 +39,15 @@ public sealed class TutorStudentsController(ISender sender) : ControllerBase
         Guid id,
         [FromQuery] DateOnly? from,
         [FromQuery] DateOnly? to,
+        [FromQuery] Guid? periodId,
         CancellationToken cancellationToken)
-        => Ok(await sender.Send(new GetStudentAttendanceQuery(id, from, to), cancellationToken));
+        => Ok(await sender.Send(new GetStudentAttendanceQuery(id, from, to, periodId), cancellationToken));
 
-    /// <summary>Talabaning kundaliklari — sana bo'yicha kamayish tartibida. Ko'lamdan tashqari talaba → 404.</summary>
+    /// <summary>Talabaning tanlangan davrdagi (<c>?periodId=</c>) kundaliklari — sana bo'yicha kamayish tartibida. Ko'lamdan tashqari talaba → 404.</summary>
     [HttpGet("{id:guid}/diaries")]
     [ProducesResponseType<IReadOnlyList<TutorDiaryEntry>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<IReadOnlyList<TutorDiaryEntry>>> Diaries(Guid id, CancellationToken cancellationToken)
-        => Ok(await sender.Send(new GetTutorStudentDiariesQuery(id), cancellationToken));
+    public async Task<ActionResult<IReadOnlyList<TutorDiaryEntry>>> Diaries(
+        Guid id, [FromQuery] Guid? periodId, CancellationToken cancellationToken)
+        => Ok(await sender.Send(new GetTutorStudentDiariesQuery(id, periodId), cancellationToken));
 }

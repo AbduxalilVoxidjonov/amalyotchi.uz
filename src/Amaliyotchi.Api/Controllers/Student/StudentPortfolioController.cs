@@ -12,10 +12,11 @@ namespace Amaliyotchi.Api.Controllers.Student;
 [Authorize(Policy = Policies.StudentOnly)]
 public sealed class StudentPortfolioController(ISender sender) : ControllerBase
 {
-    /// <summary>Amaliyot portfoliosi: statistika, baho tarkibi, tyutor xulosasi. Faol davr yo'q → 404.</summary>
+    /// <summary>Amaliyot portfoliosi: statistika, baho tarkibi, tyutor xulosasi + talabaning barcha davrlari.
+    /// <c>?periodId=</c> — davr (berilmasa sukut bo'yicha). Davr yo'q yoki begona <c>periodId</c> → 404.</summary>
     [HttpGet]
     [ProducesResponseType<PortfolioDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PortfolioDto>> Get(CancellationToken cancellationToken)
-        => Ok(await sender.Send(new GetPortfolioQuery(), cancellationToken));
+    public async Task<ActionResult<PortfolioDto>> Get([FromQuery] Guid? periodId, CancellationToken cancellationToken)
+        => Ok(await sender.Send(new GetPortfolioQuery(periodId), cancellationToken));
 }

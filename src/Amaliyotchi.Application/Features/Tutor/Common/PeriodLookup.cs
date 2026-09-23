@@ -42,23 +42,61 @@ public sealed class PeriodContext
     public bool IsWindowClosed(TimeOnly localNow) => localNow >= Rules.WindowEnd;
 }
 
-/// <summary>Guruh → faol amaliyot davri xaritasi. Faol davrlar oz (bir vaqtda 1–2 ta), shuning uchun hammasi
-/// bir marta yuklanadi; bir guruhga bir nechta faol davr bo'lsa — bugunni o'z ichiga olgani, aks holda eng yangisi.</summary>
+/// <summary>Guruh → amaliyot davrlari xaritasi. Davrlar oz (o'nlab), shuning uchun hammasi (o'chirilmaganlari,
+/// yopilganlari ham — tarix va statistika uchun) bir marta yuklanadi. Guruhning qaysi davri kerakligi
+/// <see cref="PeriodSelection"/> qoidasi bilan tanlanadi: <see cref="ForGroup(Guid)"/> — sukut bo'yicha
+/// (davom etayotgan → oxirgi tugagan → eng yaqin kelgusi).</summary>
 public sealed class PeriodLookup
 {
-    private readonly Dictionary<Guid, PeriodContext> _byGroup;
+    private readonly Dictionary<Guid, List<PeriodContext>> _byGroup;
+    private readonly Dictionary<Guid, PeriodContext?> _defaults = [];
 
-    private PeriodLookup(Dictionary<Guid, PeriodContext> byGroup, IReadOnlyList<PeriodContext> all)
+    private PeriodLookup(DateOnly today, Dictionary<Guid, List<PeriodContext>> byGroup, IReadOnlyList<PeriodContext> all)
     {
+        Today = today;
         _byGroup = byGroup;
         All = all;
     }
 
+    public DateOnly Today { get; }
+
     public IReadOnlyList<PeriodContext> All { get; }
 
-    public IReadOnlyCollection<Guid> PeriodIds => All.Select(p => p.Period.Id).ToArray();
+    /// <summary>Kamida bitta davrga biriktirilgan guruhlar.</summary>
+    public IReadOnlyCollection<Guid> GroupIds => _byGroup.Keys;
 
-    public PeriodContext? ForGroup(Guid groupId) => _byGroup.GetValueOrDefault(groupId);
+    /// <summary>Guruhning sukut bo'yicha davri (<see cref="PeriodPurpose.Default"/>).</summary>
+    public PeriodContext? ForGroup(Guid groupId)
+    {
+        if (!_defaults.TryGetValue(groupId, out var ctx))
+        {
+            ctx = ForGroup(groupId, PeriodPurpose.Default);
+            _defaults[groupId] = ctx;
+        }
+
+        return ctx;
+    }
+
+    public PeriodContext? ForGroup(Guid groupId, PeriodPurpose purpose)
+        => _byGroup.TryGetValue(groupId, out var list)
+            ? PeriodSelection.Select(list, Today, purpose, c => PeriodSpan.Of(c.Period))
+            : null;
+
+    /// <summary>Kalendar katagi uchun: <paramref name="date"/> ni o'z ichiga olgan guruh davri (yopilgani ham — tarix),
+    /// bo'lmasa sukut bo'yicha davr.</summary>
+    public PeriodContext? ForGroupOn(Guid groupId, DateOnly date)
+        => (_byGroup.TryGetValue(groupId, out var list) ? list.FirstOrDefault(c => c.Period.Contains(date)) : null)
+           ?? ForGroup(groupId);
+
+    /// <summary>Berilgan guruhlarning sukut bo'yicha davrlari id'lari — so'rovlarni oldindan toraytirish uchun.
+    /// Natijani talaba bo'yicha albatta <c>ForGroup(groupId).Period.Id</c> bilan ham filtrlash kerak.</summary>
+    public IReadOnlyCollection<Guid> DefaultPeriodIds(IEnumerable<Guid> groupIds)
+        => groupIds.Distinct()
+            .Select(ForGroup)
+            .Where(c => c is not null)
+            .Select(c => c!.Period.Id)
+            .Distinct()
+            .ToArray();
 
     public PeriodContext? ForPeriod(Guid periodId) => All.FirstOrDefault(p => p.Period.Id == periodId);
 
@@ -67,7 +105,6 @@ public sealed class PeriodLookup
         var periods = await db.PracticePeriods
             .AsNoTracking()
             .Include(p => p.Groups)
-            .Where(p => p.Status == PracticePeriodStatus.Active)
             .OrderByDescending(p => p.StartDate)
             .ToListAsync(cancellationToken);
 
@@ -78,14 +115,26 @@ public sealed class PeriodLookup
             .Select(p => new PeriodContext(p, p.Rules(minAccuracy), holidays))
             .ToList();
 
-        var byGroup = new Dictionary<Guid, PeriodContext>();
-        foreach (var ctx in contexts.OrderBy(c => c.Period.Contains(today) ? 0 : 1).ThenByDescending(c => c.Period.StartDate))
+        var byGroup = new Dictionary<Guid, List<PeriodContext>>();
+        foreach (var ctx in contexts)
         {
             foreach (var group in ctx.Period.Groups)
-                byGroup.TryAdd(group.StudentGroupId, ctx);
+            {
+                if (!byGroup.TryGetValue(group.StudentGroupId, out var list))
+                    byGroup[group.StudentGroupId] = list = [];
+                list.Add(ctx);
+            }
         }
 
-        return new PeriodLookup(byGroup, contexts);
+        return new PeriodLookup(today, byGroup, contexts);
+    }
+
+    /// <summary>Tayyor entity uchun kontekst (qoidalar + bayramlar).</summary>
+    public static async Task<PeriodContext> ContextAsync(IApplicationDbContext db, PracticePeriod period, CancellationToken cancellationToken)
+    {
+        var holidays = await db.Holidays.AsNoTracking().ToListAsync(cancellationToken);
+        var minAccuracy = await LoadMinAccuracyAsync(db, cancellationToken);
+        return new PeriodContext(period, period.Rules(minAccuracy), holidays);
     }
 
     /// <summary>Bitta davr (id bo'yicha, faolligidan qat'i nazar) — ruxsat tasdiqlashda kerak.</summary>

@@ -4,6 +4,7 @@ using Amaliyotchi.Application.Features.Student.Common;
 using Amaliyotchi.Domain.Exceptions;
 using Amaliyotchi.Domain.Files;
 using Amaliyotchi.Domain.Leave;
+using Amaliyotchi.Domain.Practice;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -53,11 +54,14 @@ internal sealed class CreateLeaveRequestCommandHandler(IApplicationDbContext db,
         var userId = currentUser.UserId ?? throw new ForbiddenException("Avtorizatsiya talab qilinadi.");
         var today = clock.LocalToday();
 
-        var practice = await db.LoadStudentPracticeAsync(userId, today, cancellationToken);
-        var period = practice.Period ?? throw new DomainException("Faol amaliyot davri yo'q — ruxsat so'rab bo'lmaydi.");
+        // Ruxsat davri — so'ralgan sanalarni to'liq qamragan, yopilmagan guruh davri (davom etayotgan yoki kelgusi).
+        var practice = await db.LoadStudentPracticeAsync(userId, today, PeriodPurpose.Enrollment, cancellationToken);
+        var open = practice.Periods.GroupPeriods.Where(p => p.Status != PracticePeriodStatus.Closed).ToList();
+        if (open.Count == 0)
+            throw new DomainException("Faol amaliyot davri yo'q — ruxsat so'rab bo'lmaydi.");
 
-        if (request.DateFrom < period.StartDate || request.DateTo > period.EndDate)
-            throw new DomainException("Ruxsat sanalari amaliyot davri ichida bo'lishi kerak.");
+        var period = open.FirstOrDefault(p => request.DateFrom >= p.StartDate && request.DateTo <= p.EndDate)
+            ?? throw new DomainException("Ruxsat sanalari amaliyot davri ichida bo'lishi kerak.");
 
         var overlapping = await db.LeaveRequests
             .AsNoTracking()

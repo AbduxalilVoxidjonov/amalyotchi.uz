@@ -1,4 +1,6 @@
+using System.Globalization;
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Companies;
 using Amaliyotchi.Domain.Exceptions;
@@ -13,16 +15,37 @@ namespace Amaliyotchi.Application.Features.Student.Common;
 internal sealed record StudentSettings(
     double MinGpsAccuracyM, int MinReportLength, bool CheckInPhotoRequired, bool DiaryPdfRequired);
 
-/// <summary>Bitta talabaning amaliyot holati: profil (foydalanuvchi + guruh), faol davr, davr bo'yicha ariza
-/// (korxona bilan), bayramlar, sozlamalar. Barcha talaba handler'lari shu yerdan boshlanadi —
-/// ko'lam <c>ICurrentUser.UserId</c> bilan qat'iy cheklangan.</summary>
+/// <summary>Bitta talabaning amaliyot holati: profil (foydalanuvchi + guruh), sirt maqsadiga ko'ra tanlangan davr
+/// (<see cref="PeriodSelection"/>), shu davr bo'yicha ariza (korxona bilan), talabaning barcha davrlari, bayramlar,
+/// sozlamalar. Barcha talaba handler'lari shu yerdan boshlanadi — ko'lam <c>ICurrentUser.UserId</c> bilan qat'iy cheklangan.</summary>
 internal sealed record StudentPractice(
     StudentProfile Student,
     PracticePeriod? Period,
     PracticeApplication? Application,
     IReadOnlyList<Holiday> Holidays,
-    StudentSettings Settings)
+    StudentSettings Settings,
+    StudentPeriodSet Periods,
+    DateOnly Today)
 {
+    /// <summary>Tanlangan davr bugun davom etayaptimi (yopilmagan va bugunni o'z ichiga oladi) — check-in shu holatda mumkin.</summary>
+    public bool IsOngoing => Period is not null && PeriodSelection.IsOngoing(Period, Today);
+
+    /// <summary>Davom etayotgan davr yo'q bo'lsa talabaga ko'rsatiladigan sabab: kelgusi davr bo'lsa
+    /// "Amaliyot davri hali boshlanmagan: &lt;nom&gt;, &lt;dd.MM.yyyy&gt; dan boshlanadi.", tugagan bo'lsa
+    /// "Amaliyot davri tugagan: &lt;nom&gt;.", umuman bo'lmasa — "Faol amaliyot davri yo'q.".</summary>
+    public string NoOngoingNote()
+    {
+        var groupPeriods = Periods.GroupPeriods;
+        if (PeriodSelection.Select(groupPeriods, Today, PeriodPurpose.Enrollment) is { } upcoming)
+            return string.Create(CultureInfo.InvariantCulture,
+                $"{CheckInRejectReason.PeriodNotStarted.Message().TrimEnd('.')}: {upcoming.Name}, {upcoming.StartDate:dd.MM.yyyy} dan boshlanadi.");
+        if (PeriodSelection.LastEnded(groupPeriods, Today, PeriodSpan.Of) is { } ended)
+            return $"{CheckInRejectReason.PeriodEnded.Message().TrimEnd('.')}: {ended.Name}.";
+        return NoPeriodMessage;
+    }
+
+    public const string NoPeriodMessage = "Faol amaliyot davri yo'q.";
+
     /// <summary>Korxona — faqat ariza bor va korxona o'chirilmagan bo'lsa.</summary>
     public Company? Company => Application?.Company;
 
@@ -58,9 +81,16 @@ internal sealed record StudentPractice(
 
 internal static class StudentPracticeLoader
 {
-    /// <summary>Talaba profili + davr + ariza + bayramlar + sozlamalar. Profil yo'q → 404.</summary>
+    /// <summary>Talaba profili + davr + ariza + bayramlar + sozlamalar. Profil yo'q → 404.
+    /// Davr: <paramref name="periodId"/> berilsa — talabaning davrlaridan biri (aks holda 404), berilmasa —
+    /// <paramref name="purpose"/> qoidasi bilan (<see cref="PeriodSelection"/>).</summary>
     public static async Task<StudentPractice> LoadStudentPracticeAsync(
-        this IApplicationDbContext db, Guid studentUserId, DateOnly today, CancellationToken cancellationToken)
+        this IApplicationDbContext db,
+        Guid studentUserId,
+        DateOnly today,
+        PeriodPurpose purpose,
+        CancellationToken cancellationToken,
+        Guid? periodId = null)
     {
         var student = await db.StudentProfiles
             .AsNoTracking()
@@ -69,24 +99,17 @@ internal static class StudentPracticeLoader
             .FirstOrDefaultAsync(p => p.UserId == studentUserId, cancellationToken)
             ?? throw new NotFoundException("Talaba profili topilmadi.");
 
-        var groupId = student.StudentGroupId;
-        var periods = await db.PracticePeriods
-            .AsNoTracking()
-            .Where(p => p.Status == PracticePeriodStatus.Active && p.Groups.Any(g => g.StudentGroupId == groupId))
-            .OrderByDescending(p => p.StartDate)
-            .ToListAsync(cancellationToken);
-
-        // Bugunni o'z ichiga olgan faol davr; bo'lmasa — eng so'nggisi (davr tugagan/boshlanmagan holatlar uchun).
-        var period = periods.FirstOrDefault(p => p.Contains(today)) ?? periods.FirstOrDefault();
+        var periods = await db.LoadStudentPeriodsAsync(studentUserId, student.StudentGroupId, cancellationToken);
+        var period = periods.Resolve(periodId, today, purpose);
 
         PracticeApplication? application = null;
         if (period is not null)
         {
-            var periodId = period.Id;
+            var selectedId = period.Id;
             var applications = await db.PracticeApplications
                 .AsNoTracking()
                 .Include(a => a.Company)
-                .Where(a => a.StudentUserId == studentUserId && a.PeriodId == periodId)
+                .Where(a => a.StudentUserId == studentUserId && a.PeriodId == selectedId)
                 .OrderByDescending(a => a.SubmittedAt)
                 .ToListAsync(cancellationToken);
 
@@ -98,7 +121,7 @@ internal static class StudentPracticeLoader
         var holidays = await db.Holidays.AsNoTracking().ToListAsync(cancellationToken);
         var settings = await db.LoadStudentSettingsAsync(cancellationToken);
 
-        return new StudentPractice(student, period, application, holidays, settings);
+        return new StudentPractice(student, period, application, holidays, settings, periods, today);
     }
 
     public static async Task<StudentSettings> LoadStudentSettingsAsync(

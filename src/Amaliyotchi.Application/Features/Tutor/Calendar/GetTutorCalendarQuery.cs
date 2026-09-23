@@ -68,7 +68,6 @@ internal sealed class GetTutorCalendarQueryHandler(IApplicationDbContext db, ISc
         var rows = new List<CalendarRow>(students.Count);
         foreach (var student in students)
         {
-            var period = periods.ForGroup(student.GroupId);
             var studentLeaves = leaves[student.UserId].ToList();
             var statuses = new CalendarDayStatus[daysInMonth];
             for (var i = 0; i < daysInMonth; i++)
@@ -76,6 +75,8 @@ internal sealed class GetTutorCalendarQueryHandler(IApplicationDbContext db, ISc
                 var date = first.AddDays(i);
                 var row = attendance.GetValueOrDefault((student.UserId, date));
                 var onLeave = studentLeaves.Any(l => date >= l.DateFrom && date <= l.DateTo);
+                // Oy ikki davrni qamrashi mumkin (kuzgi tugab, bahorgi boshlanadi) — har kun o'z davri bilan.
+                var period = periods.ForGroupOn(student.GroupId, date);
                 statuses[i] = AttendanceStatusResolver.ResolveCalendar(period, date, today, localNow, row, onLeave);
             }
 

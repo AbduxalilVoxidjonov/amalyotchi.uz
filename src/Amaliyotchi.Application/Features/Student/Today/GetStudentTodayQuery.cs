@@ -1,10 +1,12 @@
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Application.Features.Student.Common;
 using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Common;
 using Amaliyotchi.Domain.Diary;
 using Amaliyotchi.Domain.Exceptions;
+using Amaliyotchi.Domain.Practice;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,7 +33,9 @@ internal static class TodayBuilder
     {
         var today = clock.LocalToday();
         var localNow = clock.LocalTime();
-        var practice = await db.LoadStudentPracticeAsync(studentUserId, today, cancellationToken);
+        // Ko'rinish davri: davom etayotgan → eng yaqin kelgusi → oxirgi tugagan (tanaffusda "davr hali boshlanmagan: …").
+        // Belgilanish esa faqat davom etayotgan davrda mumkin (Availability).
+        var practice = await db.LoadStudentPracticeAsync(studentUserId, today, PeriodPurpose.Current, cancellationToken);
         var rules = practice.Rules;
 
         var window = new TodayWindowDto(
@@ -47,8 +51,8 @@ internal static class TodayBuilder
         if (practice.Period is null)
         {
             var noPeriod = new TodayCheckInDto(
-                AttendanceStatus.Pending, null, null, null, null, null, false, false, "Faol amaliyot davri yo'q.");
-            return new TodayDto(today, window, noPeriod, null, diaryDto);
+                AttendanceStatus.Pending, null, null, null, null, null, false, false, StudentPractice.NoPeriodMessage);
+            return new TodayDto(today, window, noPeriod, null, diaryDto, null);
         }
 
         var periodId = practice.Period.Id;
@@ -99,7 +103,9 @@ internal static class TodayBuilder
                 diaryStats.Count, diaryStats.AvgScore);
         }
 
-        return new TodayDto(today, window with { IsOpen = isOpen }, checkin, place, diaryDto);
+        return new TodayDto(
+            today, window with { IsOpen = isOpen }, checkin, place, diaryDto,
+            StudentPeriodSet.ToOption(practice.Period, today, isDefault: true));
     }
 
     /// <summary>Hozirgi bosqich uchun amal mumkinmi va bo'lmasa — sababi. GPS/masofa hisobga olinmaydi
@@ -116,6 +122,10 @@ internal static class TodayBuilder
                 rules);
             return checkOut.Accepted ? (true, null) : (false, checkOut.Reason.Message());
         }
+
+        // Tanlangan davr bugun davom etmayapti (ikki davr oralig'i, davr hali boshlanmagan yoki tugagan) — sabab nom va sana bilan.
+        if (!practice.IsOngoing)
+            return (false, practice.NoOngoingNote());
 
         if (!practice.IsApproved || practice.Period is null)
             return (false, CheckInRejectReason.NotApproved.Message());

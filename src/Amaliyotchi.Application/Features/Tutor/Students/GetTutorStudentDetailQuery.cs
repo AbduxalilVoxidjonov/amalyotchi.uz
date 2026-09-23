@@ -1,4 +1,5 @@
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Common.Scoping;
 using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Application.Features.Tutor.Applications;
@@ -12,9 +13,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Tutor.Students;
 
-/// <summary><c>GET /api/tutor/students/{id}</c> — talaba profili: akademik ma'lumot, korxona, ariza,
-/// amaliyot davri, davomat/kundalik statistikasi va joriy baho. Ko'lamdan tashqari talaba → 404.</summary>
-public sealed record GetTutorStudentDetailQuery(Guid Id) : IRequest<TutorStudentDetail>;
+/// <summary><c>GET /api/tutor/students/{id}?periodId=</c> — talaba profili: akademik ma'lumot, korxona, ariza,
+/// amaliyot davri, davomat/kundalik statistikasi va baho — hammasi TANLANGAN davr bo'yicha.
+/// <c>periodId</c> berilmasa — sukut bo'yicha davr (<see cref="PeriodPurpose.Default"/>: davom etayotgan → oxirgi
+/// tugagan → eng yaqin kelgusi). Ko'lamdan tashqari talaba yoki talabaga tegishli bo'lmagan <c>periodId</c> → 404.</summary>
+public sealed record GetTutorStudentDetailQuery(Guid Id, Guid? PeriodId = null) : IRequest<TutorStudentDetail>;
 
 internal sealed class GetTutorStudentDetailQueryHandler(IApplicationDbContext db, IScopeResolver scopeResolver, IClock clock)
     : IRequestHandler<GetTutorStudentDetailQuery, TutorStudentDetail>
@@ -28,9 +31,11 @@ internal sealed class GetTutorStudentDetailQueryHandler(IApplicationDbContext db
         // Ko'lamdan tashqari (yoki umuman yo'q) talaba → NotFoundException (404).
         var profile = await db.GetScopedStudentAsync(scope, request.Id, cancellationToken);
 
-        var periods = await PeriodLookup.LoadAsync(db, today, cancellationToken);
-        var period = periods.ForGroup(profile.StudentGroupId);
-        var periodIds = periods.PeriodIds;
+        var periodSet = await db.LoadStudentPeriodsAsync(profile.UserId, profile.StudentGroupId, cancellationToken);
+        var defaultPeriod = periodSet.Default(today);
+        var selected = periodSet.Resolve(request.PeriodId, today);
+        var period = selected is null ? null : await PeriodLookup.ContextAsync(db, selected, cancellationToken);
+        var periodId = selected?.Id;
 
         var org = await db.StudentGroups.AsNoTracking()
             .Where(g => g.Id == profile.StudentGroupId)
@@ -40,24 +45,24 @@ internal sealed class GetTutorStudentDetailQueryHandler(IApplicationDbContext db
             .FirstOrDefaultAsync(cancellationToken);
 
         var attendance = await db.DailyAttendances.AsNoTracking().InScope(scope)
-            .Where(a => a.StudentUserId == request.Id && periodIds.Contains(a.PeriodId))
+            .Where(a => a.StudentUserId == request.Id && a.PeriodId == periodId)
             .SelectSnapshot()
             .ToListAsync(cancellationToken);
 
         var leaves = (await db.LeaveRequests.AsNoTracking().InScope(scope)
-                .Where(l => l.StudentUserId == request.Id && l.Status == LeaveRequestStatus.Approved && periodIds.Contains(l.PeriodId))
+                .Where(l => l.StudentUserId == request.Id && l.Status == LeaveRequestStatus.Approved && l.PeriodId == periodId)
                 .Select(l => new { l.DateFrom, l.DateTo })
                 .ToListAsync(cancellationToken))
             .Select(l => (l.DateFrom, l.DateTo))
             .ToList();
 
         var diaryScores = await db.DiaryEntries.AsNoTracking().InScope(scope)
-            .Where(d => d.StudentUserId == request.Id && periodIds.Contains(d.PeriodId))
+            .Where(d => d.StudentUserId == request.Id && d.PeriodId == periodId)
             .Select(d => d.Score)
             .ToListAsync(cancellationToken);
 
         var applications = await db.PracticeApplications.AsNoTracking().InScope(scope)
-            .Where(a => a.StudentUserId == request.Id)
+            .Where(a => a.StudentUserId == request.Id && a.PeriodId == periodId)
             .OrderByDescending(a => a.SubmittedAt)
             .Select(a => new
             {
@@ -75,10 +80,10 @@ internal sealed class GetTutorStudentDetailQueryHandler(IApplicationDbContext db
             })
             .ToListAsync(cancellationToken);
 
-        // Joriy ariza: faol davrniki, bo'lmasa — eng oxirgisi. Korxona faqat tasdiqlangan arizadan ko'rsatiladi.
-        var current = (period is not null ? applications.FirstOrDefault(a => a.PeriodId == period.Period.Id) : null)
-                      ?? applications.FirstOrDefault();
+        // Tanlangan davrdagi ariza: tasdiqlangani (yoki yakunlangani) ustun, bo'lmasa eng oxirgisi.
+        // Korxona faqat tasdiqlangan arizadan ko'rsatiladi.
         var placement = applications.FirstOrDefault(a => a.Status is ApplicationStatus.Approved or ApplicationStatus.Completed);
+        var current = placement ?? applications.FirstOrDefault();
 
         ApplicationContract? contract = null;
         if (current?.ContractFileId is { } fileId)
@@ -94,8 +99,9 @@ internal sealed class GetTutorStudentDetailQueryHandler(IApplicationDbContext db
         var stats = StudentStatsCalculator.ComputeAttendance(period, attendance, leaves, today, localNow);
         var diary = StudentStatsCalculator.ComputeDiary(diaryScores);
 
+        // Baho — faqat boshlangan davr uchun (rejalashtirilgan davrda hisoblanadigan narsa yo'q).
         StudentGrade? grade = null;
-        if (period is not null)
+        if (period is not null && period.Period.StartDate <= today)
         {
             var points = await db.PracticeGrades.AsNoTracking().InScope(scope)
                 .Where(g => g.StudentUserId == request.Id && g.PeriodId == period.Period.Id)
@@ -133,7 +139,9 @@ internal sealed class GetTutorStudentDetailQueryHandler(IApplicationDbContext db
                 stats.SuspiciousCount,
                 stats.AttendancePct),
             new DiarySummary(diary.Count, diary.ScoredCount, diary.Avg),
-            grade);
+            grade,
+            periodSet.Options(today, defaultPeriod?.Id),
+            periodId);
     }
 
     private static StudentPeriod ToPeriod(PracticePeriod period)

@@ -5,9 +5,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Admin.Common;
 
-/// <summary>Guruhga biriktirilgan faol amaliyot davri (davr — guruh bo'yicha qisqacha).
-/// <paramref name="ElapsedWorkDays"/> — davr boshidan kechagacha (bugun kirmaydi) o'tgan ish kunlari, davomat foizining maxraji.
-/// <paramref name="ExpectedToday"/> / <paramref name="ExpectedYesterday"/> — shu kun bu guruh uchun ish kuni (davr ichida, ish kuni, bayram emas).</summary>
+/// <summary>Guruhning sukut bo'yicha amaliyot davri (davr — guruh bo'yicha qisqacha). <paramref name="Status"/> — ko'rinadigan
+/// holat (<see cref="PracticePeriod.ResolveStatus"/>: planned / active / closed).
+/// <paramref name="ElapsedWorkDays"/> — davr boshidan kechagacha (bugun kirmaydi, davr oxiridan oshmaydi) o'tgan ish kunlari,
+/// davomat foizining maxraji. <paramref name="ExpectedToday"/> / <paramref name="ExpectedYesterday"/> — shu kun bu guruh uchun
+/// ish kuni (yopilmagan davr ichida, ish kuni, bayram emas).</summary>
 public sealed record GroupPractice(
     Guid PeriodId,
     string PeriodName,
@@ -18,9 +20,11 @@ public sealed record GroupPractice(
     bool ExpectedToday,
     bool ExpectedYesterday);
 
-/// <summary>Faol davrlar + bayramlar bir marta yuklanib, admin so'rovlari uchun "qaysi guruhdan bugun davomat kutiladi"
+/// <summary>Davrlar + bayramlar bir marta yuklanib, admin so'rovlari uchun "qaysi guruhdan bugun davomat kutiladi"
 /// va "davomat foizi maxraji" savollariga xotirada javob beradi. Davrlar soni kichik (o'nlab), talabalar jadvaliga tegmaydi.
-/// Bir guruh bir nechta faol davrda bo'lsa — o'tgan ish kunlari ko'proq bo'lgani olinadi.</summary>
+/// Har guruh uchun davr <see cref="PeriodSelection"/> qoidasi bilan tanlanadi (<see cref="PeriodPurpose.Default"/>:
+/// davom etayotgan → oxirgi tugagan → eng yaqin kelgusi) — ikki davr oralig'ida statistika tugagan kuzgi davr bo'yicha
+/// qoladi, kelajakdagi bo'sh davrga o'tib ketmaydi.</summary>
 public sealed class PracticeCalendar
 {
     private readonly Dictionary<Guid, GroupPractice> _byGroup;
@@ -39,9 +43,6 @@ public sealed class PracticeCalendar
     public IReadOnlyList<Guid> GroupsExpectedToday { get; private set; } = [];
 
     public IReadOnlyList<Guid> GroupsExpectedYesterday { get; private set; } = [];
-
-    /// <summary>Faol davrlarning id'lari (ariza "yo'q"ligini aniqlash uchun).</summary>
-    public IReadOnlyList<Guid> ActivePeriodIds => _byGroup.Values.Select(p => p.PeriodId).Distinct().ToList();
 
     public GroupPractice? For(Guid groupId) => _byGroup.GetValueOrDefault(groupId);
 
@@ -62,17 +63,14 @@ public sealed class PracticeCalendar
 
         var periods = await db.PracticePeriods
             .AsNoTracking()
-            .Where(p => p.Status == PracticePeriodStatus.Active && p.StartDate <= today)
-            .Select(p => new
-            {
+            .Select(p => new PeriodRow(
                 p.Id,
                 p.Name,
                 p.Status,
                 p.StartDate,
                 p.EndDate,
                 p.WorkDays,
-                GroupIds = p.Groups.Select(g => g.StudentGroupId).ToList()
-            })
+                p.Groups.Select(g => g.StudentGroupId).ToList()))
             .ToListAsync(cancellationToken);
 
         var byGroup = new Dictionary<Guid, GroupPractice>();
@@ -88,8 +86,12 @@ public sealed class PracticeCalendar
             ? h.Date.Month == date.Month && h.Date.Day == date.Day
             : h.Date == date);
 
-        foreach (var period in periods)
+        var practices = new Dictionary<Guid, GroupPractice>();
+        GroupPractice Practice(PeriodRow period)
         {
+            if (practices.TryGetValue(period.Id, out var cached))
+                return cached;
+
             var elapsed = 0;
             var lastPast = today.AddDays(-1) < period.EndDate ? today.AddDays(-1) : period.EndDate;
             for (var date = period.StartDate; date <= lastPast; date = date.AddDays(1))
@@ -98,17 +100,24 @@ public sealed class PracticeCalendar
                     elapsed++;
             }
 
-            bool ExpectedOn(DateOnly date) => date >= period.StartDate && date <= period.EndDate
+            bool ExpectedOn(DateOnly date) => period.Status != PracticePeriodStatus.Closed
+                && date >= period.StartDate && date <= period.EndDate
                 && period.WorkDays.Includes(date) && !IsHoliday(date);
 
             var practice = new GroupPractice(
-                period.Id, period.Name, period.Status, period.StartDate, period.EndDate, elapsed,
-                ExpectedOn(today), ExpectedOn(today.AddDays(-1)));
-            foreach (var groupId in period.GroupIds)
-            {
-                if (!byGroup.TryGetValue(groupId, out var existing) || existing.ElapsedWorkDays < elapsed)
-                    byGroup[groupId] = practice;
-            }
+                period.Id, period.Name, PracticePeriod.ResolveStatus(period.Status, period.StartDate, today),
+                period.StartDate, period.EndDate, elapsed, ExpectedOn(today), ExpectedOn(today.AddDays(-1)));
+            practices[period.Id] = practice;
+            return practice;
+        }
+
+        foreach (var group in periods.SelectMany(p => p.GroupIds.Select(g => (GroupId: g, Period: p))).GroupBy(x => x.GroupId))
+        {
+            var selected = PeriodSelection.Select(
+                group.Select(x => x.Period).ToList(), today, PeriodPurpose.Default,
+                p => new PeriodSpan(p.StartDate, p.EndDate, p.Status == PracticePeriodStatus.Closed));
+            if (selected is not null)
+                byGroup[group.Key] = Practice(selected);
         }
 
         return new PracticeCalendar(today, byGroup)
@@ -117,4 +126,13 @@ public sealed class PracticeCalendar
             GroupsExpectedYesterday = byGroup.Where(kv => kv.Value.ExpectedYesterday).Select(kv => kv.Key).ToList()
         };
     }
+
+    private sealed record PeriodRow(
+        Guid Id,
+        string Name,
+        PracticePeriodStatus Status,
+        DateOnly StartDate,
+        DateOnly EndDate,
+        WorkDays WorkDays,
+        List<Guid> GroupIds);
 }

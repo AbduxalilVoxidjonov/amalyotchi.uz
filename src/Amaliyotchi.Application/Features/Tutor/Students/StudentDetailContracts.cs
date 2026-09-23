@@ -1,4 +1,5 @@
 using System.Globalization;
+using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Features.Tutor.Applications;
 using Amaliyotchi.Domain.Practice;
 using Amaliyotchi.Domain.Students;
@@ -57,9 +58,10 @@ public sealed record DiarySummary(int Count, int ScoredCount, double Avg);
 /// <param name="Grade">2–5 yoki null (davomat yetarli emas — qayta topshiradi).</param>
 public sealed record StudentGrade(double Total, int? Grade);
 
-/// <summary><c>GET /api/tutor/students/{id}</c> javobi: profil + korxona + ariza + davr + statistika + baho.
-/// <c>company</c> — faqat tasdiqlangan (yoki yakunlangan) arizada bo'ladi; <c>period</c>/<c>grade</c> —
-/// talaba guruhining faol davri bo'lmasa null.</summary>
+/// <summary><c>GET /api/tutor/students/{id}?periodId=</c> javobi: profil + korxona + ariza + davr + statistika + baho —
+/// davrga bog'liq bloklar <c>selectedPeriodId</c> davri bo'yicha. <c>company</c> — faqat shu davrdagi
+/// tasdiqlangan (yoki yakunlangan) arizada; <c>period</c>/<c>grade</c> — davr bo'lmasa null (<c>grade</c> —
+/// davr hali boshlanmagan bo'lsa ham null). <c>periods</c> — davr tanlagichi (<c>startDate</c> kamayish tartibida).</summary>
 public sealed record TutorStudentDetail(
     Guid Id,
     string Name,
@@ -77,7 +79,9 @@ public sealed record TutorStudentDetail(
     StudentPeriod? Period,
     AttendanceSummary Attendance,
     DiarySummary Diary,
-    StudentGrade? Grade);
+    StudentGrade? Grade,
+    IReadOnlyList<StudentPeriodOption> Periods,
+    Guid? SelectedPeriodId);
 
 internal static class WorkDayNumbers
 {

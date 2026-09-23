@@ -77,22 +77,36 @@ internal sealed class GetAdminStudentsQueryHandler(IApplicationDbContext db, ICl
         var calendar = await PracticeCalendar.LoadAsync(db, clock, cancellationToken);
         var today = calendar.Today;
 
+        // Har talaba — guruhining sukut bo'yicha davri (davom etayotgan → oxirgi tugagan → kelgusi) kesimida.
+        var periodIds = page.Items.Select(s => calendar.For(s.GroupId)?.PeriodId).OfType<Guid>().Distinct().ToList();
+
         var attendance = await db.DailyAttendances
             .AsNoTracking()
-            .Where(a => ids.Contains(a.StudentUserId))
-            .GroupBy(a => a.StudentUserId)
+            .Where(a => ids.Contains(a.StudentUserId) && periodIds.Contains(a.PeriodId))
+            .GroupBy(a => new { a.StudentUserId, a.PeriodId })
             .Select(g => new
             {
-                StudentId = g.Key,
+                g.Key.StudentUserId,
+                g.Key.PeriodId,
                 Attended = g.Count(a => a.Date < today && (a.Status == AttendanceStatus.Present || a.Status == AttendanceStatus.Late)),
                 Excused = g.Count(a => a.Date < today && a.Status == AttendanceStatus.Excused),
                 Suspicious = g.Count(a => a.IsSuspicious)
             })
-            .ToDictionaryAsync(x => x.StudentId, cancellationToken);
+            .ToDictionaryAsync(x => (x.StudentUserId, x.PeriodId), cancellationToken);
+
+        // Korxona — davrdagi tasdiqlangan arizadan; davrda bo'lmasa oxirgi tasdiqlangani (ro'yxat so'rovidagi).
+        var companies = (await db.PracticeApplications
+                .AsNoTracking()
+                .Where(a => ids.Contains(a.StudentUserId) && periodIds.Contains(a.PeriodId) && a.Status == ApplicationStatus.Approved)
+                .Select(a => new { a.StudentUserId, a.PeriodId, a.DecidedAt, Company = a.Company.Name })
+                .ToListAsync(cancellationToken))
+            .GroupBy(a => (a.StudentUserId, a.PeriodId))
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(a => a.DecidedAt).First().Company);
 
         var rows = page.Items.Select(s =>
         {
-            var stats = attendance.GetValueOrDefault(s.Id);
+            var periodId = calendar.For(s.GroupId)?.PeriodId ?? Guid.Empty;
+            var stats = attendance.GetValueOrDefault((s.Id, periodId));
             var elapsed = calendar.ElapsedWorkDays(s.GroupId);
             var pct = PracticeCalendar.AttendancePct(stats?.Attended ?? 0, elapsed, stats?.Excused ?? 0);
             var suspicious = stats?.Suspicious ?? 0;
@@ -100,7 +114,8 @@ internal sealed class GetAdminStudentsQueryHandler(IApplicationDbContext db, ICl
             var status = AdminStudentStatusRule.For(s.TelegramLinked, pct, elapsed, suspicious);
 
             return new StudentRow(
-                s.Id, s.FullName, s.HemisId, s.GroupId, s.Group, s.Course, s.Faculty, s.Company,
+                s.Id, s.FullName, s.HemisId, s.GroupId, s.Group, s.Course, s.Faculty,
+                companies.GetValueOrDefault((s.Id, periodId)) ?? s.Company,
                 pct, suspicious, s.TelegramLinked, status);
         }).ToList();
 

@@ -122,11 +122,13 @@ internal sealed class AttendanceAttempt(IApplicationDbContext db, IClock clock, 
         var today = clock.LocalToday();
         var localNow = clock.LocalTime();
 
-        var practice = await db.LoadStudentPracticeAsync(studentUserId, today, cancellationToken);
+        // Faqat davom etayotgan davr: ikki davr oralig'ida (yoki davr boshlanmagan/tugagan) urinish hodisasiz rad etiladi —
+        // sabab nom va sana bilan ("Amaliyot davri hali boshlanmagan: <nom>, <sana> dan boshlanadi.").
+        var practice = await db.LoadStudentPracticeAsync(studentUserId, today, PeriodPurpose.Ongoing, cancellationToken);
+        if (practice.Period is null)
+            throw new DomainException(practice.NoOngoingNote());
 
         // Korxona bo'lmasa hodisani yozib bo'lmaydi (CompanyId majburiy) — policy'dagi NotApproved xabari bilan rad.
-        if (practice.Period is null)
-            throw new DomainException("Faol amaliyot davri yo'q.");
         if (practice.Company is null)
             throw CheckInRejectReason.NotApproved.ToException();
 

@@ -1,4 +1,5 @@
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Application.Features.Companies;
 using Amaliyotchi.Application.Features.Student.Common;
@@ -15,7 +16,8 @@ namespace Amaliyotchi.Application.Features.Student.Place;
 /// Talaba korxona ma'lumotini QO'LDA kiritmaydi — faqat STIR yozadi, qolgani admin oldindan
 /// kiritgan yozuvdan olinadi (nom, manzil, koordinata, radius, rahbar). Ariza <c>Submitted</c>
 /// holatida tyutorga boradi; radius korxonanikidan olinadi.
-/// STIR bilan faol korxona topilmasa → 404; faol davr yo'q → 409; ariza allaqachon bor → 409
+/// Ariza davri — davom etayotgan, bo'lmasa eng yaqin kelgusi davr (<see cref="PeriodPurpose.Enrollment"/>).
+/// STIR bilan faol korxona topilmasa → 404; ochiq (davom etayotgan/kelgusi) davr yo'q → 409; ariza allaqachon bor → 409
 /// (qayta ishlashga qaytarilgan bo'lsa — qayta yuboriladi).</summary>
 public sealed record SubmitPracticePlaceCommand(string Tin) : IRequest<PracticePlaceDto>;
 
@@ -50,13 +52,10 @@ internal sealed class SubmitPracticePlaceCommandHandler(
             .FirstOrDefaultAsync(cancellationToken)
             ?? throw new NotFoundException("Talaba profili topilmadi.");
 
-        var periods = await db.PracticePeriods
-            .AsNoTracking()
-            .Where(p => p.Status == PracticePeriodStatus.Active && p.Groups.Any(g => g.StudentGroupId == groupId))
-            .OrderByDescending(p => p.StartDate)
-            .ToListAsync(cancellationToken);
-
-        var period = periods.FirstOrDefault(p => p.Contains(today)) ?? periods.FirstOrDefault()
+        // Ariza davri: davom etayotgan → eng yaqin kelgusi (tanaffusda talaba bahorgi davrga oldindan ariza beradi).
+        // Tugagan/yopilgan davrga ariza berilmaydi.
+        var periods = await db.LoadStudentPeriodsAsync(userId, groupId, cancellationToken);
+        var period = periods.Default(today, PeriodPurpose.Enrollment)
             ?? throw new ConflictException(SubmitPlaceMessages.NoPeriodMessage);
 
         var applications = await db.PracticeApplications

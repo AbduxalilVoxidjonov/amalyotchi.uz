@@ -1,6 +1,7 @@
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Scoping;
-using Amaliyotchi.Domain.Practice;
+using Amaliyotchi.Application.Common.Time;
+using Amaliyotchi.Application.Features.Tutor.Common;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,11 +17,12 @@ public sealed record ReportCard(string Id, string Name, IReadOnlyList<string> Fo
 
 public sealed record ReportsCatalog(ReportFilter Filter, IReadOnlyList<ReportCard> Reports);
 
-/// <summary><c>GET /api/reports</c> (Admin, Tyutor) — hisobotlar katalogi: filtr (faol davr sanalari, ko'lam) + kartalar.
+/// <summary><c>GET /api/reports</c> (Admin, Tyutor) — hisobotlar katalogi: filtr (ko'lamdagi guruhlarning sukut bo'yicha
+/// davrlari sanalari — davom etayotgan → oxirgi tugagan → kelgusi, <c>PeriodLookup.ForGroup</c>; ko'lam) + kartalar.
 /// Yuklab olish (<c>/api/reports/{id}/download</c>) keyingi bosqichda.</summary>
 public sealed record GetReportsCatalogQuery : IRequest<ReportsCatalog>;
 
-internal sealed class GetReportsCatalogQueryHandler(IApplicationDbContext db, IScopeResolver scopeResolver)
+internal sealed class GetReportsCatalogQueryHandler(IApplicationDbContext db, IScopeResolver scopeResolver, IClock clock)
     : IRequestHandler<GetReportsCatalogQuery, ReportsCatalog>
 {
     public const string AllFacultiesScope = "Barcha fakultetlar";
@@ -42,14 +44,18 @@ internal sealed class GetReportsCatalogQueryHandler(IApplicationDbContext db, IS
     {
         var scope = await scopeResolver.ResolveAsync(cancellationToken);
 
-        var periodsQuery = db.PracticePeriods.AsNoTracking().Where(p => p.Status == PracticePeriodStatus.Active);
-        if (scope.Kind == ScopeKind.Groups)
-            periodsQuery = periodsQuery.Where(p => p.Groups.Any(g => scope.StudentGroupIds.Contains(g.StudentGroupId)));
-
-        var range = await periodsQuery
-            .GroupBy(_ => 1)
-            .Select(g => new { From = g.Min(p => p.StartDate), To = g.Max(p => p.EndDate) })
-            .FirstOrDefaultAsync(cancellationToken);
+        var lookup = await PeriodLookup.LoadAsync(db, clock.LocalToday(), cancellationToken);
+        var scopedGroups = scope.Kind == ScopeKind.Groups
+            ? lookup.GroupIds.Where(scope.StudentGroupIds.Contains)
+            : lookup.GroupIds;
+        var selected = scopedGroups
+            .Select(lookup.ForGroup)
+            .Where(p => p is not null)
+            .Select(p => p!.Period)
+            .ToList();
+        var range = selected.Count == 0
+            ? null
+            : new { From = selected.Min(p => p.StartDate), To = selected.Max(p => p.EndDate) };
 
         List<string> groups = [];
         string scopeLabel;

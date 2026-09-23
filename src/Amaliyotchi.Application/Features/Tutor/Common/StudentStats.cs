@@ -20,7 +20,8 @@ public sealed record DiaryStats(int Count, int ScoredCount, double Avg)
 
 public static class StudentStatsCalculator
 {
-    /// <summary>Davomat foizi = kelgan (keldi + kech keldi) / hisobga olinadigan ish kunlari × 100.</summary>
+    /// <summary>Davomat foizi = kelgan (keldi + kech keldi) / hisobga olinadigan ish kunlari × 100.
+    /// <paramref name="rows"/> dan faqat <paramref name="period"/> ga tegishlilari olinadi.</summary>
     public static StudentStats ComputeAttendance(
         PeriodContext? period,
         IReadOnlyCollection<AttendanceSnapshot> rows,
@@ -28,9 +29,13 @@ public static class StudentStatsCalculator
         DateOnly today,
         TimeOnly localNow)
     {
-        var suspicious = rows.Count(r => r.IsSuspicious);
         if (period is null)
-            return new StudentStats(0, 0, 0, 0, suspicious, 0);
+            return new StudentStats(0, 0, 0, 0, rows.Count(r => r.IsSuspicious), 0);
+
+        // Faqat shu davr qatorlari — talabaning boshqa davrlari (kuzgi/bahorgi) aralashmasin.
+        var periodId = period.Period.Id;
+        rows = rows.Where(r => r.PeriodId == periodId).ToList();
+        var suspicious = rows.Count(r => r.IsSuspicious);
 
         var byDate = rows.ToDictionary(r => r.Date);
         var countable = new HashSet<DateOnly>();

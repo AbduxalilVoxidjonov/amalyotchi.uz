@@ -3,14 +3,17 @@ using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Application.Features.Student.Common;
 using Amaliyotchi.Domain.Exceptions;
 using Amaliyotchi.Domain.Grading;
+using Amaliyotchi.Domain.Practice;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Student.Portfolio;
 
-/// <summary><c>GET /api/student/portfolio</c>: davomat/kundalik statistikasi + <see cref="GradeCalculator"/> natijasi
-/// (tyutor/tavsifnoma ballari <see cref="PracticeGrade"/> dan). Faol davr yo'q → 404. <c>pdfUrl</c> hozircha null.</summary>
-public sealed record GetPortfolioQuery : IRequest<PortfolioDto>;
+/// <summary><c>GET /api/student/portfolio?periodId=</c>: tanlangan davr bo'yicha davomat/kundalik statistikasi +
+/// <see cref="GradeCalculator"/> natijasi (tyutor/tavsifnoma ballari <see cref="PracticeGrade"/> dan) + talabaning barcha
+/// davrlari ro'yxati. <c>periodId</c> berilmasa — sukut bo'yicha davr (<see cref="PeriodPurpose.Default"/>).
+/// Davr yo'q yoki begona <c>periodId</c> → 404. <c>pdfUrl</c> hozircha null.</summary>
+public sealed record GetPortfolioQuery(Guid? PeriodId = null) : IRequest<PortfolioDto>;
 
 internal sealed class GetPortfolioQueryHandler(IApplicationDbContext db, ICurrentUser currentUser, IClock clock)
     : IRequestHandler<GetPortfolioQuery, PortfolioDto>
@@ -21,8 +24,9 @@ internal sealed class GetPortfolioQueryHandler(IApplicationDbContext db, ICurren
         var today = clock.LocalToday();
         var localNow = clock.LocalTime();
 
-        var practice = await db.LoadStudentPracticeAsync(userId, today, cancellationToken);
+        var practice = await db.LoadStudentPracticeAsync(userId, today, PeriodPurpose.Default, cancellationToken, request.PeriodId);
         var period = practice.Period ?? throw new NotFoundException("Faol amaliyot davri topilmadi.");
+        var defaultPeriodId = request.PeriodId is null ? period.Id : practice.Periods.Default(today)?.Id;
 
         var rows = await db.AttendanceInPeriodAsync(userId, period.Id, cancellationToken);
         var leaves = await db.ApprovedLeavesAsync(userId, period.Id, cancellationToken);
@@ -70,6 +74,8 @@ internal sealed class GetPortfolioQueryHandler(IApplicationDbContext db, ICurren
             result.Grade,
             grade?.IsFinalized ?? false,
             conclusion,
-            PdfUrl: null);
+            PdfUrl: null,
+            period.Id,
+            practice.Periods.Options(today, defaultPeriodId));
     }
 }

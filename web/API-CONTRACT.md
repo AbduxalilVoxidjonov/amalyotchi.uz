@@ -1,4 +1,4 @@
-# API-CONTRACT v3.4
+# API-CONTRACT v3.5
 
 Oxirgi yangilanish: 23.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
@@ -6,7 +6,8 @@ esa haqiqiy controller/DTO/validator/handler kodidan olingan — har bir maydon,
 Frontend (`web/dashboard`, `web/twa`, `web/shared`) shu shaklga moslanishi kerak; v1 bilan farqlar §5 da,
 **v2 bilan farqlar §6 da**, v3.1 da qo'shilganlari — §6.6, v3.2 (talabalar Excel importi) — §6.8,
 v3.3 (korxona CRUD, STIR oqimi, ommaviy biriktirish) — §6.9,
-v3.4 (admin amaliyot davrlari) — §6.10.
+v3.4 (admin amaliyot davrlari) — §6.10,
+v3.5 (bir guruhda bir nechta davr: davr tanlash qoidasi, talaba profilida davr tanlagichi) — §6.11.
 
 Jami **99 ta endpoint**: Auth 5 · Admin 61 · Reports 1 · Tutor 19 · Student (TWA) 11 · Files 1 · Companies 1.
 
@@ -250,8 +251,8 @@ interface DashboardStatsDto {
   contractsApproved: number; // approved + completed
   contractsRevision: number;
   contractsRejected: number;
-  contractsMissing: number; // faol davr guruhidagi talaba, arizasi umuman yo'q
-  expectedToday: number; // bugun ish kuni bo'lgan faol davr guruhlaridagi talabalar
+  contractsMissing: number; // davri bor guruhdagi talaba, guruhning sukut bo'yicha davrida (§4.6) arizasi yo'q
+  expectedToday: number; // bugun ish kuni bo'lgan (davom etayotgan, yopilmagan) davr guruhlaridagi talabalar
   presentToday: number;
   lateToday: number;
   absentToday: number;
@@ -461,7 +462,7 @@ interface GroupRow {
   tutorId: string | null;
   tutor: string | null /*to'liq FISH*/;
   students: number;
-  attendancePct: number /*int; faol davr boshidan kechagacha, maxraj = o'tgan ish kunlari × arizasi tasdiqlangan talabalar*/;
+  attendancePct: number /*int; `period` davri boshidan kechagacha (davr oxiridan oshmaydi), maxraj = o'tgan ish kunlari × shu davrda arizasi tasdiqlangan talabalar*/;
   period: {
     id: string;
     name: string;
@@ -472,6 +473,10 @@ interface GroupRow {
   isActive: boolean; // P52 qo'shildi — CRUD hierarchy
 }
 ```
+
+`period` — guruhning **sukut bo'yicha davri** (§4.6: davom etayotgan → oxirgi tugagan → eng yaqin kelgusi); `status`
+hisoblangan (`planned`/`active`/`closed`). Ikki davr oralig'ida tugagan (yoki yopilgan) davr qoladi — `attendancePct`
+kelajakdagi bo'sh davrga o'tib 0 bo'lib qolmaydi. Davri yo'q guruhda `null`.
 
 ### 2.3.3 Tyutorlar — `AdminTutorsController` (`/api/admin/tutors`)
 
@@ -745,9 +750,10 @@ Alohida talaba sabab bilan tashlab yuboriladi (qisman bajarilish): `"Allaqachon 
 `"Ko'rib chiqilmagan arizasi bor — avval tyutor qaror qabul qilsin."` · `"Talaba hisobi faol emas."` ·
 `"Talaba topilmadi."`
 
-#### GET `/api/admin/students/{id}` · 200 · 404
+#### GET `/api/admin/students/{id}?periodId=` · 200 · 404
 
-404 — talaba yo'q (`detail`: `"Talaba topilmadi (id: …)."`). Umumiy bloklar tyutor profili bilan **bir xil**
+404 — talaba yo'q (`detail`: `"Talaba topilmadi (id: …)."`) yoki `periodId` talabaga tegishli emas
+(`"Amaliyot davri topilmadi."`). `periodId` / `periods` / `selectedPeriodId` — tyutornikidek (§2.5). Umumiy bloklar tyutor profili bilan **bir xil**
 (`GET /api/tutor/students/{id}`, §2.5 — ayni handler hisoblaydi), admin ko'lami cheklovsiz bo'lgani uchun
 har qanday talaba ko'rinadi. Farqi — quyidagi qo'shimcha maydonlar.
 
@@ -771,13 +777,14 @@ interface AdminStudentDetail extends /* TutorStudentDetail maydonlari, §2.5 */ 
 profil statistikasidan olinadi (`attendance.attendancePct`, `attendance.totalDays`) — ro'yxatdagi
 `elapsed` asosidagi yaxlitlash bilan bir necha foizga farq qilishi mumkin.
 
-#### GET `/api/admin/students/{id}/attendance?from=&to=` · 200 · 400 · 404
+#### GET `/api/admin/students/{id}/attendance?periodId=&from=&to=` · 200 · 400 · 404
 
-#### GET `/api/admin/students/{id}/diaries` · 200 · 404
+#### GET `/api/admin/students/{id}/diaries?periodId=` · 200 · 404
 
 Ikkalasi ham tyutornikidek (`StudentAttendanceDay[]`, `TutorDiaryEntry[]` — §2.5), shu jumladan chegaralar:
-oraliq berilmasa davr boshidan `min(bugun, davr oxiri)` gacha, teskari yoki 400 kundan uzun oraliq → 400,
-faol davr bo'lmasa — bo'sh massiv.
+davr — `periodId` (berilmasa sukut bo'yicha davr), oraliq berilmasa davr boshidan `min(bugun, davr oxiri)` gacha va
+davr chegaralariga qisiladi, teskari yoki 400 kundan uzun oraliq → 400, davr bo'lmasa — bo'sh massiv,
+begona `periodId` → 404.
 
 #### POST `/api/admin/diaries/{id}/review` · 200 · 400 · 404 · 409
 
@@ -920,8 +927,8 @@ interface CompanyStudent {
 }
 ```
 
-`attendancePct` / `attendedDays` / `totalDays` / `diaryCount` / `suspiciousCount` — **faol amaliyot davri** bo'yicha
-(`StudentStatsCalculator`, `GET /api/tutor/students` bilan bir xil manba; faol davri yo'q talabada nollar).
+`attendancePct` / `attendedDays` / `totalDays` / `diaryCount` / `suspiciousCount` — talabaning **shu korxonadagi
+arizasi davri** bo'yicha (v3.5; `period` bilan bir xil; `StudentStatsCalculator`; davr o'chirilgan bo'lsa nollar).
 `state` — o'sha qoida: `totalDays>0 && pct<70` → `redFlag`; `suspiciousCount≥1` → `suspicious`; aks holda `active`.
 
 #### GET `/api/admin/audit` — `q`: entityName, entityId, reason, foydalanuvchi ismi; `&action=<AuditAction>`
@@ -1045,8 +1052,9 @@ interface PracticePeriodGroupsUpdate { groupIds: string[]; } // to'liq ro'yxat (
 **Holat (`status`) — hisoblanadi**: `closed` — faqat `/close` orqali; aks holda `startDate > bugun` (Toshkent) →
 `planned`, qolgani → `active` (tugash sanasi o'tgan, lekin yopilmagan davr ham `active`). Bazada saqlanadigan
 `PracticePeriod.Status` — hayot sikli: admin yaratgan davr darhol `Active` (ochiq) saqlanadi, `/close` → `Closed`.
-Talaba/tyutor oqimlari (check-in, `PeriodLookup`, ariza) saqlangan `Active` ga tayanadi; boshlanmagan davrda
-check-in `periodNotStarted` bilan rad etiladi, ariza esa oldindan topshirilishi mumkin.
+Talaba/tyutor oqimlari qaysi davrni ishlatishini sanadan hisoblaydi (§4.6, v3.5): yopilgan davrlar tarix va statistika
+uchun yuklanadi, check-in va ariza uchun emas; boshlanmagan davrda check-in rad etiladi, ariza esa oldindan topshiriladi.
+Bitta guruh sanalari kesishmaydigan bir nechta ochiq davrga biriktirilishi mumkin (kesishsa → 409).
 
 #### GET `/api/admin/practice-periods?status=planned|active|closed` · 200 · 400
 
@@ -1108,8 +1116,9 @@ kiradi) ikki **yopilmagan, o'chirilmagan** davrda bo'la olmaydi. Create, PUT (sa
 (`changes`: `{"added":[…],"removed":[…]}`) · `practicePeriodClosed` · `practicePeriodDeleted`.
 
 **Guruh tanlash** (mavjud endpointlar, §2.3.1): `GET /api/admin/faculties` → `.../departments` → `.../directions` →
-`GET /api/admin/directions/{directionId}/groups`. `GroupRow.period` endi faol davr bo'lmasa **eng yaqin
-rejalashtirilgan** (`status: 'planned'`) davrni ham ko'rsatadi — band guruhni belgilash uchun (shakl o'zgarmagan).
+`GET /api/admin/directions/{directionId}/groups`. `GroupRow.period` — guruhning sukut bo'yicha davri (§4.6: davom
+etayotgan → oxirgi tugagan → eng yaqin rejalashtirilgan). Bitta guruh kesishmaydigan bir nechta davrga biriktirilishi
+mumkin (kuzgi + bahorgi); kesishadigan ochiq davrga → 409.
 
 ---
 
@@ -1124,7 +1133,7 @@ interface ReportsCatalog {
 }
 interface ReportFilter {
   dateFrom: string | null;
-  dateTo: string | null /*faol davrlar min/max; yo'q → null*/;
+  dateTo: string | null /*ko'lamdagi guruhlarning sukut bo'yicha davrlari (§4.6) min/max; yo'q → null*/;
   scope: string /*admin: "Barcha fakultetlar"; tyutor: "412-22, 413-22"*/;
   groups: string[] /*admin: []*/;
   studentCount: number;
@@ -1278,10 +1287,13 @@ interface TutorStudent {
 ```
 
 `state`: `totalDays>0 && pct<70` → `redFlag`; `suspiciousCount≥1` → `suspicious`; aks holda `active`. FISH bo'yicha tartib.
+Ko'rsatkichlar (`company` ham) — har talaba guruhining **sukut bo'yicha davri** bo'yicha (§4.6).
 
-#### GET `/api/tutor/students/{id}`
+#### GET `/api/tutor/students/{id}?periodId=`
 
 Ko'lamdan tashqari (yoki mavjud bo'lmagan) `id` → **404** (`"Talaba topilmadi (id: …)."` — mavjudligi oshkor qilinmaydi).
+`periodId` (ixtiyoriy) — ko'rsatiladigan davr; berilmasa sukut bo'yicha davr (§4.6). `periodId` talabaning davrlaridan
+(`periods`) biri bo'lmasa → **404** (`"Amaliyot davri topilmadi."`).
 
 ```ts
 interface TutorStudentDetail {
@@ -1302,6 +1314,17 @@ interface TutorStudentDetail {
   attendance: AttendanceSummary;
   diary: DiarySummary;
   grade: StudentGrade | null;
+  periods: StudentPeriodOption[] /*davr tanlagichi, startDate kamayish tartibida*/;
+  selectedPeriodId: string | null /*javobdagi davrga bog'liq bloklar shu davr bo'yicha; davr yo'q → null*/;
+}
+
+interface StudentPeriodOption {
+  id: string;
+  name: string;
+  startDate: string /*DateOnly*/;
+  endDate: string;
+  status: 'planned' | 'active' | 'closed' /*hisoblangan: yopilgan → closed; boshlanmagan → planned; aks holda active (tugagan, lekin yopilmagan davr ham active)*/;
+  isDefault: boolean /*periodId berilmaganda tanlanadigan davr*/;
 }
 
 interface StudentCompany {
@@ -1365,23 +1388,33 @@ Qoidalar:
 
 - `state` — `GET /api/tutor/students` dagi bilan **bir xil** (`StudentStateRule`): `totalDays>0 && pct<70` → `redFlag`;
   `suspiciousCount≥1` → `suspicious`; aks holda `active`.
-- `period` — talaba **guruhining faol davri** (`PeriodLookup.ForGroup`). Faol davr yo'q bo'lsa `period = null`,
-  `grade = null`, `attendance` nollar bilan keladi.
-- `application` — faol davrdagi ariza, bo'lmasa oxirgi ariza (`submittedAt` desc), holatidan qat'i nazar.
-- `company` — faqat `approved` yoki `completed` arizadagi korxona; aks holda `null`.
+- `periods` — talaba guruhiga biriktirilgan barcha davrlar ∪ talabaning `PeriodId` li yozuvlari (ariza, davomat, kundalik,
+  baho, ruxsat) bor davrlar (guruh almashgan talaba eski davrini yo'qotmaydi); o'chirilgan davrlar kirmaydi.
+- `period` / `selectedPeriodId` — tanlangan davr: `periodId` yoki sukut bo'yicha (§4.6, guruh davrlaridan; guruhda
+  davr bo'lmasa — `periods` dan). Davr yo'q bo'lsa `period = null`, `grade = null`, `attendance` nollar bilan keladi.
+- Davrga bog'liq **hamma** bloklar (`application`, `company`, `attendance`, `diary`, `grade`, `state`, `suspiciousCount`)
+  tanlangan davr bo'yicha. Rejalashtirilgan (boshlanmagan) davrda — bo'sh: `application/company/grade = null`, nollar.
+- `application` — tanlangan davrdagi ariza: `approved`/`completed` ustun, bo'lmasa eng so'nggisi (`submittedAt` desc).
+  Davrda ariza yo'q → `null` (boshqa davr arizasi ko'rsatilmaydi).
+- `company` — faqat tanlangan davrdagi `approved` yoki `completed` arizadagi korxona; aks holda `null`.
+- `grade` — davr boshlangan bo'lsa (`startDate ≤ bugun`); aks holda `null`.
 - `attendance` / `diary` — `StudentStatsCalculator` (ro'yxat va baholash bilan bir xil manba).
 - `grade` — `GradeCalculator.Compute(…)` (§4.4).
 - `contract.url` — `"/api/files/<guid>"`, Bearer kerak (§2.2).
 
-#### GET `/api/tutor/students/{id}/attendance` — `?from=&to=`
+#### GET `/api/tutor/students/{id}/attendance` — `?periodId=&from=&to=`
 
-| Query  | Tip        | Majburiy | Default                          |
-| ------ | ---------- | -------- | -------------------------------- |
-| `from` | `DateOnly` | yo'q     | davrning boshlanish sanasi       |
-| `to`   | `DateOnly` | yo'q     | `min(bugun, davr tugash sanasi)` |
+| Query      | Tip        | Majburiy | Default                            |
+| ---------- | ---------- | -------- | ---------------------------------- |
+| `periodId` | GUID       | yo'q     | sukut bo'yicha davr (§4.6)         |
+| `from`     | `DateOnly` | yo'q     | davrning boshlanish sanasi         |
+| `to`       | `DateOnly` | yo'q     | `min(bugun, davr tugash sanasi)`   |
 
 Har **kalendar kun** uchun bitta element (dam olish kunlari ham), `date` bo'yicha o'sish tartibida.
-Talabaning faol davri bo'lmasa — **bo'sh massiv** (xato emas).
+`from`/`to` davr chegaralariga **qisiladi** (`from < startDate` → `startDate`, `to > endDate` → `endDate`) — oy
+navigatsiyasi davrdan chiqmaydi. Qatorlar, kundaliklar, ruxsatlar va radius faqat shu davrniki.
+Talabaning davri bo'lmasa yoki davr hali boshlanmagan bo'lsa (`from > to`) — **bo'sh massiv** (xato emas).
+Begona `periodId` → **404**.
 
 ```ts
 interface StudentAttendanceDay {
@@ -1437,10 +1470,11 @@ Xatolar:
 > Bitta chegara berilganda ikkinchisi **bugungi kun** bilan taxminlanadi (validator), shuning uchun faqat `from`
 > yuborilsa ham 400 kunlik chegara ishlaydi.
 
-#### GET `/api/tutor/students/{id}/diaries`
+#### GET `/api/tutor/students/{id}/diaries` — `?periodId=`
 
-Javob — **mavjud** `TutorDiaryEntry[]` (`GET /api/tutor/diaries` bilan bir xil shakl, fayl havolalari bilan).
-Tartib: `date` desc, keyin `submittedAt` desc. Ko'lamdan tashqari talaba → **404**.
+Javob — **mavjud** `TutorDiaryEntry[]` (`GET /api/tutor/diaries` bilan bir xil shakl, fayl havolalari bilan) —
+tanlangan davr (`periodId`, berilmasa sukut bo'yicha; talabaning umuman davri bo'lmasa — hammasi) yozuvlari.
+Tartib: `date` desc, keyin `submittedAt` desc. Ko'lamdan tashqari talaba yoki begona `periodId` → **404**.
 
 #### GET `/api/tutor/companies`
 
@@ -1578,7 +1612,8 @@ Xatolar: 400; **404**; **409** — status `pending` emas.
 
 #### GET `/api/tutor/grading`
 
-Faol davri bo'lmagan talaba qatorga **kirmaydi**.
+Har talaba guruhining **sukut bo'yicha davri** (§4.6) bo'yicha — tanaffusda tugagan davr baholanadi. Davri bo'lmagan
+talaba qatorga **kirmaydi**.
 
 ```ts
 interface GradingRow {
@@ -1615,6 +1650,7 @@ interface TodayDto {
   checkin: TodayCheckInDto;
   place: TodayPlaceDto | null;
   diary: TodayDiaryDto;
+  period: StudentPeriodOption | null /*v3.5: ko'rsatilayotgan davr (§4.6 "current"), isDefault=true; davr yo'q → null*/;
 }
 interface TodayWindowDto {
   start: string /*"09:00" check-in ochiladi*/;
@@ -1652,7 +1688,13 @@ interface TodayDiaryDto {
 }
 ```
 
-`place` — faqat ariza `approved` va korxona bor bo'lsa. Davr yo'q → `checkin.status="pending"`, `note="Faol amaliyot davri yo'q."`, `place=null`.
+`place` — faqat ko'rsatilayotgan davrdagi ariza `approved` va korxona bor bo'lsa. Davr yo'q → `checkin.status="pending"`,
+`note="Faol amaliyot davri yo'q."`, `place=null`, `period=null`.
+
+Davr (v3.5, §4.6): davom etayotgan → eng yaqin kelgusi → oxirgi tugagan. Belgilanish faqat **davom etayotgan** davrda
+mumkin; aks holda `window.isOpen=false`, `checkin.status="dayOff"` va `note`:
+- kelgusi davr bor: `"Amaliyot davri hali boshlanmagan: <nom>, <dd.MM.yyyy> dan boshlanadi."` (`period.status="planned"`);
+- faqat tugagan davr: `"Amaliyot davri tugagan: <nom>."`.
 "Chiqdi" holati alohida status emas — `checkOutAt !== null` (yoki `autoClosed`).
 
 #### POST `/api/student/checkin` · POST `/api/student/checkout` · multipart **yoki** JSON
@@ -1706,7 +1748,7 @@ Xato → status (`CheckInRejectReason.ToException`), `detail` = §3.2 xabari:
 
 | Check-in                                | Status  | Check-out                               | Status  |
 | --------------------------------------- | ------- | --------------------------------------- | ------- |
-| davr yo'q ("Faol amaliyot davri yo'q.") | 400     | davr yo'q                               | 400     |
+| davom etayotgan davr yo'q (§4.6) — `detail` = `today.checkin.note` matni: "Faol amaliyot davri yo'q." · "Amaliyot davri hali boshlanmagan: <nom>, <dd.MM.yyyy> dan boshlanadi." · "Amaliyot davri tugagan: <nom>." (hodisa yozilmaydi) | 400     | xuddi shunday                           | 400     |
 | `notApproved` (korxona/ariza yo'q)      | 400     | `noCheckIn`                             | **409** |
 | `periodNotStarted` / `periodEnded`      | 400     | `alreadyCheckedOut` (yoki `autoClosed`) | **409** |
 | `notWorkDay`                            | 400     | `windowNotOpen` (17:00 dan oldin)       | 400     |
@@ -1763,7 +1805,10 @@ Javob — `PracticePlaceDto` (quyidagi shakl), `status: "submitted"` — ariza t
 `proposedRadiusM` korxonanikidan olinadi, shartnoma fayli bu bosqichda biriktirilmaydi.
 
 - **404** — STIR bilan **faol** korxona yo'q (faolsizlantirilgan/arxivlangani ham topilmaydi)
-- **409** — `"Sizga faol amaliyot davri biriktirilmagan — tyutoringizga murojaat qiling."` ·
+- Ariza davri (v3.5, §4.6 "enrollment"): davom etayotgan, bo'lmasa **eng yaqin kelgusi** davr — ikki davr oralig'ida
+  talaba bahorgi davrga oldindan ariza beradi (ariza `periodId` = bahorgi). Tugagan/yopilgan davrga ariza berilmaydi.
+  "Allaqachon"/"ko'rib chiqilmoqda" tekshiruvlari faqat shu davr arizalari bo'yicha.
+- **409** — `"Sizga faol amaliyot davri biriktirilmagan — tyutoringizga murojaat qiling."` (davom etayotgan ham, kelgusi ham yo'q) ·
   `"Arizangiz ko'rib chiqilmoqda — tyutor qaroridan keyin o'zgartirish mumkin."` ·
   `"Sizga allaqachon amaliyot joyi biriktirilgan. O'zgartirish uchun tyutoringizga murojaat qiling."`
 - Ariza **qayta ishlashga qaytarilgan** (`revisionNeeded`) bo'lsa — yangi STIR bilan qayta yuboriladi
@@ -1771,7 +1816,9 @@ Javob — `PracticePlaceDto` (quyidagi shakl), `status: "submitted"` — ariza t
 
 #### GET `/api/student/place` · 404
 
-404 — davr yoki ariza yoki korxona yo'q ("Amaliyot joyi hali biriktirilmagan.").
+404 — davr yoki ariza yoki korxona yo'q ("Amaliyot joyi hali biriktirilmagan."). Davr — §4.6 "current"
+(davom etayotgan → eng yaqin kelgusi → oxirgi tugagan): tanaffusda bahorgi davrga ariza berilmagan bo'lsa 404 (TWA ariza
+formasini ko'rsatadi), berilgan bo'lsa — bahorgi ariza; `periodFrom/periodTo` — shu davr sanalari.
 
 ```ts
 interface PracticePlaceDto {
@@ -1805,7 +1852,8 @@ interface PracticePlaceDto {
 
 #### GET `/api/student/diary`
 
-Barcha davrlar, `date` desc → `submittedAt` desc.
+Barcha davrlar, `date` desc → `submittedAt` desc. Har yozuvda `periodId`/`periodName` (v3.5) — TWA tarixni davr
+bo'yicha guruhlashi mumkin.
 
 ```ts
 interface DiaryEntryDto {
@@ -1818,6 +1866,8 @@ interface DiaryEntryDto {
   files: { id: string /*storedFileId*/; name: string; url: string }[];
   score: number | null;
   comment: string | null; /*tyutor*/
+  periodId: string /*v3.5*/;
+  periodName: string | null; /*v3.5; o'chirilgan davr → null*/
 }
 ```
 
@@ -1830,7 +1880,7 @@ interface DiaryEntryDto {
 | `files`      | file[] (bir nomda ko'p) | yo'q     | ≤ 5 ta; har biri > 0 va ≤ 5 MB; `image/jpeg,png,webp,heic,heif` yoki `application/pdf`; nom ≤ 255 (`errors.Files`) |
 
 Butun so'rov ≤ 30 MB (`RequestSizeLimit`) — oshsa 413. Response **201** `DiaryEntryDto`.
-Xatolar: 400 validation; **400** davr yo'q / davr bugunni o'z ichiga olmaydi / fayllar jami > 5; **409** — bugungi
+Xatolar: 400 validation; **400** davr yo'q / davom etayotgan davr yo'q ("Amaliyot davri bugunni o'z ichiga olmaydi.") / fayllar jami > 5; **409** — bugungi
 hisobot allaqachon bor ("Bugungi hisobot allaqachon yuborilgan."). Istisno: bugungisi `rewrite` holatida → qayta yoziladi
 (`Resubmit`, fayllar qo'shiladi, status → `submitted`), 201.
 **400** `diaryPdfRequired=true` va `files` orasida PDF yo'q (PDF = content-type `application/pdf` yoki `.pdf` kengaytma;
@@ -1849,7 +1899,8 @@ interface CalendarMonthDto {
 }
 ```
 
-Davr yo'q: kelajak → `future`, qolgani `dayOff`. Aks holda §4.1 `DayStatus` qoidasi.
+Davr yo'q: kelajak → `future`, qolgani `dayOff`. Aks holda §4.1 `DayStatus` qoidasi — har kun **o'zini o'z ichiga olgan
+davr** bilan (v3.5: oy kuzgi va bahorgi davrni qamrasa ikkalasi ham ko'rinadi; davrlar tashqarisi — `dayOff`/`future`).
 
 #### GET `/api/student/leave-requests` · POST `/api/student/leave-requests` (201)
 
@@ -1863,7 +1914,8 @@ POST body:
 | `attachmentName`   | string   | yo'q     | ≤ 255 (fayl yuklanmaydi — faqat nom)                     |
 | `attachmentFileId` | GUID     | yo'q     | o'zi yuklagan `StoredFile` bo'lishi shart, aks holda 404 |
 
-Response 201 `LeaveRequestDto`. Xatolar: 400 validation; **400** davr yo'q / sanalar davr tashqarisida ("Ruxsat sanalari
+Response 201 `LeaveRequestDto`. Davr (v3.5) — `dateFrom..dateTo` ni to'liq qamragan yopilmagan guruh davri (kelgusi davr
+uchun ham so'rash mumkin). Xatolar: 400 validation; **400** davr yo'q / sanalar hech bir davr ichida emas ("Ruxsat sanalari
 amaliyot davri ichida bo'lishi kerak."); **409** — `rejected` bo'lmagan kesishuvchi so'rov bor.
 
 ```ts
@@ -1879,9 +1931,10 @@ interface LeaveRequestDto {
 }
 ```
 
-#### GET `/api/student/portfolio` · 404
+#### GET `/api/student/portfolio` — `?periodId=` · 404
 
-404 — faol davr yo'q.
+Tanlangan davr (`periodId`; berilmasa sukut bo'yicha — §4.6 "default": davom etayotgan → oxirgi tugagan → kelgusi).
+404 — davr yo'q yoki `periodId` talabaga tegishli emas. `periods` — talabaning barcha davrlari (tarix uchun tanlagich).
 
 ```ts
 interface PortfolioDto {
@@ -1910,6 +1963,8 @@ interface PortfolioDto {
   finalized: boolean;
   conclusion: { text: string; author: string; date: string /*ISO*/ } | null;
   pdfUrl: string | null; /*hozir null*/
+  periodId: string /*v3.5: javob shu davr bo'yicha*/;
+  periods: StudentPeriodOption[] /*v3.5: §2.5 bilan bir xil shakl, startDate kamayish tartibida*/;
 }
 ```
 
@@ -2076,6 +2131,27 @@ Tyutor `grading` da `diaryCount` = **baholangan** yozuvlar soni (`ScoredCount`);
 - `approve`: `radiusM` majburiy (50–1000, 50 qadam) → `ProposedRadiusM` va `Company.RadiusM`. `return`: `revisionCount++`,
   status `revisionNeeded`, izoh majburiy. `reject`: izoh majburiy. Qaror faqat `submitted` holatidan; aks holda 409.
 - Talaba `place` uchun: davr bo'yicha `approved` ariza ustun, bo'lmasa eng so'nggisi (rad/qaytarilganini ko'rsatish uchun).
+
+### 4.6 Davr tanlash qoidasi (v3.5, `PeriodSelection` — Domain)
+
+Bitta guruhga bir o'quv yilida bir nechta **kesishmaydigan** davr biriktirilishi mumkin (kuzgi + bahorgi). Guruh G va
+sana D (Toshkent) uchun (o'chirilgan davrlar hisobga olinmaydi; yopilganlari — tarix va statistika uchun olinadi):
+
+- **ongoing** — D ni o'z ichiga olgan, yopilmagan davr (ko'pi bilan bitta);
+- **lastEnded** — tugagan davrlardan eng so'nggisi (`endDate` bo'yicha): `endDate < D`, yoki muddatidan oldin yopilgan
+  (`closed`, `startDate ≤ D`);
+- **upcoming** — `startDate > D` bo'lgan eng yaqin yopilmagan davr.
+
+| Maqsad (`PeriodPurpose`) | Tartib                              | Qayerda                                                                                                   |
+| ------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `ongoing`                | ongoing                             | check-in / check-out, kundalik yozish                                                                     |
+| `default`                | ongoing → lastEnded → upcoming      | admin/tyutor ro'yxatlari, statistika, dashboard, guruhlar, baholash, hisobotlar, talaba profili, portfolio |
+| `enrollment`             | ongoing → upcoming                  | `POST /api/student/place`, admin `assign-company`                                                         |
+| `current`                | ongoing → upcoming → lastEnded      | TWA `today`, `GET /api/student/place`                                                                     |
+
+Natija: ikki davr oralig'ida statistika/profil tugagan kuzgi davr bo'yicha qoladi (kelajakdagi bo'sh davrga o'tib
+ketmaydi), check-in rad etiladi ("hali boshlanmagan: <nom>, <sana>"), ariza esa bahorgi davrga beriladi.
+Kalendarlar (tyutor/TWA) har kunni o'zini o'z ichiga olgan davr bilan chizadi.
 
 ---
 
@@ -2382,3 +2458,32 @@ Davrlar endi faqat seed'da emas — admin o'zi yaratadi va boshqaradi (§2.3.4).
 - `GroupRow.period` (§2.3.2): faol davri yo'q guruhda endi eng yaqin `planned` davr keladi (avval `null` edi) — shakl
   o'zgarmagan, faqat qiymat.
 - Qo'shimcha qoidalar: qayta `/close` → 409; PUT `/groups` da bo'sh ro'yxat ruxsat etiladi.
+
+### 6.11 v3.4 → v3.5 (23.09.2026): bir guruhda bir nechta davr
+
+Bitta guruh bir o'quv yilida bir nechta davrga (kuzgi, bahorgi) biriktiriladi. Barcha sirtlar endi yagona qoidadan
+foydalanadi (§4.6); avvalgi "guruhning bitta faol davri" farazi (va `status == active` filtri) olib tashlandi.
+Yangi endpoint yo'q, migratsiya yo'q; barcha o'zgarishlar **qo'shimcha** (buzmaydi).
+
+| Endpoint                                                          | O'zgarish                                                                                           |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `GET /api/admin/students/{id}` · `GET /api/tutor/students/{id}`   | `?periodId=` (ixtiyoriy, begona → 404); javobda `periods: StudentPeriodOption[]`, `selectedPeriodId` |
+| `GET /api/{admin,tutor}/students/{id}/attendance`                 | `?periodId=`; `from/to` davr chegaralariga qisiladi; begona → 404                                    |
+| `GET /api/{admin,tutor}/students/{id}/diaries`                    | `?periodId=` — tanlangan davr yozuvlari (avval — hammasi); begona → 404                              |
+| `GET /api/student/today`                                          | `period: StudentPeriodOption \| null`; tanaffusda `note` = "…hali boshlanmagan: <nom>, <sana> dan boshlanadi." |
+| `POST /api/student/checkin` · `checkout`                          | faqat davom etayotgan davr; aks holda 400 shu `note` matni bilan (hodisa yozilmaydi)               |
+| `POST /api/student/place`                                         | davr = davom etayotgan → eng yaqin kelgusi (bahorgi davrga oldindan ariza)                          |
+| `GET /api/student/place`                                          | davr = davom etayotgan → kelgusi → oxirgi tugagan                                                   |
+| `GET /api/student/portfolio`                                      | `?periodId=`; javobda `periodId`, `periods`                                                         |
+| `GET /api/student/diary`                                          | har yozuvda `periodId`, `periodName`                                                                |
+| `GET /api/student/calendar`                                       | har kun o'z davri bilan (oy ikki davrni qamrashi mumkin)                                            |
+| `POST /api/student/leave-requests`                                | davr — sanalarni qamragan yopilmagan guruh davri (kelgusi ham)                                      |
+| `GET /api/admin/groups` · `students` · `dashboard` · `faculties`  | sukut bo'yicha davr: tanaffusda tugagan davr (`period.status` `closed` bo'lishi mumkin)             |
+| `GET /api/tutor/students` · `grading` · `today` · `companies`     | sukut bo'yicha davr; korxona statistikasi — ariza davri bo'yicha                                     |
+| `GET /api/reports`                                                | `filter.dateFrom/dateTo` — ko'lam guruhlarining sukut bo'yicha davrlari                              |
+
+- `GroupRow.period` — endi sukut bo'yicha davr (§4.6); v3.4 dagi "faol yo'q bo'lsa eng yaqin planned" o'rniga
+  "davom etayotgan → oxirgi tugagan → eng yaqin planned". Yopilgan davr ham qaytishi mumkin (`status: "closed"`).
+- `StudentPeriodOption.status` — `PracticePeriod.ResolveStatus` (admin API bilan bir xil): tugagan, lekin yopilmagan davr
+  `active` bo'lib qoladi — frontend "tugagan" belgisini `endDate < bugun` dan chiqarishi mumkin.
+- Demo seed (faqat bo'sh baza): ikkinchi davr "Bahorgi amaliyot 2027" (2027-02-01…2027-03-15), 412-22 va 413-22 guruhlari.

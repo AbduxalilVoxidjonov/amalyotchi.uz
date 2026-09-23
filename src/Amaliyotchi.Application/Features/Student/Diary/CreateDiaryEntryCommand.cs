@@ -5,6 +5,7 @@ using Amaliyotchi.Application.Features.Student.Common;
 using Amaliyotchi.Domain.Diary;
 using Amaliyotchi.Domain.Exceptions;
 using Amaliyotchi.Domain.Files;
+using Amaliyotchi.Domain.Practice;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,10 +31,12 @@ internal sealed class CreateDiaryEntryCommandHandler(
         var now = clock.UtcNow;
         var today = clock.LocalToday();
 
-        var practice = await db.LoadStudentPracticeAsync(userId, today, cancellationToken);
-        var period = practice.Period ?? throw new DomainException("Faol amaliyot davri yo'q — hisobot yozib bo'lmaydi.");
-        if (!period.Contains(today))
-            throw new DomainException("Amaliyot davri bugunni o'z ichiga olmaydi.");
+        // Hisobot — faqat davom etayotgan davrga (bugunni o'z ichiga olgan, yopilmagan).
+        var practice = await db.LoadStudentPracticeAsync(userId, today, PeriodPurpose.Ongoing, cancellationToken);
+        var period = practice.Period
+            ?? throw new DomainException(practice.Periods.GroupPeriods.Count == 0
+                ? "Faol amaliyot davri yo'q — hisobot yozib bo'lmaydi."
+                : "Amaliyot davri bugunni o'z ichiga olmaydi.");
 
         var existing = await db.DiaryEntries
             .Include(d => d.Attachments)
@@ -86,7 +89,7 @@ internal sealed class CreateDiaryEntryCommandHandler(
             throw;
         }
 
-        return DiaryMapping.ToDto(entry);
+        return DiaryMapping.ToDto(entry, period.Name);
     }
 
     public const string PdfRequiredMessage = "Hisobotga PDF fayl biriktirilishi shart.";

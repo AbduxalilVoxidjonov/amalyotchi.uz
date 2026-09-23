@@ -1,3 +1,4 @@
+using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Diary;
 using Amaliyotchi.Domain.Leave;
@@ -8,13 +9,15 @@ namespace Amaliyotchi.Application.Features.Student;
 // Talaba (TWA) kontrakti v2 (PLAN §3.1): enum'lar camelCase string, qiymatlar xom, soatlar "HH:mm" (Toshkent).
 
 /// <summary><c>GET /api/student/today</c>. Ariza yo'q bo'lsa <see cref="Place"/> null, <c>checkin.status = pending</c>
-/// va <c>checkin.note</c> da sabab.</summary>
+/// va <c>checkin.note</c> da sabab. <see cref="Period"/> — ko'rsatilayotgan davr (davom etayotgan → eng yaqin kelgusi →
+/// oxirgi tugagan); davr yo'q bo'lsa null. Belgilanish faqat <c>period.status = active</c> va bugun davr ichida bo'lsa mumkin.</summary>
 public sealed record TodayDto(
     DateOnly Date,
     TodayWindowDto Window,
     TodayCheckInDto Checkin,
     TodayPlaceDto? Place,
-    TodayDiaryDto Diary);
+    TodayDiaryDto Diary,
+    StudentPeriodOption? Period);
 
 /// <param name="Start">Check-in ochiladigan vaqt (09:00).</param>
 /// <param name="End">Shu vaqtdan boshlab "kech keldi" (09:15).</param>
@@ -77,7 +80,8 @@ public sealed record PracticeContractDto(
     string? ApprovedBy,
     string? TemplateUrl);
 
-/// <summary><c>GET/POST /api/student/diary</c>.</summary>
+/// <summary><c>GET/POST /api/student/diary</c>. <see cref="PeriodId"/>/<see cref="PeriodName"/> — yozuv tegishli davr
+/// (tarix bir nechta davrni qamraydi; o'chirilgan davr nomi null).</summary>
 public sealed record DiaryEntryDto(
     Guid Id,
     DateOnly Date,
@@ -87,7 +91,9 @@ public sealed record DiaryEntryDto(
     string? Learned,
     IReadOnlyList<DiaryFileDto> Files,
     int? Score,
-    string? Comment);
+    string? Comment,
+    Guid PeriodId,
+    string? PeriodName);
 
 public sealed record DiaryFileDto(Guid Id, string Name, string Url);
 
@@ -113,7 +119,8 @@ public sealed record LeaveRequestDto(
 
 public sealed record LeaveDocumentDto(string Name, string? Url);
 
-/// <summary><c>GET /api/student/portfolio</c>.</summary>
+/// <summary><c>GET /api/student/portfolio?periodId=</c> — tanlangan davr (berilmasa sukut bo'yicha: davom etayotgan →
+/// oxirgi tugagan → kelgusi) bo'yicha. <see cref="Periods"/> — talabaning barcha davrlari (tarix), <c>startDate</c> kamayish tartibida.</summary>
 public sealed record PortfolioDto(
     string Student,
     string Group,
@@ -127,7 +134,9 @@ public sealed record PortfolioDto(
     int? Grade,
     bool Finalized,
     PortfolioConclusionDto? Conclusion,
-    string? PdfUrl);
+    string? PdfUrl,
+    Guid PeriodId,
+    IReadOnlyList<StudentPeriodOption> Periods);
 
 public sealed record PortfolioStatsDto(
     double AttendancePct,

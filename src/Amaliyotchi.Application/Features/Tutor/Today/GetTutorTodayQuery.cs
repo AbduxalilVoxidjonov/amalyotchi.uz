@@ -30,7 +30,7 @@ internal sealed class GetTutorTodayQueryHandler(IApplicationDbContext db, IScope
 
         var students = await db.LoadScopedStudentsAsync(scope, cancellationToken);
         var periods = await PeriodLookup.LoadAsync(db, today, cancellationToken);
-        var periodIds = periods.PeriodIds;
+        var periodIds = periods.DefaultPeriodIds(students.Select(s => s.GroupId));
 
         var attendance = await db.DailyAttendances.AsNoTracking().InScope(scope)
             .Where(a => a.Date == today)
@@ -45,10 +45,10 @@ internal sealed class GetTutorTodayQueryHandler(IApplicationDbContext db, IScope
 
         var placements = await db.PracticeApplications.AsNoTracking().InScope(scope)
             .Where(a => a.Status == ApplicationStatus.Approved && periodIds.Contains(a.PeriodId))
-            .Select(a => new { a.StudentUserId, Company = a.Company.Name, a.Company.RadiusM })
+            .Select(a => new { a.StudentUserId, a.PeriodId, Company = a.Company.Name, a.Company.RadiusM })
             .ToListAsync(cancellationToken);
         var placementByStudent = placements
-            .GroupBy(p => p.StudentUserId)
+            .GroupBy(p => (p.StudentUserId, p.PeriodId))
             .ToDictionary(g => g.Key, g => g.First());
 
         var diariesToday = await db.DiaryEntries.AsNoTracking().InScope(scope)
@@ -72,7 +72,7 @@ internal sealed class GetTutorTodayQueryHandler(IApplicationDbContext db, IScope
         {
             var period = periods.ForGroup(student.GroupId);
             var row = attendance.GetValueOrDefault(student.UserId);
-            var placement = placementByStudent.GetValueOrDefault(student.UserId);
+            var placement = placementByStudent.GetValueOrDefault((student.UserId, period?.Period.Id ?? Guid.Empty));
             var rejectedDistance = rejectedAttempts.TryGetValue(student.UserId, out var d) ? d : (double?)null;
 
             var status = row?.Status

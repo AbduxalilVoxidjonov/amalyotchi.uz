@@ -7,7 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Student.Diary;
 
-/// <summary><c>GET /api/student/diary</c> — faqat o'z yozuvlari, yangisi birinchi (barcha davrlar bo'yicha).</summary>
+/// <summary><c>GET /api/student/diary</c> — faqat o'z yozuvlari, yangisi birinchi (barcha davrlar bo'yicha;
+/// har yozuvda <c>periodId</c>/<c>periodName</c>).</summary>
 public sealed record GetStudentDiaryQuery : IRequest<IReadOnlyList<DiaryEntryDto>>;
 
 internal sealed class GetStudentDiaryQueryHandler(IApplicationDbContext db, ICurrentUser currentUser)
@@ -25,13 +26,19 @@ internal sealed class GetStudentDiaryQueryHandler(IApplicationDbContext db, ICur
             .ThenByDescending(d => d.SubmittedAt)
             .ToListAsync(cancellationToken);
 
-        return entries.Select(DiaryMapping.ToDto).ToList();
+        var periodIds = entries.Select(e => e.PeriodId).Distinct().ToList();
+        var periodNames = await db.PracticePeriods
+            .AsNoTracking()
+            .Where(p => periodIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, p => p.Name, cancellationToken);
+
+        return entries.Select(e => DiaryMapping.ToDto(e, periodNames.GetValueOrDefault(e.PeriodId))).ToList();
     }
 }
 
 internal static class DiaryMapping
 {
-    public static DiaryEntryDto ToDto(DiaryEntry entry) => new(
+    public static DiaryEntryDto ToDto(DiaryEntry entry, string? periodName) => new(
         entry.Id,
         entry.Date,
         entry.SubmittedAt,
@@ -42,5 +49,7 @@ internal static class DiaryMapping
             .Select(a => new DiaryFileDto(a.StoredFileId, a.FileName, StudentQueries.FileUrl(a.StoredFileId)))
             .ToList(),
         entry.Score,
-        entry.TutorComment);
+        entry.TutorComment,
+        entry.PeriodId,
+        periodName);
 }

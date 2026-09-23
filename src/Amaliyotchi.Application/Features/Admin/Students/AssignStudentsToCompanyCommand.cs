@@ -78,8 +78,13 @@ internal sealed class AssignStudentsToCompanyCommandHandler(
 
         var periods = await PeriodLookup.LoadAsync(db, today, cancellationToken);
 
-        // Mavjud arizalar (barcha faol davrlar kesimida) — takror biriktirmaslik uchun.
-        var periodIds = periods.PeriodIds.ToList();
+        // Biriktirish davri — ariza qoidasi bilan (davom etayotgan → eng yaqin kelgusi): tanaffusda admin talabani
+        // bahorgi davr korxonasiga oldindan biriktira oladi. Mavjud arizalar shu davrlar kesimida — takror biriktirmaslik uchun.
+        var periodIds = students
+            .Select(s => periods.ForGroup(s.StudentGroupId, PeriodPurpose.Enrollment)?.Period.Id)
+            .OfType<Guid>()
+            .Distinct()
+            .ToList();
         var existing = await db.PracticeApplications
             .Where(a => studentIds.Contains(a.StudentUserId) && periodIds.Contains(a.PeriodId))
             .Include(a => a.Company)
@@ -103,7 +108,7 @@ internal sealed class AssignStudentsToCompanyCommandHandler(
                 continue;
             }
 
-            var period = periods.ForGroup(student.StudentGroupId);
+            var period = periods.ForGroup(student.StudentGroupId, PeriodPurpose.Enrollment);
             if (period is null)
             {
                 errors.Add(new AssignCompanyError(studentId, student.FullName, AssignCompanyMessages.NoPeriodMessage));

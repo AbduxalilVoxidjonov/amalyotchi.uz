@@ -80,6 +80,12 @@ internal sealed class GetTutorCompaniesQueryHandler(IApplicationDbContext db, IS
             .GroupBy(a => a.CompanyId)
             .ToDictionary(g => g.Key, g => g.Select(a => a.StudentUserId).Distinct().ToList());
 
+        // Korxona statistikasi — shu korxonadagi arizaning O'Z davri bo'yicha (talaba kuzda bir korxonada,
+        // bahorda boshqasida bo'lishi mumkin).
+        var placementsByCompany = approved
+            .GroupBy(a => a.CompanyId)
+            .ToDictionary(g => g.Key, g => g.Select(a => (a.StudentUserId, a.PeriodId)).Distinct().ToList());
+
         // (talaba, davr) → korxona: shubhali kunlarni korxonaga bog'lash uchun.
         var companyByStudentPeriod = approved
             .GroupBy(a => (a.StudentUserId, a.PeriodId))
@@ -93,15 +99,8 @@ internal sealed class GetTutorCompaniesQueryHandler(IApplicationDbContext db, IS
             .GroupBy(a => a.CompanyId)
             .ToDictionary(g => g.Key, g => g.Select(a => a.StudentUserId).Distinct().Count());
 
-        var groupByStudent = await db.StudentProfiles
-            .AsNoTracking()
-            .InScope(scope)
-            .Where(p => studentIds.Contains(p.UserId))
-            .Select(p => new { p.UserId, p.StudentGroupId })
-            .ToDictionaryAsync(p => p.UserId, p => p.StudentGroupId, cancellationToken);
-
         var periods = await PeriodLookup.LoadAsync(db, today, cancellationToken);
-        var periodIds = periods.PeriodIds;
+        var periodIds = approved.Select(a => a.PeriodId).Distinct().ToList();
 
         var attendance = (await db.DailyAttendances.AsNoTracking().InScope(scope)
                 .Where(a => studentIds.Contains(a.StudentUserId) && periodIds.Contains(a.PeriodId))
@@ -112,9 +111,9 @@ internal sealed class GetTutorCompaniesQueryHandler(IApplicationDbContext db, IS
         var leaves = (await db.LeaveRequests.AsNoTracking().InScope(scope)
                 .Where(l => l.Status == LeaveRequestStatus.Approved
                     && studentIds.Contains(l.StudentUserId) && periodIds.Contains(l.PeriodId))
-                .Select(l => new { l.StudentUserId, l.DateFrom, l.DateTo })
+                .Select(l => new { l.StudentUserId, l.PeriodId, l.DateFrom, l.DateTo })
                 .ToListAsync(cancellationToken))
-            .ToLookup(l => l.StudentUserId, l => (l.DateFrom, l.DateTo));
+            .ToLookup(l => (l.StudentUserId, l.PeriodId), l => (l.DateFrom, l.DateTo));
 
         var suspiciousByCompany = new Dictionary<Guid, int>();
         var suspiciousRows = await db.DailyAttendances.AsNoTracking().InScope(scope)
@@ -127,12 +126,15 @@ internal sealed class GetTutorCompaniesQueryHandler(IApplicationDbContext db, IS
                 suspiciousByCompany[companyId] = suspiciousByCompany.GetValueOrDefault(companyId) + 1;
         }
 
-        var stats = studentIds.ToDictionary(id => id, id => StudentStatsCalculator.ComputeAttendance(
-            periods.ForGroup(groupByStudent.GetValueOrDefault(id)),
-            attendance[id].ToList(),
-            leaves[id].ToList(),
-            today,
-            localNow));
+        var stats = approved
+            .Select(a => (a.StudentUserId, a.PeriodId))
+            .Distinct()
+            .ToDictionary(key => key, key => StudentStatsCalculator.ComputeAttendance(
+                periods.ForPeriod(key.PeriodId),
+                attendance[key.StudentUserId].ToList(),
+                leaves[key].ToList(),
+                today,
+                localNow));
 
         var maxStudents = await CompanyQueries.LoadMaxStudentsAsync(db, cancellationToken);
 
@@ -140,8 +142,9 @@ internal sealed class GetTutorCompaniesQueryHandler(IApplicationDbContext db, IS
             .Select(c =>
             {
                 var scoped = scopedByCompany.GetValueOrDefault(c.Id) ?? [];
-                var attended = scoped.Sum(id => stats[id].AttendedDays);
-                var countable = scoped.Sum(id => stats[id].TotalDays);
+                var placements = placementsByCompany.GetValueOrDefault(c.Id) ?? [];
+                var attended = placements.Sum(key => stats[key].AttendedDays);
+                var countable = placements.Sum(key => stats[key].TotalDays);
                 var pct = countable == 0 ? 0 : Math.Round(attended * 100d / countable, 1, MidpointRounding.AwayFromZero);
                 var totalStudents = totals.GetValueOrDefault(c.Id);
                 var overLimit = totalStudents > maxStudents;

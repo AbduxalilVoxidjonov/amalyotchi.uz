@@ -3,6 +3,7 @@ using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Application.Features.Student.Common;
 using Amaliyotchi.Domain.Exceptions;
+using Amaliyotchi.Domain.Practice;
 using FluentValidation;
 using MediatR;
 
@@ -38,11 +39,15 @@ internal sealed class GetStudentCalendarQueryHandler(IApplicationDbContext db, I
             ? parsed
             : new DateOnly(today.Year, today.Month, 1);
 
-        var practice = await db.LoadStudentPracticeAsync(userId, today, cancellationToken);
+        var practice = await db.LoadStudentPracticeAsync(userId, today, PeriodPurpose.Current, cancellationToken);
         var daysInMonth = DateTime.DaysInMonth(first.Year, first.Month);
+        var last = first.AddMonths(1).AddDays(-1);
         var days = new List<CalendarDayDto>(daysInMonth);
 
-        if (practice.Period is null)
+        // Oy ikki davrni qamrashi mumkin (kuzgi tugab, bahorgi boshlanadi) — har kun o'zini o'z ichiga olgan davr bilan.
+        var monthPeriods = practice.Periods.All.Where(p => p.StartDate <= last && p.EndDate >= first).ToList();
+
+        if (practice.Period is null && monthPeriods.Count == 0)
         {
             for (var d = 1; d <= daysInMonth; d++)
             {
@@ -52,17 +57,27 @@ internal sealed class GetStudentCalendarQueryHandler(IApplicationDbContext db, I
         }
         else
         {
-            var periodId = practice.Period.Id;
-            var last = first.AddMonths(1).AddDays(-1);
-            var rows = (await db.AttendanceInPeriodAsync(userId, periodId, cancellationToken))
-                .Where(r => r.Date >= first && r.Date <= last)
-                .ToDictionary(r => r.Date);
-            var leaves = await db.ApprovedLeavesAsync(userId, periodId, cancellationToken);
+            var rows = new Dictionary<DateOnly, Domain.Attendance.DailyAttendance>();
+            var leaves = new List<Domain.Leave.LeaveRequest>();
+            foreach (var period in monthPeriods)
+            {
+                foreach (var row in await db.AttendanceInPeriodAsync(userId, period.Id, cancellationToken))
+                {
+                    if (row.Date >= first && row.Date <= last)
+                        rows[row.Date] = row;
+                }
 
+                leaves.AddRange(await db.ApprovedLeavesAsync(userId, period.Id, cancellationToken));
+            }
+
+            var byPeriod = monthPeriods.ToDictionary(p => p.Id, p => practice with { Period = p });
             for (var d = 1; d <= daysInMonth; d++)
             {
                 var date = new DateOnly(first.Year, first.Month, d);
-                var status = AttendanceCalendar.DayStatus(practice, date, today, localNow, rows.GetValueOrDefault(date), leaves);
+                var dayPractice = monthPeriods.FirstOrDefault(p => p.Contains(date)) is { } covering
+                    ? byPeriod[covering.Id]
+                    : practice;
+                var status = AttendanceCalendar.DayStatus(dayPractice, date, today, localNow, rows.GetValueOrDefault(date), leaves);
                 days.Add(new CalendarDayDto(date, status));
             }
         }

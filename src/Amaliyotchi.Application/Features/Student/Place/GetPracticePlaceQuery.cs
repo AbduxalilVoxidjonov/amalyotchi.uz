@@ -2,6 +2,7 @@ using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Application.Features.Student.Common;
 using Amaliyotchi.Domain.Exceptions;
+using Amaliyotchi.Domain.Practice;
 using Amaliyotchi.Domain.Settings;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +18,8 @@ internal sealed class GetPracticePlaceQueryHandler(IApplicationDbContext db, ICu
     public async Task<PracticePlaceDto> Handle(GetPracticePlaceQuery request, CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId ?? throw new ForbiddenException("Avtorizatsiya talab qilinadi.");
-        var practice = await db.LoadStudentPracticeAsync(userId, clock.LocalToday(), cancellationToken);
+        // Davom etayotgan → eng yaqin kelgusi (bahorgi davrga oldindan berilgan ariza) → oxirgi tugagan.
+        var practice = await db.LoadStudentPracticeAsync(userId, clock.LocalToday(), PeriodPurpose.Current, cancellationToken);
 
         if (practice.Period is null || practice.Application is null || practice.Company is null)
             throw new NotFoundException("Amaliyot joyi hali biriktirilmagan.");

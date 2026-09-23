@@ -120,15 +120,18 @@ internal sealed class GetAdminDashboardQueryHandler(IApplicationDbContext db, IC
             })
             .FirstOrDefaultAsync(cancellationToken);
 
-        var activeGroupIds = calendar.ByGroup.Keys.ToList();
-        var activePeriodIds = calendar.ActivePeriodIds.ToList();
-        var contractsMissing = activeGroupIds.Count == 0
-            ? 0
-            : await db.StudentProfiles
+        // Arizasi yo'q talabalar — har guruh o'zining sukut bo'yicha davri kesimida (davrlar soni kichik — davr bo'yicha so'rov).
+        var contractsMissing = 0;
+        foreach (var byPeriod in calendar.ByGroup.GroupBy(kv => kv.Value.PeriodId))
+        {
+            var periodId = byPeriod.Key;
+            var groupIds = byPeriod.Select(kv => kv.Key).ToList();
+            contractsMissing += await db.StudentProfiles
                 .AsNoTracking()
-                .CountAsync(p => activeGroupIds.Contains(p.StudentGroupId)
-                                 && !db.PracticeApplications.Any(a => a.StudentUserId == p.UserId && activePeriodIds.Contains(a.PeriodId)),
+                .CountAsync(p => groupIds.Contains(p.StudentGroupId)
+                                 && !db.PracticeApplications.Any(a => a.StudentUserId == p.UserId && a.PeriodId == periodId),
                     cancellationToken);
+        }
 
         var expectedGroups = calendar.GroupsExpectedToday.ToList();
         var expectedToday = expectedGroups.Count == 0

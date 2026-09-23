@@ -1,4 +1,5 @@
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Features.Admin.Common;
 using Amaliyotchi.Application.Features.Tutor.Students;
 using Amaliyotchi.Domain.Students;
@@ -35,10 +36,13 @@ public sealed record AdminStudentDetail(
     StudentPeriod? Period,
     AttendanceSummary Attendance,
     DiarySummary Diary,
-    StudentGrade? Grade);
+    StudentGrade? Grade,
+    IReadOnlyList<StudentPeriodOption> Periods,
+    Guid? SelectedPeriodId);
 
-/// <summary><c>GET /api/admin/students/{id}</c> — talaba profili. Talaba topilmasa → 404.</summary>
-public sealed record GetAdminStudentDetailQuery(Guid Id) : IRequest<AdminStudentDetail>;
+/// <summary><c>GET /api/admin/students/{id}?periodId=</c> — talaba profili (davrga bog'liq bloklar tanlangan davr bo'yicha).
+/// Talaba topilmasa yoki <c>periodId</c> talabaga tegishli bo'lmasa → 404.</summary>
+public sealed record GetAdminStudentDetailQuery(Guid Id, Guid? PeriodId = null) : IRequest<AdminStudentDetail>;
 
 /// <summary>Umumiy bloklarni <see cref="GetTutorStudentDetailQuery"/> hisoblaydi (admin ko'lami cheklovsiz,
 /// shuning uchun ayni handler adminga ham to'g'ri keladi — topilmasa 404 ni ham o'sha beradi),
@@ -48,7 +52,7 @@ internal sealed class GetAdminStudentDetailQueryHandler(IApplicationDbContext db
 {
     public async Task<AdminStudentDetail> Handle(GetAdminStudentDetailQuery request, CancellationToken cancellationToken)
     {
-        var profile = await sender.Send(new GetTutorStudentDetailQuery(request.Id), cancellationToken);
+        var profile = await sender.Send(new GetTutorStudentDetailQuery(request.Id, request.PeriodId), cancellationToken);
 
         var org = await (from p in db.StudentProfiles.AsNoTracking()
                          where p.UserId == request.Id
@@ -95,6 +99,8 @@ internal sealed class GetAdminStudentDetailQueryHandler(IApplicationDbContext db
             profile.Period,
             profile.Attendance,
             profile.Diary,
-            profile.Grade);
+            profile.Grade,
+            profile.Periods,
+            profile.SelectedPeriodId);
     }
 }

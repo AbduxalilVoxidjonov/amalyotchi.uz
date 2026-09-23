@@ -53,8 +53,9 @@ internal sealed class CreatePracticePeriodCommandHandler(
         foreach (var groupId in groupIds)
             period.AttachGroup(groupId);
 
-        // Ochiq davr: student/tyutor oqimlari (PeriodLookup, check-in, ariza) saqlangan Active holatiga tayanadi,
-        // boshlanmagan davrda check-in esa "periodNotStarted" bilan to'xtatiladi.
+        // Ochiq davr (saqlanadigan holat Active = "yopilmagan"). Qaysi davr qayerda ishlatilishi sanadan hisoblanadi
+        // (PeriodSelection: davom etayotgan / oxirgi tugagan / kelgusi) — boshlanmagan davrda check-in rad etiladi,
+        // ariza esa oldindan berilishi mumkin.
         period.Activate();
         db.PracticePeriods.Add(period);
 

@@ -1,4 +1,5 @@
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Common.Scoping;
 using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Application.Features.Tutor.Common;
@@ -11,10 +12,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Tutor.Students;
 
-/// <summary><c>GET /api/tutor/students/{id}/attendance?from=&amp;to=</c> — kun-bakun davomat tarixi.
-/// <c>from</c> berilmasa — davr boshidan, <c>to</c> berilmasa — <c>min(bugun, davr oxiri)</c> gacha.
-/// Talabaning faol davri bo'lmasa — bo'sh massiv (xato emas). Ko'lamdan tashqari talaba → 404.</summary>
-public sealed record GetStudentAttendanceQuery(Guid StudentId, DateOnly? From, DateOnly? To)
+/// <summary><c>GET /api/tutor/students/{id}/attendance?periodId=&amp;from=&amp;to=</c> — kun-bakun davomat tarixi
+/// tanlangan davr bo'yicha (<c>periodId</c> berilmasa — sukut bo'yicha davr, profil bilan bir xil qoida).
+/// <c>from</c> berilmasa — davr boshidan, <c>to</c> berilmasa — <c>min(bugun, davr oxiri)</c> gacha; ikkalasi ham
+/// davr chegaralariga qisiladi (oy navigatsiyasi davrdan chiqmaydi). Davr bo'lmasa — bo'sh massiv (xato emas).
+/// Ko'lamdan tashqari talaba yoki talabaga tegishli bo'lmagan <c>periodId</c> → 404.</summary>
+public sealed record GetStudentAttendanceQuery(Guid StudentId, DateOnly? From, DateOnly? To, Guid? PeriodId = null)
     : IRequest<IReadOnlyList<StudentAttendanceDay>>;
 
 internal sealed class GetStudentAttendanceQueryHandler(IApplicationDbContext db, IScopeResolver scopeResolver, IClock clock)
@@ -30,13 +33,20 @@ internal sealed class GetStudentAttendanceQueryHandler(IApplicationDbContext db,
         // Ko'lamdan tashqari (yoki umuman yo'q) talaba → NotFoundException (404).
         var profile = await db.GetScopedStudentAsync(scope, request.StudentId, cancellationToken);
 
-        var periods = await PeriodLookup.LoadAsync(db, today, cancellationToken);
-        var period = periods.ForGroup(profile.StudentGroupId);
-        if (period is null)
+        var periodSet = await db.LoadStudentPeriodsAsync(profile.UserId, profile.StudentGroupId, cancellationToken);
+        var selected = periodSet.Resolve(request.PeriodId, today);
+        if (selected is null)
             return [];
 
-        var from = request.From ?? period.Period.StartDate;
-        var to = request.To ?? (today < period.Period.EndDate ? today : period.Period.EndDate);
+        var period = await PeriodLookup.ContextAsync(db, selected, cancellationToken);
+        var periodId = selected.Id;
+
+        var from = request.From ?? selected.StartDate;
+        var to = request.To ?? (today < selected.EndDate ? today : selected.EndDate);
+        if (from < selected.StartDate)
+            from = selected.StartDate;
+        if (to > selected.EndDate)
+            to = selected.EndDate;
         if (from > to)
             return [];
 
@@ -46,7 +56,7 @@ internal sealed class GetStudentAttendanceQueryHandler(IApplicationDbContext db,
             from = earliest;
 
         var rows = (await db.DailyAttendances.AsNoTracking().InScope(scope)
-                .Where(a => a.StudentUserId == request.StudentId && a.Date >= from && a.Date <= to)
+                .Where(a => a.StudentUserId == request.StudentId && a.PeriodId == periodId && a.Date >= from && a.Date <= to)
                 .Select(a => new AttendanceDayRow(
                     a.Date, a.Status, a.CheckInAt, a.CheckInDistanceM, a.CheckInAccuracyM,
                     a.CheckOutAt, a.CheckOutDistanceM, a.AutoClosed, a.IsSuspicious, a.SuspiciousReason,
@@ -63,7 +73,7 @@ internal sealed class GetStudentAttendanceQueryHandler(IApplicationDbContext db,
             .ToLookup(e => e.Date);
 
         var diaries = (await db.DiaryEntries.AsNoTracking().InScope(scope)
-                .Where(d => d.StudentUserId == request.StudentId && d.Date >= from && d.Date <= to)
+                .Where(d => d.StudentUserId == request.StudentId && d.PeriodId == periodId && d.Date >= from && d.Date <= to)
                 .Select(d => new { d.Date, d.Id, d.Status, d.Score })
                 .ToListAsync(cancellationToken))
             .GroupBy(d => d.Date)
@@ -71,12 +81,13 @@ internal sealed class GetStudentAttendanceQueryHandler(IApplicationDbContext db,
 
         var leaves = await db.LeaveRequests.AsNoTracking().InScope(scope)
             .Where(l => l.StudentUserId == request.StudentId && l.Status == LeaveRequestStatus.Approved
-                        && l.DateFrom <= to && l.DateTo >= from)
+                        && l.PeriodId == periodId && l.DateFrom <= to && l.DateTo >= from)
             .Select(l => new { l.Id, l.DateFrom, l.DateTo })
             .ToListAsync(cancellationToken);
 
         var radiusM = await db.PracticeApplications.AsNoTracking().InScope(scope)
-            .Where(a => a.StudentUserId == request.StudentId && a.Status == ApplicationStatus.Approved)
+            .Where(a => a.StudentUserId == request.StudentId && a.PeriodId == periodId
+                        && (a.Status == ApplicationStatus.Approved || a.Status == ApplicationStatus.Completed))
             .OrderByDescending(a => a.SubmittedAt)
             .Select(a => (int?)a.Company.RadiusM)
             .FirstOrDefaultAsync(cancellationToken);

@@ -47,7 +47,8 @@ public sealed record TutorStudent(
     StudentState State,
     int SuspiciousCount);
 
-/// <summary><c>GET /api/tutor/students</c> — ko'lamdagi talabalar, faol davr bo'yicha davomat va kundalik ko'rsatkichlari.
+/// <summary><c>GET /api/tutor/students</c> — ko'lamdagi talabalar, guruhning sukut bo'yicha davri
+/// (<see cref="PeriodPurpose.Default"/>) bo'yicha davomat va kundalik ko'rsatkichlari.
 /// Holat: davomat &lt; 70% → <c>redFlag</c>; shubhali kunlar bor → <c>suspicious</c>; aks holda <c>active</c>.</summary>
 public sealed record GetTutorStudentsQuery : IRequest<IReadOnlyList<TutorStudent>>;
 
@@ -62,7 +63,9 @@ internal sealed class GetTutorStudentsQueryHandler(IApplicationDbContext db, ISc
 
         var students = await db.LoadScopedStudentsAsync(scope, cancellationToken);
         var periods = await PeriodLookup.LoadAsync(db, today, cancellationToken);
-        var periodIds = periods.PeriodIds;
+        // Har talaba — guruhining sukut bo'yicha davri (davom etayotgan → oxirgi tugagan → kelgusi); so'rov shu
+        // davrlar bilan toraytiriladi, xotirada esa talabaning o'z davri bo'yicha filtrlanadi.
+        var periodIds = periods.DefaultPeriodIds(students.Select(s => s.GroupId));
 
         var attendance = (await db.DailyAttendances.AsNoTracking().InScope(scope)
                 .Where(a => periodIds.Contains(a.PeriodId))
@@ -72,36 +75,37 @@ internal sealed class GetTutorStudentsQueryHandler(IApplicationDbContext db, ISc
 
         var leaves = (await db.LeaveRequests.AsNoTracking().InScope(scope)
                 .Where(l => l.Status == LeaveRequestStatus.Approved && periodIds.Contains(l.PeriodId))
-                .Select(l => new { l.StudentUserId, l.DateFrom, l.DateTo })
+                .Select(l => new { l.StudentUserId, l.PeriodId, l.DateFrom, l.DateTo })
                 .ToListAsync(cancellationToken))
-            .ToLookup(l => l.StudentUserId, l => (l.DateFrom, l.DateTo));
+            .ToLookup(l => (l.StudentUserId, l.PeriodId), l => (l.DateFrom, l.DateTo));
 
         var diaries = (await db.DiaryEntries.AsNoTracking().InScope(scope)
                 .Where(d => periodIds.Contains(d.PeriodId))
-                .Select(d => new { d.StudentUserId, d.Score })
+                .Select(d => new { d.StudentUserId, d.PeriodId, d.Score })
                 .ToListAsync(cancellationToken))
-            .ToLookup(d => d.StudentUserId, d => d.Score);
+            .ToLookup(d => (d.StudentUserId, d.PeriodId), d => d.Score);
 
         var companies = (await db.PracticeApplications.AsNoTracking().InScope(scope)
                 .Where(a => a.Status == ApplicationStatus.Approved && periodIds.Contains(a.PeriodId))
-                .Select(a => new { a.StudentUserId, a.Company.Name })
+                .Select(a => new { a.StudentUserId, a.PeriodId, a.Company.Name })
                 .ToListAsync(cancellationToken))
-            .GroupBy(a => a.StudentUserId)
+            .GroupBy(a => (a.StudentUserId, a.PeriodId))
             .ToDictionary(g => g.Key, g => g.First().Name);
 
         var result = new List<TutorStudent>(students.Count);
         foreach (var student in students)
         {
             var period = periods.ForGroup(student.GroupId);
+            var key = (student.UserId, period?.Period.Id ?? Guid.Empty);
             var stats = StudentStatsCalculator.ComputeAttendance(
-                period, attendance[student.UserId].ToList(), leaves[student.UserId].ToList(), today, localNow);
-            var diary = StudentStatsCalculator.ComputeDiary(diaries[student.UserId].ToList());
+                period, attendance[student.UserId].ToList(), leaves[key].ToList(), today, localNow);
+            var diary = StudentStatsCalculator.ComputeDiary(diaries[key].ToList());
 
             var state = StudentStateRule.For(stats);
 
             result.Add(new TutorStudent(
                 student.UserId, student.FullName, student.HemisId, student.GroupName,
-                companies.GetValueOrDefault(student.UserId),
+                companies.GetValueOrDefault(key),
                 stats.AttendancePct, stats.AttendedDays, stats.TotalDays,
                 diary.Count, diary.Avg, state, stats.SuspiciousCount));
         }

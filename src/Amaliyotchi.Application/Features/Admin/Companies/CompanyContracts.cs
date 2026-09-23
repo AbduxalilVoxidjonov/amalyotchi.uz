@@ -250,8 +250,9 @@ internal static class CompanyQueries
             .Select(p => new { p.Id, p.Name })
             .ToDictionaryAsync(p => p.Id, p => p.Name, cancellationToken);
 
+        // Statistika — talabaning shu korxonadagi arizasi davri bo'yicha (ko'rsatilgan <c>period</c> bilan bir xil).
         var periods = await PeriodLookup.LoadAsync(db, today, cancellationToken);
-        var activePeriodIds = periods.PeriodIds;
+        var activePeriodIds = applicationPeriodIds;
 
         var attendance = (await db.DailyAttendances.AsNoTracking().InScope(scope)
                 .Where(a => studentIds.Contains(a.StudentUserId) && activePeriodIds.Contains(a.PeriodId))
@@ -262,27 +263,28 @@ internal static class CompanyQueries
         var leaves = (await db.LeaveRequests.AsNoTracking().InScope(scope)
                 .Where(l => l.Status == LeaveRequestStatus.Approved
                     && studentIds.Contains(l.StudentUserId) && activePeriodIds.Contains(l.PeriodId))
-                .Select(l => new { l.StudentUserId, l.DateFrom, l.DateTo })
+                .Select(l => new { l.StudentUserId, l.PeriodId, l.DateFrom, l.DateTo })
                 .ToListAsync(cancellationToken))
-            .ToLookup(l => l.StudentUserId, l => (l.DateFrom, l.DateTo));
+            .ToLookup(l => (l.StudentUserId, l.PeriodId), l => (l.DateFrom, l.DateTo));
 
         var diaries = (await db.DiaryEntries.AsNoTracking().InScope(scope)
                 .Where(d => studentIds.Contains(d.StudentUserId) && activePeriodIds.Contains(d.PeriodId))
-                .Select(d => new { d.StudentUserId, d.Score })
+                .Select(d => new { d.StudentUserId, d.PeriodId, d.Score })
                 .ToListAsync(cancellationToken))
-            .ToLookup(d => d.StudentUserId, d => d.Score);
+            .ToLookup(d => (d.StudentUserId, d.PeriodId), d => d.Score);
 
         var result = new List<CompanyStudent>(profiles.Count);
         foreach (var profile in profiles)
         {
             var application = byStudent[profile.UserId];
+            var key = (profile.UserId, application.PeriodId);
             var stats = StudentStatsCalculator.ComputeAttendance(
-                periods.ForGroup(profile.GroupId),
+                periods.ForPeriod(application.PeriodId),
                 attendance[profile.UserId].ToList(),
-                leaves[profile.UserId].ToList(),
+                leaves[key].ToList(),
                 today,
                 localNow);
-            var diary = StudentStatsCalculator.ComputeDiary(diaries[profile.UserId].ToList());
+            var diary = StudentStatsCalculator.ComputeDiary(diaries[key].ToList());
 
             result.Add(new CompanyStudent(
                 profile.UserId, profile.FullName, profile.HemisId, profile.GroupName, profile.Course, profile.Faculty,
