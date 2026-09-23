@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Badge,
   Button,
@@ -13,6 +14,7 @@ import {
 import { errorMessage, isApiError } from '@/shared/api/client';
 import { openExternal } from '@/shared/auth/telegram';
 import { formatDate, formatDecimal, formatPercent, formatPeriod } from '@/shared/lib/format';
+import { PeriodPicker } from '@/features/period/components/PeriodPicker';
 import { usePortfolioQuery } from '@/features/portfolio/hooks';
 import { scoreLabel } from '@/features/portfolio/types';
 import pages from './pages.module.css';
@@ -20,7 +22,9 @@ import styles from './PortfolioPage.module.css';
 
 /** SPEC-SCREENS §16 `isPortfolio` — Portfolio. */
 export function PortfolioPage() {
-  const q = usePortfolioQuery();
+  // null — sukut davr (backend `periodId`); tanlansa `?periodId=` bilan qayta yuklanadi.
+  const [periodId, setPeriodId] = useState<string | null>(null);
+  const q = usePortfolioQuery(periodId);
 
   if (q.isPending) return <LoadingState height={360} />;
   if (q.isError) {
@@ -35,6 +39,7 @@ export function PortfolioPage() {
     return <ErrorState description={errorMessage(q.error)} onRetry={() => void q.refetch()} />;
   }
   const p = q.data;
+  const selectedPeriod = p.periods.find((x) => x.id === p.periodId);
   const stats = [
     { k: 'Davomat', v: formatPercent(p.stats.attendancePct) },
     { k: 'Qatnashgan kunlar', v: `${p.stats.daysPresent}/${p.stats.daysTotal}` },
@@ -45,7 +50,14 @@ export function PortfolioPage() {
   ];
 
   return (
-    <div className={pages.stack}>
+    <div className={pages.stack} aria-busy={q.isPlaceholderData || undefined}>
+      {p.periods.length >= 2 && (
+        <PeriodPicker
+          periods={p.periods}
+          selectedId={periodId ?? p.periodId}
+          onSelect={setPeriodId}
+        />
+      )}
       <Card padded="form" aria-labelledby="portfolio-title">
         <div className={styles.head}>
           <div className={styles.headText}>
@@ -69,6 +81,11 @@ export function PortfolioPage() {
             Portfolio PDF
           </Button>
         </div>
+        {selectedPeriod?.status === 'planned' && (
+          <p className={styles.planned} role="status">
+            Davr hali boshlanmagan — {formatDate(selectedPeriod.startDate)} dan boshlanadi.
+          </p>
+        )}
         <FactGrid items={stats} variant="portfolio" min={120} className={styles.stats} />
       </Card>
 

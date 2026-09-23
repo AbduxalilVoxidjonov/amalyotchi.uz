@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw';
-import { cleanup, screen } from '@testing-library/react';
+import { cleanup, fireEvent, screen } from '@testing-library/react';
+import { MOCK_AUTUMN_PERIOD, MOCK_SPRING_PERIOD } from '@/features/period/mocks';
 import { mockPortfolio } from '@/features/portfolio/mocks';
 import { server } from '@/mocks/server';
 import { renderApp } from '@/test/render-app';
@@ -57,5 +58,54 @@ describe('PortfolioPage (isPortfolio)', () => {
     cleanup();
     renderApp('/portfolio');
     expect(await screen.findByText("Faol amaliyot davri yo'q")).toBeInTheDocument();
+  });
+});
+
+describe('PortfolioPage — davr tanlagichi (v3.5)', () => {
+  afterEach(() => server.events.removeAllListeners());
+
+  it('periods ≥ 2 → tanlagich; tanlash ?periodId= bilan qayta yuklaydi', async () => {
+    const urls: URL[] = [];
+    server.events.on('request:start', ({ request }) => {
+      const url = new URL(request.url);
+      if (url.pathname === '/api/student/portfolio') urls.push(url);
+    });
+    renderApp('/portfolio');
+    expect(
+      await screen.findByText(
+        '3-kurs ishlab chiqarish amaliyoti · Tech Solutions MChJ · 01.10–15.11.2026',
+      ),
+    ).toBeInTheDocument();
+
+    const autumn = screen.getByRole('button', { name: /Kuzgi amaliyot 2026/ });
+    const spring = screen.getByRole('button', { name: /Bahorgi amaliyot 2027/ });
+    // Sukut — backend `periodId` (kuzgi).
+    expect(autumn).toHaveAttribute('aria-pressed', 'true');
+    expect(spring).toHaveAttribute('aria-pressed', 'false');
+    expect(urls[0]?.searchParams.has('periodId')).toBe(false);
+
+    fireEvent.click(spring);
+    expect(await screen.findByText('Bahorgi amaliyot 2027 · 01.02–15.03.2027')).toBeInTheDocument();
+    expect(urls.at(-1)?.searchParams.get('periodId')).toBe(MOCK_SPRING_PERIOD.id);
+    expect(spring).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      screen.getByText('Davr hali boshlanmagan — 01.02.2027 dan boshlanadi.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Baho hali yo'q")).toBeInTheDocument();
+
+    fireEvent.click(autumn);
+    expect(await screen.findByText('Baho: 5')).toBeInTheDocument();
+    expect(urls.at(-1)?.searchParams.get('periodId')).toBe(MOCK_AUTUMN_PERIOD.id);
+  });
+
+  it("bitta davr → tanlagich yo'q", async () => {
+    server.use(
+      http.get('/api/student/portfolio', () =>
+        HttpResponse.json({ ...mockPortfolio, periods: [MOCK_AUTUMN_PERIOD] }),
+      ),
+    );
+    renderApp('/portfolio');
+    expect(await screen.findByText('Baho: 5')).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Amaliyot davri' })).not.toBeInTheDocument();
   });
 });

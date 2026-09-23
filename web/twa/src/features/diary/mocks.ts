@@ -2,6 +2,7 @@ import { http, HttpResponse, type HttpHandler } from 'msw';
 import { STUDENT_ENDPOINTS } from '@/shared/api/endpoints';
 import { problem, requireBearer } from '@/mocks/problem';
 import { markDiarySubmitted, mockToday } from '@/features/today/mocks';
+import { MOCK_AUTUMN_PERIOD } from '@/features/period/mocks';
 import {
   DIARY_MAX_FILES,
   DIARY_MIN_CHARS,
@@ -12,6 +13,8 @@ import {
 } from './types';
 
 /** SPEC-SCREENS §6 — faqat "AA" (o'z yozuvlari) + qo'shimcha eski yozuvlar. Kontrakt v2 shakli. */
+const AUTUMN = { periodId: MOCK_AUTUMN_PERIOD.id, periodName: MOCK_AUTUMN_PERIOD.name } as const;
+
 function initialEntries(): DiaryEntryDto[] {
   return [
     {
@@ -27,6 +30,7 @@ function initialEntries(): DiaryEntryDto[] {
       ],
       score: null,
       comment: null,
+      ...AUTUMN,
     },
     {
       id: 'd-31',
@@ -38,6 +42,7 @@ function initialEntries(): DiaryEntryDto[] {
       files: [],
       score: 5,
       comment: null,
+      ...AUTUMN,
     },
     {
       id: 'd-30',
@@ -49,6 +54,7 @@ function initialEntries(): DiaryEntryDto[] {
       files: [],
       score: null,
       comment: 'Aniq vazifalar va natijani yozing — umumiy gaplar yetarli emas.',
+      ...AUTUMN,
     },
     {
       id: 'd-29',
@@ -60,6 +66,7 @@ function initialEntries(): DiaryEntryDto[] {
       files: [],
       score: null,
       comment: null,
+      ...AUTUMN,
     },
   ];
 }
@@ -120,6 +127,8 @@ export const diaryHandlers: HttpHandler[] = [
       ],
       score: null,
       comment: null,
+      periodId: mockToday.period?.id ?? MOCK_AUTUMN_PERIOD.id,
+      periodName: mockToday.period?.name ?? null,
     };
     mockDiary = [entry, ...mockDiary.filter((e) => e.id !== entry.id)];
     markDiarySubmitted();

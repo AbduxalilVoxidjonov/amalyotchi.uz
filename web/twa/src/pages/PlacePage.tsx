@@ -15,6 +15,8 @@ import { formatDate, formatPeriod, formatPhone } from '@/shared/lib/format';
 import { PlaceSelectForm } from '@/features/place/components/PlaceSelectForm';
 import { usePlaceQuery } from '@/features/place/hooks';
 import { APPLICATION_STATUS, formatTin, type PracticePlaceDto } from '@/features/place/types';
+import { periodPhase } from '@/features/period/types';
+import { useTodayQuery } from '@/features/today/hooks';
 import pages from './pages.module.css';
 import styles from './PlacePage.module.css';
 
@@ -26,6 +28,11 @@ const person = (name: string | null, phone: string | null) =>
 /** SPEC-SCREENS §14 `isJoyim` — Amaliyot joyim. */
 export function PlacePage() {
   const place = usePlaceQuery();
+  // Ariza davri: `today.period` (§4.6 "current") — tugagan davrga ariza berilmaydi (POST 409),
+  // shuning uchun faqat davom etayotgan yoki kelgusi davr nomi ko'rsatiladi. Place javobida davr nomi yo'q.
+  const today = useTodayQuery().data;
+  const enrollmentPeriod =
+    today?.period && periodPhase(today.period, today.date) !== 'ended' ? today.period.name : null;
 
   if (place.isPending) return <LoadingState height={320} />;
   if (place.isError) {
@@ -33,7 +40,7 @@ export function PlacePage() {
     if (isApiError(place.error) && place.error.kind === 'not-found') {
       return (
         <div className={pages.stack}>
-          <PlaceSelectForm />
+          <PlaceSelectForm periodName={enrollmentPeriod} />
         </div>
       );
     }
@@ -88,7 +95,7 @@ export function PlacePage() {
         </p>
       </Card>
 
-      {canResubmit && <PlaceSelectForm resubmit />}
+      {canResubmit && <PlaceSelectForm resubmit periodName={enrollmentPeriod} />}
 
       <Card padded aria-labelledby="contract-title">
         <h2 id="contract-title" className={pages.sectionTitle}>

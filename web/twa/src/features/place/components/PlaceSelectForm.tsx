@@ -15,6 +15,11 @@ import styles from './PlaceSelectForm.module.css';
 export interface PlaceSelectFormProps {
   /** `revisionNeeded`/`rejected` dan keyin qayta yuborish — sarlavha boshqacha. */
   resubmit?: boolean;
+  /**
+   * Ariza qaysi davr uchun (v3.5 §4.6 "enrollment": davom etayotgan → eng yaqin kelgusi) —
+   * sarlavhada "Bahorgi amaliyot 2027 uchun". Noma'lum bo'lsa ko'rsatilmaydi.
+   */
+  periodName?: string | null;
 }
 
 const person = (name: string | null, phone: string | null) =>
@@ -24,7 +29,7 @@ const person = (name: string | null, phone: string | null) =>
  * Amaliyot joyini STIR orqali tanlash. Talaba korxona ma'lumotini QO'LDA kiritmaydi:
  * `GET /api/companies/lookup` topib beradi, `POST /api/student/place` esa faqat `{ tin }` yuboradi.
  */
-export function PlaceSelectForm({ resubmit = false }: PlaceSelectFormProps) {
+export function PlaceSelectForm({ resubmit = false, periodName = null }: PlaceSelectFormProps) {
   const headingId = useId();
   const [tin, setTin] = useState('');
   const [found, setFound] = useState<CompanyLookupDto | null>(null);
@@ -90,6 +95,7 @@ export function PlaceSelectForm({ resubmit = false }: PlaceSelectFormProps) {
       <h2 id={headingId} className={styles.title}>
         {resubmit ? 'Amaliyot joyini qayta tanlash' : 'Amaliyot joyini tanlash'}
       </h2>
+      {periodName && <p className={styles.period}>{periodName} uchun</p>}
       <p className={styles.lead}>
         Korxona ma'lumotini o'zingiz yozmaysiz — STIR raqamini kiriting, qolgani tizimdan topiladi.
       </p>

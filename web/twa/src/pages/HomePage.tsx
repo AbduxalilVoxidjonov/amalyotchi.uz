@@ -1,11 +1,13 @@
 import { Card, ErrorState, LoadingState } from '@/shared/ui';
 import { errorMessage } from '@/shared/api/client';
 import { CheckinCard } from '@/features/today/components/CheckinCard';
+import { PeriodGapCard } from '@/features/today/components/PeriodGapCard';
 import { PlaceSummary } from '@/features/today/components/PlaceSummary';
 import { useCheckinFlow, useTodayQuery } from '@/features/today/hooks';
 import { DiaryForm } from '@/features/diary/components/DiaryForm';
 import { useCreateDiaryEntry, useDiaryQuery } from '@/features/diary/hooks';
 import { rewriteFilesFor } from '@/features/diary/types';
+import { periodPhase } from '@/features/period/types';
 import styles from './pages.module.css';
 
 /** SPEC-SCREENS §8 `isTalaba` — Bosh ekran: check-in + bugungi kundalik + amaliyot joyi qisqacha. */
@@ -23,6 +25,16 @@ export function HomePage() {
     );
   }
   const data = today.data;
+  // Ikki davr oralig'i (v3.5 §4.6): belgilanish va kundalik yozish yopiq — davr holati ko'rsatiladi.
+  // `period = null` ("Faol amaliyot davri yo'q") — avvalgidek CheckinCard `note` bilan.
+  const phase = data.period ? periodPhase(data.period, data.date) : null;
+  if (data.period && (phase === 'upcoming' || phase === 'ended')) {
+    return (
+      <div className={styles.stack}>
+        <PeriodGapCard today={data} period={data.period} phase={phase} />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.stack}>

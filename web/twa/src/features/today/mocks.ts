@@ -1,6 +1,10 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
 import { STUDENT_ENDPOINTS } from '@/shared/api/endpoints';
 import { problem, requireBearer } from '@/mocks/problem';
+import { setMockPlace, setPlaceEnrollmentPeriod } from '@/features/place/mocks';
+import { MOCK_AUTUMN_PERIOD, MOCK_GAP_DATE, MOCK_SPRING_PERIOD } from '@/features/period/mocks';
+import { periodPhase } from '@/features/period/types';
+import { formatDate } from '@/shared/lib/format';
 import { PHOTO_CONTENT_TYPES, PHOTO_MAX_BYTES } from './photo';
 import { isCheckedIn, isFinished, type TodayDto } from './types';
 
@@ -46,6 +50,7 @@ function initialToday(): TodayDto {
       avgScore: 4.2,
     },
     diary: { submittedToday: false, minChars: 150, maxFiles: 5, pdfRequired: false },
+    period: MOCK_AUTUMN_PERIOD,
   };
 }
 
@@ -67,6 +72,52 @@ export function setCheckinPhotoRequired(value: boolean) {
 /** Backend sozlamasi `diaryPdfRequired` ko'zgusi — testda `setDiaryPdfRequired(true)` bilan yoqiladi. */
 export function setDiaryPdfRequired(value: boolean) {
   mockToday = { ...mockToday, diary: { ...mockToday.diary, pdfRequired: value } };
+}
+
+/**
+ * Ikki davr oralig'i (kontrakt v3.5 §4.6, backend `GetStudentTodayQuery` bilan bir xil):
+ * - `upcoming` — kuzgi tugagan, bahorgi hali boshlanmagan; bahorgi davrga ariza yo'q (GET place → 404,
+ *   POST place → bahorgi davr sanalari bilan);
+ * - `ended` — faqat tugagan kuzgi davr (kelgusi yo'q).
+ * Ikkalasida ham `window.isOpen=false`, `checkin.status=dayOff`, check-in/check-out → 400 `note` matni bilan.
+ */
+export function setPeriodGap(kind: 'upcoming' | 'ended') {
+  const period =
+    kind === 'upcoming' ? { ...MOCK_SPRING_PERIOD, isDefault: true } : MOCK_AUTUMN_PERIOD;
+  const note =
+    kind === 'upcoming'
+      ? `Amaliyot davri hali boshlanmagan: ${period.name}, ${formatDate(period.startDate)} dan boshlanadi.`
+      : `Amaliyot davri tugagan: ${period.name}.`;
+  mockToday = {
+    ...mockToday,
+    date: MOCK_GAP_DATE,
+    period,
+    window: { ...mockToday.window, isOpen: false },
+    checkin: {
+      ...mockToday.checkin,
+      status: 'dayOff',
+      checkInAt: null,
+      checkOutAt: null,
+      distanceM: null,
+      radiusM: kind === 'upcoming' ? null : mockToday.checkin.radiusM,
+      gpsAccuracyM: null,
+      note,
+    },
+    // `place` — faqat ko'rsatilayotgan davrdagi tasdiqlangan ariza: bahorgi davrga hali ariza yo'q.
+    place: kind === 'upcoming' ? null : mockToday.place,
+    diary: { ...mockToday.diary, submittedToday: false },
+  };
+  if (kind === 'upcoming') {
+    setMockPlace(null);
+    setPlaceEnrollmentPeriod(MOCK_SPRING_PERIOD.startDate, MOCK_SPRING_PERIOD.endDate);
+  }
+}
+
+/** Davom etayotgan davr yo'q → check-in/check-out 400 (`detail` = today `note`); aks holda null. */
+function periodRejection(): Response | null {
+  const { period, date, checkin } = mockToday;
+  if (period && periodPhase(period, date) === 'ongoing') return null;
+  return problem(400, "Noto'g'ri amal", checkin.note ?? "Faol amaliyot davri yo'q.");
 }
 
 export function resetTodayMocks() {
@@ -175,6 +226,8 @@ export const todayHandlers: HttpHandler[] = [
     const parsed = await parseCheckinForm(request);
     if ('response' in parsed) return parsed.response;
     const body = parsed.form;
+    const outOfPeriod = periodRejection();
+    if (outOfPeriod) return outOfPeriod;
     if (mockToday.checkin.checkInAt) {
       return problem(409, 'Ziddiyat', 'Bugun allaqachon belgilangansiz.');
     }
@@ -218,6 +271,8 @@ export const todayHandlers: HttpHandler[] = [
     const parsed = await parseCheckinForm(request);
     if ('response' in parsed) return parsed.response;
     const body = parsed.form;
+    const outOfPeriod = periodRejection();
+    if (outOfPeriod) return outOfPeriod;
     if (isFinished(mockToday.checkin)) {
       return problem(409, 'Ziddiyat', 'Bugun allaqachon ketganingiz belgilangan.');
     }

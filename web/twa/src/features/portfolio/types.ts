@@ -1,3 +1,5 @@
+import type { StudentPeriodOption } from '@/features/period/types';
+
 /** `PortfolioScoreDto.key`: attendance · reports · tutor · reference. */
 export type PortfolioScoreKey = 'attendance' | 'reports' | 'tutor' | 'reference';
 
@@ -24,7 +26,10 @@ export interface PortfolioConclusionDto {
   date: string;
 }
 
-/** GET /api/student/portfolio (`PortfolioDto`). Faol davr yo'q → 404. */
+/**
+ * GET /api/student/portfolio?periodId= (`PortfolioDto`). Davr yo'q yoki begona `periodId` → 404.
+ * `periodId` berilmasa — sukut davr (§4.6 "default": davom etayotgan → oxirgi tugagan → kelgusi).
+ */
 export interface PortfolioDto {
   student: string;
   group: string;
@@ -47,6 +52,10 @@ export interface PortfolioDto {
   conclusion: PortfolioConclusionDto | null;
   /** PDF havolasi (WebApp.openLink) | null — hali tayyor emas */
   pdfUrl: string | null;
+  /** v3.5 — javob shu davr bo'yicha. */
+  periodId: string;
+  /** v3.5 — talabaning barcha davrlari (tarix tanlagichi), `startDate` kamayish tartibida. */
+  periods: StudentPeriodOption[];
 }
 
 export const PORTFOLIO_SCORE_LABEL: Record<PortfolioScoreKey, string> = {

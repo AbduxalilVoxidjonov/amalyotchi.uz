@@ -23,6 +23,15 @@
 .pdf {
   padding: 10px 18px;
 }
+.planned {
+  margin-top: 12px;
+  padding: 9px 12px;
+  border-radius: var(--radius-md2);
+  background: var(--color-info-bg);
+  color: var(--color-info-fg);
+  font-size: var(--fs-md);
+  line-height: var(--lh-note);
+}
 .stats {
   margin-top: 16px;
 }

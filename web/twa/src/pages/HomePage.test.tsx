@@ -2,7 +2,13 @@ import { http, HttpResponse } from 'msw';
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 // `lastCheckinPhoto` mock ichida qayta tayinlanadi — namespace orqali o'qiladi.
 import * as todayMocks from '@/features/today/mocks';
-import { mockToday, setCheckinPhotoRequired, setDiaryPdfRequired } from '@/features/today/mocks';
+import {
+  mockToday,
+  setCheckinPhotoRequired,
+  setDiaryPdfRequired,
+  setPeriodGap,
+} from '@/features/today/mocks';
+import { mockPlace, setMockPlace } from '@/features/place/mocks';
 import { server } from '@/mocks/server';
 import { removeGeolocation, renderApp, stubGeolocation } from '@/test/render-app';
 
@@ -241,5 +247,99 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
     expect(await screen.findByText('Hisobotga PDF fayl biriktirilishi shart.')).toBeInTheDocument();
     expect(screen.queryByText('Kundalik yuborildi.')).not.toBeInTheDocument();
     expect(mockToday.diary.submittedToday).toBe(false);
+  });
+});
+
+describe("HomePage — ikki davr oralig'i (v3.5 §4.6)", () => {
+  const UPCOMING_NOTE =
+    'Amaliyot davri hali boshlanmagan: Bahorgi amaliyot 2027, 01.02.2027 dan boshlanadi.';
+
+  it('kelgusi davr: kartochka (nom, sana, qolgan kun) + ariza tugmasi → forma bahorgi davr uchun', async () => {
+    setPeriodGap('upcoming');
+    renderApp('/');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Bahorgi amaliyot 2027' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('01.02.2027 dan boshlanadi')).toBeInTheDocument();
+    expect(screen.getByText('43 kun qoldi')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /KELDIM|KETDIM/ })).not.toBeInTheDocument();
+    // Tanaffusda kundalik yozilmaydi — forma ko'rsatilmaydi.
+    expect(screen.queryByText('Bugungi kundalik')).not.toBeInTheDocument();
+
+    // Bahorgi davrga ariza yo'q (GET place → 404) → "Amaliyot joyini yuborish".
+    const link = await screen.findByRole('link', { name: 'Amaliyot joyini yuborish' });
+    expect(link).toHaveAttribute('href', '/joyim');
+    fireEvent.click(link);
+
+    expect(await screen.findByText('Amaliyot joyini tanlash')).toBeInTheDocument();
+    expect(screen.getByText('Bahorgi amaliyot 2027 uchun')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Korxona STIR raqami'), {
+      target: { value: '305881204' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Qidirish' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Tasdiqlash va yuborish' }));
+    // Ariza kelgusi (bahorgi) davrga tushadi.
+    expect(await screen.findByText('01.02–15.03.2027')).toBeInTheDocument();
+    expect(screen.getByText('Tekshiruvda')).toBeInTheDocument();
+  });
+
+  it("kelgusi davr: ariza allaqachon yuborilgan → tugma yo'q, holat ko'rinadi", async () => {
+    setPeriodGap('upcoming');
+    setMockPlace({ ...mockPlace, status: 'submitted', contract: null });
+    renderApp('/');
+
+    expect(await screen.findByText('Tekshiruvda')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Tech Solutions MChJ' })).toHaveAttribute(
+      'href',
+      '/joyim',
+    );
+    expect(
+      screen.queryByRole('link', { name: 'Amaliyot joyini yuborish' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('faqat tugagan davr: "Amaliyot davri tugagan" + portfolio havolasi', async () => {
+    setPeriodGap('ended');
+    renderApp('/');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Amaliyot davri tugagan: Kuzgi amaliyot 2026' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Portfolioni ko‘rish' })).toHaveAttribute(
+      'href',
+      '/portfolio',
+    );
+    expect(screen.queryByRole('button', { name: /KELDIM|KETDIM/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/kun qoldi/)).not.toBeInTheDocument();
+  });
+
+  it("davr yo'q (period null) → avvalgidek CheckinCard, server note bilan", async () => {
+    server.use(
+      http.get('/api/student/today', () =>
+        HttpResponse.json({
+          ...mockToday,
+          period: null,
+          place: null,
+          window: { ...mockToday.window, isOpen: false },
+          checkin: { ...mockToday.checkin, note: "Faol amaliyot davri yo'q." },
+        }),
+      ),
+    );
+    renderApp('/');
+    expect(await screen.findByText("Faol amaliyot davri yo'q.")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'KELDIM' })).toBeDisabled();
+  });
+
+  it('eskirgan ekran: check-in 400 (davr boshlanmagan) matni ko‘rinadi', async () => {
+    stubGeolocation();
+    renderApp('/');
+    fireEvent.click(await screen.findByRole('button', { name: 'KELDIM' }));
+    // Ekran ochilgandan keyin server tanaffusga o'tdi — check-in 400 `detail` = today note.
+    setPeriodGap('upcoming');
+    fireEvent.click(await screen.findByRole('button', { name: 'Rasmsiz davom etish' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(UPCOMING_NOTE);
+    expect(todayMocks.lastCheckinPhoto).toBeNull();
   });
 });

@@ -14,3 +14,11 @@
   font-size: var(--fs-md2);
   font-weight: var(--fw-semibold);
 }
+.groupTitle {
+  margin: 8px 0 0;
+  font-size: var(--fs-sm2);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

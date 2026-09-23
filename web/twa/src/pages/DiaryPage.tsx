@@ -4,7 +4,7 @@ import { useAuthStore } from '@/shared/auth/store';
 import { DiaryEntryCard } from '@/features/diary/components/DiaryEntryCard';
 import { DiaryForm } from '@/features/diary/components/DiaryForm';
 import { useCreateDiaryEntry, useDiaryQuery } from '@/features/diary/hooks';
-import { rewriteFilesFor } from '@/features/diary/types';
+import { groupDiaryByPeriod, rewriteFilesFor } from '@/features/diary/types';
 import { useTodayQuery } from '@/features/today/hooks';
 import styles from './pages.module.css';
 
@@ -15,6 +15,8 @@ export function DiaryPage() {
   // Kundalik sozlamalari (minChars/maxFiles/pdfRequired) — bosh ekran bilan bir manba.
   const today = useTodayQuery().data;
   const studentName = useAuthStore((s) => s.user?.fullName) ?? 'Talaba';
+  // v3.5: tarix davr bo'yicha (kuzgi, bahorgi); davr bitta bo'lsa sarlavhasiz tekis ro'yxat.
+  const groups = diary.data ? groupDiaryByPeriod(diary.data) : [];
 
   return (
     <div className={styles.stack}>
@@ -50,9 +52,25 @@ export function DiaryPage() {
             description="Birinchi kundalik yozuvini yuqoridagi forma orqali yuboring."
           />
         )}
-        {diary.data?.map((entry) => (
-          <DiaryEntryCard key={entry.id} entry={entry} studentName={studentName} />
-        ))}
+        {groups.length === 1 &&
+          groups[0]!.entries.map((entry) => (
+            <DiaryEntryCard key={entry.id} entry={entry} studentName={studentName} />
+          ))}
+        {groups.length > 1 &&
+          groups.map((g) => (
+            <section
+              key={g.periodId}
+              aria-labelledby={`diary-period-${g.periodId}`}
+              className={styles.list}
+            >
+              <h3 id={`diary-period-${g.periodId}`} className={styles.groupTitle}>
+                {g.periodName ?? 'Nomsiz davr'} · {g.entries.length}
+              </h3>
+              {g.entries.map((entry) => (
+                <DiaryEntryCard key={entry.id} entry={entry} studentName={studentName} />
+              ))}
+            </section>
+          ))}
       </section>
     </div>
   );

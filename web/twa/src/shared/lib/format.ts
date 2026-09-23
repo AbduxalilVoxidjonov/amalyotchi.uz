@@ -131,3 +131,11 @@ export function formatPeriod(from: string, to: string): string {
   if (!f || !t) return f || t;
   return f.slice(-4) === t.slice(-4) ? `${f.slice(0, 5)}–${t}` : `${f}–${t}`;
 }
+
+/** Ikki DateOnly orasidagi kunlar: "2026-12-20" → "2027-02-01" = 43 (manfiy ham bo'lishi mumkin). */
+export function daysBetween(from: string, to: string): number {
+  const a = parseDateOnly(from);
+  const b = parseDateOnly(to);
+  if (!a || !b) return 0;
+  return Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(a.y, a.m - 1, a.d)) / 86_400_000);
+}

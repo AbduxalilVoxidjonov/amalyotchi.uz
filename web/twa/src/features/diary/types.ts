@@ -24,6 +24,10 @@ export interface DiaryEntryDto {
   score: number | null;
   /** Tyutor izohi (qayta yozish / tasdiqlash). */
   comment: string | null;
+  /** v3.5 — yozuv tegishli amaliyot davri. */
+  periodId: string;
+  /** v3.5 — davr nomi; o'chirilgan davr → null. */
+  periodName: string | null;
 }
 
 /** POST /api/student/diary — multipart/form-data: text, learned?, files[] (0–5, ≤5 MB, rasm/PDF). */
@@ -62,4 +66,32 @@ export function rewriteFilesFor(
 ): DiaryFileDto[] {
   if (!entries || !date) return [];
   return entries.find((e) => e.date === date && e.status === 'rewrite')?.files ?? [];
+}
+
+export interface DiaryPeriodGroup {
+  periodId: string;
+  periodName: string | null;
+  entries: DiaryEntryDto[];
+}
+
+/**
+ * Yozuvlarni davr bo'yicha guruhlaydi (v3.5). Tartib saqlanadi: server `date desc` qaytaradi —
+ * guruhlar birinchi uchragan yozuv (eng yangisi) bo'yicha ketma-ket keladi.
+ */
+export function groupDiaryByPeriod(entries: readonly DiaryEntryDto[]): DiaryPeriodGroup[] {
+  const groups = new Map<string, DiaryPeriodGroup>();
+  for (const entry of entries) {
+    const group = groups.get(entry.periodId);
+    if (group) {
+      group.entries.push(entry);
+      group.periodName ??= entry.periodName;
+    } else {
+      groups.set(entry.periodId, {
+        periodId: entry.periodId,
+        periodName: entry.periodName,
+        entries: [entry],
+      });
+    }
+  }
+  return [...groups.values()];
 }

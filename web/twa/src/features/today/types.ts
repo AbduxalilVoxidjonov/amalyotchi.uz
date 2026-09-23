@@ -1,5 +1,6 @@
 import type { GeoPoint } from '@/shared/lib/geolocation';
 import type { FactItem } from '@/shared/ui';
+import type { StudentPeriodOption } from '@/features/period/types';
 
 /**
  * Kontrakt v2 — `StudentContracts.cs` (TodayDto). Enum'lar camelCase string, soatlar "HH:mm" (Toshkent),
@@ -60,7 +61,11 @@ export interface TodayDiaryDto {
   pdfRequired: boolean;
 }
 
-/** GET /api/student/today. Ariza yo'q → `place: null`, `checkin.status = pending`, `checkin.note` da sabab. */
+/**
+ * GET /api/student/today. Ariza yo'q → `place: null`, `checkin.status = pending`, `checkin.note` da sabab.
+ * v3.5: ikki davr oralig'ida `window.isOpen=false`, `checkin.status=dayOff`, `note` —
+ * "Amaliyot davri hali boshlanmagan: <nom>, <dd.MM.yyyy> dan boshlanadi." yoki "Amaliyot davri tugagan: <nom>.".
+ */
 export interface TodayDto {
   /** DateOnly "2026-10-12" */
   date: string;
@@ -68,6 +73,8 @@ export interface TodayDto {
   checkin: TodayCheckInDto;
   place: TodayPlaceDto | null;
   diary: TodayDiaryDto;
+  /** v3.5 §4.6 "current": davom etayotgan → eng yaqin kelgusi → oxirgi tugagan; davr yo'q → null. */
+  period: StudentPeriodOption | null;
 }
 
 /**

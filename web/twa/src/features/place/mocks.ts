@@ -81,8 +81,19 @@ export function setMockPlace(place: PracticePlaceDto | null) {
   currentPlace = place;
 }
 
+/**
+ * POST ariza davri (§4.6 "enrollment": davom etayotgan → eng yaqin kelgusi) sanalari.
+ * Oraliqda `setPeriodGap('upcoming')` bahorgi davrni qo'yadi.
+ */
+let enrollmentPeriod = { from: mockPlace.periodFrom, to: mockPlace.periodTo };
+
+export function setPlaceEnrollmentPeriod(from: string, to: string) {
+  enrollmentPeriod = { from, to };
+}
+
 export function resetPlaceMocks() {
   currentPlace = mockPlace;
+  enrollmentPeriod = { from: mockPlace.periodFrom, to: mockPlace.periodTo };
 }
 
 const NOT_FOUND_MESSAGE =
@@ -114,8 +125,8 @@ function placeFromCompany(company: CompanyLookupDto): PracticePlaceDto {
     radiusM: company.radiusM,
     lat: company.lat,
     lng: company.lng,
-    periodFrom: mockPlace.periodFrom,
-    periodTo: mockPlace.periodTo,
+    periodFrom: enrollmentPeriod.from,
+    periodTo: enrollmentPeriod.to,
     contract: null,
   };
 }

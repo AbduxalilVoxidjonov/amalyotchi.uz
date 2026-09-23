@@ -3,6 +3,12 @@
   font-size: var(--fs-base2);
   font-weight: var(--fw-semibold);
 }
+.period {
+  margin-top: 4px;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  color: var(--color-accent);
+}
 .lead {
   margin-top: 8px;
   font-size: var(--fs-sm);

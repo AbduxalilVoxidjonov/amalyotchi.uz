@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { mockDiary } from '@/features/diary/mocks';
 import type { DiaryEntryDto } from '@/features/diary/types';
@@ -12,6 +12,38 @@ const LONG_TEXT =
   'Bugun mentor bilan birga mijozlar ro‘yxati sahifasining filtrlash mantiqini qayta yozdik. ' +
   'Avval so‘rovlar sekin ishlayotgan edi, indeks qo‘shib, natijani Postman orqali tekshirdik. ' +
   'Kechga yaqin hisobot tayyorladim.';
+
+describe("DiaryPage — davr bo'yicha guruhlash (v3.5)", () => {
+  it("bitta davr → sarlavhasiz; ikki davr → har davr o'z sarlavhasi bilan", async () => {
+    renderApp('/kundalik');
+    expect(await screen.findByText('Yozuvlarim · 4')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 3 })).not.toBeInTheDocument();
+    cleanup();
+
+    const spring = { periodId: 'spring-id', periodName: 'Bahorgi amaliyot 2027' };
+    server.use(
+      http.get(STUDENT_ENDPOINTS.diary, () =>
+        HttpResponse.json([
+          { ...mockDiary[0]!, id: 's-2', date: '2027-02-03', ...spring },
+          { ...mockDiary[1]!, id: 's-1', date: '2027-02-02', ...spring },
+          ...mockDiary,
+        ]),
+      ),
+    );
+    renderApp('/kundalik');
+    expect(await screen.findByText('Yozuvlarim · 6')).toBeInTheDocument();
+    const headings = screen.getAllByRole('heading', { level: 3 });
+    expect(headings.map((h) => h.textContent)).toEqual([
+      'Bahorgi amaliyot 2027 · 2',
+      'Kuzgi amaliyot 2026 · 4',
+    ]);
+    const springSection = screen.getByRole('region', { name: 'Bahorgi amaliyot 2027 · 2' });
+    const autumnSection = screen.getByRole('region', { name: 'Kuzgi amaliyot 2026 · 4' });
+    expect(within(springSection).getAllByRole('article')).toHaveLength(2);
+    expect(within(springSection).getByLabelText('Kundalik · 03.02.2027')).toBeInTheDocument();
+    expect(within(autumnSection).getAllByRole('article')).toHaveLength(4);
+  });
+});
 
 describe('DiaryPage (kundaligim)', () => {
   it("o'z yozuvlari ro'yxati — tyutor tugmalarisiz", async () => {
