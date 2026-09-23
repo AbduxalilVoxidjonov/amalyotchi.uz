@@ -8,8 +8,12 @@ export const diaryKeys = {
   list: () => ['student', 'diary', 'list'] as const,
 };
 
-export function useDiaryQuery() {
-  return useQuery({ queryKey: diaryKeys.list(), queryFn: ({ signal }) => diaryApi.list(signal) });
+export function useDiaryQuery({ enabled = true }: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: diaryKeys.list(),
+    queryFn: ({ signal }) => diaryApi.list(signal),
+    enabled,
+  });
 }
 
 export function useCreateDiaryEntry() {
@@ -19,7 +23,8 @@ export function useCreateDiaryEntry() {
     mutationFn: diaryApi.create,
     onSuccess: (entry) => {
       qc.setQueryData<DiaryEntryDto[]>(diaryKeys.list(), (prev) =>
-        prev ? [entry, ...prev] : [entry],
+        // Qayta yozish (`rewrite` → `submitted`) o'sha yozuvni qaytaradi — dublikat bo'lmasin.
+        prev ? [entry, ...prev.filter((e) => e.id !== entry.id)] : [entry],
       );
       // Bosh ekrandagi "Hisobotlar" va diary.submittedToday yangilanadi.
       void qc.invalidateQueries({ queryKey: todayKeys.all });

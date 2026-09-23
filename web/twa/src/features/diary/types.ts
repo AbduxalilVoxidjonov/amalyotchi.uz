@@ -44,3 +44,22 @@ export const DIARY_MIN_CHARS = 150;
 export const DIARY_MAX_FILES = 5;
 /** Backend `CreateDiaryEntryCommandValidator.AllowedContentTypes`. */
 export const DIARY_FILE_ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf';
+
+export const DIARY_PDF_REQUIRED_MESSAGE = 'Hisobotga PDF fayl biriktirilishi shart.';
+
+/** Backend qoidasi: PDF = content-type `application/pdf` yoki `.pdf` kengaytma. */
+export function isPdfFile(file: { name: string; type?: string | undefined }): boolean {
+  return file.type?.toLowerCase() === 'application/pdf' || /\.pdf$/i.test(file.name.trim());
+}
+
+/**
+ * Bugungi yozuv `rewrite` holatida bo'lsa, qayta yuborishda uning fayllari saqlanadi
+ * (backend `Resubmit` fayllarni qo'shadi) — PDF talabi shu fayllar bilan ham bajariladi.
+ */
+export function rewriteFilesFor(
+  entries: readonly DiaryEntryDto[] | undefined,
+  date: string | undefined,
+): DiaryFileDto[] {
+  if (!entries || !date) return [];
+  return entries.find((e) => e.date === date && e.status === 'rewrite')?.files ?? [];
+}

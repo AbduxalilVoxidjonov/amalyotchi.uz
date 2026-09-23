@@ -1,7 +1,15 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { Badge, Button, Chip, ChipRow, Input, Textarea } from '@/shared/ui';
 import { isApiError } from '@/shared/api/client';
-import { DIARY_FILE_ACCEPT, DIARY_MAX_FILES, DIARY_MIN_CHARS, type DiaryCreate } from '../types';
+import {
+  DIARY_FILE_ACCEPT,
+  DIARY_MAX_FILES,
+  DIARY_MIN_CHARS,
+  DIARY_PDF_REQUIRED_MESSAGE,
+  isPdfFile,
+  type DiaryCreate,
+  type DiaryFileDto,
+} from '../types';
 import styles from './DiaryForm.module.css';
 
 export interface DiaryFormProps {
@@ -9,6 +17,10 @@ export interface DiaryFormProps {
   title: string;
   minChars?: number;
   maxFiles?: number;
+  /** Sozlama `diaryPdfRequired` — true bo'lsa kamida bitta PDF shart. */
+  pdfRequired?: boolean;
+  /** Qayta yozilayotgan (bugungi `rewrite`) yozuvning mavjud fayllari — ulardagi PDF ham hisob. */
+  existingFiles?: readonly DiaryFileDto[];
   /** Bugun allaqachon yuborilgan — sarlavha yonida badge. */
   submittedToday?: boolean;
   pending: boolean;
@@ -22,6 +34,8 @@ export function DiaryForm({
   title,
   minChars = DIARY_MIN_CHARS,
   maxFiles = DIARY_MAX_FILES,
+  pdfRequired = false,
+  existingFiles = [],
   submittedToday = false,
   pending,
   error,
@@ -34,10 +48,13 @@ export function DiaryForm({
   const [files, setFiles] = useState<File[]>([]);
   const [touched, setTouched] = useState(false);
   const [sent, setSent] = useState(false);
+  const [attempted, setAttempted] = useState(false);
 
   const length = text.trim().length;
   const tooShort = length < minChars;
   const tooManyFiles = files.length > maxFiles;
+  const hasPdf = files.some(isPdfFile) || existingFiles.some(isPdfFile);
+  const pdfMissing = pdfRequired && !hasPdf;
   const apiErr = isApiError(error) ? error : null;
   const textError =
     (touched && tooShort && `Kamida ${minChars} belgi yozing (hozir ${length}).`) ||
@@ -45,6 +62,7 @@ export function DiaryForm({
     undefined;
   const filesError =
     (tooManyFiles && `Ko'pi bilan ${maxFiles} ta fayl.`) ||
+    (attempted && pdfMissing && DIARY_PDF_REQUIRED_MESSAGE) ||
     apiErr?.fieldError('files') ||
     undefined;
   const formError = apiErr && apiErr.kind !== 'validation' ? apiErr.message : null;
@@ -52,14 +70,16 @@ export function DiaryForm({
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setTouched(true);
+    setAttempted(true);
     setSent(false);
-    if (tooShort || tooManyFiles) return;
+    if (tooShort || tooManyFiles || pdfMissing) return;
     try {
       await onSubmit({ text: text.trim(), learned, files });
       setText('');
       setLearned('');
       setFiles([]);
       setTouched(false);
+      setAttempted(false);
       setSent(true);
     } catch {
       /* xato `error` prop orqali ko'rsatiladi */
@@ -151,6 +171,11 @@ export function DiaryForm({
         >
           Fayl qo'shish ({files.length}–{maxFiles})
         </Button>
+        {pdfRequired && (
+          <Badge status={hasPdf ? 'ok' : 'late'} size="sm" aria-live="polite">
+            {hasPdf ? 'PDF biriktirilgan' : 'PDF hisobot majburiy'}
+          </Badge>
+        )}
         <Button
           type="submit"
           variant="primary"

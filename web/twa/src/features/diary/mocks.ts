@@ -2,7 +2,14 @@ import { http, HttpResponse, type HttpHandler } from 'msw';
 import { STUDENT_ENDPOINTS } from '@/shared/api/endpoints';
 import { problem, requireBearer } from '@/mocks/problem';
 import { markDiarySubmitted, mockToday } from '@/features/today/mocks';
-import { DIARY_MAX_FILES, DIARY_MIN_CHARS, type DiaryEntryDto } from './types';
+import {
+  DIARY_MAX_FILES,
+  DIARY_MIN_CHARS,
+  DIARY_PDF_REQUIRED_MESSAGE,
+  isPdfFile,
+  rewriteFilesFor,
+  type DiaryEntryDto,
+} from './types';
 
 /** SPEC-SCREENS §6 — faqat "AA" (o'z yozuvlari) + qo'shimcha eski yozuvlar. Kontrakt v2 shakli. */
 function initialEntries(): DiaryEntryDto[] {
@@ -76,7 +83,10 @@ export const diaryHandlers: HttpHandler[] = [
     const form = await request.formData().catch(() => null);
     const text = String(form?.get('text') ?? '').trim();
     const learned = form?.get('learned');
-    const files = (form?.getAll('files') ?? []).filter((f): f is File => f instanceof File);
+    // MSW (undici) `File` ni o'z realmida yaratadi — `instanceof File` ishonchsiz: matn bo'lmagani fayl.
+    const files = (form?.getAll('files') ?? []).filter((f): f is File => typeof f !== 'string');
+    // Backend `Resubmit`: bugungi yozuv `rewrite` holatida bo'lsa qayta yoziladi, fayllari saqlanadi.
+    const rewriting = mockDiary.find((e) => e.date === mockToday.date && e.status === 'rewrite');
     const errors: Record<string, string[]> = {};
     if (text.length < DIARY_MIN_CHARS) {
       errors['Text'] = ['Hisobot matni juda qisqa — minimal uzunlik sozlamada belgilangan.'];
@@ -89,21 +99,30 @@ export const diaryHandlers: HttpHandler[] = [
         errors,
       });
     }
-    if (mockToday.diary.submittedToday) {
+    if (mockToday.diary.submittedToday && !rewriting) {
       return problem(409, 'Ziddiyat', 'Bugungi hisobot allaqachon yuborilgan.');
     }
+    const kept = rewriteFilesFor(mockDiary, mockToday.date);
+    if (mockToday.diary.pdfRequired && !files.some(isPdfFile) && !kept.some(isPdfFile)) {
+      return problem(400, "Ma'lumotlar noto'g'ri", DIARY_PDF_REQUIRED_MESSAGE, {
+        errors: { Files: [DIARY_PDF_REQUIRED_MESSAGE] },
+      });
+    }
     const entry: DiaryEntryDto = {
-      id: `d-${nextId++}`,
+      id: rewriting?.id ?? `d-${nextId++}`,
       date: mockToday.date,
       submittedAt: new Date().toISOString(),
       status: 'submitted',
       text,
       learned: typeof learned === 'string' && learned.trim() ? learned.trim() : null,
-      files: files.map((f, i) => ({ id: `f-new-${i}`, name: f.name, url: `/files/${f.name}` })),
+      files: [
+        ...kept,
+        ...files.map((f, i) => ({ id: `f-new-${i}`, name: f.name, url: `/files/${f.name}` })),
+      ],
       score: null,
       comment: null,
     };
-    mockDiary = [entry, ...mockDiary];
+    mockDiary = [entry, ...mockDiary.filter((e) => e.id !== entry.id)];
     markDiarySubmitted();
     return HttpResponse.json(entry, { status: 201 });
   }),

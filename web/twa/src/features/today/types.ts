@@ -56,6 +56,8 @@ export interface TodayDiaryDto {
   submittedToday: boolean;
   minChars: number;
   maxFiles: number;
+  /** Sozlama `diaryPdfRequired`: true → hisobotga kamida bitta PDF shart (aks holda POST 400 `errors.Files`). */
+  pdfRequired: boolean;
 }
 
 /** GET /api/student/today. Ariza yo'q → `place: null`, `checkin.status = pending`, `checkin.note` da sabab. */

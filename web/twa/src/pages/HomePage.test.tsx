@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw';
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 // `lastCheckinPhoto` mock ichida qayta tayinlanadi — namespace orqali o'qiladi.
 import * as todayMocks from '@/features/today/mocks';
-import { mockToday, setCheckinPhotoRequired } from '@/features/today/mocks';
+import { mockToday, setCheckinPhotoRequired, setDiaryPdfRequired } from '@/features/today/mocks';
 import { server } from '@/mocks/server';
 import { removeGeolocation, renderApp, stubGeolocation } from '@/test/render-app';
 
@@ -228,5 +228,18 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
     expect(screen.getByText('94%')).toBeInTheDocument();
     expect(screen.getByText('4,2')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('button', { name: 'KELDIM' })).toBeEnabled());
+  });
+
+  it("kundalik: diaryPdfRequired → eslatma, PDF'siz yuborilmaydi", async () => {
+    setDiaryPdfRequired(true);
+    renderApp('/');
+    expect(await screen.findByText('PDF hisobot majburiy')).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Bugun bajarilgan ishlar — kamida 150 belgi'), {
+      target: { value: 'x'.repeat(160) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Yuborish' }));
+    expect(await screen.findByText('Hisobotga PDF fayl biriktirilishi shart.')).toBeInTheDocument();
+    expect(screen.queryByText('Kundalik yuborildi.')).not.toBeInTheDocument();
+    expect(mockToday.diary.submittedToday).toBe(false);
   });
 });

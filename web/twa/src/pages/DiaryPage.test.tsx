@@ -1,4 +1,11 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
+import { mockDiary } from '@/features/diary/mocks';
+import type { DiaryEntryDto } from '@/features/diary/types';
+import { mockToday, setDiaryPdfRequired } from '@/features/today/mocks';
+import { problem } from '@/mocks/problem';
+import { server } from '@/mocks/server';
+import { STUDENT_ENDPOINTS } from '@/shared/api/endpoints';
 import { renderApp } from '@/test/render-app';
 
 const LONG_TEXT =
@@ -62,5 +69,143 @@ describe('DiaryPage (kundaligim)', () => {
       'Bugungi hisobot allaqachon yuborilgan.',
     );
     expect(screen.getByText('Yozuvlarim · 5')).toBeInTheDocument();
+  });
+
+  describe('diaryPdfRequired', () => {
+    const PDF_MSG = 'Hisobotga PDF fayl biriktirilishi shart.';
+    afterEach(() => server.events.removeAllListeners());
+
+    function pdf(name = 'hisobot.pdf'): File {
+      return new File([new Uint8Array(32)], name, { type: 'application/pdf' });
+    }
+
+    function attach(file: File) {
+      fireEvent.change(screen.getByLabelText('Fayl tanlash'), { target: { files: [file] } });
+    }
+
+    async function fillText() {
+      await screen.findByText('Yozuvlarim · 4');
+      fireEvent.change(screen.getByPlaceholderText('Bugun bajarilgan ishlar — kamida 150 belgi'), {
+        target: { value: LONG_TEXT },
+      });
+    }
+
+    it("true va PDF yo'q → eslatma ko'rinadi, yuborilmaydi", async () => {
+      setDiaryPdfRequired(true);
+      let posted = 0;
+      server.events.on('request:start', ({ request }) => {
+        if (request.method === 'POST' && request.url.endsWith(STUDENT_ENDPOINTS.diary)) posted++;
+      });
+      renderApp('/kundalik');
+      await fillText();
+      expect(await screen.findByText('PDF hisobot majburiy')).toBeInTheDocument();
+
+      // Rasm PDF emas — talab bajarilmaydi.
+      attach(new File([new Uint8Array(8)], 'rasm.png', { type: 'image/png' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Yuborish' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(PDF_MSG);
+      expect(screen.getByText('PDF hisobot majburiy')).toBeInTheDocument();
+      expect(screen.queryByText('Kundalik yuborildi.')).not.toBeInTheDocument();
+      expect(screen.getByText('Yozuvlarim · 4')).toBeInTheDocument();
+      expect(posted).toBe(0);
+    });
+
+    it('true → PDF qo‘shilgach yuboriladi', async () => {
+      setDiaryPdfRequired(true);
+      // jsdom `File` + Node undici: `request.formData()` multipart parseri boshqa realm `File` ida
+      // assert bilan yiqiladi (HomePage selfie testlaridagi ma'lum muammo). Shuning uchun bu yerda
+      // xom tana o'qiladi va PDF qismi borligi tekshiriladi.
+      let body = '';
+      server.use(
+        http.post(STUDENT_ENDPOINTS.diary, async ({ request }) => {
+          body = await request.text();
+          const entry: DiaryEntryDto = {
+            ...mockDiary[0]!,
+            id: 'd-new',
+            date: mockToday.date,
+            text: LONG_TEXT,
+            files: [{ id: 'f-new', name: 'hisobot.pdf', url: '/files/hisobot.pdf' }],
+          };
+          return HttpResponse.json(entry, { status: 201 });
+        }),
+      );
+      renderApp('/kundalik');
+      await fillText();
+      await screen.findByText('PDF hisobot majburiy');
+
+      attach(pdf());
+      expect(screen.getByText('PDF biriktirilgan')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Yuborish' }));
+
+      expect(await screen.findByText('Kundalik yuborildi.')).toBeInTheDocument();
+      expect(body).toMatch(/name="files"/);
+      expect(body).toMatch(/Content-Type: application\/pdf/i);
+      expect(screen.getByText('Yozuvlarim · 5')).toBeInTheDocument();
+      expect(screen.queryByText(PDF_MSG)).not.toBeInTheDocument();
+    });
+
+    it("false → eslatma yo'q, PDF'siz yuboriladi", async () => {
+      expect(mockToday.diary.pdfRequired).toBe(false);
+      renderApp('/kundalik');
+      await fillText();
+      fireEvent.click(screen.getByRole('button', { name: 'Yuborish' }));
+
+      expect(await screen.findByText('Kundalik yuborildi.')).toBeInTheDocument();
+      expect(screen.queryByText('PDF hisobot majburiy')).not.toBeInTheDocument();
+      expect(screen.queryByText(PDF_MSG)).not.toBeInTheDocument();
+    });
+
+    it('qayta yozish: yozuvda avvaldan PDF bor → talab bajarilgan', async () => {
+      setDiaryPdfRequired(true);
+      const rewrite: DiaryEntryDto = {
+        ...mockDiary[0]!,
+        id: 'd-today',
+        date: mockToday.date,
+        status: 'rewrite',
+        files: [{ id: 'f-9', name: 'Eski_Hisobot.PDF', url: '/files/eski.pdf' }],
+      };
+      server.use(
+        http.get(STUDENT_ENDPOINTS.diary, () => HttpResponse.json([rewrite, ...mockDiary])),
+        http.post(STUDENT_ENDPOINTS.diary, () =>
+          HttpResponse.json({ ...rewrite, status: 'submitted', text: LONG_TEXT }, { status: 201 }),
+        ),
+      );
+      renderApp('/kundalik');
+      await screen.findByText('Yozuvlarim · 5');
+      fireEvent.change(screen.getByPlaceholderText('Bugun bajarilgan ishlar — kamida 150 belgi'), {
+        target: { value: LONG_TEXT },
+      });
+      expect(await screen.findByText('PDF biriktirilgan')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Yuborish' }));
+
+      expect(await screen.findByText('Kundalik yuborildi.')).toBeInTheDocument();
+      // Qayta yozilgan yozuv dublikat bo'lmaydi.
+      expect(screen.getByText('Yozuvlarim · 5')).toBeInTheDocument();
+    });
+
+    it('server 400 (errors.Files) matni forma ostida ko‘rinadi', async () => {
+      server.use(
+        http.post(STUDENT_ENDPOINTS.diary, () =>
+          problem(400, "Ma'lumotlar noto'g'ri", PDF_MSG, { errors: { Files: [PDF_MSG] } }),
+        ),
+      );
+      renderApp('/kundalik');
+      await fillText();
+      fireEvent.click(screen.getByRole('button', { name: 'Yuborish' }));
+
+      const form = screen.getByRole('form', { name: 'Yangi yozuv' });
+      expect(await within(form).findByRole('alert')).toHaveTextContent(PDF_MSG);
+      expect(screen.queryByText('Kundalik yuborildi.')).not.toBeInTheDocument();
+    });
+
+    it("server 400 (faqat detail) matni forma ostida ko'rinadi", async () => {
+      server.use(http.post(STUDENT_ENDPOINTS.diary, () => problem(400, "Noto'g'ri amal", PDF_MSG)));
+      renderApp('/kundalik');
+      await fillText();
+      fireEvent.click(screen.getByRole('button', { name: 'Yuborish' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(PDF_MSG);
+    });
   });
 });

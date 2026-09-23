@@ -45,7 +45,7 @@ function initialToday(): TodayDto {
       reports: 32,
       avgScore: 4.2,
     },
-    diary: { submittedToday: false, minChars: 150, maxFiles: 5 },
+    diary: { submittedToday: false, minChars: 150, maxFiles: 5, pdfRequired: false },
   };
 }
 
@@ -62,6 +62,11 @@ export let lastCheckinPhoto: { name: string; type: string; size: number } | null
 
 export function setCheckinPhotoRequired(value: boolean) {
   mockCheckinPhotoRequired = value;
+}
+
+/** Backend sozlamasi `diaryPdfRequired` ko'zgusi — testda `setDiaryPdfRequired(true)` bilan yoqiladi. */
+export function setDiaryPdfRequired(value: boolean) {
+  mockToday = { ...mockToday, diary: { ...mockToday.diary, pdfRequired: value } };
 }
 
 export function resetTodayMocks() {

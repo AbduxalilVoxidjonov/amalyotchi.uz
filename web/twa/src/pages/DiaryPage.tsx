@@ -4,12 +4,16 @@ import { useAuthStore } from '@/shared/auth/store';
 import { DiaryEntryCard } from '@/features/diary/components/DiaryEntryCard';
 import { DiaryForm } from '@/features/diary/components/DiaryForm';
 import { useCreateDiaryEntry, useDiaryQuery } from '@/features/diary/hooks';
+import { rewriteFilesFor } from '@/features/diary/types';
+import { useTodayQuery } from '@/features/today/hooks';
 import styles from './pages.module.css';
 
 /** SPEC-SCREENS §6 talaba varianti `kundaligim` — yangi yozuv + o'z yozuvlari. */
 export function DiaryPage() {
   const diary = useDiaryQuery();
   const create = useCreateDiaryEntry();
+  // Kundalik sozlamalari (minChars/maxFiles/pdfRequired) — bosh ekran bilan bir manba.
+  const today = useTodayQuery().data;
   const studentName = useAuthStore((s) => s.user?.fullName) ?? 'Talaba';
 
   return (
@@ -17,6 +21,12 @@ export function DiaryPage() {
       <Card padded="lg">
         <DiaryForm
           title="Yangi yozuv"
+          {...(today && {
+            minChars: today.diary.minChars,
+            maxFiles: today.diary.maxFiles,
+            pdfRequired: today.diary.pdfRequired,
+            existingFiles: rewriteFilesFor(diary.data, today.date),
+          })}
           pending={create.isPending}
           error={create.error}
           onSubmit={(input) => create.mutateAsync(input)}
