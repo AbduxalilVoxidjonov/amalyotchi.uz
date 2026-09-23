@@ -129,10 +129,8 @@ async function parseCheckinForm(
     };
   }
 
-  // MSW (undici) `File` ni o'z realmida yaratadi — `instanceof File` ishonchsiz, shuning uchun
-  // matn bo'lmagan qiymat fayl deb qabul qilinadi.
   const raw = data.get('photo');
-  const photo = raw !== null && typeof raw !== 'string' && raw.size > 0 ? raw : null;
+  const photo = raw instanceof File && raw.size > 0 ? raw : null;
   if (photo) {
     if (!(PHOTO_CONTENT_TYPES as readonly string[]).includes(photo.type.toLowerCase())) {
       return {

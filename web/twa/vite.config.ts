@@ -42,7 +42,8 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    environment: 'jsdom',
+    // jsdom + Node 22–26 mosligi (Web Storage, File/FormData realm) — shared/src/test/jsdomEnvironment.ts
+    environment: '../shared/src/test/jsdomEnvironment.ts',
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
     css: false,

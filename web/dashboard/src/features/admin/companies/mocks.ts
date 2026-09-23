@@ -435,8 +435,8 @@ export const companiesHandlers: HttpHandler[] = [
 
   http.post(`${COMPANIES_ENDPOINT}/import`, async ({ request }) => {
     const form = await request.formData().catch(() => null);
-    // Fayl nomi jsdom/undici serializatsiyasida yo'qolishi mumkin — faqat mavjudligini tekshiramiz.
-    if (!form?.has('file')) {
+    const file = form?.get('file');
+    if (!(file instanceof File) || file.size === 0) {
       return problemResponse(400, "Ma'lumotlar noto'g'ri", 'Excel fayl tanlanmagan.');
     }
     return HttpResponse.json(mockCompanyImportResult);

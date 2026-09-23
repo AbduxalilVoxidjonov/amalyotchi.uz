@@ -113,21 +113,12 @@ describe('DiaryPage (kundaligim)', () => {
 
     it('true → PDF qo‘shilgach yuboriladi', async () => {
       setDiaryPdfRequired(true);
-      // jsdom `File` + Node undici: `request.formData()` multipart parseri boshqa realm `File` ida
-      // assert bilan yiqiladi (HomePage selfie testlaridagi ma'lum muammo). Shuning uchun bu yerda
-      // xom tana o'qiladi va PDF qismi borligi tekshiriladi.
-      let body = '';
+      // Yuborilgan multipart tanasi (nusxasi) o'qiladi; handler javob qaytarmaydi — so'rov standart
+      // diary mock'iga o'tadi (u ham `request.formData()` bilan PDF talabini tekshiradi).
+      let sent: FormDataEntryValue[] = [];
       server.use(
         http.post(STUDENT_ENDPOINTS.diary, async ({ request }) => {
-          body = await request.text();
-          const entry: DiaryEntryDto = {
-            ...mockDiary[0]!,
-            id: 'd-new',
-            date: mockToday.date,
-            text: LONG_TEXT,
-            files: [{ id: 'f-new', name: 'hisobot.pdf', url: '/files/hisobot.pdf' }],
-          };
-          return HttpResponse.json(entry, { status: 201 });
+          sent = (await request.clone().formData()).getAll('files');
         }),
       );
       renderApp('/kundalik');
@@ -139,8 +130,14 @@ describe('DiaryPage (kundaligim)', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Yuborish' }));
 
       expect(await screen.findByText('Kundalik yuborildi.')).toBeInTheDocument();
-      expect(body).toMatch(/name="files"/);
-      expect(body).toMatch(/Content-Type: application\/pdf/i);
+      expect(sent).toHaveLength(1);
+      const [file] = sent;
+      expect(file).toBeInstanceOf(File);
+      expect(file).toMatchObject({ name: 'hisobot.pdf', type: 'application/pdf', size: 32 });
+      expect(screen.getByRole('link', { name: 'hisobot.pdf' })).toHaveAttribute(
+        'href',
+        '/files/hisobot.pdf',
+      );
       expect(screen.getByText('Yozuvlarim · 5')).toBeInTheDocument();
       expect(screen.queryByText(PDF_MSG)).not.toBeInTheDocument();
     });

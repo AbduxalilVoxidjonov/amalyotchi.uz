@@ -83,8 +83,7 @@ export const diaryHandlers: HttpHandler[] = [
     const form = await request.formData().catch(() => null);
     const text = String(form?.get('text') ?? '').trim();
     const learned = form?.get('learned');
-    // MSW (undici) `File` ni o'z realmida yaratadi — `instanceof File` ishonchsiz: matn bo'lmagani fayl.
-    const files = (form?.getAll('files') ?? []).filter((f): f is File => typeof f !== 'string');
+    const files = (form?.getAll('files') ?? []).filter((f): f is File => f instanceof File);
     // Backend `Resubmit`: bugungi yozuv `rewrite` holatida bo'lsa qayta yoziladi, fayllari saqlanadi.
     const rewriting = mockDiary.find((e) => e.date === mockToday.date && e.status === 'rewrite');
     const errors: Record<string, string[]> = {};
