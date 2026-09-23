@@ -1,21 +1,38 @@
-/* SPEC-SCREENS §13 — Sozlamalar: guruh kartalari (2 ustun, masonry) + pastda sticky Saqlash paneli */
+/* SPEC-SCREENS §13 — Sozlamalar: guruh kartalari (3 teng ustun) + pastda sticky Saqlash paneli */
 .root {
-  /* Ustunning minimal kengligi — shundan tor ekranda 1 ustun. */
-  --settings-col-min: 380px;
+  /* 3 ustun sig'adigan kenglik (dizayn tokenlarida sahifa kengligi yo'q). */
+  --settings-max: 1440px;
   display: flex;
   flex-direction: column;
   gap: var(--section-grid-gap);
-  max-width: 1120px;
+  max-width: var(--settings-max);
 }
 
-/* 2 ustunli masonry: balandligi har xil kartalar orasida bo'sh joy qolmaydi. */
+/* 3 ta AYNAN teng ustun; bir qatordagi kartalar bir xil balandlikda. */
 .grid {
-  columns: 2 var(--settings-col-min);
-  column-gap: var(--section-grid-gap);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: var(--section-grid-gap);
 }
+/* Tarkib yuqoriga tekis — qisqa karta (Korxonalar) cho'zilganda pastda bo'sh joy qoladi. */
 .card {
-  break-inside: avoid;
-  margin-bottom: var(--section-grid-gap);
+  height: 100%;
+}
+/* Bayramlar — pastda to'liq kenglikda. */
+.holidaysCard {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1200px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* ——— Sozlama qatori ——— */
@@ -30,18 +47,17 @@
 .settingRow:last-child {
   border-bottom: 0;
 }
+/* Label chapda, boshqaruv o'ngda; sig'masa boshqaruv label ostiga o'tadi (wrap). */
 .settingMain {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--stat-grid-gap);
 }
-/* Kun chip'lari keng — tor kartada label ostiga tushadi. */
-.settingRow[data-type='weekdays'] .settingMain {
-  flex-wrap: wrap;
-}
+/* 12em — label uchun minimal joy; undan tor bo'lsa qator vertikalga o'tadi. */
 .settingText {
-  flex: 1 1 0;
+  flex: 1 1 12em;
   min-width: 0;
 }
 .settingName {
@@ -150,10 +166,16 @@
 }
 
 /* ——— Bayramlar ——— */
+/* UCH TENG USTUN: ro'yxat 7+ qator bo'lib kartani pastga cho'zib yuborardi.
+   `minmax(0, 1fr)` — ustunlar AYNAN teng kenglikda (uzun bayram nomi o'z ustunini
+   kengaytirib, qolgan ikkitasini siqib qo'ymasin). */
 .holidays {
   list-style: none;
   margin: 0;
   padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: var(--stat-grid-gap);
 }
 .holidayRow {
   display: flex;
@@ -164,9 +186,9 @@
   font-size: var(--fs-md);
   color: var(--color-text-2);
 }
-.holidayRow:last-child {
-  border-bottom: 0;
-}
+/* ⚠️ Ilgari `:last-child` da pastki chiziq olib tashlanardi. To'rda («grid») bu FAQAT eng
+   oxirgi katakka tegadi — pastki qator notekis ko'rinardi (ikki katakda chiziq bor, uchinchisida
+   yo'q). Shuning uchun chiziq HAMMA katakda bir xil qoldirildi. */
 .holidayDate {
   flex-shrink: 0;
   min-width: 6.5em;
@@ -178,9 +200,25 @@
   min-width: 0;
 }
 .holidayEmpty {
+  /* Bo'sh holat matni BUTUN kenglikni oladi — aks holda u birinchi ustunga siqilib, yonida
+     ikkita bo'sh katak turardi. */
+  grid-column: 1 / -1;
   padding: var(--row-pad-comfortable) var(--row-pad-x);
   font-size: var(--fs-md);
   color: var(--color-text-faint);
+}
+
+/* Tor ekranda uchta ustun siqilib ketadi: avval ikkitaga, keyin bittaga tushadi
+   (loyihadagi mavjud chegaralar — `DashboardView`/`CompanyFormModal` bilan bir xil). */
+@media (max-width: 900px) {
+  .holidays {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .holidays {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* ——— Sticky Saqlash paneli (hamma guruhlar uchun bitta) ——— */

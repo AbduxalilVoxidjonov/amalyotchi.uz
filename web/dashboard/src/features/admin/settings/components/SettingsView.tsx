@@ -202,7 +202,7 @@ function SettingRow({ setting, value, error, disabled, onChange }: SettingRowPro
   );
 }
 
-/** SPEC-SCREENS §13 — guruhlangan qoidalar (2 ustun) · Bayramlar · pastda sticky Saqlash paneli. */
+/** SPEC-SCREENS §13 — guruhlangan qoidalar (3 ustun) · Bayramlar · pastda sticky Saqlash paneli. */
 export function SettingsView({
   data,
   values,
@@ -250,7 +250,11 @@ export function SettingsView({
           );
         })}
 
-        <Card as="section" aria-labelledby="settings-holidays" className={styles.card}>
+        <Card
+          as="section"
+          aria-labelledby="settings-holidays"
+          className={cn(styles.card, styles.holidaysCard)}
+        >
           <CardHeader
             title={<span id="settings-holidays">Bayram va dam olish kunlari</span>}
             actions={
