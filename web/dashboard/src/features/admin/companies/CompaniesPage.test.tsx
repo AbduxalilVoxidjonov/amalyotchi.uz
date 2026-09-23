@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { MapPickerProps } from '@/shared/ui/map-picker';
+import { renderHierarchyPage } from '../shared/renderHierarchyPage';
 import { renderWithProviders } from '../shared/renderWithProviders';
 import { CompaniesPage } from './CompaniesPage';
 import { resetCompaniesMock } from './mocks';
@@ -85,6 +86,15 @@ describe('CompaniesPage', () => {
       'href',
       '/admin/companies/c1',
     );
+  });
+
+  it("qatorning nom bo'lmagan katagi bosilsa — detail sahifasi ochiladi", async () => {
+    const user = userEvent.setup();
+    renderHierarchyPage(<CompaniesPage />, '/admin/companies', ['/admin/companies']);
+    const row = (await screen.findByText('Tech Solutions MChJ')).closest('[role="row"]');
+    // Manzil katagi (nom emas).
+    await user.click(within(row as HTMLElement).getByText('Toshkent, Amir Temur 108'));
+    expect(await screen.findByTestId('location')).toHaveTextContent('/admin/companies/c1');
   });
 
   it("STIR chegarasidan oshgan korxona ogohlantirish bilan ko'rsatiladi", async () => {

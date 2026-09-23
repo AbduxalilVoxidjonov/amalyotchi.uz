@@ -29,6 +29,8 @@ export interface AdminTableProps<T> extends TableStateProps<T> {
   rowActions?: ((row: T) => ReactNode) | undefined;
   /** `true` qaytarsa qator xiralashtiriladi (masalan `isActive: false`). */
   rowDim?: ((row: T) => boolean) | undefined;
+  /** Qatorning istalgan joyi bosilsa — shu ichki sahifaga o'tish (`DataTable.rowHref`). */
+  rowHref?: ((row: T) => string | undefined) | undefined;
   emptyTitle: string;
   emptyDescription?: ReactNode;
   minWidth?: string;
@@ -48,6 +50,7 @@ export function AdminTable<T>({
   actions,
   rowActions,
   rowDim,
+  rowHref,
   emptyTitle,
   emptyDescription,
   minWidth,
@@ -90,6 +93,7 @@ export function AdminTable<T>({
       rowKey={(r) => rowKey(r)}
       {...(rowActions ? { actions: rowActions } : {})}
       {...(rowDim ? { rowDim: (r: T) => rowDim(r) } : {})}
+      {...(rowHref ? { rowHref } : {})}
       {...(minWidth ? { minWidth } : {})}
       emptyText={state}
       toolbar={

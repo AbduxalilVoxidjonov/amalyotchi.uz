@@ -38,7 +38,7 @@ describe('FacultyDepartmentsPage', () => {
     ).toBeInTheDocument();
   });
 
-  it("qatorga bosib ichkariga o'tish — URL o'zgaradi", async () => {
+  it("nom havolasi bosilsa ichkariga o'tiladi — URL o'zgaradi", async () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByText('Kompyuter injiniringi kafedrasi');
@@ -47,6 +47,32 @@ describe('FacultyDepartmentsPage', () => {
     expect(await screen.findByTestId('location')).toHaveTextContent(
       '/admin/faculties/f1/departments/d1',
     );
+  });
+
+  it("qatorning nom bo'lmagan katagi bosilsa — yo'nalishlar sahifasiga o'tiladi", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Kompyuter injiniringi kafedrasi');
+
+    // 2-katak — kafedra kodi (havola emas).
+    await user.click(rowFor('Kompyuter injiniringi kafedrasi').getAllByRole('cell')[1]!);
+    expect(await screen.findByTestId('location')).toHaveTextContent(
+      '/admin/faculties/f1/departments/d1',
+    );
+  });
+
+  it("qatordagi amal tugmasi bosilsa — navigatsiya bo'lmaydi", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Kompyuter injiniringi kafedrasi');
+
+    await user.click(
+      rowFor('Kompyuter injiniringi kafedrasi').getByRole('button', { name: 'Faol emas qilish' }),
+    );
+    await waitFor(() =>
+      expect(rowFor('Kompyuter injiniringi kafedrasi').getByText('Faol emas')).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId('location')).not.toBeInTheDocument();
   });
 
   it("yaratish: modal ochiladi → to'ldiriladi → ro'yxatda paydo bo'ladi", async () => {

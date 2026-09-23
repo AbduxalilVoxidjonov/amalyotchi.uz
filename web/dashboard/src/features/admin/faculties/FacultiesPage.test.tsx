@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/mocks/server';
+import { renderHierarchyPage } from '../shared/renderHierarchyPage';
 import { renderWithProviders } from '../shared/renderWithProviders';
 import { FACULTIES_ENDPOINT } from './api';
 import { FacultiesPage } from './FacultiesPage';
@@ -45,6 +46,28 @@ describe('FacultiesPage', () => {
       'href',
       '/admin/faculties/f1',
     );
+  });
+
+  it("qatorning nom bo'lmagan katagi bosilsa — kafedralar sahifasiga o'tiladi", async () => {
+    const user = userEvent.setup();
+    renderHierarchyPage(<FacultiesPage />, '/admin/faculties', ['/admin/faculties']);
+    await screen.findByText('Axborot texnologiyalari');
+
+    // 2-katak — yo'nalishlar soni (havola emas).
+    await user.click(rowFor('Axborot texnologiyalari').getAllByRole('cell')[1]!);
+    expect(await screen.findByTestId('location')).toHaveTextContent('/admin/faculties/f1');
+  });
+
+  it("qatordagi amal tugmasi bosilsa — navigatsiya bo'lmaydi, modal ochiladi", async () => {
+    const user = userEvent.setup();
+    renderHierarchyPage(<FacultiesPage />, '/admin/faculties', ['/admin/faculties']);
+    await screen.findByText('Axborot texnologiyalari');
+
+    await user.click(rowFor('Axborot texnologiyalari').getByRole('button', { name: 'Tahrirlash' }));
+    expect(
+      await screen.findByRole('dialog', { name: 'Fakultetni tahrirlash' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('location')).not.toBeInTheDocument();
   });
 
   it("bo'sh javob → EmptyState", async () => {

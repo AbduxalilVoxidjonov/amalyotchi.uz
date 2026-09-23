@@ -3,6 +3,11 @@ import { AdminTable, type TableStateProps } from '../../../components/AdminTable
 import { RowLink } from '../../../components/RowLink';
 import type { DepartmentRow } from '../types';
 
+/** Kafedra ichki sahifasi (yo'nalishlar ro'yxati) — nom havolasi va butun qator uchun. */
+function departmentHref(facultyId: string, departmentId: string): string {
+  return `/admin/faculties/${facultyId}/departments/${departmentId}`;
+}
+
 function columns(facultyId: string): DataTableColumn<DepartmentRow>[] {
   return [
     {
@@ -10,9 +15,7 @@ function columns(facultyId: string): DataTableColumn<DepartmentRow>[] {
       header: 'Kafedra',
       width: 'minmax(200px,2fr)',
       strong: true,
-      render: (r) => (
-        <RowLink to={`/admin/faculties/${facultyId}/departments/${r.id}`}>{r.name}</RowLink>
-      ),
+      render: (r) => <RowLink to={departmentHref(facultyId, r.id)}>{r.name}</RowLink>,
     },
     { key: 'code', header: 'Kod', width: 'minmax(90px,.8fr)', mono: true },
     { key: 'directions', header: "Yo'nalish", width: 'minmax(100px,.9fr)', mono: true },
@@ -53,6 +56,7 @@ export function DepartmentsTable({
       minWidth="760px"
       emptyTitle="Kafedralar yo'q"
       rowDim={(r) => !r.isActive}
+      rowHref={(r) => departmentHref(facultyId, r.id)}
       rowActions={(r) => (
         <>
           <Button size="xs" onClick={() => onEdit(r)}>

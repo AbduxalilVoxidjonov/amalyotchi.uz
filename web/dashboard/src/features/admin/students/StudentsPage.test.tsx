@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { http } from 'msw';
 import { server } from '@/mocks/server';
 import { problemResponse } from '../shared/mockProblem';
+import { renderHierarchyPage } from '../shared/renderHierarchyPage';
 import { renderWithProviders } from '../shared/renderWithProviders';
 import { STUDENTS_IMPORT_ENDPOINT } from './api';
 import { StudentsPage } from './StudentsPage';
@@ -38,6 +39,33 @@ describe('StudentsPage', () => {
       'href',
       '/admin/students/s1',
     );
+  });
+
+  it("qatorning nom bo'lmagan katagi bosilsa — talaba profili ochiladi", async () => {
+    const user = userEvent.setup();
+    renderHierarchyPage(<StudentsPage />, '/admin/students', ['/admin/students']);
+    const row = (await screen.findByRole('link', { name: 'Aliyev Akmal' })).closest('[role="row"]');
+    // Guruh katagi (checkbox, №, ism — keyin).
+    await user.click(within(row as HTMLElement).getAllByRole('cell')[3]!);
+    expect(await screen.findByTestId('location')).toHaveTextContent('/admin/students/s1');
+  });
+
+  it("checkbox va uning katagi bosilsa navigatsiya bo'lmaydi, tanlov ishlaydi", async () => {
+    const user = userEvent.setup();
+    renderHierarchyPage(<StudentsPage />, '/admin/students', ['/admin/students']);
+    const box = await screen.findByRole('checkbox', { name: 'Aliyev Akmal ni belgilash' });
+
+    await user.click(box);
+    expect(box).toBeChecked();
+    expect(screen.getByText('1 ta tanlandi')).toBeInTheDocument();
+    expect(screen.queryByTestId('location')).not.toBeInTheDocument();
+
+    // Katakcha atrofidagi bo'sh joy (`data-row-click-ignore` o'rami) — tanlov ham, sahifa ham o'zgarmaydi.
+    const wrapper = box.closest('[data-row-click-ignore]');
+    expect(wrapper).not.toBeNull();
+    await user.click(wrapper as HTMLElement);
+    expect(screen.queryByTestId('location')).not.toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Talabalar' })).toBeInTheDocument();
   });
 
   it('Excel import: fayl yuklanadi, hisobot (qo‘shildi/xatolar) ko‘rsatiladi', async () => {

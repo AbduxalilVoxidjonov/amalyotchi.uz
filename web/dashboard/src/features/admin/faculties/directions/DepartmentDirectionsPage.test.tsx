@@ -45,7 +45,7 @@ describe('DepartmentDirectionsPage', () => {
     ).toBeInTheDocument();
   });
 
-  it("qatorga bosib ichkariga o'tish — URL o'zgaradi", async () => {
+  it("nom havolasi bosilsa ichkariga o'tiladi — URL o'zgaradi", async () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByText('Dasturiy injiniring');
@@ -54,6 +54,27 @@ describe('DepartmentDirectionsPage', () => {
     expect(await screen.findByTestId('location')).toHaveTextContent(
       '/admin/faculties/f1/departments/d1/directions/dir2',
     );
+  });
+
+  it("qatorning nom bo'lmagan katagi bosilsa — guruhlar sahifasiga o'tiladi", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Dasturiy injiniring');
+
+    await user.click(rowFor('Dasturiy injiniring').getByText('DI-B'));
+    expect(await screen.findByTestId('location')).toHaveTextContent(
+      '/admin/faculties/f1/departments/d1/directions/dir2',
+    );
+  });
+
+  it("qatordagi amal tugmasi bosilsa — navigatsiya bo'lmaydi, modal ochiladi", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Dasturiy injiniring');
+
+    await user.click(rowFor('Dasturiy injiniring').getByRole('button', { name: 'Tahrirlash' }));
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(screen.queryByTestId('location')).not.toBeInTheDocument();
   });
 
   it("yaratish: modal ochiladi → to'ldiriladi → ro'yxatda paydo bo'ladi", async () => {

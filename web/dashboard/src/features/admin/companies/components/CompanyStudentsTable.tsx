@@ -16,6 +16,9 @@ import {
 } from '../types';
 import styles from './CompanyStudentsTable.module.css';
 
+/** Talaba profili — ism havolasi va butun qator bosilishi uchun bitta manba. */
+const studentHref = (r: CompanyStudent) => `/admin/students/${r.studentId}`;
+
 const COLUMNS: DataTableColumn<CompanyStudent>[] = [
   {
     key: 'name',
@@ -26,7 +29,7 @@ const COLUMNS: DataTableColumn<CompanyStudent>[] = [
       <PersonCell
         name={r.name}
         sub={`HEMIS ${r.hemisId}`}
-        to={`/admin/students/${r.studentId}`}
+        to={studentHref(r)}
       />
     ),
   },
@@ -121,6 +124,7 @@ export function CompanyStudentsTable({
       columns={COLUMNS}
       rows={isLoading || error ? [] : rows}
       rowKey={(r) => r.studentId}
+      rowHref={studentHref}
       minWidth="1040px"
       toolbar={
         <div>

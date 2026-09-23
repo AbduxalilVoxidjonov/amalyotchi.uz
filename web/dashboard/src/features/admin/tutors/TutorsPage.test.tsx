@@ -57,6 +57,23 @@ describe('TutorsPage', () => {
     expect(await screen.findByTestId('location')).toHaveTextContent('/admin/tutors/t1');
   });
 
+  it("qatorning nom bo'lmagan katagi bosilsa — detail sahifasi ochiladi; amal tugmasi esa o'tkazmaydi", async () => {
+    const user = userEvent.setup();
+    renderHierarchyPage(<TutorsPage />, '/admin/tutors', ['/admin/tutors']);
+    await screen.findByText('Nodira Saidova');
+
+    // Amal tugmasi — modal ochadi, sahifa o'zgarmaydi.
+    await user.click(rowFor('Nodira Saidova').getByRole('button', { name: 'Tahrirlash' }));
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(screen.queryByTestId('location')).not.toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+    // Telefon katagi (nom emas) — butun qator havola.
+    await user.click(rowFor('Nodira Saidova').getAllByRole('cell')[1]!);
+    expect(await screen.findByTestId('location')).toHaveTextContent('/admin/tutors/t1');
+  });
+
   it('fakultet filtri: faqat tanlangan fakultet tyutorlari qoladi', async () => {
     const user = userEvent.setup();
     renderWithProviders(<TutorsPage />);

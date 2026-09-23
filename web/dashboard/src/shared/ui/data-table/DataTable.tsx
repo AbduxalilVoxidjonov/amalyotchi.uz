@@ -1,5 +1,5 @@
-import type { CSSProperties, HTMLAttributes, ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import type { CSSProperties, HTMLAttributes, MouseEvent, ReactNode } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Avatar, cn } from '@amaliyotchi/shared/ui';
 import styles from './DataTable.module.css';
 
@@ -39,6 +39,14 @@ export interface DataTableProps<T> extends Omit<HTMLAttributes<HTMLDivElement>, 
   /** Gorizontal scroll'da minimal kenglik. */
   minWidth?: string;
   onRowClick?: (row: T, index: number) => void;
+  /**
+   * Qatorning istalgan joyi bosilsa — shu href'ga o'tiladi (faqat sichqoncha uchun qulaylik;
+   * klaviatura uchun tab to'xtash joyi qator ichidagi nom havolasi bo'lib qoladi).
+   * `undefined` qaytarsa, o'sha qator bosilmaydi. Interaktiv elementlar
+   * (`ROW_CLICK_IGNORE_SELECTOR`) va `[data-row-click-ignore]` bosilishi navigatsiya qilmaydi.
+   * Cmd/Ctrl+bosish yoki o'rta tugma — yangi tab. Router konteksti talab qilinadi.
+   */
+  rowHref?: (row: T) => string | undefined;
   selectedKey?: string | number | null;
   /** `true` qaytarsa qator xiralashtiriladi (masalan `isActive: false` yozuv). */
   rowDim?: (row: T, index: number) => boolean;
@@ -52,12 +60,53 @@ function defaultCell<T>(row: T, key: string): ReactNode {
   return typeof v === 'object' ? String(v) : (v as ReactNode);
 }
 
+/** Qator bosilishi e'tiborsiz qoldiriladigan (o'z vazifasi bor) elementlar. */
+const ROW_CLICK_IGNORE_SELECTOR = [
+  'a',
+  'button',
+  'input',
+  'select',
+  'textarea',
+  'label',
+  'summary',
+  '[role=button]',
+  '[role=menuitem]',
+  '[role=checkbox]',
+  '[contenteditable]',
+  '[data-row-click-ignore]',
+].join(',');
+
+/** Bosish qator navigatsiyasini ishga tushirmasligi kerakmi (interaktiv element, belgilangan matn...). */
+function shouldIgnoreRowClick(e: MouseEvent<HTMLElement>): boolean {
+  if (e.defaultPrevented) return true;
+  const row = e.currentTarget;
+  const target = e.target;
+  // Portal (modal/menyu) ichidan React orqali ko'tarilgan hodisalar — qator DOM'ida emas.
+  if (!(target instanceof Element) || !row.contains(target)) return true;
+  const hit = target.closest(ROW_CLICK_IGNORE_SELECTOR);
+  if (hit && hit !== row && row.contains(hit)) return true;
+  const selection = typeof window !== 'undefined' ? window.getSelection()?.toString() : '';
+  return Boolean(selection);
+}
+
+type RowNavigate = (href: string) => void;
+
 /**
  * CSS grid asosidagi jadval (SPEC-TOKENS 4.4). Ustunlar `width` orqali `grid-template-columns` ga yig'iladi.
  * Butun jadval bitta grid: head/qatorlar `display: contents` — shuning uchun `auto`/`max-content`
  * kenglikli ustunlar (masalan `actions`) ham barcha qatorlarda bir xil kenglikda bo'ladi.
  */
-export function DataTable<T>({
+export function DataTable<T>(props: DataTableProps<T>) {
+  // `useNavigate` faqat `rowHref` bo'lganda chaqiriladi — router'siz ishlatilgan jadvallar o'zgarmaydi.
+  return props.rowHref ? <RoutedDataTable {...props} /> : <DataTableView {...props} />;
+}
+
+function RoutedDataTable<T>(props: DataTableProps<T>) {
+  const navigate = useNavigate();
+  return <DataTableView {...props} navigate={navigate} />;
+}
+
+function DataTableView<T>({
   columns,
   rows,
   rowKey,
@@ -71,10 +120,12 @@ export function DataTable<T>({
   onRowClick,
   selectedKey = null,
   rowDim,
+  rowHref,
+  navigate,
   className,
   style,
   ...rest
-}: DataTableProps<T>) {
+}: DataTableProps<T> & { navigate?: RowNavigate }) {
   const cols = columns.map((c) => c.width ?? '1fr').concat(actions ? [actionsWidth] : []);
   const gridStyle = {
     ...style,
@@ -118,6 +169,19 @@ export function DataTable<T>({
             rows.map((row, i) => {
               const key = rowKey(row, i);
               const clickable = Boolean(onRowClick);
+              const href = navigate ? rowHref?.(row) : undefined;
+              const openHref = (e: MouseEvent<HTMLDivElement>, newTab: boolean) => {
+                if (!href || shouldIgnoreRowClick(e)) return;
+                if (newTab) window.open(href, '_blank', 'noopener');
+                else navigate?.(href);
+              };
+              const handleClick =
+                clickable || href
+                  ? (e: MouseEvent<HTMLDivElement>) => {
+                      onRowClick?.(row, i);
+                      if (e.button === 0) openHref(e, e.metaKey || e.ctrlKey);
+                    }
+                  : undefined;
               return (
                 <div
                   key={key}
@@ -126,7 +190,9 @@ export function DataTable<T>({
                   data-clickable={clickable || undefined}
                   data-selected={selectedKey !== null && selectedKey === key ? 'true' : undefined}
                   data-row-dim={rowDim?.(row, i) ? 'true' : undefined}
-                  onClick={clickable ? () => onRowClick?.(row, i) : undefined}
+                  data-row-link={href ? 'true' : undefined}
+                  onClick={handleClick}
+                  onAuxClick={href ? (e) => e.button === 1 && openHref(e, true) : undefined}
                 >
                   {columns.map((c, ci) => (
                     <div

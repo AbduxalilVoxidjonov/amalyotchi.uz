@@ -35,6 +35,9 @@ function SelectBox({
   );
 }
 
+/** Talaba profili — ism havolasi va butun qator bosilishi uchun bitta manba. */
+const studentHref = (r: Student) => `/admin/students/${r.id}`;
+
 /** SPEC §9.6 ustunlari. ❓ `bar:0` — dizaynda foiz bo'sh; matn o'rni (38px) saqlanadi — track'lar teng. */
 const BASE_COLUMNS: DataTableColumn<Student>[] = [
   {
@@ -43,7 +46,7 @@ const BASE_COLUMNS: DataTableColumn<Student>[] = [
     width: 'minmax(180px,1.6fr)',
     strong: true,
     // Ism — talaba profiliga havola (`/admin/students/:studentId`), tyutor/korxona jadvallaridagidek.
-    render: (r) => <RowLink to={`/admin/students/${r.id}`}>{r.fullName}</RowLink>,
+    render: (r) => <RowLink to={studentHref(r)}>{r.fullName}</RowLink>,
   },
   { key: 'group', header: 'Guruh', width: 'minmax(90px,.7fr)', mono: true, dim: true },
   { key: 'faculty', header: 'Fakultet', width: 'minmax(170px,1.3fr)' },
@@ -126,12 +129,16 @@ export function StudentsTable({
         // Trek = padding + 15px katakcha — aks holda kontent qutisi katakchadan tor bo'lib,
         // qatorlarda u `cellText` ning `overflow: hidden` i bilan kesiladi.
         width: 'calc(var(--row-pad-x) + 15px + 12px)',
+        // `data-row-click-ignore` o'rami (`::before` bilan butun katakni qoplaydi): katakcha
+        // atrofidagi bo'sh joy bosilganda ham qator navigatsiyasi bo'lmaydi.
         render: (r) => (
-          <SelectBox
-            checked={selectedIds.has(r.id)}
-            label={`${r.fullName} ni belgilash`}
-            onChange={(checked) => onToggleRow(r.id, checked)}
-          />
+          <div className={styles.checkCell} data-row-click-ignore>
+            <SelectBox
+              checked={selectedIds.has(r.id)}
+              label={`${r.fullName} ni belgilash`}
+              onChange={(checked) => onToggleRow(r.id, checked)}
+            />
+          </div>
         ),
       },
       {
@@ -158,6 +165,7 @@ export function StudentsTable({
       rowKey={(r) => r.id}
       minWidth="980px"
       emptyTitle="Talabalar yo'q"
+      rowHref={studentHref}
       actions={
         <>
           {selectedCount > 0 && (

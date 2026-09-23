@@ -3,6 +3,9 @@ import { AdminTable, type TableStateProps } from '../../components/AdminTable';
 import { RowLink } from '../../components/RowLink';
 import { FACULTY_STATUS_LABEL, type Faculty } from '../types';
 
+/** Fakultet ichki sahifasi (kafedralar ro'yxati) — nom havolasi va butun qator uchun. */
+const facultyHref = (r: Faculty) => `/admin/faculties/${r.id}`;
+
 /** SPEC §9.3 ustunlari (cols aynan) + `isActive` holat badge'i. Nom — kafedralarga kiradigan havola. */
 const COLUMNS: DataTableColumn<Faculty>[] = [
   {
@@ -10,7 +13,7 @@ const COLUMNS: DataTableColumn<Faculty>[] = [
     header: 'Fakultet',
     width: 'minmax(200px,2fr)',
     strong: true,
-    render: (r) => <RowLink to={`/admin/faculties/${r.id}`}>{r.name}</RowLink>,
+    render: (r) => <RowLink to={facultyHref(r)}>{r.name}</RowLink>,
   },
   { key: 'directions', header: "Yo'nalish", width: 'minmax(100px,.9fr)', mono: true },
   { key: 'groups', header: 'Guruh', width: 'minmax(80px,.8fr)', mono: true },
@@ -60,6 +63,7 @@ export function FacultiesTable({
       minWidth="820px"
       emptyTitle="Fakultetlar yo'q"
       rowDim={(r) => !r.isActive}
+      rowHref={facultyHref}
       rowActions={(r) => (
         <>
           <Button size="xs" onClick={() => onEdit(r)}>

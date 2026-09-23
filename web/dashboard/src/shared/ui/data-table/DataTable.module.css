@@ -90,7 +90,8 @@
 .row[data-selected='true'] > .cell {
   background: var(--color-surface-2);
 }
-.row[data-clickable='true'] > .cell {
+.row[data-clickable='true'] > .cell,
+.row[data-row-link='true'] > .cell {
   cursor: pointer;
 }
 /* isActive:false kabi "o'chirilgan" yozuvlar — amallar ustuni bundan mustasno (bosilishi kerak). */

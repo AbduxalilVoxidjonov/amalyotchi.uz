@@ -5,9 +5,12 @@ import { formatTin } from '../../shared/format';
 import { COMPANY_FLAG_LABEL, studentsOfLimit, type Company } from '../types';
 import styles from './CompaniesTable.module.css';
 
+/** Korxona detail sahifasi — nom havolasi va butun qator bosilishi uchun bitta manba. */
+const companyHref = (r: Company) => `/admin/companies/${r.id}`;
+
 /**
  * SPEC §9.7 ustunlari. STIR — xom 9 raqamdan formatlanadi; korxona nomi detail sahifasiga havola
- * (`AdminTable` qator bosishni uzatmaydi — ierarxiya jadvallaridagi `RowLink` naqshi).
+ * (`RowLink` — klaviatura uchun; sichqoncha bilan qatorning istalgan joyi ham shu sahifani ochadi).
  * `overLimit` qatorda talaba ustuni "21/10" ogohlantirish `Badge`iga aylanadi.
  */
 const COLUMNS: DataTableColumn<Company>[] = [
@@ -16,7 +19,7 @@ const COLUMNS: DataTableColumn<Company>[] = [
     header: 'Korxona',
     width: 'minmax(190px,1.7fr)',
     strong: true,
-    render: (r) => <RowLink to={`/admin/companies/${r.id}`}>{r.name}</RowLink>,
+    render: (r) => <RowLink to={companyHref(r)}>{r.name}</RowLink>,
   },
   {
     key: 'tin',
@@ -94,6 +97,7 @@ export function CompaniesTable({
       minWidth="880px"
       emptyTitle="Korxonalar yo'q"
       rowDim={(r) => !r.isActive}
+      rowHref={companyHref}
       rowActions={(r) => (
         <>
           <Button size="xs" onClick={() => onEdit(r)}>

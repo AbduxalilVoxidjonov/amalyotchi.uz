@@ -3,6 +3,15 @@ import { AdminTable, type TableStateProps } from '../../../components/AdminTable
 import { RowLink } from '../../../components/RowLink';
 import type { DirectionRow } from '../types';
 
+/** Yo'nalish ichki sahifasi (guruhlar ro'yxati) — nom havolasi va butun qator uchun. */
+function directionHref(
+  facultyId: string,
+  departmentId: string,
+  directionId: string,
+): string {
+  return `/admin/faculties/${facultyId}/departments/${departmentId}/directions/${directionId}`;
+}
+
 function columns(facultyId: string, departmentId: string): DataTableColumn<DirectionRow>[] {
   return [
     {
@@ -10,13 +19,7 @@ function columns(facultyId: string, departmentId: string): DataTableColumn<Direc
       header: "Yo'nalish",
       width: 'minmax(200px,2fr)',
       strong: true,
-      render: (r) => (
-        <RowLink
-          to={`/admin/faculties/${facultyId}/departments/${departmentId}/directions/${r.id}`}
-        >
-          {r.name}
-        </RowLink>
-      ),
+      render: (r) => <RowLink to={directionHref(facultyId, departmentId, r.id)}>{r.name}</RowLink>,
     },
     { key: 'code', header: 'Kod', width: 'minmax(90px,.8fr)', mono: true },
     { key: 'groups', header: 'Guruh', width: 'minmax(80px,.8fr)', mono: true },
@@ -58,6 +61,7 @@ export function DirectionsTable({
       minWidth="700px"
       emptyTitle="Yo'nalishlar yo'q"
       rowDim={(r) => !r.isActive}
+      rowHref={(r) => directionHref(facultyId, departmentId, r.id)}
       rowActions={(r) => (
         <>
           <Button size="xs" onClick={() => onEdit(r)}>

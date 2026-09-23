@@ -20,8 +20,30 @@
   display: none;
 }
 /* Qator katagidagi `cellText` (`overflow: hidden`) fokus halqasini kesmasin */
-[role='cell'] > :has(> .check) {
+[role='cell'] > :has(> .check),
+[role='cell'] > :has(> .checkCell) {
   overflow: visible;
+}
+
+/* Qatordagi katakcha o'rami (`data-row-click-ignore`). `::before` butun katakni (padding bilan)
+ * qoplaydi — bo'sh joy bosilishi ham o'ramga tushadi va qator navigatsiyasi bo'lmaydi.
+ * Katakcha o'lchami/joylashuvi o'zgarmaydi (o'ram oqimda faqat `.check` ni o'raydi). */
+[role='cell']:has(> * > .checkCell) {
+  position: relative;
+}
+.checkCell {
+  display: flex;
+  align-items: center;
+}
+.checkCell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  cursor: default;
+}
+.checkCell > .check {
+  position: relative;
+  z-index: 1;
 }
 
 /* Tanlov paneli: "N ta tanlandi" */

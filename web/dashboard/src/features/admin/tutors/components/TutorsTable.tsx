@@ -5,6 +5,9 @@ import { DASH, formatPhone, formatScope } from '../../shared/format';
 import { TUTOR_STATUS_LABEL, type Tutor } from '../types';
 import styles from './TutorsTable.module.css';
 
+/** Tyutor detail sahifasi — nom havolasi va butun qator bosilishi uchun bitta manba. */
+const tutorHref = (r: Tutor) => `/admin/tutors/${r.id}`;
+
 /**
  * SPEC §9.5 ustunlari. Kutayotgan — kechikayotgan tyutorda qizil (`fg #9c3227`). Ism — detail sahifasiga
  * havola. Fakultet — kodlar `", "` bilan (to'liq nomlar `title`da), guruhlar alohida ustunda.
@@ -15,7 +18,7 @@ const COLUMNS: DataTableColumn<Tutor>[] = [
     header: 'FISH',
     width: 'minmax(160px,1.4fr)',
     strong: true,
-    render: (r) => <RowLink to={`/admin/tutors/${r.id}`}>{r.fullName}</RowLink>,
+    render: (r) => <RowLink to={tutorHref(r)}>{r.fullName}</RowLink>,
   },
   {
     key: 'phone',
@@ -99,6 +102,7 @@ export function TutorsTable({
       minWidth="880px"
       emptyTitle="Tyutorlar yo'q"
       rowDim={(r) => !r.isActive}
+      rowHref={tutorHref}
       filters={
         <Select
           aria-label="Fakultet bo'yicha filtr"

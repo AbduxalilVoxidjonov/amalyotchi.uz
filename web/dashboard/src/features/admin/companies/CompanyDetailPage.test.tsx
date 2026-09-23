@@ -1,4 +1,5 @@
 import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/mocks/server';
 import { problemResponse } from '../shared/mockProblem';
@@ -86,6 +87,16 @@ describe('CompanyDetailPage', () => {
     );
     expect(table.getByText('34/36 kun')).toBeInTheDocument();
     expect(table.getByText('Qizil bayroq')).toHaveAttribute('data-status', 'bad');
+  });
+
+  it("talabalar jadvalida qatorning nom bo'lmagan katagi bosilsa — talaba profili ochiladi", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Aliyev Akmal');
+    const row = studentsTable().getByRole('link', { name: 'Aliyev Akmal' }).closest('[role="row"]');
+    // Guruh katagi (nom emas).
+    await user.click(within(row as HTMLElement).getAllByRole('cell')[1]!);
+    expect(await screen.findByTestId('location')).toHaveTextContent('/admin/students/c1-s1');
   });
 
   it("noma'lum korxona → 404 holati va orqaga qaytish", async () => {
