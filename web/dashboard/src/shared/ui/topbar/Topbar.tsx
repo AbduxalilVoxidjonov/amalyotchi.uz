@@ -3,7 +3,7 @@ import { cn } from '@amaliyotchi/shared/ui';
 import styles from './Topbar.module.css';
 
 export interface TopbarProps extends Omit<HTMLAttributes<HTMLElement>, 'title'> {
-  /** Uppercase kichik matn: "Admin · TDIU · 2026-2027". */
+  /** Uppercase kichik matn: "Admin · 2026-2027". */
   crumb?: ReactNode;
   /** h1 25px. */
   title: ReactNode;

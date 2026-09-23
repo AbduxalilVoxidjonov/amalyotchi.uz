@@ -65,7 +65,7 @@ const TITLE_OVERRIDE: Record<string, string> = {
 
 /** SPEC-NAV §6 — crumb. ❓ Tyutor guruhlari dinamik bo'lishi kerak; hozircha statik. */
 export const CRUMB: Record<NavRole, string> = {
-  [UserRole.Admin]: 'Admin · TDIU · 2026-2027',
+  [UserRole.Admin]: 'Admin · 2026-2027',
   [UserRole.Tutor]: 'Tyutor · 412-22, 413-22 · 3-kurs amaliyoti',
 };
 

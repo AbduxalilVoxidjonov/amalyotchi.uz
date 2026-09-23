@@ -44,7 +44,7 @@ describe('AppShell', () => {
       'page',
     );
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Umumiy dashboard');
-    expect(screen.getByText('Admin · TDIU · 2026-2027')).toBeInTheDocument();
+    expect(screen.getByText('Admin · 2026-2027')).toBeInTheDocument();
     expect(screen.getByText('Admin Adminov')).toBeInTheDocument();
     expect(await screen.findByText('Jami amaliyotchi')).toBeInTheDocument(); // AdminDashboardPage
   });

@@ -62,7 +62,7 @@ export function LoginPage() {
       <aside className={styles.left}>
         <div>
           <div className={styles.logo}>Amaliyotchi</div>
-          <div className={styles.logoSub}>TDIU · 2026-2027 o'quv yili</div>
+          <div className={styles.logoSub}>2026-2027 o'quv yili</div>
         </div>
         <p className={styles.hero}>
           Talabalar amaliyotini geo-lokatsiya orqali nazorat qiluvchi platforma

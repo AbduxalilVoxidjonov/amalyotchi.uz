@@ -32,7 +32,7 @@ export function Sidebar({
         <Link to={homePath} className={styles.logo}>
           Amaliyotchi
         </Link>
-        <div className={styles.sub}>TDIU · amaliyot nazorati</div>
+        <div className={styles.sub}>Amaliyot nazorati</div>
         {onClose && (
           <button type="button" className={styles.close} onClick={onClose} aria-label="Yopish">
             ×
