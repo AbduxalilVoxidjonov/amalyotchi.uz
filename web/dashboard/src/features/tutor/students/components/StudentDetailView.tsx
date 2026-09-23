@@ -23,6 +23,7 @@ import {
   fmtPhone,
   fmtTin,
 } from '../../format';
+import { periodPhase, plannedPeriodText } from '../periods';
 import {
   fmtCoords,
   isCompanyBoundApplication,
@@ -30,6 +31,7 @@ import {
   STUDENT_STATUS_LABEL,
   studentStateLabel,
   workDaysLabel,
+  type StudentPeriodOption,
   type TutorStudentDetail,
 } from '../types';
 import styles from './StudentDetailView.module.css';
@@ -37,8 +39,24 @@ import styles from './StudentDetailView.module.css';
 const person = (name: string | null, phone: string | null): string =>
   name ? (phone ? `${name} · ${fmtPhone(phone)}` : name) : '—';
 
-/** Talaba profili — sarlavha kartasi, korxona, ariza va amaliyot davri bloklari (KONTRAKT §2.1). */
-export function StudentDetailView({ detail }: { detail: TutorStudentDetail }) {
+/**
+ * Talaba profili — sarlavha kartasi, korxona, ariza va amaliyot davri bloklari (KONTRAKT §2.1).
+ * `selectedPeriod` — ko'rsatilayotgan davr (v3.5). Rejadagi davrda bloklar bo'sh keladi —
+ * nol foizli statistika o'rniga "Bu davr … dan boshlanadi" ko'rsatiladi; davr yo'q bo'lsa
+ * statistika umuman chiqmaydi (tanlagich bo'sh holatni ko'rsatadi).
+ */
+export function StudentDetailView({
+  detail,
+  selectedPeriod,
+  today,
+}: {
+  detail: TutorStudentDetail;
+  selectedPeriod: StudentPeriodOption | null;
+  today: string;
+}) {
+  const planned = selectedPeriod !== null && periodPhase(selectedPeriod, today) === 'planned';
+  const plannedText = planned && selectedPeriod ? plannedPeriodText(selectedPeriod) : null;
+  const showStats = selectedPeriod !== null && !planned;
   const state = studentStateLabel(detail);
   const status = STUDENT_STATUS_LABEL[detail.status];
   const a = detail.attendance;
@@ -78,40 +96,57 @@ export function StudentDetailView({ detail }: { detail: TutorStudentDetail }) {
           </div>
         </header>
 
-        <FactGrid variant="detail" min={190} items={profileFacts} className={styles.facts} />
+        <FactGrid
+          variant="detail"
+          min={190}
+          items={profileFacts}
+          className={
+            showStats || plannedText ? styles.facts : `${styles.facts} ${styles.factsLast}`
+          }
+        />
 
-        <div className={styles.progress}>
-          <span className={styles.progressLabel}>Davomat</span>
-          <ProgressBar value={a.attendancePct} label={`${detail.name} davomati`} />
-          <span className={styles.progressNote}>
-            {a.attendedDays + a.lateDays}/{a.totalDays} kun · {fmtDecimal(a.attendancePct)}%
-          </span>
-        </div>
+        {plannedText && (
+          <p className={styles.plannedNote} role="status">
+            {plannedText}. Davomat, kundalik va baho davr boshlangach hisoblanadi.
+          </p>
+        )}
 
-        <StatGrid min={150} className={styles.stats}>
-          <StatTile dot="ok" label="Keldi" value={a.attendedDays} />
-          <StatTile dot="late" label="Kech keldi" value={a.lateDays} />
-          <StatTile dot="bad" label="Kelmadi" value={a.absentDays} />
-          <StatTile dot="info" label="Sababli" value={a.excusedDays} />
-          <StatTile
-            dot="bad"
-            label="Shubhali"
-            value={a.suspiciousDays}
-            note={
-              detail.suspiciousCount > 0 ? `${detail.suspiciousCount} ta belgilangan` : undefined
-            }
-          />
-          <StatTile
-            label="Kundaliklar"
-            value={detail.diary.count}
-            note={`${detail.diary.scoredCount} ta baholangan · o'rtacha ${fmtDecimal(detail.diary.avg)}`}
-          />
-          <StatTile
-            label="Yakuniy ball"
-            value={detail.grade ? fmtDecimal(detail.grade.total) : '—'}
-            note={detail.grade?.grade ? `Baho: ${detail.grade.grade}` : 'Hali baholanmagan'}
-          />
-        </StatGrid>
+        {showStats && (
+          <div className={styles.progress}>
+            <span className={styles.progressLabel}>Davomat</span>
+            <ProgressBar value={a.attendancePct} label={`${detail.name} davomati`} />
+            <span className={styles.progressNote}>
+              {a.attendedDays + a.lateDays}/{a.totalDays} kun · {fmtDecimal(a.attendancePct)}%
+            </span>
+          </div>
+        )}
+
+        {showStats && (
+          <StatGrid min={150} className={styles.stats}>
+            <StatTile dot="ok" label="Keldi" value={a.attendedDays} />
+            <StatTile dot="late" label="Kech keldi" value={a.lateDays} />
+            <StatTile dot="bad" label="Kelmadi" value={a.absentDays} />
+            <StatTile dot="info" label="Sababli" value={a.excusedDays} />
+            <StatTile
+              dot="bad"
+              label="Shubhali"
+              value={a.suspiciousDays}
+              note={
+                detail.suspiciousCount > 0 ? `${detail.suspiciousCount} ta belgilangan` : undefined
+              }
+            />
+            <StatTile
+              label="Kundaliklar"
+              value={detail.diary.count}
+              note={`${detail.diary.scoredCount} ta baholangan · o'rtacha ${fmtDecimal(detail.diary.avg)}`}
+            />
+            <StatTile
+              label="Yakuniy ball"
+              value={detail.grade ? fmtDecimal(detail.grade.total) : '—'}
+              note={detail.grade?.grade ? `Baho: ${detail.grade.grade}` : 'Hali baholanmagan'}
+            />
+          </StatGrid>
+        )}
       </Card>
 
       <Card as="section" aria-label="Korxona">
@@ -140,6 +175,11 @@ export function StudentDetailView({ detail }: { detail: TutorStudentDetail }) {
                 height={186}
               />
             </div>
+          ) : plannedText && !application ? (
+            <EmptyState
+              title={plannedText}
+              description="Korxona davr uchun ariza tasdiqlangach biriktiriladi."
+            />
           ) : (
             <EmptyState
               title={
@@ -205,6 +245,11 @@ export function StudentDetailView({ detail }: { detail: TutorStudentDetail }) {
                 <FileBox className={styles.file} name="Shartnoma yuklanmagan" meta="fayl yo'q" />
               )}
             </>
+          ) : plannedText ? (
+            <EmptyState
+              title={plannedText}
+              description="Bu davr uchun ariza hali topshirilmagan."
+            />
           ) : (
             <EmptyState title="Ariza topshirilmagan" />
           )}

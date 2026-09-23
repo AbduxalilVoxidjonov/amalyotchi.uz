@@ -1,0 +1,84 @@
+/* Talaba profili · davr tanlagichi (segmented control) */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border: var(--border);
+  border-radius: var(--radius-md2);
+  background: var(--color-surface-2);
+  width: fit-content;
+  max-width: 100%;
+}
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+  padding: 7px 12px;
+  font-family: inherit;
+  text-align: left;
+  color: var(--color-text-3);
+  background: transparent;
+  border: var(--border-w) solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease;
+}
+.tab:hover {
+  background: var(--color-surface-hover);
+}
+.tab:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.tab[aria-selected='true'] {
+  color: var(--color-text);
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+.tab[aria-busy='true'] {
+  cursor: progress;
+}
+.tabTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.name {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dates {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  white-space: nowrap;
+}
+
+.single {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-size: var(--fs-sm2);
+  color: var(--color-text-3);
+}
+.singleLabel {
+  color: var(--color-text-faint);
+}
+.single .name {
+  font-size: var(--fs-sm2);
+  color: var(--color-text);
+}
+
+.empty {
+  margin: 0;
+}

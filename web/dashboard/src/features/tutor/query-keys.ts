@@ -16,15 +16,18 @@ export const tutorKeys = {
   },
   students: Object.assign(() => ['tutor', 'students'] as const, {
     all: ['tutor', 'students'] as const,
-    detail: (id: string) => ['tutor', 'students', 'detail', id] as const,
+    // `periodId` (null — sukut davri) kalitda: davr almashganda kesh aralashmaydi.
+    detail: (id: string, periodId: string | null = null) =>
+      ['tutor', 'students', 'detail', id, periodId] as const,
     // `area` — davomat/kundalik tyutor yoki admin endpoint'idan olinganini ajratadi (§ students/api.ts).
     attendance: (
       id: string,
       range: { from: string | null; to: string | null },
       area: StudentApiArea = 'tutor',
-    ) => [area, 'students', 'attendance', id, range] as const,
-    diaries: (id: string, area: StudentApiArea = 'tutor') =>
-      [area, 'students', 'diaries', id] as const,
+      periodId: string | null = null,
+    ) => [area, 'students', 'attendance', id, periodId, range] as const,
+    diaries: (id: string, area: StudentApiArea = 'tutor', periodId: string | null = null) =>
+      [area, 'students', 'diaries', id, periodId] as const,
   }),
   companies: {
     all: ['tutor', 'companies'] as const,

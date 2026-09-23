@@ -11,9 +11,11 @@ import type {
 /**
  * Tyutor · Talabalarim — `TutorStudentsController`:
  *   GET /api/tutor/students                       → TutorStudent[]
- *   GET /api/tutor/students/:id                   → TutorStudentDetail   (ko'lamdan tashqari → 404)
- *   GET /api/tutor/students/:id/attendance?from=&to= → StudentAttendanceDay[]
- *   GET /api/tutor/students/:id/diaries           → TutorDiaryEntry[] (= DiaryEntry)
+ *   GET /api/tutor/students/:id?periodId=         → TutorStudentDetail   (ko'lamdan tashqari / begona davr → 404)
+ *   GET /api/tutor/students/:id/attendance?periodId=&from=&to= → StudentAttendanceDay[]
+ *   GET /api/tutor/students/:id/diaries?periodId= → TutorDiaryEntry[] (= DiaryEntry)
+ *
+ * `periodId` (v3.5, §4.6) berilmasa backend sukut davrini tanlaydi; berilsa hamma bloklar shu davr bo'yicha.
  *
  * Davomat va kundaliklar admin profilida ham xuddi shu shaklda beriladi
  * (`AdminStudentsController` — `/api/admin/students/:id/...`), shuning uchun yo'l `area` bilan tanlanadi.
@@ -24,14 +26,20 @@ export const studentBase = (area: StudentApiArea, studentId: string) =>
 export const studentsApi = {
   list: () => api.get<TutorStudent[]>('/api/tutor/students'),
 
-  detail: (studentId: string) => api.get<TutorStudentDetail>(studentBase('tutor', studentId)),
+  detail: (studentId: string, periodId: string | null = null) =>
+    api.get<TutorStudentDetail>(studentBase('tutor', studentId), { query: { periodId } }),
 
-  /** `from`/`to` — DateOnly; berilmasa backend davr boshidan bugungacha qaytaradi. */
-  attendance: (studentId: string, range: AttendanceRange, area: StudentApiArea = 'tutor') =>
+  /** `from`/`to` — DateOnly; berilmasa backend davr boshidan bugungacha qaytaradi (davr chegarasiga qisiladi). */
+  attendance: (
+    studentId: string,
+    range: AttendanceRange,
+    area: StudentApiArea = 'tutor',
+    periodId: string | null = null,
+  ) =>
     api.get<StudentAttendanceDay[]>(`${studentBase(area, studentId)}/attendance`, {
-      query: { from: range.from, to: range.to },
+      query: { periodId, from: range.from, to: range.to },
     }),
 
-  diaries: (studentId: string, area: StudentApiArea = 'tutor') =>
-    api.get<DiaryEntry[]>(`${studentBase(area, studentId)}/diaries`),
+  diaries: (studentId: string, area: StudentApiArea = 'tutor', periodId: string | null = null) =>
+    api.get<DiaryEntry[]>(`${studentBase(area, studentId)}/diaries`, { query: { periodId } }),
 };

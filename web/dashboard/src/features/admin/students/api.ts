@@ -6,7 +6,7 @@ import type { AdminStudentDetail, AssignCompanyInput, AssignCompanyResult, Stude
 /**
  * Backend: `AdminStudentsController`.
  * GET  /api/admin/students?q=&page=&pageSize= → Paged<Student> (`q`: FISH, HEMIS ID, telefon, guruh)
- * GET  /api/admin/students/{id}               → AdminStudentDetail · 404
+ * GET  /api/admin/students/{id}?periodId=     → AdminStudentDetail · 404 (talaba yoki begona davr)
  * GET  /api/admin/students/import/template    → .xlsx shablon (Bearer talab qiladi — `downloadAuthFile`)
  * POST /api/admin/students/import             → StudentImportResult (multipart `file`) · 400
  * POST /api/admin/students/assign-company     → AssignCompanyResult · 400 · 404 · 409
@@ -28,7 +28,8 @@ export const STUDENTS_TEMPLATE_FILE_NAME = 'talabalar-import-shablon.xlsx';
 export const studentsApi = {
   list: (params: ListParams) =>
     api.get<Paged<Student>>(STUDENTS_ENDPOINT, { query: toQuery(params) }),
-  detail: (id: string) => api.get<AdminStudentDetail>(`${STUDENTS_ENDPOINT}/${id}`),
+  detail: (id: string, periodId: string | null = null) =>
+    api.get<AdminStudentDetail>(`${STUDENTS_ENDPOINT}/${id}`, { query: { periodId } }),
   importExcel: (file: File) => {
     const body = new FormData();
     body.append('file', file);

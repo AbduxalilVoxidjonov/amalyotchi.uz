@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousForSameStudent } from '@/features/tutor/students/hooks';
 import { companiesApi } from '../companies/api';
 import { adminKeys } from '../shared/keys';
 import type { ListParams } from '../shared/types';
@@ -14,12 +15,13 @@ export function useStudentsQuery(params: ListParams) {
   });
 }
 
-/** Talaba profili (`/admin/students/:studentId`). */
-export function useStudentQuery(id: string) {
+/** Talaba profili (`/admin/students/:studentId?period=`). `periodId` null — sukut davri. */
+export function useStudentQuery(id: string, periodId: string | null = null) {
   return useQuery({
-    queryKey: adminKeys.student(id),
-    queryFn: () => studentsApi.detail(id),
+    queryKey: adminKeys.student(id, periodId),
+    queryFn: () => studentsApi.detail(id, periodId),
     enabled: id !== '',
+    placeholderData: keepPreviousForSameStudent(id, 2),
   });
 }
 

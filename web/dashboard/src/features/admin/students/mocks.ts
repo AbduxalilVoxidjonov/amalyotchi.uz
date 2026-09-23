@@ -1,10 +1,11 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
 import { problem } from '@/mocks/data';
 import {
-  buildAttendance,
   buildDetail,
-  buildDiaries,
+  mockAttendanceResponse,
+  mockDiariesResponse,
   mockStudents as tutorMockStudents,
+  periodNotFound,
 } from '@/features/tutor/students/mocks';
 import { mockCompanies } from '../companies/mocks';
 import { problemResponse } from '../shared/mockProblem';
@@ -135,11 +136,15 @@ function sourceId(adminId: string): string | null {
   return SOURCE_PROFILE_ID[adminId] ?? tutorMockStudents[0]!.id;
 }
 
-function buildAdminDetail(adminId: string): AdminStudentDetail | null {
+function buildAdminDetail(
+  adminId: string,
+  periodId: string | null,
+): AdminStudentDetail | 'periodNotFound' | null {
   const row = mockStudents.find((s) => s.id === adminId);
   const source = sourceId(adminId);
-  const base = source ? buildDetail(source) : null;
+  const base = source ? buildDetail(source, periodId) : null;
   if (!row || !base) return null;
+  if (base === 'periodNotFound') return base;
 
   return {
     ...base,
@@ -150,7 +155,7 @@ function buildAdminDetail(adminId: string): AdminStudentDetail | null {
     course: row.course,
     faculty: row.faculty,
     groupId: row.groupId,
-    department: DEPARTMENTS[row.faculty] ?? "Umumiy kafedra",
+    department: DEPARTMENTS[row.faculty] ?? 'Umumiy kafedra',
     adminStatus: row.status,
     telegramLinked: row.telegramLinked,
     tutor: TUTORS[row.faculty] ?? null,
@@ -163,7 +168,12 @@ export const mockImportResult: ImportResult = {
   created: 3,
   failed: 2,
   errors: [
-    { row: 4, column: 'HEMIS ID', value: '12ab', message: "HEMIS ID 5–20 ta raqamdan iborat bo'lishi kerak." },
+    {
+      row: 4,
+      column: 'HEMIS ID',
+      value: '12ab',
+      message: "HEMIS ID 5–20 ta raqamdan iborat bo'lishi kerak.",
+    },
     {
       row: 6,
       column: 'Guruh',
@@ -175,13 +185,15 @@ export const mockImportResult: ImportResult = {
 
 export const studentsHandlers: HttpHandler[] = [
   // Shablon — haqiqiy .xlsx emas, faqat oqimni tekshirish uchun (blob + fayl nomi).
-  http.get(STUDENTS_TEMPLATE_ENDPOINT, () =>
-    new HttpResponse('mock-xlsx', {
-      headers: {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="${STUDENTS_TEMPLATE_FILE_NAME}"`,
-      },
-    }),
+  http.get(
+    STUDENTS_TEMPLATE_ENDPOINT,
+    () =>
+      new HttpResponse('mock-xlsx', {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="${STUDENTS_TEMPLATE_FILE_NAME}"`,
+        },
+      }),
   ),
 
   http.post(STUDENTS_IMPORT_ENDPOINT, async ({ request }) => {
@@ -237,22 +249,20 @@ export const studentsHandlers: HttpHandler[] = [
   http.get(`${STUDENTS_ENDPOINT}/:id/attendance`, ({ params, request }) => {
     const source = sourceId(String(params['id']));
     if (!source) return notFound();
-    const url = new URL(request.url);
-    const from = url.searchParams.get('from');
-    const to = url.searchParams.get('to');
-    const days = buildAttendance(source).filter(
-      (d) => (!from || d.date >= from) && (!to || d.date <= to),
-    );
-    return HttpResponse.json(days);
+    const q = new URL(request.url).searchParams;
+    return mockAttendanceResponse(source, q.get('periodId'), q.get('from'), q.get('to'));
   }),
 
-  http.get(`${STUDENTS_ENDPOINT}/:id/diaries`, ({ params }) => {
+  http.get(`${STUDENTS_ENDPOINT}/:id/diaries`, ({ params, request }) => {
     const source = sourceId(String(params['id']));
-    return source ? HttpResponse.json(buildDiaries(source)) : notFound();
+    if (!source) return notFound();
+    return mockDiariesResponse(source, new URL(request.url).searchParams.get('periodId'));
   }),
 
-  http.get(`${STUDENTS_ENDPOINT}/:id`, ({ params }) => {
-    const detail = buildAdminDetail(String(params['id']));
+  http.get(`${STUDENTS_ENDPOINT}/:id`, ({ params, request }) => {
+    const periodId = new URL(request.url).searchParams.get('periodId');
+    const detail = buildAdminDetail(String(params['id']), periodId);
+    if (detail === 'periodNotFound') return periodNotFound();
     return detail ? HttpResponse.json(detail) : notFound();
   }),
 

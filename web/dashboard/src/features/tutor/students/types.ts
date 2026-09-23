@@ -145,6 +145,26 @@ export interface TutorStudentDetail {
   attendance: AttendanceSummary;
   diary: DiarySummary;
   grade: StudentGrade | null;
+  /** v3.5: davr tanlagichi — `startDate` kamayish tartibida (guruh davrlari ∪ talaba yozuvlari bor davrlar). */
+  periods: StudentPeriodOption[];
+  /** Javobdagi davrga bog'liq bloklar shu davr bo'yicha; davr yo'q → null. */
+  selectedPeriodId: string | null;
+}
+
+/**
+ * v3.5 (§4.6) — talaba davrlaridan biri. `status` hisoblangan: yopilgan → `closed`,
+ * boshlanmagan → `planned`, aks holda `active` (tugagan, lekin yopilmagan davr ham `active` —
+ * "Tugagan" frontendda `endDate < bugun` dan chiqariladi, § `periods.ts`).
+ */
+export interface StudentPeriodOption {
+  id: string;
+  name: string;
+  /** DateOnly */
+  startDate: string;
+  endDate: string;
+  status: 'planned' | 'active' | 'closed';
+  /** `periodId` berilmaganda backend tanlaydigan davr. */
+  isDefault: boolean;
 }
 
 /**

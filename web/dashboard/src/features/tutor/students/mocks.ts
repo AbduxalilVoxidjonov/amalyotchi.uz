@@ -12,6 +12,7 @@ import type {
   StudentCompany,
   StudentGrade,
   StudentPeriod,
+  StudentPeriodOption,
   StudentApplicationStatus,
   StudentStatus,
   TutorStudent,
@@ -125,6 +126,59 @@ const PERIOD: StudentPeriod = {
   workDays: [1, 2, 3, 4, 5, 6],
   requiredDays: 72,
 };
+
+/**
+ * v3.5 (§4.6): demo talaba (s-341030 · admin s1) guruhiga ikkinchi — rejadagi bahorgi davr ham
+ * biriktirilgan. Tanlagich 2 ta davrni ko'rsatadi; bahorgi davr tanlansa bloklar bo'sh keladi.
+ */
+export const SPRING_PERIOD: StudentPeriod = {
+  id: 'per-2027-bahor',
+  name: 'Bahorgi amaliyot 2027',
+  startDate: '2027-02-01',
+  endDate: '2027-04-30',
+  dailyStart: '09:00',
+  dailyEnd: '17:00',
+  workDays: [1, 2, 3, 4, 5],
+  requiredDays: 60,
+};
+
+const PERIOD_STATUS: Record<string, StudentPeriodOption['status']> = {
+  [PERIOD.id]: 'active',
+  [SPRING_PERIOD.id]: 'planned',
+};
+
+/** Talaba → uning davrlari (startDate kamayish tartibida). */
+const STUDENT_PERIODS: Record<string, StudentPeriod[]> = {
+  's-341030': [SPRING_PERIOD, PERIOD],
+};
+
+function periodsOf(studentId: string): StudentPeriod[] {
+  return STUDENT_PERIODS[studentId] ?? [PERIOD];
+}
+
+/** `GET …/students/{id}` → `periods` (sukut — davom etayotgan davr). */
+export function mockPeriodOptions(studentId: string): StudentPeriodOption[] {
+  return periodsOf(studentId).map((p) => ({
+    id: p.id,
+    name: p.name,
+    startDate: p.startDate,
+    endDate: p.endDate,
+    status: PERIOD_STATUS[p.id] ?? 'active',
+    isDefault: p.id === PERIOD.id,
+  }));
+}
+
+/**
+ * `?periodId=` → talabaning shu davri; berilmasa sukut davri. Talabaga tegishli bo'lmasa `null`
+ * (backend 404 "Amaliyot davri topilmadi.").
+ */
+export function resolveMockPeriod(
+  studentId: string,
+  periodId: string | null,
+): StudentPeriod | null {
+  if (!periodId) return PERIOD;
+  return periodsOf(studentId).find((p) => p.id === periodId) ?? null;
+}
 
 const COMPANIES: Record<string, StudentCompany> = {
   'Tech Solutions MChJ': {
@@ -344,11 +398,18 @@ const CODE_STATUS: Record<string, AttendanceStatus> = {
   m: 'present',
 };
 
-/** Bitta talabaning davr boshidan bugungacha bo'lgan kunlari (qat'iy, tasodifsiz). */
-export function buildAttendance(studentId: string): StudentAttendanceDay[] {
+/**
+ * Bitta talabaning davr boshidan bugungacha bo'lgan kunlari (qat'iy, tasodifsiz).
+ * Rejadagi (hali boshlanmagan) davrda — bo'sh.
+ */
+export function buildAttendance(
+  studentId: string,
+  periodId: string | null = null,
+): StudentAttendanceDay[] {
   const seed = PROFILES[studentId];
   const student = mockStudents.find((s) => s.id === studentId);
   if (!seed || !student) return [];
+  if (resolveMockPeriod(studentId, periodId)?.id !== PERIOD.id) return [];
   const company = student.company ? COMPANIES[student.company] : undefined;
   const radiusM = company?.radiusM ?? 200;
   const baseLat = company?.lat ?? 41.3111;
@@ -534,60 +595,90 @@ export function applyProfileDiaryReviewMock(diaryId: string, patch: DiaryReviewP
  * backend `GET .../diaries` ham hammasini qaytaradi, shuning uchun kesilmaydi
  * (kundalik jadvalidagi kun paneli istalgan kunning matnini topa olsin).
  */
-export function buildDiaries(studentId: string): DiaryEntry[] {
+export function buildDiaries(studentId: string, periodId: string | null = null): DiaryEntry[] {
   const student = mockStudents.find((s) => s.id === studentId);
   if (!student) return [];
-  const withDiary = buildAttendance(studentId).filter((d) => d.diary !== null);
-  return withDiary
-    .reverse()
-    .map((day, i) => {
-      const diary = day.diary!;
-      const submittedAt = `${day.date}T18:${String(10 + ((i * 7) % 45)).padStart(2, '0')}:00+05:00`;
-      const files: DiaryFile[] =
-        i % 3 === 0
-          ? [
-              {
-                name: `ish_jarayoni_${day.date}.jpg`,
-                url: `/api/files/dph-${studentId}-${day.date}`,
-              },
-              { name: 'kunlik_hisobot.pdf', url: `/api/files/doc-${studentId}-${day.date}` },
-            ]
-          : i % 3 === 1
-            ? [{ name: `natija_${day.date}.png`, url: `/api/files/dph2-${studentId}-${day.date}` }]
-            : [];
-      const review = diaryReviews.get(diary.id);
-      return {
-        id: diary.id,
-        studentId,
-        studentName: student.name,
-        group: student.group,
-        date: day.date,
-        submittedAt,
-        status: review?.status ?? diary.status,
-        text: DIARY_TEXTS[i % DIARY_TEXTS.length]!,
-        learned: DIARY_LEARNED[i % DIARY_LEARNED.length] ?? null,
-        files,
-        score: review ? review.score : diary.score,
-        comment: review
-          ? review.comment
-          : diary.status === 'rewrite'
-            ? "Batafsil yozing: qanday hujjatlar bilan ishladingiz, natija nima bo'ldi."
-            : diary.status === 'approved' && i % 4 === 0
-              ? 'Yaxshi hisobot, fotolar ham biriktirilgan.'
-              : null,
-        reviewedAt: review
-          ? review.reviewedAt
-          : diary.status === 'submitted'
-            ? null
-            : `${day.date}T20:05:00+05:00`,
-      } satisfies DiaryEntry;
-    });
+  const withDiary = buildAttendance(studentId, periodId).filter((d) => d.diary !== null);
+  return withDiary.reverse().map((day, i) => {
+    const diary = day.diary!;
+    const submittedAt = `${day.date}T18:${String(10 + ((i * 7) % 45)).padStart(2, '0')}:00+05:00`;
+    const files: DiaryFile[] =
+      i % 3 === 0
+        ? [
+            {
+              name: `ish_jarayoni_${day.date}.jpg`,
+              url: `/api/files/dph-${studentId}-${day.date}`,
+            },
+            { name: 'kunlik_hisobot.pdf', url: `/api/files/doc-${studentId}-${day.date}` },
+          ]
+        : i % 3 === 1
+          ? [{ name: `natija_${day.date}.png`, url: `/api/files/dph2-${studentId}-${day.date}` }]
+          : [];
+    const review = diaryReviews.get(diary.id);
+    return {
+      id: diary.id,
+      studentId,
+      studentName: student.name,
+      group: student.group,
+      date: day.date,
+      submittedAt,
+      status: review?.status ?? diary.status,
+      text: DIARY_TEXTS[i % DIARY_TEXTS.length]!,
+      learned: DIARY_LEARNED[i % DIARY_LEARNED.length] ?? null,
+      files,
+      score: review ? review.score : diary.score,
+      comment: review
+        ? review.comment
+        : diary.status === 'rewrite'
+          ? "Batafsil yozing: qanday hujjatlar bilan ishladingiz, natija nima bo'ldi."
+          : diary.status === 'approved' && i % 4 === 0
+            ? 'Yaxshi hisobot, fotolar ham biriktirilgan.'
+            : null,
+      reviewedAt: review
+        ? review.reviewedAt
+        : diary.status === 'submitted'
+          ? null
+          : `${day.date}T20:05:00+05:00`,
+    } satisfies DiaryEntry;
+  });
 }
 
-export function buildDetail(studentId: string): TutorStudentDetail | null {
+/** `null` — talaba yo'q; `'periodNotFound'` — `periodId` talabaga tegishli emas (404). */
+export function buildDetail(
+  studentId: string,
+  periodId: string | null = null,
+): TutorStudentDetail | 'periodNotFound' | null {
   const student = mockStudents.find((s) => s.id === studentId);
   const seed = PROFILES[studentId];
   if (!student || !seed) return null;
+  const period = resolveMockPeriod(studentId, periodId);
+  if (!period) return 'periodNotFound';
+  const periods = mockPeriodOptions(studentId);
+
+  if (period.id !== PERIOD.id) {
+    // Rejadagi davr: davrga bog'liq bloklar bo'sh (application/company/grade = null, nollar).
+    return {
+      id: student.id,
+      name: student.name,
+      hemisId: student.hemisId,
+      group: student.group,
+      course: seed.course,
+      faculty: seed.faculty,
+      direction: seed.direction,
+      status: seed.status,
+      phone: seed.phone,
+      state: 'active',
+      suspiciousCount: 0,
+      company: null,
+      application: null,
+      period,
+      attendance: summarize([]),
+      diary: { count: 0, scoredCount: 0, avg: 0 },
+      grade: null,
+      periods,
+      selectedPeriodId: period.id,
+    };
+  }
 
   const days = buildAttendance(studentId);
   const diaries = buildDiaries(studentId);
@@ -637,16 +728,58 @@ export function buildDetail(studentId: string): TutorStudentDetail | null {
             10,
     },
     grade: seed.grade,
+    periods,
+    selectedPeriodId: period.id,
   };
 }
 
 const notFound = () =>
   HttpResponse.json(problem(404, 'Topilmadi', 'Talaba topilmadi.'), { status: 404 });
 
+/** Begona `periodId` → 404 (backend: "Amaliyot davri topilmadi."). */
+export const periodNotFound = () =>
+  HttpResponse.json(problem(404, 'Topilmadi', 'Amaliyot davri topilmadi.'), { status: 404 });
+
+/** `from`/`to` davr chegarasiga qisiladi (backend `…/attendance` bilan bir xil). */
+export function clampAttendanceRange(
+  period: StudentPeriod,
+  from: string | null,
+  to: string | null,
+): { from: string; to: string } {
+  const start = from && from > period.startDate ? from : period.startDate;
+  const endCap = period.endDate < MOCK_TODAY_DATE ? period.endDate : MOCK_TODAY_DATE;
+  const end = to ? (to < period.endDate ? to : period.endDate) : endCap;
+  return { from: start, to: end };
+}
+
 const validation = (errors: Record<string, string[]>) =>
   HttpResponse.json(problem(400, 'One or more validation errors occurred.', '', { errors }), {
     status: 400,
   });
+
+/** `…/attendance?periodId=&from=&to=` javobi (tyutor va admin mock'lari uchun umumiy). */
+export function mockAttendanceResponse(
+  studentId: string,
+  periodId: string | null,
+  from: string | null,
+  to: string | null,
+) {
+  const period = resolveMockPeriod(studentId, periodId);
+  if (!period) return periodNotFound();
+  const range = clampAttendanceRange(period, from, to);
+  if (range.from > range.to) return HttpResponse.json([]);
+  const days = buildAttendance(studentId, period.id).filter(
+    (d) => d.date >= range.from && d.date <= range.to,
+  );
+  return HttpResponse.json(days);
+}
+
+/** `…/diaries?periodId=` javobi — faqat tanlangan davr yozuvlari. */
+export function mockDiariesResponse(studentId: string, periodId: string | null) {
+  const period = resolveMockPeriod(studentId, periodId);
+  if (!period) return periodNotFound();
+  return HttpResponse.json(buildDiaries(studentId, period.id));
+}
 
 /** 1×1 shaffof PNG — `AuthImage` uchun haqiqiy blob (mock fayl xizmati). */
 const PNG_1PX =
@@ -671,8 +804,10 @@ function pngBytes(): ArrayBuffer {
 export const studentsHandlers: HttpHandler[] = [
   http.get('/api/tutor/students', () => HttpResponse.json(mockStudents)),
 
-  http.get('/api/tutor/students/:id', ({ params }) => {
-    const detail = buildDetail(String(params['id']));
+  http.get('/api/tutor/students/:id', ({ params, request }) => {
+    const periodId = new URL(request.url).searchParams.get('periodId');
+    const detail = buildDetail(String(params['id']), periodId);
+    if (detail === 'periodNotFound') return periodNotFound();
     return detail ? HttpResponse.json(detail) : notFound();
   }),
 
@@ -684,16 +819,13 @@ export const studentsHandlers: HttpHandler[] = [
     const to = url.searchParams.get('to');
     if (from && to && from > to)
       return validation({ From: ["`from` `to` dan katta bo'lmasligi kerak."] });
-    const days = buildAttendance(studentId).filter(
-      (d) => (!from || d.date >= from) && (!to || d.date <= to),
-    );
-    return HttpResponse.json(days);
+    return mockAttendanceResponse(studentId, url.searchParams.get('periodId'), from, to);
   }),
 
-  http.get('/api/tutor/students/:id/diaries', ({ params }) => {
+  http.get('/api/tutor/students/:id/diaries', ({ params, request }) => {
     const studentId = String(params['id']);
     if (!PROFILES[studentId]) return notFound();
-    return HttpResponse.json(buildDiaries(studentId));
+    return mockDiariesResponse(studentId, new URL(request.url).searchParams.get('periodId'));
   }),
 
   /**
@@ -706,7 +838,9 @@ export const studentsHandlers: HttpHandler[] = [
     if (id.startsWith('missing'))
       return HttpResponse.json(problem(404, 'Topilmadi', 'Fayl topilmadi.'), { status: 404 });
     if (id.startsWith('doc-') || id.startsWith('contract-'))
-      return HttpResponse.arrayBuffer(pdfBytes(), { headers: { 'Content-Type': 'application/pdf' } });
+      return HttpResponse.arrayBuffer(pdfBytes(), {
+        headers: { 'Content-Type': 'application/pdf' },
+      });
     return HttpResponse.arrayBuffer(pngBytes(), { headers: { 'Content-Type': 'image/png' } });
   }),
 ];

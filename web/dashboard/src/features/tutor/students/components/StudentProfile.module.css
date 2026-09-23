@@ -1,0 +1,12 @@
+/* Tanlangan davr bloklari: ota konteyner oralig'ini meros qiladi (tyutor grid, admin flex) */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: inherit;
+  min-width: 0;
+  transition: opacity 0.15s ease;
+}
+.body[data-stale='true'] {
+  opacity: 0.55;
+  pointer-events: none;
+}

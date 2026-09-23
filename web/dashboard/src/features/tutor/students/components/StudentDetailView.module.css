@@ -82,3 +82,16 @@
     gap: 6px;
   }
 }
+/* Rejadagi davr: statistika o'rniga izoh */
+.plannedNote {
+  margin: 14px var(--card-pad) var(--card-pad);
+  padding: 12px 14px;
+  border: var(--border-dashed);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm2);
+  color: var(--color-text-3);
+  background: var(--color-surface-2);
+}
+.factsLast {
+  padding-bottom: var(--card-pad);
+}

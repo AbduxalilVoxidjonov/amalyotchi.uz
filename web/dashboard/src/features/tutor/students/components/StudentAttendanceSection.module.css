@@ -24,3 +24,8 @@
   font-size: var(--fs-sm2);
   color: var(--color-text-faint);
 }
+/* Davr/oy almashganda yangi ma'lumot kelguncha eski jadval xiralashgan holda qoladi */
+.stale {
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
