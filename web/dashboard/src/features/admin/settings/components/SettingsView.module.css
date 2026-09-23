@@ -1,108 +1,217 @@
-/* SPEC-SCREENS §13 — auto-fit minmax(320px) gap16, max 1050 */
+/* SPEC-SCREENS §13 — Sozlamalar: guruh kartalari (2 ustun, masonry) + pastda sticky Saqlash paneli */
 .root {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: var(--section-grid-gap);
-  align-items: start;
-  max-width: 1050px;
-}
-.column {
+  /* Ustunning minimal kengligi — shundan tor ekranda 1 ustun. */
+  --settings-col-min: 380px;
   display: flex;
   flex-direction: column;
   gap: var(--section-grid-gap);
+  max-width: 1120px;
 }
+
+/* 2 ustunli masonry: balandligi har xil kartalar orasida bo'sh joy qolmaydi. */
+.grid {
+  columns: 2 var(--settings-col-min);
+  column-gap: var(--section-grid-gap);
+}
+.card {
+  break-inside: avoid;
+  margin-bottom: var(--section-grid-gap);
+}
+
+/* ——— Sozlama qatori ——— */
 .rows {
   display: flex;
   flex-direction: column;
 }
-/* Sozlama qatori: flex space-between gap14; 13px 18px; bb */
 .settingRow {
+  padding: var(--row-pad-comfortable) var(--row-pad-x);
+  border-bottom: var(--border-row);
+}
+.settingRow:last-child {
+  border-bottom: 0;
+}
+.settingMain {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 13px 18px;
-  border-bottom: var(--border-row);
+  gap: var(--stat-grid-gap);
+}
+/* Kun chip'lari keng — tor kartada label ostiga tushadi. */
+.settingRow[data-type='weekdays'] .settingMain {
+  flex-wrap: wrap;
 }
 .settingText {
+  flex: 1 1 0;
   min-width: 0;
 }
 .settingName {
   display: block;
   font-size: var(--fs-md2);
   font-weight: var(--fw-medium);
+  color: var(--color-text);
 }
 .settingNote {
+  margin-top: var(--radius-xs);
   font-size: var(--fs-xs2);
-  color: var(--color-text-faint);
-  margin-top: 3px;
   line-height: var(--lh-body);
+  color: var(--color-text-faint);
 }
-.settingField {
+.fieldError {
+  margin: var(--pill-gap) 0 0;
+  font-size: var(--fs-xs2);
+  line-height: var(--lh-note);
+  color: var(--color-bad-fg);
+}
+
+/* ——— int: kichik raqam maydoni + birlik ——— */
+.intField {
   flex-shrink: 0;
-  width: 196px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--pill-gap);
 }
-.settingField > * {
-  min-width: 0;
-  flex: 1;
+.intWrap {
+  width: 7.5em;
 }
-.settingInput {
+.intInput {
   text-align: right;
   -moz-appearance: textfield;
   appearance: textfield;
 }
-.settingInput::-webkit-outer-spin-button,
-.settingInput::-webkit-inner-spin-button {
+.intInput::-webkit-outer-spin-button,
+.intInput::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
-/* Birlik ("m", "daqiqa") — input yonida, faint; kengligi doimiy — inputlar (150px) tekis turadi */
+/* Birlik ("m", "daqiqa", "belgi") — kengligi doimiy, inputlar tekis turadi */
 .unit {
-  flex: 0 0 40px;
+  width: 3.5em;
   font-size: var(--fs-xs2);
   color: var(--color-text-faint);
   white-space: nowrap;
 }
-.error {
-  padding: 13px 18px;
-  border-bottom: var(--border-row);
+
+/* ——— bool: switch ——— */
+.switch {
+  --switch-gap: 2px;
+  flex-shrink: 0;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: calc(var(--fs-3xl) * 1.8);
+  height: var(--fs-3xl);
+  padding: var(--switch-gap);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-border-input);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
 }
-.saved {
-  font-size: var(--fs-sm2);
-  color: var(--color-ok-fg);
-  margin-left: auto;
+.switch[aria-checked='true'] {
+  background: var(--color-accent);
 }
-.list {
+.switch:hover:not(:disabled) {
+  background: var(--color-border-hover);
+}
+.switch[aria-checked='true']:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
+.switch:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.switch:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.switch[aria-invalid='true'] {
+  box-shadow: 0 0 0 var(--border-w) var(--color-bad-strong);
+}
+.switchThumb {
+  width: calc(var(--fs-3xl) - 2 * var(--switch-gap));
+  height: calc(var(--fs-3xl) - 2 * var(--switch-gap));
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  transition: transform 0.15s ease;
+}
+.switch[aria-checked='true'] .switchThumb {
+  transform: translateX(calc(var(--fs-3xl) * 0.8));
+}
+
+/* ——— weekdays: 7 ta kun chip'i ——— */
+.weekdays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--radius-xs);
+}
+.dayChip {
+  min-width: 2.6em;
+  font-family: var(--font-mono);
+}
+
+/* ——— Bayramlar ——— */
+.holidays {
   list-style: none;
   margin: 0;
   padding: 0;
 }
-/* Bayram qatori: 11px 18px; 13px #2a2e29 */
 .holidayRow {
-  padding: 11px 18px;
+  display: flex;
+  align-items: baseline;
+  gap: var(--stat-grid-gap);
+  padding: var(--row-pad-compact) var(--row-pad-x);
   border-bottom: var(--border-row);
   font-size: var(--fs-md);
   color: var(--color-text-2);
 }
-.addRow {
-  padding: 13px 18px;
-}
-/* Shablon qatori: 13px 18px; 13px */
-.templateRow {
-  padding: 13px 18px;
-  border-bottom: var(--border-row);
-  font-size: var(--fs-md);
-}
-.templateRow:last-child {
+.holidayRow:last-child {
   border-bottom: 0;
 }
-.file {
-  color: var(--color-text-faint);
-  text-decoration: none;
+.holidayDate {
+  flex-shrink: 0;
+  min-width: 6.5em;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--color-text-dim);
 }
-a.file:hover {
-  text-decoration: underline;
+.holidayName {
+  min-width: 0;
+}
+.holidayEmpty {
+  padding: var(--row-pad-comfortable) var(--row-pad-x);
+  font-size: var(--fs-md);
+  color: var(--color-text-faint);
+}
+
+/* ——— Sticky Saqlash paneli (hamma guruhlar uchun bitta) ——— */
+.saveBar {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-topbar);
+  background: var(--color-surface-2);
+  border: var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+.saveError {
+  padding: var(--section-head-pad);
+  border-bottom: var(--border-inner);
+}
+.saveActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--stat-grid-gap);
+  padding: var(--section-head-pad);
+}
+.saveStatus {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-sm2);
+}
+.saveHint {
+  color: var(--color-late-fg);
+}
+.saved {
+  color: var(--color-ok-fg);
 }

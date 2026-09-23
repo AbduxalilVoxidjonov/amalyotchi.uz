@@ -1,3 +1,4 @@
+using Amaliyotchi.Application.Common.Exceptions;
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Application.Features.Student.Common;
@@ -11,6 +12,7 @@ namespace Amaliyotchi.Application.Features.Student.Diary;
 
 /// <summary><c>POST /api/student/diary</c> (multipart). Bugungi hisobot: yangi → 201; bugungisi "qayta yozish"
 /// holatida bo'lsa — <see cref="DiaryEntry.Resubmit"/> (yangi fayllar qo'shiladi); aks holda 409.
+/// Sozlama <c>diaryPdfRequired</c> yoqilgan bo'lsa kamida bitta PDF shart (qayta yozishda avvalgi PDF ham hisob) → 400 <c>errors.Files</c>.
 /// Fayllar avval saqlovchiga yoziladi, keyin bitta <c>SaveChanges</c>; baza xatosida fayllar tozalanadi.</summary>
 public sealed record CreateDiaryEntryCommand(string Text, string? Learned, IReadOnlyList<UploadedFile> Files)
     : IRequest<DiaryEntryDto>;
@@ -53,6 +55,10 @@ internal sealed class CreateDiaryEntryCommandHandler(
             throw new ConflictException("Bugungi hisobot allaqachon yuborilgan.");
         }
 
+        if (practice.Settings.DiaryPdfRequired && !await HasPdfAsync(entry, request.Files, cancellationToken))
+            throw new ValidationException(
+                new Dictionary<string, string[]> { ["Files"] = [PdfRequiredMessage] }, PdfRequiredMessage);
+
         if (entry.Attachments.Count + request.Files.Count > DiaryEntry.MaxAttachments)
             throw new DomainException($"Bitta hisobotga ko'pi bilan {DiaryEntry.MaxAttachments} ta fayl biriktiriladi.");
 
@@ -81,5 +87,25 @@ internal sealed class CreateDiaryEntryCommandHandler(
         }
 
         return DiaryMapping.ToDto(entry);
+    }
+
+    public const string PdfRequiredMessage = "Hisobotga PDF fayl biriktirilishi shart.";
+
+    /// <summary>Yangi fayllar orasida yoki (qayta yozishda) yozuvda qolgan biriktirmalar orasida PDF bormi.</summary>
+    private async Task<bool> HasPdfAsync(DiaryEntry entry, IReadOnlyList<UploadedFile> files, CancellationToken cancellationToken)
+    {
+        if (files.Any(f => CreateDiaryEntryCommandValidator.IsPdf(f.ContentType, f.FileName)))
+            return true;
+        if (entry.Attachments.Count == 0)
+            return false;
+
+        var ids = entry.Attachments.Select(a => a.StoredFileId).ToList();
+        var stored = await db.StoredFiles
+            .AsNoTracking()
+            .Where(f => ids.Contains(f.Id))
+            .Select(f => new { f.ContentType, f.FileName })
+            .ToListAsync(cancellationToken);
+        return stored.Any(f => CreateDiaryEntryCommandValidator.IsPdf(f.ContentType, f.FileName))
+            || entry.Attachments.Any(a => CreateDiaryEntryCommandValidator.IsPdf(null, a.FileName));
     }
 }

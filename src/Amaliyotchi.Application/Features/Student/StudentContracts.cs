@@ -45,7 +45,8 @@ public sealed record TodayPlaceDto(
     int Reports,
     double AvgScore);
 
-public sealed record TodayDiaryDto(bool SubmittedToday, int MinChars, int MaxFiles);
+/// <param name="PdfRequired">Sozlama <c>diaryPdfRequired</c>: <c>true</c> bo'lsa hisobotga kamida bitta PDF biriktirilishi shart.</param>
+public sealed record TodayDiaryDto(bool SubmittedToday, int MinChars, int MaxFiles, bool PdfRequired);
 
 /// <summary><c>GET /api/student/place</c>. Ariza yo'q → 404.</summary>
 public sealed record PracticePlaceDto(

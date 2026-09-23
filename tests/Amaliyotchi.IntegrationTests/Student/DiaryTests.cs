@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Amaliyotchi.Application.Features.Student;
 using Amaliyotchi.Domain.Diary;
+using Amaliyotchi.Domain.Settings;
 using Amaliyotchi.IntegrationTests.Infrastructure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -123,6 +124,84 @@ public sealed class DiaryTests(ApiFixture fixture)
         (await typeResponse.Content.ReadAsStringAsync()).Should().Contain("Files");
 
         (await Factory.WithDbAsync(db => db.DiaryEntries.AnyAsync(d => d.StudentUserId == scene.Student.Id))).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task PdfMajburiy_PdfsizVaRasmBilan_400_ErrorsFiles()
+    {
+        var scene = await Factory.CreateSceneAsync();
+        await using var setting = await Factory.UseSettingAsync(SettingKeys.DiaryPdfRequired, "true");
+
+        var today = await (await scene.Client.GetAsync("/api/student/today")).Content.ReadAsync<TodayDto>();
+        today!.Diary.PdfRequired.Should().BeTrue();
+
+        using var noFiles = StudentTestData.DiaryForm(StudentTestData.LongText());
+        await AssertPdfRequiredAsync(await scene.Client.PostAsync("/api/student/diary", noFiles));
+
+        using var onlyImage = StudentTestData.DiaryForm(StudentTestData.LongText(), null, ("rasm.png", "image/png", Png));
+        await AssertPdfRequiredAsync(await scene.Client.PostAsync("/api/student/diary", onlyImage));
+
+        (await Factory.WithDbAsync(db => db.DiaryEntries.AnyAsync(d => d.StudentUserId == scene.Student.Id))).Should().BeFalse();
+        (await Factory.WithDbAsync(db => db.StoredFiles.AnyAsync(f => f.UploadedByUserId == scene.Student.Id))).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task PdfMajburiy_PdfBilan_201()
+    {
+        var scene = await Factory.CreateSceneAsync();
+        await using var setting = await Factory.UseSettingAsync(SettingKeys.DiaryPdfRequired, "true");
+        using var form = StudentTestData.DiaryForm(
+            StudentTestData.LongText(), null, ("rasm.png", "image/png", Png), ("hisobot.pdf", "application/pdf", Pdf));
+
+        var response = await scene.Client.PostAsync("/api/student/diary", form);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
+        (await response.Content.ReadAsync<DiaryEntryDto>())!.Files.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task PdfMajburiy_QaytaYozishda_AvvalgiPdfHisobga_201()
+    {
+        var scene = await Factory.CreateSceneAsync();
+        using var first = StudentTestData.DiaryForm(StudentTestData.LongText(), null, ("hisobot.pdf", "application/pdf", Pdf));
+        var created = await (await scene.Client.PostAsync("/api/student/diary", first)).Content.ReadAsync<DiaryEntryDto>();
+        await Factory.WithDbAsync(async db =>
+        {
+            var entry = await db.DiaryEntries.SingleAsync(d => d.Id == created!.Id);
+            entry.RequestRewrite(scene.Tutor.Id, "Batafsilroq yozing", DateTimeOffset.UtcNow);
+            await db.SaveChangesAsync();
+        });
+        await using var setting = await Factory.UseSettingAsync(SettingKeys.DiaryPdfRequired, "true");
+
+        using var again = StudentTestData.DiaryForm(StudentTestData.LongText(300));
+        var response = await scene.Client.PostAsync("/api/student/diary", again);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task PdfMajburiyEmas_Pdfsiz_201()
+    {
+        var scene = await Factory.CreateSceneAsync();
+        await using var setting = await Factory.UseSettingAsync(SettingKeys.DiaryPdfRequired, "false");
+
+        var today = await (await scene.Client.GetAsync("/api/student/today")).Content.ReadAsync<TodayDto>();
+        today!.Diary.PdfRequired.Should().BeFalse();
+
+        using var form = StudentTestData.DiaryForm(StudentTestData.LongText(), null, ("rasm.png", "image/png", Png));
+        var response = await scene.Client.PostAsync("/api/student/diary", form);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
+    }
+
+    private static async Task AssertPdfRequiredAsync(HttpResponseMessage response)
+    {
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        json.RootElement.GetProperty("detail").GetString().Should().Be("Hisobotga PDF fayl biriktirilishi shart.");
+        json.RootElement.GetProperty("errors").GetProperty("Files")[0].GetString()
+            .Should().Be("Hisobotga PDF fayl biriktirilishi shart.");
     }
 
     [Fact]

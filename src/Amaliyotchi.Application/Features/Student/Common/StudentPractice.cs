@@ -10,7 +10,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Amaliyotchi.Application.Features.Student.Common;
 
 /// <summary>Tizim sozlamalaridan talaba oqimiga kerakli qismi (yo'q kalit → domain default).</summary>
-internal sealed record StudentSettings(double MinGpsAccuracyM, int MinReportLength, bool CheckInPhotoRequired);
+internal sealed record StudentSettings(
+    double MinGpsAccuracyM, int MinReportLength, bool CheckInPhotoRequired, bool DiaryPdfRequired);
 
 /// <summary>Bitta talabaning amaliyot holati: profil (foydalanuvchi + guruh), faol davr, davr bo'yicha ariza
 /// (korxona bilan), bayramlar, sozlamalar. Barcha talaba handler'lari shu yerdan boshlanadi —
@@ -103,7 +104,11 @@ internal static class StudentPracticeLoader
     public static async Task<StudentSettings> LoadStudentSettingsAsync(
         this IApplicationDbContext db, CancellationToken cancellationToken)
     {
-        string[] keys = [SettingKeys.MinGpsAccuracy, SettingKeys.MinReportLength, SettingKeys.CheckInPhotoRequired];
+        string[] keys =
+        [
+            SettingKeys.MinGpsAccuracy, SettingKeys.MinReportLength,
+            SettingKeys.CheckInPhotoRequired, SettingKeys.DiaryPdfRequired
+        ];
         var values = await db.AppSettings
             .AsNoTracking()
             .Where(s => keys.Contains(s.Key))
@@ -112,7 +117,8 @@ internal static class StudentPracticeLoader
         return new StudentSettings(
             Int(values, SettingKeys.MinGpsAccuracy),
             Int(values, SettingKeys.MinReportLength),
-            Bool(values, SettingKeys.CheckInPhotoRequired));
+            Bool(values, SettingKeys.CheckInPhotoRequired),
+            Bool(values, SettingKeys.DiaryPdfRequired));
     }
 
     /// <summary>Mantiqiy sozlama: yo'q yoki buzuq qiymat → ta'rifdagi standart.</summary>

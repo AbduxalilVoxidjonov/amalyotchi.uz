@@ -122,9 +122,8 @@ web/
 | `admin/tutors/` | `/admin/tutors` | Tyutorlar | `GET /api/admin/tutors` |
 | `admin/companies/` | `/admin/companies` | Korxonalar | `GET /api/admin/companies` |
 | `admin/students/` | `/admin/students` | Talabalar | `GET /api/admin/students` |
-| `admin/placements/` | `/admin/placements` | Amaliyotchiga (placeholder, mazmuni keyin aniqlanadi) | — |
 | `admin/audit/` | `/admin/audit` | Audit jurnali | `GET /api/admin/audit` |
-| `admin/settings/` | `/admin/settings` | Sozlamalar (form, bayramlar, shablonlar) | `GET/PUT /api/admin/settings` |
+| `admin/settings/` | `/admin/settings` | Sozlamalar (guruhlangan qoidalar, bayramlar) | `GET/PUT /api/admin/settings` |
 | `reports/` | `/admin/reports`, `/tutor/reports` | Hisobotlar katalogi (ikkala rol) | `GET /api/reports` |
 | `tutor/today/` | `/tutor` | Bugun (davomat, filtr, ogohlantirish) | `GET /api/tutor/today` |
 | `tutor/applications/` | `/tutor/applications` | Arizalar (tab'lar, detal panel, checklist, radius) | `GET/POST /api/tutor/applications*` |

@@ -35,7 +35,6 @@ describe('AppShell', () => {
       'Tyutorlar18',
       'Korxonalar412',
       'Talabalar1284',
-      'Amaliyotchiga',
       'Hisobotlar',
       'Audit jurnali',
       'Sozlamalar',
@@ -48,29 +47,6 @@ describe('AppShell', () => {
     expect(screen.getByText('Admin · 2026-2027')).toBeInTheDocument();
     expect(screen.getByText('Admin Adminov')).toBeInTheDocument();
     expect(await screen.findByText('Jami amaliyotchi')).toBeInTheDocument(); // AdminDashboardPage
-  });
-
-  it('admin: "Amaliyotchiga" havolasi → /admin/placements placeholder sahifasi', async () => {
-    // PlacementsPage router'da lazy. Navigatsiya transition ichida render bo'ladi: chunk
-    // yuklanmaguncha router.state yangi yo'lni ko'rsatadi, lekin DOM eski UI'da qoladi
-    // (NavLink aria-current hali null). Og'ir to'liq to'plamda chunk kech yuklanib test
-    // beqaror bo'lgan — shu sabab modulni oldindan yuklaymiz va DOM tekshiruvlarini kutamiz.
-    await import('@/features/admin/placements/PlacementsPage');
-    loginAs(0);
-    const router = renderApp('/admin');
-    const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
-    await userEvent.click(within(nav).getByRole('link', { name: 'Amaliyotchiga' }));
-    await waitFor(() => expect(router.state.location.pathname).toBe('/admin/placements'));
-    await waitFor(() =>
-      expect(within(nav).getByRole('link', { name: 'Amaliyotchiga' })).toHaveAttribute(
-        'aria-current',
-        'page',
-      ),
-    );
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Amaliyotchiga'),
-    );
-    expect(await screen.findByText("Bo'lim tayyorlanmoqda")).toBeInTheDocument();
   });
 
   it('tyutor: tyutor nav; nav havolasi → shell ichidagi sahifa + title', async () => {

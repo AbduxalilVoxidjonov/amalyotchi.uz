@@ -4,9 +4,26 @@
  */
 export type SettingType = 'int' | 'bool' | 'weekdays';
 
+/**
+ * Frontend biladigan kalitlar (backend `SettingKeys.cs`). `Setting.key` ataylab `string` —
+ * backend yangi kalit qo'shsa UI uni "Boshqa" guruhida ko'rsatadi.
+ */
+export type SettingKey =
+  | 'geofenceRadius'
+  | 'lateTolerance'
+  | 'minGpsAccuracy'
+  | 'autoCheckout'
+  | 'workDays'
+  | 'dailyReportRequired'
+  | 'minReportLength'
+  | 'checkInWindow'
+  | 'checkinPhotoRequired'
+  | 'maxStudentsPerCompany'
+  | 'diaryPdfRequired';
+
 export interface Setting {
-  /** "geofenceRadius", "lateTolerance", "workDays", … */
-  key: string;
+  /** `SettingKey` yoki backend'ning yangi (frontend hali bilmaydigan) kaliti. */
+  key: SettingKey | (string & {});
   label: string;
   value: string;
   type: SettingType;
@@ -42,6 +59,7 @@ export interface DocTemplate {
 export interface AdminSettings {
   settings: Setting[];
   holidays: Holiday[];
+  /** Backend yuboradi, lekin Sozlamalar UI'da ko'rsatilmaydi. */
   templates: DocTemplate[];
 }
 

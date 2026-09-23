@@ -12,8 +12,16 @@ public sealed class CreateDiaryEntryCommandValidator : AbstractValidator<CreateD
 
     public static readonly IReadOnlySet<string> AllowedContentTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
-        "image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"
+        "image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", PdfContentType
     };
+
+    public const string PdfContentType = "application/pdf";
+
+    /// <summary>PDF: content-type <c>application/pdf</c> yoki <c>.pdf</c> kengaytmasi (loyihada fayl turi
+    /// magic bytes bilan emas, multipart content-type bilan aniqlanadi; tur ro'yxati yuqoridagi validatsiyada).</summary>
+    public static bool IsPdf(string? contentType, string? fileName)
+        => string.Equals(contentType?.Trim(), PdfContentType, StringComparison.OrdinalIgnoreCase)
+            || (fileName?.Trim().EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) ?? false);
 
     public CreateDiaryEntryCommandValidator(IApplicationDbContext db)
     {

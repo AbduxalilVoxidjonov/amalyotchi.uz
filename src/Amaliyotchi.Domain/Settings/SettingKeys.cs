@@ -60,6 +60,7 @@ public static class SettingKeys
     public const string MinReportLength = "minReportLength";
     public const string CheckInWindow = "checkInWindow";
     public const string CheckInPhotoRequired = "checkinPhotoRequired";
+    public const string DiaryPdfRequired = "diaryPdfRequired";
     public const string MaxStudentsPerCompany = "maxStudentsPerCompany";
 
     public const string UnitMeters = "m";
@@ -83,6 +84,8 @@ public static class SettingKeys
             "Yoqilgan bo'lsa hisobotsiz kun \"tugallanmagan\" hisoblanadi.", "true"),
         new(MinReportLength, "Hisobotning minimal uzunligi", SettingType.Int, UnitChars,
             "Shundan qisqa hisobot qabul qilinmaydi.", "150", 0, 5000),
+        new(DiaryPdfRequired, "Hisobotga PDF majburiy", SettingType.Bool, null,
+            "Yoqilgan bo'lsa talaba kundalik hisobotiga kamida bitta PDF fayl biriktirmasa hisobot qabul qilinmaydi.", "false"),
         new(CheckInWindow, "Check-in oynasi", SettingType.Int, UnitMinutes,
             "Ish boshlanishidan shuncha daqiqa o'tgach check-in yopiladi va talaba \"kelmadi\" bo'ladi.", "90", 15, 480),
         new(CheckInPhotoRequired, "Check-in uchun rasm majburiy", SettingType.Bool, null,

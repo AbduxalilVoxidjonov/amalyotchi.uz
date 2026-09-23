@@ -984,14 +984,16 @@ interface DocTemplateDto {
 
 Sozlamalar (kalit · tur · birlik · default · min–max): `geofenceRadius` int m `200` 50–1000 · `lateTolerance` int min `15` 0–120 ·
 `minGpsAccuracy` int m `100` 10–1000 · `autoCheckout` int min `60` 0–360 · `workDays` weekdays `1,2,3,4,5,6` ·
-`dailyReportRequired` bool `true` · `minReportLength` int chars `150` 0–5000 · `checkInWindow` int min `90` 15–480 ·
+`dailyReportRequired` bool `true` · `minReportLength` int chars `150` 0–5000 · **`diaryPdfRequired`** bool `false` ·
+`checkInWindow` int min `90` 15–480 ·
 **`checkinPhotoRequired`** bool `false` · **`maxStudentsPerCompany`** int `10` 1–200.
-Ro'yxat tartibi — shu; ikkita oxirgi kalit v3 da qo'shildi (§6).
+Ro'yxat tartibi — shu; ikkita oxirgi kalit v3 da qo'shildi (§6); `diaryPdfRequired` — keyinroq (`minReportLength` dan keyin).
 Bazada yo'q kalit default bilan qaytadi (`updatedAt: null`).
 
 | Kalit                   | Ta'sir                                                                                                            |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `checkinPhotoRequired`  | `true` bo'lsa `POST /api/student/checkin` va `/checkout` selfisiz qabul qilinmaydi → 400 `errors.Photo` (§2.6)      |
+| `diaryPdfRequired`      | `true` bo'lsa `POST /api/student/diary` kamida bitta PDF'siz qabul qilinmaydi → 400 `errors.Files`; talabaga `TodayDto.diary.pdfRequired` |
 | `maxStudentsPerCompany` | `CompanyRow`/`CompanyDetail`/`TutorCompany` dagi `maxStudents` va `overLimit`; bayroq `tooManyStudents` (§2.3)      |
 
 ---
@@ -1531,6 +1533,7 @@ interface TodayDiaryDto {
   submittedToday: boolean;
   minChars: number /*sozlama minReportLength*/;
   maxFiles: number; /*5*/
+  pdfRequired: boolean /*sozlama diaryPdfRequired; true → hisobotga kamida bitta PDF shart*/;
 }
 ```
 
@@ -1715,6 +1718,8 @@ Butun so'rov ≤ 30 MB (`RequestSizeLimit`) — oshsa 413. Response **201** `Dia
 Xatolar: 400 validation; **400** davr yo'q / davr bugunni o'z ichiga olmaydi / fayllar jami > 5; **409** — bugungi
 hisobot allaqachon bor ("Bugungi hisobot allaqachon yuborilgan."). Istisno: bugungisi `rewrite` holatida → qayta yoziladi
 (`Resubmit`, fayllar qo'shiladi, status → `submitted`), 201.
+**400** `diaryPdfRequired=true` va `files` orasida PDF yo'q (PDF = content-type `application/pdf` yoki `.pdf` kengaytma;
+qayta yozishda yozuvda qolgan PDF ham hisob): `detail` = `errors.Files[0]` = "Hisobotga PDF fayl biriktirilishi shart."
 
 #### GET `/api/student/calendar` — `?month=YYYY-MM` (berilmasa joriy oy)
 
@@ -1857,7 +1862,7 @@ kiritilishi kerak — tyutoringizga murojaat qiling."` STIR formati noto'g'ri bo
 | `CompanyFlag`                      | `suspicious` · `tooManyStudents` · `largeRadius` · `null` — ustuvorlik aynan shu tartibda                                                                                                                                                                                                                                                 | admin companies, tutor companies                                                       |
 | `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorScopesChanged` | admin audit `action`, `?action=`                                                       |
 | `SettingType`                      | `int` · `bool` · `weekdays`                                                                                                                                                                                                                                                                                                               | settings `type`                                                                        |
-| `SettingKey` (string const)        | `geofenceRadius` · `lateTolerance` · `minGpsAccuracy` · `autoCheckout` · `workDays` · `dailyReportRequired` · `minReportLength` · `checkInWindow` · `checkinPhotoRequired` · `maxStudentsPerCompany`                                                                                                                                      | settings                                                                               |
+| `SettingKey` (string const)        | `geofenceRadius` · `lateTolerance` · `minGpsAccuracy` · `autoCheckout` · `workDays` · `dailyReportRequired` · `minReportLength` · `diaryPdfRequired` · `checkInWindow` · `checkinPhotoRequired` · `maxStudentsPerCompany`                                                                                                                                      | settings                                                                               |
 | `DocumentTemplateKind`             | `contract` · `referral` · `reference`                                                                                                                                                                                                                                                                                                     | settings templates                                                                     |
 | `StoredFileKind`                   | `contract` · `diaryAttachment` · `leaveDocument` · `template` · `checkInPhoto`                                                                                                                                                                                                                                                            | ichki (files ko'lami); `AttendancePunch.photoUrl`                                      |
 | Grade                              | `2` · `3` · `4` · `5` · `null`                                                                                                                                                                                                                                                                                                            | grading, portfolio (number)                                                            |

@@ -41,7 +41,8 @@ internal static class TodayBuilder
             PracticeTime.Hm(rules.CheckOutFrom),
             IsOpen: false);
 
-        var diaryDto = new TodayDiaryDto(false, practice.Settings.MinReportLength, DiaryEntry.MaxAttachments);
+        var diaryDto = new TodayDiaryDto(
+            false, practice.Settings.MinReportLength, DiaryEntry.MaxAttachments, practice.Settings.DiaryPdfRequired);
 
         if (practice.Period is null)
         {

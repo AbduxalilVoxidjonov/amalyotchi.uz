@@ -1,3 +1,4 @@
+using Amaliyotchi.Application.Features.Student.Diary;
 using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Common;
 using Amaliyotchi.Domain.Exceptions;
@@ -11,6 +12,35 @@ namespace Amaliyotchi.UnitTests.Domain;
 public sealed class SettingsAndPeriodTests
 {
     private static readonly DateTimeOffset Now = DateTimeOffset.UtcNow;
+
+    [Fact]
+    public void Sozlama_DiaryPdfRequired_MantiqiyStandartYoqVaHisobotSozlamalariYonida()
+    {
+        var definition = SettingKeys.Get(SettingKeys.DiaryPdfRequired);
+
+        SettingKeys.DiaryPdfRequired.Should().Be("diaryPdfRequired");
+        definition.Type.Should().Be(SettingType.Bool);
+        definition.DefaultValue.Should().Be("false");
+        definition.Unit.Should().BeNull();
+        definition.Label.Should().Be("Hisobotga PDF majburiy");
+        definition.Note.Should().Contain("kamida bitta PDF");
+        definition.Validate("1").Should().Be("true");
+        definition.Validate(" false ").Should().Be("false");
+        FluentActions.Invoking(() => definition.Validate("pdf")).Should().Throw<DomainException>();
+        AppSetting.CreateDefault(SettingKeys.DiaryPdfRequired, Now).AsBool().Should().BeFalse();
+
+        var keys = SettingKeys.All.Select(d => d.Key).ToList();
+        keys.IndexOf(SettingKeys.DiaryPdfRequired).Should().Be(keys.IndexOf(SettingKeys.MinReportLength) + 1);
+    }
+
+    [Theory]
+    [InlineData("application/pdf", "hisobot.pdf", true)]
+    [InlineData("APPLICATION/PDF", "hisobot", true)]
+    [InlineData("application/octet-stream", "Hisobot.PDF", true)]
+    [InlineData("image/png", "rasm.png", false)]
+    [InlineData(null, "rasm.pdf.png", false)]
+    public void KundalikFayli_PdfAniqlash(string? contentType, string fileName, bool expected)
+        => CreateDiaryEntryCommandValidator.IsPdf(contentType, fileName).Should().Be(expected);
 
     [Theory]
     [InlineData(SettingKeys.GeofenceRadius, " 250 ", "250")]
