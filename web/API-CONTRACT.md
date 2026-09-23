@@ -19,7 +19,7 @@ Jami **92 ta endpoint**: Auth 5 · Admin 54 · Reports 1 · Tutor 19 · Student 
 
 ### 1.1 Base path, transport
 
-- Base path: `/api`. Dev API: `http://localhost:5080`. CORS `Cors:Origins` dan (default `http://localhost:5173`).
+- Base path: `/api`. Dev API: `http://127.0.0.10:5080`. CORS `Cors:Origins` dan (default `http://127.0.0.10:5173`).
 - So'rov/javob — JSON (`application/json`). Istisno: `POST /api/student/diary` — `multipart/form-data`;
   `POST /api/student/checkin` va `POST /api/student/checkout` — `multipart/form-data` **yoki** `application/json`
   (§2.6); `GET /api/files/{id}` — fayl (`Content-Disposition: attachment`, range qo'llanadi).
@@ -2232,7 +2232,7 @@ Ikkinchi yo'l: admin talabalar ro'yxatidan bir nechtasini belgilab, to'g'ridan-t
   **API shakli o'zgarmagan** — serverga baribir `lat`/`lng` sonlari ketadi; Excel importda koordinata ustunlari
   qoladi (u yerda xarita yo'q). Nuqta tanlanmasa klient validatsiyasi to'xtatadi:
   `"Xaritadan korxona joylashuvini belgilang."` Xarita ostida **"Hozirgi joylashuvim"** tugmasi bor —
-  brauzer geolokatsiyasi (faqat `https`/`localhost`); ruxsat berilmasa yoki aniqlik yomon bo'lsa
+  brauzer geolokatsiyasi (faqat `https` yoki loopback — `localhost`/`127.x`); ruxsat berilmasa yoki aniqlik yomon bo'lsa
   foydalanuvchiga izoh chiqadi, marker baribir qo'lda sudraladi.
 - **Koordinata qo'lda yozilmaydi**: korxona formasida `lat`/`lng` inputlari o'rniga **xarita** (Leaflet + OSM,
   `@/shared/ui/map-picker`) — klik yoki markerni sudrash bilan nuqta tanlanadi, radius doira bo'lib ko'rinadi.

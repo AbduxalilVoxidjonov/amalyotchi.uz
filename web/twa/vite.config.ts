@@ -3,7 +3,7 @@ import { fileURLToPath, URL } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-const API_TARGET = process.env['VITE_DEV_API_TARGET'] ?? 'http://localhost:5080';
+const API_TARGET = process.env['VITE_DEV_API_TARGET'] ?? 'http://127.0.0.10:5080';
 
 export default defineConfig({
   plugins: [react()],
@@ -11,6 +11,8 @@ export default defineConfig({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   server: {
+    // Amaliyotchi uchun ajratilgan loopback IP (macOS: `sudo ifconfig lo0 alias 127.0.0.10 up`).
+    host: '127.0.0.10',
     port: 5174,
     proxy: {
       '/api': { target: API_TARGET, changeOrigin: true },

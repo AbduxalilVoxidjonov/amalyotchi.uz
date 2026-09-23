@@ -9,7 +9,7 @@ namespace Amaliyotchi.Infrastructure.Persistence;
 public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
     private const string DefaultDevConnection =
-        "Host=localhost;Port=5432;Database=amaliyotchi;Username=amaliyotchi;Password=amaliyotchi";
+        "Host=127.0.0.10;Port=55432;Database=amaliyotchi;Username=amaliyotchi;Password=amaliyotchi";
 
     public AppDbContext CreateDbContext(string[] args)
     {

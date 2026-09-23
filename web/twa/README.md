@@ -6,7 +6,7 @@ Enum'lar camelCase string (`present`, `dayOff`, `revisionNeeded` …) — o'zbek
 (`features/*/types.ts`: `ATTENDANCE_STATUS`, `DAY_STATUS`, `DIARY_STATUS`, `LEAVE_STATUS`, `APPLICATION_STATUS`).
 
 ```bash
-npm run dev -w twa            # http://localhost:5174, /api → http://localhost:5080 (vite proxy)
+npm run dev -w twa            # http://127.0.0.10:5174, /api → http://127.0.0.10:5080 (vite proxy)
 npm run test -w twa           # vitest + MSW (mock'lar v2 shaklida)
 ```
 
@@ -28,9 +28,9 @@ uni qo'lda berish mumkin (production bundle'da bu kod yo'q):
    TG_BOT_TOKEN=... node scratchpad/twa-initdata.mjs 100000004
    ```
 2. Natijani `twa/.env.development.local` ga `VITE_DEV_INIT_DATA=...` qilib yozing
-   (namuna: `.env.development.local.example`) **yoki** URL'ga qo'shing: `http://localhost:5174/?initData=<satr>`
+   (namuna: `.env.development.local.example`) **yoki** URL'ga qo'shing: `http://127.0.0.10:5174/?initData=<satr>`
    (query ustunroq).
-3. `VITE_USE_MOCKS=false` bilan `npm run dev -w twa` — real backend (`localhost:5080`) bilan ishlaydi.
+3. `VITE_USE_MOCKS=false` bilan `npm run dev -w twa` — real backend (`127.0.0.10:5080`) bilan ishlaydi.
 
 Mock rejimi (`VITE_USE_MOCKS=true`): MSW istalgan initData'ni qabul qiladi; `initData=invalid` → 403 "imzo",
 `initData=unlinked` → 403 "hisob topilmadi".

@@ -102,7 +102,7 @@ export function MapPicker({
   function locate() {
     if (disabled || locating) return;
     setAccuracyM(null);
-    // https (yoki localhost) bo'lmasa brauzer so'rovni umuman bermaydi — darhol tushuntiramiz.
+    // https (yoki loopback — localhost/127.x) bo'lmasa brauzer so'rovni umuman bermaydi — darhol tushuntiramiz.
     if (typeof window !== 'undefined' && window.isSecureContext === false) {
       setGeoError(GEO_INSECURE);
       return;
