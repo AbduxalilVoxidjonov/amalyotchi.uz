@@ -134,19 +134,29 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
     await user.click(within(table).getByText('07.09.2026'));
     const panel = await screen.findByRole('dialog', { name: /07\.09\.2026 — kun tafsiloti/ });
 
-    // Kirish va chiqish bloklari — vaqt, masofa, aniqlik, lokatsiya va xarita.
-    expect(within(panel).getByText(/^Kirish · /)).toBeInTheDocument();
-    expect(within(panel).getByText(/^Chiqish · /)).toBeInTheDocument();
+    // Kirish va chiqish — yonma-yon ikki blok: vaqt, masofa, aniqlik, koordinata (bitta qator), selfi.
+    const checkIn = within(panel).getByRole('group', { name: /^Kirish · / });
+    const checkOut = within(panel).getByRole('group', { name: /^Chiqish · / });
     expect(within(panel).getAllByText('Lokatsiya')).toHaveLength(2);
-    expect(within(panel).getAllByText(/^41\.\d+, 69\.\d+$/).length).toBeGreaterThan(0);
-    expect(within(panel).getByRole('img', { name: /Kirish nuqtasi/ })).toBeInTheDocument();
+    expect(within(checkIn).getByText('Masofa')).toBeInTheDocument();
+    expect(within(checkIn).getByText('Aniqlik')).toBeInTheDocument();
+    expect(within(checkIn).getByText(/^41\.\d+, 69\.\d+$/)).toBeInTheDocument();
+    expect(within(checkOut).getByText(/^41\.\d+, 69\.\d+$/)).toBeInTheDocument();
 
-    // Talaba yuborgan selfi — o'ngdagi "Yuborilgan fayllar" ustunida (kattaroq ko'rinishda).
-    const files = within(panel).getByRole('region', { name: 'Yuborilgan fayllar' });
-    expect(within(files).getByText('Kirish selfisi')).toBeInTheDocument();
-    expect(
-      within(files).getByRole('button', { name: '07.09.2026 check-in rasmi — kattalashtirish' }),
-    ).toBeInTheDocument();
+    // Selfi — blok ichida kichik thumbnail; bosilsa katta preview (PhotoPreview modali).
+    expect(within(checkIn).getByText('Kirish selfisi')).toBeInTheDocument();
+    const selfie = within(checkIn).getByRole('button', {
+      name: '07.09.2026 check-in rasmi — kattalashtirish',
+    });
+    await waitFor(() =>
+      expect(within(selfie).getByRole('img')).toHaveAttribute('src', 'blob:mock-photo'),
+    );
+    // Chiqish selfisi yo'q — bir qatorli kulrang matn.
+    expect(within(checkOut).getByText("Selfi yo'q")).toBeInTheDocument();
+
+    // Kun sanoqlari — bitta qatorda.
+    expect(within(panel).getByText('Urinishlar')).toBeInTheDocument();
+    expect(within(panel).getByText('Ish kuni')).toBeInTheDocument();
 
     // Shu kunga yozgan kundaligi — matni, o'rgangani va ball bilan (chap ustunda).
     const diary = within(panel).getByRole('article', { name: 'Kundalik: 07.09.2026' });
@@ -204,7 +214,7 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
     );
   });
 
-  it("kun oynasida ma'lumot chapda, fayllar o'ngda — PDF joyida ochiladi", async () => {
+  it("kun oynasida kun ma'lumoti, keyin kundalik va uning fayllari — ixcham ro'yxat", async () => {
     const user = userEvent.setup();
     renderStudentDetail('/tutor/students/s-341030');
 
@@ -213,38 +223,51 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
     await user.click(within(table).getByText('12.10.2026'));
     const dialog = await screen.findByRole('dialog', { name: /12\.10\.2026 — kun tafsiloti/ });
 
-    // Ikki ustun: kun ma'lumotlari (chapda, DOM'da birinchi) va fayllar (o'ngda).
+    // Tartib: kun ma'lumotlari (kirish/chiqish, sanoqlar), keyin kundalik bo'limi.
     const details = within(dialog).getByRole('region', { name: "Kun ma'lumotlari" });
-    const files = within(dialog).getByRole('region', { name: 'Yuborilgan fayllar' });
-    expect(details.compareDocumentPosition(files) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const diarySection = within(dialog).getByRole('region', {
+      name: 'Shu kunga yuborgan kundaligi',
+    });
+    expect(
+      details.compareDocumentPosition(diarySection) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
 
-    // Kundalik matni va baholash — chap ustunda.
-    const card = within(details).getByRole('article', { name: 'Kundalik: 12.10.2026' });
+    // Kundalik matni va baholash — kartada (matn DOM'da to'liq, CSS bilan qisqartiriladi).
+    const card = within(diarySection).getByRole('article', { name: 'Kundalik: 12.10.2026' });
     expect(within(card).getByText(/ma'lumotlar bazasi sxemasini/)).toBeInTheDocument();
     expect(within(card).getByText(/O'rganganim:/)).toBeInTheDocument();
-    // Fayllar endi kartada takrorlanmaydi.
+    // Fayllar kartada takrorlanmaydi — ostidagi ro'yxatda.
     expect(within(card).queryByRole('link', { name: 'kunlik_hisobot.pdf' })).not.toBeInTheDocument();
 
-    // Fayllar bosilmasdan, joyida ochiq: PDF — iframe, rasm — img (token bilan yuklangan blob).
+    const files = within(diarySection).getByRole('region', { name: 'Kundalik fayllari' });
+    expect(card.compareDocumentPosition(files) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Fayl nomi — havola: bosilsa yangi oynada to'liq ochiladi (token bilan yuklangan blob).
     await waitFor(() =>
-      expect(within(files).getByTitle('kunlik_hisobot.pdf')).toHaveAttribute(
-        'src',
+      expect(within(files).getByRole('link', { name: 'kunlik_hisobot.pdf' })).toHaveAttribute(
+        'href',
         'blob:mock-photo',
       ),
-    );
-    expect(within(files).getByRole('img', { name: /ish_jarayoni_.*\.jpg/ })).toHaveAttribute(
-      'src',
-      'blob:mock-photo',
-    );
-    // Fayl nomi — havola: bosilsa yangi oynada to'liq ochiladi; yonida ochish/yuklab olish.
-    expect(within(files).getByRole('link', { name: 'kunlik_hisobot.pdf' })).toHaveAttribute(
-      'href',
-      'blob:mock-photo',
     );
     expect(within(files).getAllByRole('link', { name: 'Yangi oynada ochish' })).toHaveLength(2);
     const downloads = within(files).getAllByRole('link', { name: 'Yuklab olish' });
     expect(downloads).toHaveLength(2);
     expect(downloads[1]).toHaveAttribute('download', 'kunlik_hisobot.pdf');
+
+    // "Ko'rish" — PDF/rasm shu yerda, alohida oynada ochiladi.
+    await user.click(within(files).getByRole('button', { name: /ish_jarayoni_.*\.jpg — ko'rish/ }));
+    const imageDialog = await screen.findByRole('dialog', { name: /ish_jarayoni_.*\.jpg/ });
+    expect(within(imageDialog).getByRole('img', { name: /ish_jarayoni_.*\.jpg/ })).toHaveAttribute(
+      'src',
+      'blob:mock-photo',
+    );
+    await user.click(within(imageDialog).getByRole('button', { name: 'Yopish' }));
+
+    await user.click(within(files).getByRole('button', { name: "kunlik_hisobot.pdf — ko'rish" }));
+    const pdfDialog = await screen.findByRole('dialog', { name: 'kunlik_hisobot.pdf' });
+    expect(within(pdfDialog).getByTitle('kunlik_hisobot.pdf')).toHaveAttribute(
+      'src',
+      'blob:mock-photo',
+    );
 
     // Kundaliklar alohida bo'lim sifatida sahifada yo'q — hammasi kun oynasida.
     expect(screen.queryByRole('region', { name: 'Kundaliklar' })).not.toBeInTheDocument();

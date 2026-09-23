@@ -1,52 +1,99 @@
-/* Kun oynasining o'ng ustuni — talaba yuborgan fayllar (aniq ko'rinadigan o'lchamda). */
+/* Kun oynasidagi kundalik fayllari — ixcham ro'yxat (har fayl bir qator). */
+.heading {
+  margin: 0 0 4px;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-caps);
+  color: var(--color-text-faint);
+}
 .count {
   font-weight: var(--fw-regular);
-  color: var(--color-text-faint);
   text-transform: none;
   letter-spacing: normal;
 }
 .list {
   display: grid;
-  gap: 14px;
-  margin-top: 10px;
-}
-.item {
-  display: grid;
-  gap: 8px;
   margin: 0;
-  padding: 12px;
+  padding: 0;
+  list-style: none;
   border: var(--border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
 }
-.caption {
+.row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 10px;
+  gap: 4px 12px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
 }
-.title {
-  font-size: var(--fs-sm2);
-  font-weight: var(--fw-semibold);
+.row + .row {
+  border-top: var(--border-row);
+}
+.name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--color-text-2);
+}
+a.name {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+a.name:hover {
   color: var(--color-text);
 }
-.note {
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs2);
-  color: var(--color-text-faint);
+.actions {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
 }
-/* Kundalik fayllari (AuthFileEmbed o'zining figure'i bilan keladi) */
-.attachments {
-  padding: 12px;
-  border: var(--border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
+.action {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.action:hover {
+  color: var(--color-text);
+}
+.action:focus-visible,
+a.name:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+.muted,
+.empty {
+  color: var(--color-text-faint);
 }
 .empty {
-  margin: 10px 0 0;
-  padding: 14px;
-  border: var(--border-dashed);
-  border-radius: var(--radius-md);
+  margin: 0;
   font-size: var(--fs-sm);
-  color: var(--color-text-faint);
+}
+.error {
+  color: var(--color-bad-fg);
+}
+.frame {
+  width: 100%;
+  height: min(70vh, 720px);
+  border: var(--border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+}
+.image {
+  display: block;
+  width: 100%;
+  max-height: min(70vh, 720px);
+  object-fit: contain;
+  border-radius: var(--radius-md);
 }

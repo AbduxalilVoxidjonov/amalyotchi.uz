@@ -42,3 +42,50 @@
 .noteLabel {
   color: var(--color-text-dim);
 }
+/* Ixcham ko'rinish — kun oynasi (kichik padding, kichikroq shrift, matn 4 qatorga qisqaradi). */
+.compact {
+  padding: 12px 14px;
+}
+.compact .date {
+  font-size: var(--fs-md);
+}
+.compact .text {
+  margin-top: 8px;
+  font-size: var(--fs-md);
+  line-height: var(--lh-note);
+}
+.compact .note {
+  margin-top: 6px;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-note);
+}
+.compact .score {
+  font-size: var(--fs-md);
+}
+.text[data-clamped] {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  overflow: hidden;
+}
+.more {
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.more:hover {
+  color: var(--color-text);
+}
+.more:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}

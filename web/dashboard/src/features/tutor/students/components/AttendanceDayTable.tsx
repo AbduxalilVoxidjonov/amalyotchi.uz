@@ -1,16 +1,15 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import {
   Badge,
   Chip,
   ChipRow,
   DataTable,
   Eyebrow,
-  MapPlaceholder,
   Modal,
   type DataTableColumn,
 } from '@/shared/ui';
 import { errorMessage } from '@/shared/api';
-import { fmtDateOnly, fmtDayMonth, fmtDistance } from '../../format';
+import { fmtDateOnly, fmtDistance } from '../../format';
 import { useDiaryReview } from '../../diaries/hooks';
 import { DIARY_STATUS_LABEL, type DiaryEntry } from '../../diaries/types';
 import {
@@ -21,7 +20,7 @@ import {
   type StudentAttendanceDay,
 } from '../types';
 import { PhotoPreview } from './PhotoPreview';
-import { DayFilesPanel, type DaySelfie } from './DayFilesPanel';
+import { DayFilesPanel } from './DayFilesPanel';
 import { DiaryDayCard } from './DiaryDayCard';
 import styles from './AttendanceDayTable.module.css';
 
@@ -161,8 +160,8 @@ export interface AttendanceDayTableProps {
   area?: StudentApiArea;
 }
 
-/** Bitta belgilanish (kirish/chiqish): vaqt, masofa, aniqlik va nuqta.
- * Selfi bu yerda emas — u o'ngdagi "Yuborilgan fayllar" ustunida, kattaroq ko'rinishda. */
+/** Bitta belgilanish (kirish/chiqish) — ixcham ustun: sarlavha (vaqt), masofa/aniqlik,
+ * koordinata (bitta qator) va selfi (kichik thumbnail — bosilsa katta preview). */
 function PunchBlock({
   kind,
   punch,
@@ -172,83 +171,64 @@ function PunchBlock({
   punch: AttendancePunch | null;
   date: string;
 }) {
+  const headingId = useId();
   const title = kind === 'in' ? 'Kirish' : 'Chiqish';
 
   if (!punch) {
     return (
-      <div className={styles.punch}>
-        <Eyebrow margin="none">{title}</Eyebrow>
+      <div className={styles.punch} role="group" aria-labelledby={headingId}>
+        <Eyebrow margin="none" id={headingId}>
+          {title}
+        </Eyebrow>
         <p className={styles.punchEmpty}>Belgilanmagan</p>
       </div>
     );
   }
 
   const coords = fmtCoords(punch.lat, punch.lng);
+  const photoLabel = `${fmtDateOnly(date)} ${kind === 'in' ? 'check-in' : 'check-out'} rasmi`;
 
   return (
-    <div className={styles.punch}>
-      <Eyebrow margin="none">
+    <div className={styles.punch} role="group" aria-labelledby={headingId}>
+      <Eyebrow margin="none" id={headingId}>
         {title} · {punch.at}
       </Eyebrow>
-      <dl className={styles.panelFacts}>
-        <div>
-          <dt>Masofa</dt>
-          <dd data-out-of-radius={punch.outOfRadius || undefined} className={styles.distance}>
-            {punch.distanceM === null ? '—' : fmtDistance(punch.distanceM)}
-          </dd>
-        </div>
-        <div>
-          <dt>Aniqlik</dt>
-          <dd>{punch.accuracyM === null ? '—' : fmtDistance(punch.accuracyM)}</dd>
-        </div>
-        <div>
-          <dt>Lokatsiya</dt>
-          <dd>{coords ?? 'Yuborilmagan'}</dd>
-        </div>
-      </dl>
-
-      <MapPlaceholder
-        title={`${title} nuqtasi · ${fmtDayMonth(date)}`}
-        coords={coords ?? 'Koordinata yo‘q'}
-        note={punch.outOfRadius ? 'Radius tashqarisida' : undefined}
-        height={140}
-      />
-
-      {!punch.photoUrl && <p className={styles.punchEmpty}>Selfi yuborilmagan</p>}
+      <div className={styles.punchBody}>
+        <dl className={styles.punchFacts}>
+          <div>
+            <dt>Masofa</dt>
+            <dd data-out-of-radius={punch.outOfRadius || undefined} className={styles.distance}>
+              {punch.distanceM === null ? '—' : fmtDistance(punch.distanceM)}
+              {punch.outOfRadius && <span className={styles.outNote}> · radius tashqarisida</span>}
+            </dd>
+          </div>
+          <div>
+            <dt>Aniqlik</dt>
+            <dd>{punch.accuracyM === null ? '—' : fmtDistance(punch.accuracyM)}</dd>
+          </div>
+          <div>
+            <dt>Lokatsiya</dt>
+            <dd className={styles.coords}>{coords ?? 'Yuborilmagan'}</dd>
+          </div>
+        </dl>
+        {punch.photoUrl ? (
+          <figure className={styles.selfie}>
+            <PhotoPreview url={punch.photoUrl} label={photoLabel} />
+            <figcaption className={styles.selfieCaption}>{title} selfisi</figcaption>
+          </figure>
+        ) : (
+          <p className={styles.noSelfie}>Selfi yo'q</p>
+        )}
+      </div>
     </div>
   );
 }
 
-/** Kun oynasining o'ng ustuni uchun selfilar (bo'lganlari). */
-function daySelfies(day: StudentAttendanceDay): DaySelfie[] {
-  const date = fmtDateOnly(day.date);
-  const items: DaySelfie[] = [];
-  if (day.checkIn?.photoUrl) {
-    items.push({
-      url: day.checkIn.photoUrl,
-      title: 'Kirish selfisi',
-      note: day.checkIn.at,
-      label: `${date} check-in rasmi`,
-    });
-  }
-  if (day.checkOut?.photoUrl) {
-    items.push({
-      url: day.checkOut.photoUrl,
-      title: 'Chiqish selfisi',
-      note: day.checkOut.at,
-      label: `${date} check-out rasmi`,
-    });
-  }
-  return items;
-}
-
 /**
  * Kundalik jadval (KONTRAKT §2.2) — har bir amaliyot kuni bir qator.
- * Sana bosilsa, o'sha kun **oynada** (modal) ochiladi. Oyna ikki ustunli (keng ekranda):
- * CHAPDA — kun ma'lumotlari: belgilanish vaqti, masofa, aniqlik, xarita, kun sanoqlari va
- * kundalik matni (baholash bilan); O'NGDA — talaba o'sha kuni yuborgan fayllar aniq ko'rinadigan
- * o'lchamda (check-in/check-out selfisi, kundalikka biriktirilgan PDF/rasm). Fayl bo'lmasa —
- * bitta ustun.
+ * Sana bosilsa, o'sha kun ixcham **oynada** (modal, ~640px) ochiladi: tepada kirish va chiqish
+ * yonma-yon (vaqt, masofa, aniqlik, koordinata, selfi thumbnail), ostida kun sanoqlari bir qatorda
+ * (urinishlar · ish kuni · radius), oxirida kundalik (qisqartirilgan matn, baholash, fayllar ro'yxati).
  */
 export function AttendanceDayTable({
   days,
@@ -262,10 +242,7 @@ export function AttendanceDayTable({
   const status = selected ? dayStatusLabel(selected) : null;
   const review = useDiaryReview(area);
 
-  // O'ng ustun — talaba yuborgan fayllar; ular bo'lmasa oyna bir ustunli qoladi.
-  const selfies = selected ? daySelfies(selected) : [];
-  const attachments = diary?.files ?? [];
-  const hasFiles = selfies.length > 0 || attachments.length > 0;
+  const diaryHeadingId = useId();
 
   return (
     <>
@@ -290,7 +267,7 @@ export function AttendanceDayTable({
           review.reset();
           setSelectedDate(null);
         }}
-        width="min(1720px, 98vw)"
+        width="min(640px, 96vw)"
         title={
           selected && status ? (
             <span className={styles.modalTitle}>
@@ -303,45 +280,48 @@ export function AttendanceDayTable({
         }
       >
         {selected && (
-          <div className={styles.panel} data-files={hasFiles || undefined}>
-            <section className={styles.detailsCol} aria-label="Kun ma'lumotlari">
+          <div className={styles.panel}>
+            <section className={styles.details} aria-label="Kun ma'lumotlari">
               <div className={styles.punches}>
                 <PunchBlock kind="in" punch={selected.checkIn} date={selected.date} />
                 <PunchBlock kind="out" punch={selected.checkOut} date={selected.date} />
               </div>
 
-              <div className={styles.panelMain}>
-                <dl className={styles.panelFacts}>
+              <dl className={styles.stats}>
+                <div>
+                  <dt>Urinishlar</dt>
+                  <dd>
+                    {selected.attempts} ta
+                    {selected.rejectedAttempts > 0 &&
+                      ` · ${selected.rejectedAttempts} rad etilgan`}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Ish kuni</dt>
+                  <dd>{selected.isWorkDay ? 'Ha' : "Yo'q"}</dd>
+                </div>
+                {radiusM !== null && (
                   <div>
-                    <dt>Urinishlar</dt>
-                    <dd>
-                      {selected.attempts} ta
-                      {selected.rejectedAttempts > 0 &&
-                        ` · ${selected.rejectedAttempts} rad etilgan`}
-                    </dd>
+                    <dt>Radius</dt>
+                    <dd>{fmtDistance(radiusM)}</dd>
                   </div>
-                  <div>
-                    <dt>Ish kuni</dt>
-                    <dd>{selected.isWorkDay ? 'Ha' : "Yo'q"}</dd>
-                  </div>
-                  {radiusM !== null && (
-                    <div>
-                      <dt>Radius</dt>
-                      <dd>{fmtDistance(radiusM)}</dd>
-                    </div>
-                  )}
-                </dl>
-                {selected.suspiciousReason && (
-                  <p className={styles.reason}>{selected.suspiciousReason}</p>
                 )}
-                {selected.manualReason && <p className={styles.reason}>{selected.manualReason}</p>}
-              </div>
+              </dl>
+              {selected.suspiciousReason && (
+                <p className={styles.reason}>{selected.suspiciousReason}</p>
+              )}
+              {selected.manualReason && <p className={styles.reason}>{selected.manualReason}</p>}
+            </section>
 
-              <div className={styles.panelDiary}>
-                <Eyebrow margin="none">Shu kunga yuborgan kundaligi</Eyebrow>
-                {diary ? (
+            <section className={styles.panelDiary} aria-labelledby={diaryHeadingId}>
+              <Eyebrow margin="none" id={diaryHeadingId}>
+                Shu kunga yuborgan kundaligi
+              </Eyebrow>
+              {diary ? (
+                <>
                   <DiaryDayCard
                     entry={diary}
+                    compact
                     showFiles={false}
                     review={{
                       pending: review.isPending,
@@ -349,22 +329,17 @@ export function AttendanceDayTable({
                       onReview: (body) => review.mutate({ id: diary.id, body }),
                     }}
                   />
-                ) : selected.diary ? (
-                  <p className={styles.punchEmpty}>
-                    Kundalik yuborilgan ({DIARY_STATUS_LABEL[selected.diary.status].label}), lekin
-                    matni yuklanmadi — sahifani yangilang.
-                  </p>
-                ) : (
-                  <p className={styles.punchEmpty}>Bu kunga kundalik yuborilmagan.</p>
-                )}
-              </div>
+                  <DayFilesPanel attachments={diary.files} />
+                </>
+              ) : selected.diary ? (
+                <p className={styles.punchEmpty}>
+                  Kundalik yuborilgan ({DIARY_STATUS_LABEL[selected.diary.status].label}), lekin
+                  matni yuklanmadi — sahifani yangilang.
+                </p>
+              ) : (
+                <p className={styles.punchEmpty}>Bu kunga kundalik yuborilmagan.</p>
+              )}
             </section>
-
-            <DayFilesPanel
-              className={styles.filesCol}
-              selfies={selfies}
-              attachments={attachments}
-            />
           </div>
         )}
       </Modal>

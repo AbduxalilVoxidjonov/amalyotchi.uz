@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Badge, Card } from '@/shared/ui';
 import { AuthFileEmbed } from '@/shared/files';
 import { fmtDateOnly, fmtTime } from '../../format';
@@ -27,6 +28,11 @@ export interface DiaryDayCardProps {
    * "Yuborilgan fayllar" ustunida (selfilar bilan birga, kattaroq) turadi.
    */
   showFiles?: boolean;
+  /**
+   * `true` — ixcham ko'rinish (kun oynasi): kichikroq padding/shrift, matn 4 qatorga qisqartiriladi
+   * va sig'masa "To'liq ko'rish" tugmasi bilan ochiladi. Matn DOM'da to'liq qoladi.
+   */
+  compact?: boolean;
 }
 
 /**
@@ -35,11 +41,31 @@ export interface DiaryDayCardProps {
  * PDF qilib yuboradi — `AuthFileEmbed` uni token bilan yuklab, shu yerda ko'rsatadi), tyutor izohi
  * va baholash qatori. Kundaliklar sahifasidagi karta — `diaries/components/DiaryCard.tsx`.
  */
-export function DiaryDayCard({ entry, review, showFiles = true }: DiaryDayCardProps) {
+export function DiaryDayCard({
+  entry,
+  review,
+  showFiles = true,
+  compact = false,
+}: DiaryDayCardProps) {
   const s = DIARY_STATUS_LABEL[entry.status];
+  const textRef = useRef<HTMLParagraphElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  // Qisqartirilgan matn haqiqatan sig'madimi — faqat shunda "To'liq ko'rish" tugmasi chiqadi.
+  const [overflows, setOverflows] = useState(false);
+
+  useLayoutEffect(() => {
+    setExpanded(false);
+    const el = textRef.current;
+    setOverflows(compact && el !== null && el.scrollHeight > el.clientHeight + 1);
+  }, [compact, entry.text]);
 
   return (
-    <Card as="article" padded aria-label={`Kundalik: ${fmtDateOnly(entry.date)}`}>
+    <Card
+      as="article"
+      padded={!compact}
+      className={compact ? styles.compact : undefined}
+      aria-label={`Kundalik: ${fmtDateOnly(entry.date)}`}
+    >
       <header className={styles.head}>
         <div>
           <div className={styles.date}>{fmtDateOnly(entry.date)}</div>
@@ -57,7 +83,25 @@ export function DiaryDayCard({ entry, review, showFiles = true }: DiaryDayCardPr
         </div>
       </header>
 
-      <p className={styles.text}>{entry.text}</p>
+      <p
+        ref={textRef}
+        id={`diary-text-${entry.id}`}
+        className={styles.text}
+        data-clamped={(compact && !expanded) || undefined}
+      >
+        {entry.text}
+      </p>
+      {compact && (overflows || expanded) && (
+        <button
+          type="button"
+          className={styles.more}
+          aria-expanded={expanded}
+          aria-controls={`diary-text-${entry.id}`}
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? 'Qisqartirish' : "To'liq ko'rish"}
+        </button>
+      )}
 
       {entry.learned && (
         <p className={styles.note}>

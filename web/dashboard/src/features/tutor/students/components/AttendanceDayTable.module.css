@@ -15,91 +15,137 @@
   font-size: var(--fs-xs2);
   color: var(--color-text-muted);
 }
-/* Kun tafsiloti — modal ichidagi mazmun (jadval ostida emas, alohida oynada).
-   Keng ekranda ikki ustun: CHAPDA kun ma'lumotlari, O'NGDA talaba yuborgan fayllar —
-   fayl ustuni kengroq (aniq ko'rinadigan o'lchamda). Oyna deyarli butun ekran eniga cho'ziladi
-   (98vw, 1720px gacha) — fayllar iloji boricha katta ko'rinsin. Fayl bo'lmasa (`data-files` yo'q) —
-   bitta ustun, yarim bo'sh oyna qolmasin. */
+/* Kun tafsiloti — ixcham modal (~640px): bitta ustun, bloklar orasida kichik oraliq.
+   Tepada kirish/chiqish yonma-yon, ostida kun sanoqlari (bir qator), oxirida kundalik. */
 .panel {
   display: grid;
-  gap: 16px;
-  align-items: start;
+  gap: 12px;
 }
-@media (min-width: 981px) {
-  .panel[data-files] {
-    grid-template-columns: minmax(330px, 1fr) minmax(430px, 1.35fr);
-  }
-  /* Chap ustun torroq — kirish/chiqish bloklari yonma-yon emas, ustma-ust turadi
-     (faktlar va xarita siqilib qolmasin). */
-  .panel[data-files] .punches {
-    grid-template-columns: 1fr;
-  }
-}
-.filesCol {
-  min-width: 0;
-}
-.detailsCol {
+.details {
   display: grid;
-  gap: 14px;
+  gap: 8px;
   min-width: 0;
 }
 .modalTitle {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
-/* Kirish va chiqish — yonma-yon; har birida nuqta, xarita va rasm. */
+/* Kirish va chiqish — ikki teng ustun; tor ekranda (≤560px) bitta ustun. */
 .punches {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 14px;
-  align-items: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-items: stretch;
 }
 .punch {
   display: grid;
-  gap: 8px;
-  padding: 12px;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 10px;
   border: var(--border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
 }
+.punchBody {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.punchFacts {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  margin: 0;
+}
+.punchFacts > div {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.punchFacts dt {
+  flex-shrink: 0;
+  min-width: 56px;
+  font-size: var(--fs-sm);
+  color: var(--color-text-faint);
+}
+.punchFacts dd {
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--color-text-2);
+}
+.coords {
+  overflow-wrap: anywhere;
+}
+.outNote {
+  font-family: var(--font-sans);
+  font-weight: var(--fw-regular);
+}
+.selfie {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  margin: 0;
+}
+.selfieCaption {
+  font-size: var(--fs-2xs);
+  color: var(--color-text-faint);
+}
+.noSelfie,
 .punchEmpty {
   margin: 0;
   font-size: var(--fs-sm);
   color: var(--color-text-faint);
 }
-.panelDiary {
-  display: grid;
-  gap: 8px;
+.noSelfie {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
-.panelFacts {
+/* Urinishlar · Ish kuni · Radius — bitta qatorda kichik chip'lar. */
+.stats {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 20px;
-  margin: 10px 0 0;
+  gap: 6px;
+  margin: 0;
 }
-.panelFacts dt {
-  font-size: var(--fs-2xs);
-  text-transform: uppercase;
-  letter-spacing: var(--ls-caps);
+.stats > div {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 3px 9px;
+  border: var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+}
+.stats dt {
+  font-size: var(--fs-sm);
   color: var(--color-text-faint);
 }
-.panelFacts dd {
-  margin: 2px 0 0;
+.stats dd {
+  margin: 0;
   font-family: var(--font-mono);
-  font-size: var(--fs-xs2);
+  font-size: var(--fs-sm);
   color: var(--color-text-2);
 }
+.panelDiary {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
 .reason {
-  margin: 10px 0 0;
+  margin: 0;
   font-size: var(--fs-sm);
-  line-height: var(--lh-prose);
+  line-height: var(--lh-note);
   color: var(--color-bad-fg);
 }
-/* Tor ekranda ustunlar ustma-ust tushadi — DOM tartibi bo'yicha: avval kun ma'lumoti,
-   keyin fayllar (fayllar baland, ular tepada bo'lsa vaqt/masofa ko'rinmay qoladi). */
-@media (max-width: 980px) {
+@media (max-width: 560px) {
   .punches {
     grid-template-columns: 1fr;
   }
