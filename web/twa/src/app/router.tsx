@@ -9,18 +9,21 @@ import { ForcePasswordScreen } from '@/features/auth/components/ForcePasswordScr
 import { LoginScreen } from '@/features/auth/components/LoginScreen';
 import { submitTelegramLink, telegramLinkErrorHint, useAutoLogin } from '@/features/auth/hooks';
 import { errorMessage, isApiError } from '@/shared/api/client';
+import { importWithReload } from '@/shared/lib/chunk-reload';
 import { useSessionFlags } from '@/shared/auth/session';
 import { Button, LoadingState } from '@/shared/ui';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { AppShell } from './layout/AppShell';
+import { RouteError } from './RouteError';
 import styles from './router.module.css';
 
 // SPEC-NAV 3.2 — talaba marshrutlari. Sahifalar lazy (bundle bo'linadi).
-const HomePage = lazy(() => import('@/pages/HomePage'));
-const PlacePage = lazy(() => import('@/pages/PlacePage'));
-const DiaryPage = lazy(() => import('@/pages/DiaryPage'));
-const CalendarPage = lazy(() => import('@/pages/CalendarPage'));
-const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
+// `importWithReload`: deploydan keyin eski hash'li chunk 404 bo'lsa — sahifa bir marta qayta yuklanadi.
+const HomePage = lazy(importWithReload(() => import('@/pages/HomePage')));
+const PlacePage = lazy(importWithReload(() => import('@/pages/PlacePage')));
+const DiaryPage = lazy(importWithReload(() => import('@/pages/DiaryPage')));
+const CalendarPage = lazy(importWithReload(() => import('@/pages/CalendarPage')));
+const ProfilePage = lazy(importWithReload(() => import('@/pages/ProfilePage')));
 
 const TELEGRAM_LINK_KEY = ['auth', 'telegram-link'] as const;
 
@@ -86,19 +89,31 @@ function RootLayout() {
   return <AppShell />;
 }
 
+/**
+ * Xato chegaralari (errorElement):
+ *  - ildiz (RootLayout/AppShell o'zi yiqilsa) — to'liq ekran;
+ *  - sahifalar guruhi (pathless) — AppShell `<Outlet />` ichida: bitta sahifa yiqilsa ham header va
+ *    tab-bar qoladi, boshqa tabga o'tilganda chegara o'zi tiklanadi (location o'zgaradi).
+ */
 export const routes: RouteObject[] = [
   {
     element: <RootLayout />,
+    errorElement: <RouteError scope="root" />,
     children: [
-      { path: '/', element: <HomePage /> },
-      { path: '/joyim', element: <PlacePage /> },
-      { path: '/kundalik', element: <DiaryPage /> },
-      { path: '/kalendar', element: <CalendarPage /> },
-      // Eski havolalar: portfolio endi bosh ekranda; "Ruxsat so'rash" olib tashlangan.
-      { path: '/portfolio', element: <Navigate to="/" replace /> },
-      { path: '/ruxsat', element: <Navigate to="/" replace /> },
-      { path: '/profil', element: <ProfilePage /> },
-      { path: '*', element: <NotFoundPage /> },
+      {
+        errorElement: <RouteError scope="page" />,
+        children: [
+          { path: '/', element: <HomePage /> },
+          { path: '/joyim', element: <PlacePage /> },
+          { path: '/kundalik', element: <DiaryPage /> },
+          { path: '/kalendar', element: <CalendarPage /> },
+          // Eski havolalar: portfolio endi bosh ekranda; "Ruxsat so'rash" olib tashlangan.
+          { path: '/portfolio', element: <Navigate to="/" replace /> },
+          { path: '/ruxsat', element: <Navigate to="/" replace /> },
+          { path: '/profil', element: <ProfilePage /> },
+          { path: '*', element: <NotFoundPage /> },
+        ],
+      },
     ],
   },
 ];

@@ -1,0 +1,48 @@
+/* Route xato ekrani: `page` — shell ichida (tab-bar ishlaydi), `root` — to'liq ekran. */
+.root {
+  min-height: 100dvh;
+  padding: 32px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: var(--color-bg);
+}
+.card {
+  border: 1px solid var(--color-bad-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-bad-bg);
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  color: var(--color-bad-fg);
+}
+.text {
+  font-size: var(--fs-md);
+  line-height: var(--lh-note);
+  color: var(--color-text-muted);
+}
+.details {
+  font-size: var(--fs-sm);
+  color: var(--color-text-faint);
+}
+.details summary {
+  cursor: pointer;
+}
+.details pre {
+  margin-top: 6px;
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.actions {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
