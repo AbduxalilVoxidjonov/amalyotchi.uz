@@ -105,7 +105,10 @@ public sealed class User : AuditableEntity, ISoftDeletable
             PhoneNumber = phoneNumber is null ? null : Phone.Normalize(phoneNumber)
         };
 
-    public void LinkTelegram(long telegramUserId, string phoneNumber)
+    /// <summary>Talabaga Telegram hisobini bog'laydi. <paramref name="phoneNumber"/> berilsa telefon ham
+    /// yangilanadi; berilmasa (<c>null</c> — masalan Mini App <c>initData</c> da telefon yo'q) mavjud telefon
+    /// o'zgarmay qoladi. Shu id bilan qayta bog'lash — xato emas (idempotent).</summary>
+    public void LinkTelegram(long telegramUserId, string? phoneNumber = null)
     {
         if (Role != UserRole.Student)
             throw new DomainException("Telegram hisobi faqat talabaga bog'lanadi.");
@@ -113,7 +116,8 @@ public sealed class User : AuditableEntity, ISoftDeletable
             throw new ConflictException("Bu hisobga boshqa Telegram akkaunti bog'langan.");
 
         TelegramUserId = telegramUserId;
-        PhoneNumber = Phone.Normalize(phoneNumber);
+        if (phoneNumber is not null)
+            PhoneNumber = Phone.Normalize(phoneNumber);
     }
 
     /// <summary>Parol xeshini almashtiradi (<see cref="MustChangePassword"/> ga tegmaydi) — xeshni yangilash (rehash),

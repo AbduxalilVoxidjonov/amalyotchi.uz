@@ -39,6 +39,19 @@ public sealed class AuthController(ISender sender) : ControllerBase
         TelegramLoginCommand command, CancellationToken cancellationToken)
         => Ok(await sender.Send(command, cancellationToken));
 
+    /// <summary>Talaba Telegram Mini App'da birinchi marta: <c>initData</c> + HEMIS ID + parol. Telegram hisobi
+    /// talabaga bog'lanadi va sessiya beriladi. 403 — imzo, HEMIS ID/parol, faol emas yoki xodim hisobi;
+    /// 409 — Telegram akkaunti boshqa hisobga yoki talaba boshqa Telegram'ga bog'langan.</summary>
+    [HttpPost("telegram/link")]
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    [ProducesResponseType<AuthResultDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<AuthResultDto>> LinkTelegram(
+        LinkTelegramCommand command, CancellationToken cancellationToken)
+        => Ok(await sender.Send(command, cancellationToken));
+
     /// <summary>Access token muddati tugaganda yangilash. Refresh token rotatsiya qilinadi.</summary>
     [HttpPost("refresh")]
     [AllowAnonymous]

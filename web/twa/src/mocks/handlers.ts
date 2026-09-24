@@ -1,4 +1,5 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
+import { toUserRole, UserRole } from '@amaliyotchi/shared';
 import { calendarHandlers } from '@/features/calendar/mocks';
 import { diaryHandlers } from '@/features/diary/mocks';
 import { leaveHandlers } from '@/features/leave/mocks';
@@ -13,6 +14,7 @@ import {
   mockAccounts,
   mockSessions,
   mockStudent,
+  mockTelegramLinks,
 } from './data';
 import { forbidden, problem, unauthorized } from './problem';
 
@@ -26,7 +28,12 @@ import { forbidden, problem, unauthorized } from './problem';
  *   POST /api/auth/logout { refreshToken } → 204
  *   POST /api/auth/change-password { currentPassword, newPassword, refreshToken? } → 204 | 400 errors.CurrentPassword/NewPassword
  * Mock rejimida initData bo'sh bo'lsa ham (oddiy brauzer) kirishga ruxsat beriladi —
- * `initData === 'invalid'` → 403 "imzo", `'unlinked'` → 403 "hisob topilmadi" (xato oqimini sinash uchun).
+ * `initData === 'invalid'` → 403 "imzo", `'unlinked'` → 403 "hisob topilmadi" (xato oqimini sinash uchun;
+ * dev'da `?initData=unlinked` — bog'lash formasi ochiladi).
+ *   POST /api/auth/telegram/link { initData, hemisId, password } → AuthResultDto (+ mustChangePassword)
+ *        341030/talaba12345 → 200 (341031/vaqtincha1 → mustChangePassword) · noto'g'ri parol → 403 ·
+ *        xodim → 403 · HEMIS `341099` → 409 (akkaunt boshqa hisobga bog'langan) · `341429` → 429 ·
+ *        `initData=invalid` → 403 "imzo". Muvaffaqiyatdan keyin shu initData bilan `/api/auth/telegram` kiradi.
  *
  * Talaba endpointlari (`/api/student/*`) — har feature'ning `mocks.ts` faylida (kontrakt v2 shakli).
  */
@@ -36,10 +43,43 @@ const authHandlers: HttpHandler[] = [
     if (body.initData === 'invalid') {
       return forbidden('Telegram imzosi tasdiqlanmadi. Ilovani qaytadan oching.');
     }
+    const linked = accountByUserId(mockTelegramLinks.get(body.initData ?? ''));
+    if (linked) return HttpResponse.json(issueSession(linked.user));
     if (body.initData === 'unlinked') {
       return forbidden('Hisob topilmadi — tyutoringizdan taklif havolasini oling.');
     }
     return HttpResponse.json(issueSession(mockStudent));
+  }),
+
+  http.post('/api/auth/telegram/link', async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as {
+      initData?: string;
+      hemisId?: string;
+      password?: string;
+    };
+    if (body.initData === 'invalid') {
+      return forbidden('Telegram imzosi tasdiqlanmadi. Ilovani qaytadan oching.');
+    }
+    const hemisId = (body.hemisId ?? '').trim();
+    if (hemisId === '341099') {
+      return problem(409, 'Ziddiyat', "Bu Telegram akkaunti boshqa hisobga bog'langan.");
+    }
+    if (hemisId === '341429') {
+      return problem(
+        429,
+        "Juda ko'p urinish",
+        "Juda ko'p urinish. Birozdan so'ng qayta urinib ko'ring.",
+      );
+    }
+    const account = mockAccounts.get(hemisId);
+    if (!account || account.password !== body.password) {
+      return forbidden("HEMIS ID yoki parol noto'g'ri.");
+    }
+    if (toUserRole(account.user.role) !== UserRole.Student) {
+      return forbidden("Telegram faqat talaba hisobiga bog'lanadi.");
+    }
+    mockTelegramLinks.set(body.initData ?? '', account.user.id);
+    return HttpResponse.json(issueSession(account.user));
   }),
 
   http.post('/api/auth/refresh', async ({ request }) => {

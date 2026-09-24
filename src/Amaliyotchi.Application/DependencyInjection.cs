@@ -1,6 +1,7 @@
 using System.Reflection;
 using Amaliyotchi.Application.Common.Behaviors;
 using Amaliyotchi.Application.Common.Scoping;
+using Amaliyotchi.Application.Features.Auth;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +24,9 @@ public static class DependencyInjection
 
         // Ma'lumot ko'lami: so'rov davomida bir marta hisoblanadi.
         services.AddScoped<IScopeResolver, ScopeResolver>();
+
+        // Auth handler'lari uchun umumiy parol tekshiruvi va sessiya berish.
+        services.AddScoped<AuthSessionService>();
 
         return services;
     }

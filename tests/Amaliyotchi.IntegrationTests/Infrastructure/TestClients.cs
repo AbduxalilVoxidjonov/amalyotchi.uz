@@ -78,16 +78,19 @@ public static class TestClients
     }
 
     /// <summary>Talaba: parolsiz, Telegram hisobi bog'langan, <c>StudentProfile</c> guruh bilan.
-    /// <paramref name="telegramId"/> berilmasa tasodifiy; <paramref name="group"/> berilmasa yangi zanjir yaratiladi.</summary>
+    /// <paramref name="telegramId"/> berilmasa tasodifiy; <paramref name="group"/> berilmasa yangi zanjir yaratiladi.
+    /// <paramref name="linkTelegram"/> = false — Telegram bog'lanmagan talaba (<see cref="TestUser.TelegramId"/> null).</summary>
     public static async Task<TestUser> CreateStudentAsync(
-        this ApiFactory factory, long? telegramId = null, TestGroup? group = null, string? fullName = null, bool active = true)
+        this ApiFactory factory, long? telegramId = null, TestGroup? group = null, string? fullName = null, bool active = true,
+        bool linkTelegram = true)
     {
         group ??= await factory.CreateGroupAsync();
         var phone = RandomPhone();
-        var tgId = telegramId ?? Random.Shared.NextInt64(100_000_000, 9_000_000_000);
+        long? tgId = linkTelegram ? telegramId ?? Random.Shared.NextInt64(100_000_000, 9_000_000_000) : null;
 
         var user = User.CreateStudent(fullName ?? "Test Talaba", group.FacultyId, phone);
-        user.LinkTelegram(tgId, phone);
+        if (tgId is { } id)
+            user.LinkTelegram(id, phone);
         if (!active)
             user.Deactivate();
 

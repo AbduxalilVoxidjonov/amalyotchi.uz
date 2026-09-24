@@ -1,7 +1,5 @@
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Domain.Enums;
-using Amaliyotchi.Domain.Exceptions;
-using Amaliyotchi.Domain.Identity;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,9 +12,7 @@ public sealed record TelegramLoginCommand(string InitData) : IRequest<AuthResult
 internal sealed class TelegramLoginCommandHandler(
     IApplicationDbContext db,
     ITelegramInitDataValidator validator,
-    ITokenService tokenService,
-    IAuditWriter audit,
-    ICurrentUser currentUser,
+    AuthSessionService sessions,
     IClock clock)
     : IRequestHandler<TelegramLoginCommand, AuthResultDto>
 {
@@ -27,7 +23,9 @@ internal sealed class TelegramLoginCommandHandler(
         if (!validator.TryValidate(request.InitData, now, out var tgUser, out var error) || tgUser is null)
         {
             // Sabab faqat audit/log uchun — mijozga imzo nima uchun rad etilgani aytilmaydi.
-            throw await LoginFailedAsync(null, $"Telegram initData rad etildi: {error}", SignatureRejected, cancellationToken);
+            throw await sessions.LoginFailedAsync(
+                null, $"Telegram initData rad etildi: {error}",
+                AuthSessionService.TelegramSignatureRejected, cancellationToken);
         }
 
         // Faqat muddati o'tgan tokenlar yuklanadi — ular shu yerda tozalanadi.
@@ -38,58 +36,20 @@ internal sealed class TelegramLoginCommandHandler(
 
         if (user is null)
         {
-            throw await LoginFailedAsync(
+            throw await sessions.LoginFailedAsync(
                 null, $"Telegram hisobi bog'lanmagan (telegramId={tgUser.Id})",
                 AccountNotFound, cancellationToken);
         }
 
         if (!user.IsActive)
         {
-            throw await LoginFailedAsync(
+            throw await sessions.LoginFailedAsync(
                 user, "Hisob faol emas",
                 "Hisobingiz faol emas. Tyutoringizga murojaat qiling.", cancellationToken);
         }
 
-        user.MarkLogin(now);
-        user.PruneRefreshTokens(now);
-
-        var accessToken = tokenService.CreateAccessToken(user);
-        var refreshToken = user.IssueRefreshToken(
-            tokenService.CreateRefreshToken(),
-            now.Add(tokenService.RefreshTokenLifetime),
-            currentUser.IpAddress);
-
-        await audit.WriteAsync(
-            AuditAction.LoggedIn, nameof(User), user.Id.ToString(),
-            userId: user.Id, userRole: user.Role,
-            reason: "Telegram",
-            cancellationToken: cancellationToken);
-
-        await db.SaveChangesAsync(cancellationToken);
-
-        return new AuthResultDto(
-            accessToken.Value,
-            accessToken.ExpiresAt,
-            refreshToken.Token,
-            UserSummaryDto.From(user),
-            user.MustChangePassword);
+        return await sessions.IssueSessionAsync(user, now, auditReason: "Telegram", cancellationToken);
     }
 
-    /// <summary>Muvaffaqiyatsiz urinish audit jurnaliga DARHOL yoziladi — tashlanadigan xato
-    /// tufayli yozuv yo'qolib ketmasligi uchun.</summary>
-    private async Task<ForbiddenException> LoginFailedAsync(
-        User? user, string reason, string message, CancellationToken cancellationToken)
-    {
-        await audit.WriteAsync(
-            AuditAction.LoginFailed, nameof(User), user?.Id.ToString(),
-            userId: user?.Id, userRole: user?.Role,
-            reason: reason,
-            cancellationToken: cancellationToken);
-
-        await db.SaveChangesAsync(cancellationToken);
-        return new ForbiddenException(message);
-    }
-
-    private const string SignatureRejected = "Telegram imzosi tasdiqlanmadi. Ilovani qaytadan oching.";
     private const string AccountNotFound = "Hisob topilmadi — tyutoringizdan taklif havolasini oling.";
 }

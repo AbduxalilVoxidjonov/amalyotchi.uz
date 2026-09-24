@@ -19,14 +19,12 @@ describe('TWA router', () => {
     expect(screen.queryByRole('navigation', { name: "Bo'limlar" })).not.toBeInTheDocument();
   });
 
-  it("403 (hisob bog'lanmagan) → maxsus ekran + backend `detail`", async () => {
+  it("403 (hisob bog'lanmagan) → bog'lash formasi", async () => {
     renderApp('/', { initData: 'unlinked' });
     expect(
-      await screen.findByRole('heading', { name: "Telegram hisobingiz bog'lanmagan" }),
+      await screen.findByRole('heading', { name: "Hisobingizni bog'lang" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText('Hisob topilmadi — tyutoringizdan taklif havolasini oling.'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: "Bog'lash va kirish" })).toBeInTheDocument();
     expect(useAuthStore.getState().status).toBe('anonymous');
   });
 

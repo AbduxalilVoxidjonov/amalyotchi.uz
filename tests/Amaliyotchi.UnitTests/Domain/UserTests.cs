@@ -206,6 +206,30 @@ public sealed class UserTests
     }
 
     [Fact]
+    public void LinkTelegram_TelefonsizMavjudTelefonniSaqlaydi_VaIdempotent()
+    {
+        var student = User.CreateStudent("Karimov Bek", FacultyId, "901234567");
+        var phone = student.PhoneNumber;
+
+        student.LinkTelegram(111);
+        student.LinkTelegram(111);
+
+        student.TelegramUserId.Should().Be(111);
+        student.PhoneNumber.Should().Be(phone);
+    }
+
+    [Fact]
+    public void LinkTelegram_TelefonsizVaTelefoniYoqTalaba_NullQoladi()
+    {
+        var student = User.CreateStudent("Karimov Bek", FacultyId);
+
+        student.LinkTelegram(111);
+
+        student.TelegramUserId.Should().Be(111);
+        student.PhoneNumber.Should().BeNull();
+    }
+
+    [Fact]
     public void Deactivate_BarchaRefreshTokenlarniBekorQiladi()
     {
         var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Admin);

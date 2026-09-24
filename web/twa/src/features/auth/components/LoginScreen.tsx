@@ -1,7 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { isApiError } from '@/shared/api/client';
 import { Button, Input } from '@/shared/ui';
-import { loginErrorMessage, useWebLogin } from '../hooks';
+import {
+  loginErrorMessage,
+  submitWebLogin,
+  useCredentialsLogin,
+  type CredentialsSubmit,
+} from '../hooks';
 import styles from './AuthScreen.module.css';
 
 interface LoginValues {
@@ -23,12 +28,41 @@ function validate(values: LoginValues): LoginErrors {
   return errors;
 }
 
+export interface LoginScreenProps {
+  /** Foydalanuvchi o'zi chiqqan — "Hisobdan chiqdingiz." eslatmasi. */
+  loggedOut?: boolean;
+  title?: string;
+  subtitle?: string;
+  submitLabel?: string;
+  /** Forma ostidagi izoh (`null` — ko'rsatilmaydi). */
+  note?: string | null;
+  /** HEMIS ID + parol → sessiya (default — web-login `POST /api/auth/login`). */
+  submit?: CredentialsSubmit;
+  /** TanStack mutation kaliti (default `['auth','login']`). */
+  mutationKey?: readonly string[];
+  /** Server xatosi `detail` ostidagi qo'shimcha izoh (masalan 409 → "Tyutoringizga murojaat qiling."). */
+  errorHint?: (error: unknown) => string | undefined;
+}
+
+const DEFAULT_MUTATION_KEY = ['auth', 'login'] as const;
+
 /**
- * Web-login (Telegram tashqarisida): HEMIS ID + parol → POST /api/auth/login.
- * Muvaffaqiyatda store 'authenticated' bo'ladi va RootLayout o'sha manzildagi sahifani ochadi.
+ * HEMIS ID + parol formasi. Default — web-login (Telegram tashqarisida) → POST /api/auth/login.
+ * Telegram ichida birinchi kirishda xuddi shu forma `submit`/matnlar bilan bog'lash (`/api/auth/telegram/link`)
+ * uchun ishlatiladi. Muvaffaqiyatda store 'authenticated' bo'ladi va RootLayout o'sha manzildagi sahifani ochadi;
+ * xodim roli rad etiladi (sessiya saqlanmaydi).
  */
-export function LoginScreen({ loggedOut = false }: { loggedOut?: boolean }) {
-  const login = useWebLogin();
+export function LoginScreen({
+  loggedOut = false,
+  title = 'Tizimga kirish',
+  subtitle = 'HEMIS ID va parol orqali kiring.',
+  submitLabel = 'Kirish',
+  note = "Parolni tyutoringizdan oling. Bot tayyor bo'lgach ilovaga Telegram orqali ham kira olasiz.",
+  submit = submitWebLogin,
+  mutationKey = DEFAULT_MUTATION_KEY,
+  errorHint,
+}: LoginScreenProps) {
+  const login = useCredentialsLogin(submit, mutationKey);
   const [values, setValues] = useState<LoginValues>({ hemisId: '', password: '' });
   const [errors, setErrors] = useState<LoginErrors>({});
   // Backend 400 `errors.HemisId` / `errors.Password` (PascalCase) — maydon ostida.
@@ -36,6 +70,7 @@ export function LoginScreen({ loggedOut = false }: { loggedOut?: boolean }) {
   const serverHemis = apiError?.fieldError('hemisId');
   const serverPassword = apiError?.fieldError('password');
   const showGeneral = login.isError && !serverHemis && !serverPassword;
+  const hint = showGeneral ? errorHint?.(login.error) : undefined;
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -54,8 +89,8 @@ export function LoginScreen({ loggedOut = false }: { loggedOut?: boolean }) {
         </div>
 
         <form className={`${styles.card} ${styles.form}`} onSubmit={onSubmit} noValidate>
-          <h1 className={styles.title}>Tizimga kirish</h1>
-          <p className={styles.subtitle}>HEMIS ID va parol orqali kiring.</p>
+          <h1 className={styles.title}>{title}</h1>
+          <p className={styles.subtitle}>{subtitle}</p>
 
           {loggedOut && !login.isError && (
             <p className={styles.notice} role="status">
@@ -89,17 +124,21 @@ export function LoginScreen({ loggedOut = false }: { loggedOut?: boolean }) {
           {showGeneral && (
             <p role="alert" className={styles.serverError}>
               {loginErrorMessage(login.error)}
+              {hint && (
+                <>
+                  <br />
+                  {hint}
+                </>
+              )}
             </p>
           )}
 
           <Button type="submit" variant="primary" size="lg" block disabled={login.isPending}>
-            {login.isPending ? 'Kirilmoqda…' : 'Kirish'}
+            {login.isPending ? 'Kirilmoqda…' : submitLabel}
           </Button>
         </form>
 
-        <p className={styles.note}>
-          Parolni tyutoringizdan oling. Bot tayyor bo'lgach ilovaga Telegram orqali ham kira olasiz.
-        </p>
+        {note && <p className={styles.note}>{note}</p>}
       </div>
     </main>
   );

@@ -2,7 +2,7 @@ import { lazy } from 'react';
 import { createBrowserRouter, createMemoryRouter, type RouteObject } from 'react-router-dom';
 import { ForcePasswordScreen } from '@/features/auth/components/ForcePasswordScreen';
 import { LoginScreen } from '@/features/auth/components/LoginScreen';
-import { useAutoLogin } from '@/features/auth/hooks';
+import { submitTelegramLink, telegramLinkErrorHint, useAutoLogin } from '@/features/auth/hooks';
 import { errorMessage, isApiError } from '@/shared/api/client';
 import { useSessionFlags } from '@/shared/auth/session';
 import { Button, LoadingState } from '@/shared/ui';
@@ -19,10 +19,13 @@ const LeaveRequestPage = lazy(() => import('@/pages/LeaveRequestPage'));
 const PortfolioPage = lazy(() => import('@/pages/PortfolioPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 
+const TELEGRAM_LINK_KEY = ['auth', 'telegram-link'] as const;
+
 /**
  * Ildiz: sessiya holatiga qarab darvoza, keyin mobil shell.
- *  - Telegram rejimi (initData / mock): avtomatik kirish. Kira olmasa xabar:
- *      403 (hisob bog'lanmagan / imzo / faol emas) → "Telegram hisobingiz bog'lanmagan" + `detail`;
+ *  - Telegram rejimi (initData / mock): avtomatik kirish. Kira olmasa:
+ *      403 (hisob bog'lanmagan va h.k.) → bog'lash formasi (HEMIS ID + parol → POST /api/auth/telegram/link,
+ *        web `LoginScreen` qayta ishlatiladi); boshqa xato (tarmoq, 500) → "Kirish imkoni yo'q" + xabar;
  *      foydalanuvchi o'zi chiqqan → "Qayta kirish" tugmasi (avtomatik qayta kirilmaydi).
  *  - Web rejimi (oddiy brauzer yoki `?web=1`): HEMIS ID + parol login sahifasi.
  *  - `mustChangePassword` → "Yangi parol o'rnating" ekrani (ilovaga o'tkazilmaydi).
@@ -54,20 +57,25 @@ function RootLayout() {
         </main>
       );
     }
+    if (forbidden) {
+      return (
+        <LoginScreen
+          title="Hisobingizni bog'lang"
+          subtitle="Birinchi marta kiryapsiz. Tyutoringiz bergan HEMIS ID va parolni kiriting — Telegram hisobingiz bog'lanadi va keyingi safar avtomatik kirasiz."
+          submitLabel="Bog'lash va kirish"
+          note={null}
+          submit={submitTelegramLink}
+          mutationKey={TELEGRAM_LINK_KEY}
+          errorHint={telegramLinkErrorHint}
+        />
+      );
+    }
     return (
       <main className={styles.gate}>
-        <h1 className={styles.gateTitle}>
-          {forbidden ? "Telegram hisobingiz bog'lanmagan" : "Kirish imkoni yo'q"}
-        </h1>
+        <h1 className={styles.gateTitle}>Kirish imkoni yo'q</h1>
         <p className={styles.gateText}>
           {error ? errorMessage(error) : 'Ilovani Telegram bot orqali oching.'}
         </p>
-        {forbidden && (
-          <p className={styles.gateText}>
-            Tyutoringizdan taklif havolasini olib, botda ro'yxatdan o'ting, so'ng ilovani qaytadan
-            oching.
-          </p>
-        )}
       </main>
     );
   }

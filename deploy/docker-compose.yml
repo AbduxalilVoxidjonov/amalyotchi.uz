@@ -100,6 +100,8 @@ services:
       RateLimiting__RefreshPerMinute: ${RATE_LIMIT_REFRESH_PER_MINUTE:-60}
       # Brauzerdan to'g'ridan-to'g'ri 5080 ga murojaat uchun (dev server); nginx orqali /api/ same-origin — CORS kerak emas.
       Cors__Origins__0: ${CORS_ORIGIN:-http://127.0.0.10:5173}
+      Cors__Origins__1: ${DASHBOARD_PUBLIC_URL:-http://127.0.0.10:8090}
+      Cors__Origins__2: ${TWA_PUBLIC_URL:-http://127.0.0.10:8091}
     ports:
       # Host portlari .env orqali sozlanadi (band bo'lsa API_PORT/DASHBOARD_PORT/TWA_PORT ni o'zgartiring).
       - "${HOST_IP:-127.0.0.10}:${API_PORT:-5080}:8080"   # to'g'ridan-to'g'ri debug: http://127.0.0.10:5080/health
@@ -120,6 +122,8 @@ services:
     build:
       context: ../web
       dockerfile: dashboard/Dockerfile
+      args:
+        VITE_TWA_URL: ${TWA_PUBLIC_URL:-}   # masalan https://app.example.uz (.env)
     image: amaliyotchi-dashboard:local
     container_name: amaliyotchi-dashboard
     depends_on:
@@ -142,6 +146,23 @@ services:
         condition: service_healthy
     ports:
       - "${HOST_IP:-127.0.0.10}:${TWA_PORT:-8091}:80"        # http://127.0.0.10:8091 (.env: TWA_PORT; Telegram uchun HTTPS tunnel — README)
+    networks:
+      - amaliyotchi
+    restart: unless-stopped
+
+  # Cloudflare Tunnel (remote-managed): marshrutlar Cloudflare Zero Trust → Networks → Tunnels → Public Hostname'da.
+  # Konteyner shu tarmoqda — xizmat manzillari: dashboard → http://dashboard:80, TWA → http://twa:80.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: amaliyotchi-cloudflared
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN deploy/.env da berilishi shart}
+    depends_on:
+      dashboard:
+        condition: service_healthy
+      twa:
+        condition: service_healthy
     networks:
       - amaliyotchi
     restart: unless-stopped

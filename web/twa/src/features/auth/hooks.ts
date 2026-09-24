@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { toUserRole, UserRole, type LoginRequest } from '@amaliyotchi/shared';
 import { errorMessage, isApiError } from '@/shared/api/client';
 import { authMode } from '@/shared/auth/mode';
-import { applyAuthResult, useSessionFlags } from '@/shared/auth/session';
+import { applyAuthResult, useSessionFlags, type TwaAuthResult } from '@/shared/auth/session';
 import { useAuthStore } from '@/shared/auth/store';
 import { getInitData } from '@/shared/auth/telegram';
 import { profileKeys } from '@/features/profile/hooks';
@@ -49,7 +49,7 @@ export function useAutoLogin() {
     }
 
     // 'anonymous' + Telegram rejimi (initData bor yoki mock) → POST /api/auth/telegram (bir marta).
-    // 403 → login.error → RootLayout "Kirish imkoni yo'q" + backend `detail` (hisob bog'lanmagan / imzo).
+    // 403 → login.error → RootLayout bog'lash formasi (POST /api/auth/telegram/link); boshqa xato → "Kirish imkoni yo'q".
     // Mock rejimida (oddiy brauzer, initData bo'sh) ham kiriladi — MSW istalgan initData'ni qabul qiladi.
     if (mode === 'telegram' && !loggedOut && login.isIdle) mutate();
     return () => {
@@ -89,12 +89,18 @@ export function loginErrorMessage(error: unknown): string {
   return errorMessage(error);
 }
 
-/** POST /api/auth/login — faqat talaba roli qabul qilinadi. */
-export function useWebLogin() {
+/** HEMIS ID + parol bilan sessiya oluvchi so'rov (web-login yoki Telegram bog'lash). */
+export type CredentialsSubmit = (body: LoginRequest) => Promise<TwaAuthResult>;
+
+/**
+ * HEMIS ID + parol → sessiya. Faqat talaba roli qabul qilinadi: xodim bo'lsa server bergan sessiya
+ * darhol bekor qilinadi va `StaffAccountError` (sessiya saqlanmaydi). Muvaffaqiyatda `applyAuthResult`.
+ */
+export function useCredentialsLogin(submit: CredentialsSubmit, mutationKey: readonly string[]) {
   return useMutation({
-    mutationKey: ['auth', 'login'],
+    mutationKey,
     mutationFn: async (body: LoginRequest) => {
-      const result = await authApi.login(body);
+      const result = await submit(body);
       if (toUserRole(result.user.role) !== UserRole.Student) {
         // Server bergan sessiyani darhol bekor qilamiz (natijasi muhim emas).
         void authApi.logout(result.refreshToken, result.accessToken).catch(() => undefined);
@@ -104,6 +110,25 @@ export function useWebLogin() {
     },
     onSuccess: applyAuthResult,
   });
+}
+
+/** POST /api/auth/login — web-login (Telegram tashqarisida). */
+export const submitWebLogin: CredentialsSubmit = (body) => authApi.login(body);
+
+/** POST /api/auth/telegram/link — Telegram ichida birinchi kirish (initData + HEMIS ID + parol). */
+export const submitTelegramLink: CredentialsSubmit = (body) =>
+  authApi.linkTelegram({ initData: getInitData(), ...body });
+
+/** POST /api/auth/login — faqat talaba roli qabul qilinadi. */
+export function useWebLogin() {
+  return useCredentialsLogin(submitWebLogin, ['auth', 'login']);
+}
+
+/** 409 (Telegram akkaunti / hisob boshqasiga bog'langan) — `detail` ostidagi qo'shimcha izoh. */
+export function telegramLinkErrorHint(error: unknown): string | undefined {
+  return isApiError(error) && error.kind === 'conflict'
+    ? 'Tyutoringizga murojaat qiling.'
+    : undefined;
 }
 
 /** POST /api/auth/change-password — muvaffaqiyatda majburiy parol talabi yechiladi. */

@@ -5,7 +5,7 @@ namespace Amaliyotchi.Application.Features.Auth.Telegram;
 public sealed class TelegramLoginCommandValidator : AbstractValidator<TelegramLoginCommand>
 {
     /// <summary>Telegram initData odatda 300–800 belgi; 8 KB — himoya chegarasi.</summary>
-    private const int MaxLength = 8 * 1024;
+    public const int MaxLength = 8 * 1024;
 
     public TelegramLoginCommandValidator()
     {

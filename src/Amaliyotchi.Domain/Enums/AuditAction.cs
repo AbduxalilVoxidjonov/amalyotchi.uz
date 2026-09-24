@@ -94,5 +94,8 @@ public enum AuditAction
     StudentPasswordSet = 62,
 
     /// <summary>Foydalanuvchi o'z parolini o'zgartirdi (<c>POST /api/auth/change-password</c>).</summary>
-    PasswordChanged = 63
+    PasswordChanged = 63,
+
+    /// <summary>Talaba Telegram hisobini o'z hisobiga bog'ladi (<c>POST /api/auth/telegram/link</c>).</summary>
+    TelegramLinked = 64
 }

@@ -1,4 +1,4 @@
-# API-CONTRACT v3.8
+# API-CONTRACT v3.9
 
 Oxirgi yangilanish: 24.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
@@ -10,13 +10,14 @@ v3.4 (admin amaliyot davrlari) — §6.10,
 v3.5 (bir guruhda bir nechta davr: davr tanlash qoidasi, talaba profilida davr tanlagichi) — §6.11,
 v3.6 (admin davr statistikasi) — §6.12,
 v3.7 (amaliyot joyida QR kod bilan check-in/check-out) — §6.13,
-v3.8 (talaba brauzerda HEMIS ID + parol bilan kiradi, parol almashtirish, talaba kabineti) — §6.14.
+v3.8 (talaba brauzerda HEMIS ID + parol bilan kiradi, parol almashtirish, talaba kabineti) — §6.14,
+v3.9 (talaba Telegram'ni HEMIS ID + parol bilan bog'laydi — `POST /api/auth/telegram/link`) — §6.15.
 
-Jami **109 ta endpoint**: Auth 6 · Admin 66 · Reports 1 · Tutor 22 · Student (TWA) 12 · Files 1 · Companies 1.
+Jami **110 ta endpoint**: Auth 7 · Admin 66 · Reports 1 · Tutor 22 · Student (TWA) 12 · Files 1 · Companies 1.
 
-> Kontrollerlarda `[Http*]` atributlari **111 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
+> Kontrollerlarda `[Http*]` atributlari **112 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
 > har birida ikkitadan action bor (`multipart/form-data` va `application/json` — `[Consumes]` bilan ajratiladi,
-> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **109**.
+> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **110**.
 
 ---
 
@@ -201,6 +202,37 @@ Response 200 `AuthResultDto` (`user.role = "student"`). Xatolar: 400 `errors.Ini
 ("Telegram imzosi tasdiqlanmadi. Ilovani qaytadan oching."), hisob bog'lanmagan ("Hisob topilmadi — tyutoringizdan
 taklif havolasini oling."), faol emas ("Hisobingiz faol emas. Tyutoringizga murojaat qiling."); 429.
 Har muvaffaqiyatsiz urinish audit'ga `loginFailed` sifatida yoziladi.
+
+#### POST `/api/auth/telegram/link` · AllowAnonymous · rate `auth` 10/min — v3.9
+
+Talaba Mini App'ni birinchi marta ochganda (`/api/auth/telegram` → 403 "Hisob topilmadi…"): Telegram hisobini
+HEMIS ID + parol (xodim o'rnatgan) bilan **bog'laydi va kiritadi**.
+
+| Maydon     | Tip    | Majburiy | Validatsiya                                                    |
+| ---------- | ------ | -------- | -------------------------------------------------------------- |
+| `initData` | string | ha       | bo'sh emas, ≤ 8192 belgi (`/api/auth/telegram` bilan bir xil)  |
+| `hemisId`  | string | ha       | bo'sh emas (format/qidiruv — `/api/auth/login` bilan bir xil)  |
+| `password` | string | ha       | ≥ 8 belgi                                                      |
+
+Response 200 `AuthResultDto` (`user.role = "student"`, `mustChangePassword` — login bilan bir xil; `true` bo'lsa mijoz
+`change-password` ga yo'naltiradi). Keyingi ochilishlarda oddiy `POST /api/auth/telegram` ishlaydi. Shu Telegram id
+bilan allaqachon bog'langan talaba qayta yuborsa — oddiy kirish (200, idempotent). Telefon `initData` da yo'q —
+talabaning mavjud `phoneNumber` i o'zgarmaydi.
+
+Tekshiruv tartibi: imzo → HEMIS ID/parol → faollik → rol → bog'lanish.
+
+| Status | `detail`                                                                                     | Holat                                            |
+| ------ | -------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| 400    | `errors.InitData` / `errors.HemisId` / `errors.Password`                                     | validatsiya                                      |
+| 403    | "Telegram imzosi tasdiqlanmadi. Ilovani qaytadan oching."                                    | imzo/`auth_date` yaroqsiz                        |
+| 403    | "HEMIS ID yoki parol noto'g'ri."                                                             | HEMIS ID/parol noto'g'ri yoki parolsiz hisob     |
+| 403    | "Hisobingiz faol emas. Tyutoringizga murojaat qiling."                                       | faol emas (xodimda "…Administratorga…")          |
+| 403    | "Telegram faqat talaba hisobiga bog'lanadi."                                                 | admin/tyutor hisobi                              |
+| 409    | "Bu Telegram akkaunti boshqa hisobga bog'langan."                                            | shu Telegram `user.id` boshqa hisobda            |
+| 409    | "Bu hisobga boshqa Telegram akkaunti bog'langan."                                            | talaba allaqachon boshqa Telegram'ga bog'langan  |
+| 429    |                                                                                              | rate limit                                       |
+
+Audit: muvaffaqiyatda `telegramLinked` (+ `loggedIn`); har muvaffaqiyatsiz urinish (403/409) — `loginFailed`.
 
 #### POST `/api/auth/refresh` · AllowAnonymous · rate `refresh` 60/min
 
@@ -2260,7 +2292,7 @@ interface StudentProfileDto {
 | `TutorScopeLevel`                  | `faculty` · `department` · `direction` · `group`                                                                                                                                                                                                                                                                                          | admin tutors `scopes[].level`, `PUT .../scopes` body                                   |
 | `AdminStudentStatus`               | `active` · `flagged` · `unlinked`                                                                                                                                                                                                                                                                                                         | admin students                                                                         |
 | `CompanyFlag`                      | `suspicious` · `tooManyStudents` · `largeRadius` · `null` — ustuvorlik aynan shu tartibda                                                                                                                                                                                                                                                 | admin companies, tutor companies                                                       |
-| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorScopesChanged` · `studentsImported` · `company*` (§6.9) · `studentsAssignedToCompany` · `practicePeriodCreated` · `practicePeriodUpdated` · `practicePeriodGroupsChanged` · `practicePeriodClosed` · `practicePeriodDeleted` · `companyQrRotated` (v3.7) · `studentPasswordSet` · `passwordChanged` (v3.8) | admin audit `action`, `?action=`                                                       |
+| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorScopesChanged` · `studentsImported` · `company*` (§6.9) · `studentsAssignedToCompany` · `practicePeriodCreated` · `practicePeriodUpdated` · `practicePeriodGroupsChanged` · `practicePeriodClosed` · `practicePeriodDeleted` · `companyQrRotated` (v3.7) · `studentPasswordSet` · `passwordChanged` (v3.8) · `telegramLinked` (v3.9) | admin audit `action`, `?action=`                                                       |
 | `SettingType`                      | `int` · `bool` · `weekdays`                                                                                                                                                                                                                                                                                                               | settings `type`                                                                        |
 | `SettingKey` (string const)        | `geofenceRadius` · `lateTolerance` · `minGpsAccuracy` · `autoCheckout` · `workDays` · `dailyReportRequired` · `minReportLength` · `diaryPdfRequired` · `checkInWindow` · `checkinPhotoRequired` · `checkinQrRequired` · `maxStudentsPerCompany`                                                                                                                                    | settings                                                                               |
 | `DocumentTemplateKind`             | `contract` · `referral` · `reference`                                                                                                                                                                                                                                                                                                     | settings templates                                                                     |
@@ -2778,3 +2810,17 @@ Bot tayyor bo'lguncha talaba TWA'ni oddiy brauzerda ham ishlatadi.
 - **Enum'lar:** `AuditAction` + `studentPasswordSet` (62), `passwordChanged` (63).
 - **Migratsiya** `StudentWebLogin`: `users.must_change_password` (bool, not null, sukut `false`).
 - **Demo seed:** talaba `341030` / `talaba12345` (mavjud demo bazada ham, parol bo'lmasa, qayta ishga tushganda o'rnatiladi).
+
+### 6.15 v3.8 → v3.9 (24.09.2026): Telegram'ni HEMIS ID + parol bilan bog'lash
+
+Muammo: haqiqiy talabani Telegram'ga bog'laydigan oqim yo'q edi — `POST /api/auth/telegram` bog'lanmagan talabaga
+403 berardi.
+
+- **Yangi endpoint:** `POST /api/auth/telegram/link` (§2.1) — body `{ initData, hemisId, password }` → 200
+  `AuthResultDto` (bog'laydi va kiritadi). Jami endpoint: **109 → 110** (Auth 6 → 7).
+- **TWA oqimi:** `POST /api/auth/telegram` 403 "Hisob topilmadi…" → HEMIS ID + parol formasi → `telegram/link` →
+  `mustChangePassword` bo'lsa `change-password`. Keyingi safar `POST /api/auth/telegram` darhol 200.
+- **Xatolar:** 403 (imzo / HEMIS ID-parol / faol emas / xodim hisobi), 409 (Telegram akkaunti band yoki talaba boshqa
+  Telegram'ga bog'langan). Parallel so'rovlar poygasida ham 409 (unikal indeks `users.telegram_user_id`).
+- **Enum:** `AuditAction` + `telegramLinked` (64).
+- Migratsiya yo'q (unikal indeks `telegram_user_id` avvaldan bor).

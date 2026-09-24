@@ -8,6 +8,14 @@ export interface TelegramAuthRequest {
 }
 
 /**
+ * POST /api/auth/telegram/link — birinchi kirish: Telegram akkauntini HEMIS ID + parol bilan bog'lash.
+ * 200 → AuthResultDto (login bilan bir xil) · 403 / 409 / 429 ProblemDetails `detail`.
+ */
+export interface TelegramLinkRequest extends LoginRequest {
+  initData: string;
+}
+
+/**
  * POST /api/auth/change-password → 204 · 400 ValidationProblem (`errors.CurrentPassword` / `errors.NewPassword`).
  * `refreshToken` — joriy sessiyaniki: berilsa saqlanadi, qolgan sessiyalar bekor (berilmasa — hammasi bekor).
  */
@@ -20,6 +28,9 @@ export interface ChangePasswordRequest {
 export const authApi = {
   loginWithTelegram: (body: TelegramAuthRequest) =>
     api.post<TwaAuthResult>(AUTH_ENDPOINTS.telegram, body, { auth: false }),
+  /** Telegram ichida birinchi kirish: initData + HEMIS ID + parol → akkaunt bog'lanadi va sessiya beriladi. */
+  linkTelegram: (body: TelegramLinkRequest) =>
+    api.post<TwaAuthResult>(AUTH_ENDPOINTS.telegramLink, body, { auth: false }),
   /** Web-login (Telegram tashqarisida): HEMIS ID + parol. */
   login: (body: LoginRequest) =>
     api.post<TwaAuthResult>(AUTH_ENDPOINTS.login, body, { auth: false }),

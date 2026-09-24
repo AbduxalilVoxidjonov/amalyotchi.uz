@@ -5,6 +5,7 @@
 # Build-arg'lar (VITE_* faqat build vaqtida bundle'ga kiradi):
 #   VITE_API_URL   — bo'sh (default) → client relative `/api` ishlatadi, nginx uni `api:8080` ga proxy qiladi.
 #                    To'ldirilsa (https://api.example.uz) — brauzer to'g'ridan-to'g'ri o'sha manzilga boradi (CORS kerak).
+#   VITE_TWA_URL   — talaba ilovasining ommaviy manzili (parol oynasi va login'dagi havola); bo'sh → ko'rsatilmaydi.
 #   VITE_USE_MOCKS — berilmaydi (MSW faqat dev).
 
 # ---------- 1) build ----------
@@ -28,7 +29,9 @@ COPY shared/ shared/
 COPY dashboard/ dashboard/
 
 ARG VITE_API_URL=""
+ARG VITE_TWA_URL=""
 ENV VITE_API_URL=$VITE_API_URL \
+    VITE_TWA_URL=$VITE_TWA_URL \
     VITE_USE_MOCKS=false
 
 RUN NODE_ENV=production npm run build -w dashboard \

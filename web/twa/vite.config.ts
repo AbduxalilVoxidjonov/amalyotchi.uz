@@ -14,6 +14,9 @@ export default defineConfig({
     // Amaliyotchi uchun ajratilgan loopback IP (macOS: `sudo ifconfig lo0 alias 127.0.0.10 up`).
     host: '127.0.0.10',
     port: 5174,
+    // Faqat dev server: Telegram Mini App'ni HTTPS tunnel (cloudflared / ngrok) orqali sinash uchun
+    // tunnel domenlari Host tekshiruvidan o'tkaziladi (`.` — barcha subdomenlar). Production build'ga ta'sir qilmaydi.
+    allowedHosts: ['.trycloudflare.com', '.ngrok-free.app', '.ngrok.app'],
     proxy: {
       '/api': { target: API_TARGET, changeOrigin: true },
     },

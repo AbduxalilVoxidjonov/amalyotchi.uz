@@ -81,6 +81,12 @@ export function accountFromRequest(request: Request): MockAccount | undefined {
 
 export const mockSessions = new Map<string, string>();
 
+/**
+ * Telegram bog'lashlar (mock): initData → userId. `POST /api/auth/telegram/link` yozadi;
+ * shundan keyin `/api/auth/telegram` shu initData bilan (masalan `unlinked`) avtomatik kiradi.
+ */
+export const mockTelegramLinks = new Map<string, string>();
+
 function base64Url(input: string): string {
   const bytes = new TextEncoder().encode(input);
   let binary = '';
@@ -116,6 +122,7 @@ export function issueSession(user: UserSummaryDto, ttlSeconds = 1800): TwaAuthRe
  */
 export function resetMockState() {
   mockSessions.clear();
+  mockTelegramLinks.clear();
   mockAccounts = seedAccounts();
   resetTodayMocks();
   resetDiaryMocks();

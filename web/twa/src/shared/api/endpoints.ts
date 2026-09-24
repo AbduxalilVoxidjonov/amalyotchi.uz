@@ -1,3 +1,23 @@
+/** Auth endpointlari (anonim: telegram, telegram/link, login, refresh; qolganlari Bearer). */
+export const AUTH_ENDPOINTS = {
+  /** POST /api/auth/telegram { initData } → AuthResultDto | 403 (TelegramLoginCommand). */
+  telegram: '/api/auth/telegram',
+  /**
+   * POST { initData, hemisId, password } → AuthResultDto (+ mustChangePassword) — birinchi kirishda Telegram
+   * akkauntini HEMIS ID + parol bilan bog'lash. 403 (parol / faol emas / imzo / xodim) · 409 (boshqa hisobga
+   * bog'langan va h.k.) · 429 rate-limit — barchasi ProblemDetails `detail`.
+   */
+  telegramLink: '/api/auth/telegram/link',
+  /** POST { hemisId, password } → AuthResultDto (+ mustChangePassword) | 401/403 `detail` (web-login). */
+  login: '/api/auth/login',
+  refresh: '/api/auth/refresh',
+  /** POST { refreshToken } + Bearer → 204. */
+  logout: '/api/auth/logout',
+  /** POST { currentPassword, newPassword } + Bearer → 204 | 400 errors.currentPassword/newPassword. */
+  changePassword: '/api/auth/change-password',
+  me: '/api/auth/me',
+} as const;
+
 /**
  * Talaba (TWA) endpointlari — kontrakt v2, manba: `src/Amaliyotchi.Api/Controllers/Student/*.cs`,
  * DTO'lar `Application/Features/Student/StudentContracts.cs` (har feature'ning `types.ts` da aks etgan).
