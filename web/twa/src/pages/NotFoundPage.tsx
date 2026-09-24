@@ -1,5 +1,4 @@
-import { Link } from 'react-router-dom';
-import { Button, EmptyState } from '@/shared/ui';
+import { AppLink, Button, EmptyState } from '@/shared/ui';
 
 export function NotFoundPage() {
   return (
@@ -8,7 +7,7 @@ export function NotFoundPage() {
       description="Bunday bo'lim yo'q."
       action={
         <Button asChild size="sm">
-          <Link to="/">Bosh ekranga</Link>
+          <AppLink to="/">Bosh ekranga</AppLink>
         </Button>
       }
     />

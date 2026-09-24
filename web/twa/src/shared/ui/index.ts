@@ -7,3 +7,4 @@ export * from './chip';
 export * from './fact-grid';
 export * from './map-placeholder';
 export * from './state';
+export * from './app-link';

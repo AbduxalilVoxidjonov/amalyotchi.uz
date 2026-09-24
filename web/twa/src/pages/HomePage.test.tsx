@@ -267,10 +267,8 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
     expect(screen.getByText('11 / 150 belgi')).toBeInTheDocument();
     // Pastda portfolio ham bor (o'xshash statlar) — korxona bo'limi ichida tekshiriladi.
     const place = within(screen.getByRole('region', { name: 'Korxonam' }));
-    expect(place.getByRole('link', { name: 'Tech Solutions MChJ' })).toHaveAttribute(
-      'href',
-      '/joyim',
-    );
+    // Telegram rejimi: ichki havola `href`siz (Telegram-Android `<a href>` ni tashqi havola deb ushlaydi).
+    expect(place.getByRole('link', { name: 'Tech Solutions MChJ' })).not.toHaveAttribute('href');
     expect(place.getByText('94%')).toBeInTheDocument();
     expect(place.getByText('4,2')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('button', { name: 'KELDIM' })).toBeEnabled());
@@ -309,7 +307,8 @@ describe("HomePage — ikki davr oralig'i (v3.5 §4.6)", () => {
 
     // Bahorgi davrga ariza yo'q (GET place → 404) → "Amaliyot joyini yuborish".
     const link = await screen.findByRole('link', { name: 'Amaliyot joyini yuborish' });
-    expect(link).toHaveAttribute('href', '/joyim');
+    expect(link.tagName).toBe('BUTTON');
+    expect(link).not.toHaveAttribute('href');
     fireEvent.click(link);
 
     expect(await screen.findByText('Amaliyot joyini tanlash')).toBeInTheDocument();
@@ -330,10 +329,7 @@ describe("HomePage — ikki davr oralig'i (v3.5 §4.6)", () => {
     renderApp('/');
 
     expect(await screen.findByText('Tekshiruvda')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Tech Solutions MChJ' })).toHaveAttribute(
-      'href',
-      '/joyim',
-    );
+    expect(screen.getByRole('link', { name: 'Tech Solutions MChJ' })).not.toHaveAttribute('href');
     expect(
       screen.queryByRole('link', { name: 'Amaliyot joyini yuborish' }),
     ).not.toBeInTheDocument();

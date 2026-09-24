@@ -1,5 +1,4 @@
-import { Link } from 'react-router-dom';
-import { Badge, Button, Card, Eyebrow } from '@/shared/ui';
+import { AppLink, Badge, Button, Card, Eyebrow } from '@/shared/ui';
 import { isApiError } from '@/shared/api/client';
 import { daysBetween, formatDate, formatPeriod } from '@/shared/lib/format';
 import type { StudentPeriodOption } from '@/features/period/types';
@@ -37,7 +36,7 @@ function UpcomingPlaceAction() {
           yuboring.
         </p>
         <Button asChild variant="primary" radius="md2" block>
-          <Link to="/joyim">Amaliyot joyini yuborish</Link>
+          <AppLink to="/joyim">Amaliyot joyini yuborish</AppLink>
         </Button>
       </div>
     );
@@ -46,7 +45,7 @@ function UpcomingPlaceAction() {
   return (
     <div className={styles.placeRow}>
       <span className={styles.placeText}>
-        Amaliyot joyi: <Link to="/joyim">{place.data.company}</Link>
+        Amaliyot joyi: <AppLink to="/joyim">{place.data.company}</AppLink>
       </span>
       <Badge status={status.kind}>{status.label}</Badge>
     </div>

@@ -61,12 +61,15 @@ describe('TWA router', () => {
     await screen.findByRole('heading', { name: 'Bosh ekran', level: 1 });
     const nav = screen.getByRole('navigation', { name: "Bo'limlar" });
     const tabs = within(nav).getAllByRole('link');
-    expect(tabs.map((t) => [t.getAttribute('aria-label'), t.getAttribute('href')])).toEqual([
-      ['Bosh ekran', '/'],
-      ['Kundaligim', '/kundalik'],
-      ['Kalendarim', '/kalendar'],
-      ['Korxonam', '/joyim'],
-      ['Profil', '/profil'],
+    // Telegram rejimi: tab'lar `href`siz `<button role="link">` (Telegram-Android `<a href>` ni ushlaydi).
+    expect(
+      tabs.map((t) => [t.getAttribute('aria-label'), t.tagName, t.getAttribute('href')]),
+    ).toEqual([
+      ['Bosh ekran', 'BUTTON', null],
+      ['Kundaligim', 'BUTTON', null],
+      ['Kalendarim', 'BUTTON', null],
+      ['Korxonam', 'BUTTON', null],
+      ['Profil', 'BUTTON', null],
     ]);
     expect(within(nav).queryByRole('button')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Yana' })).not.toBeInTheDocument();

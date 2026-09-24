@@ -1,5 +1,4 @@
-import { Link } from 'react-router-dom';
-import { EmptyState, Eyebrow } from '@/shared/ui';
+import { AppLink, EmptyState, Eyebrow } from '@/shared/ui';
 import { formatDecimal, formatPercent } from '@/shared/lib/format';
 import type { TodayPlaceDto } from '../types';
 import styles from './PlaceSummary.module.css';
@@ -30,9 +29,9 @@ export function PlaceSummary({ place }: { place: TodayPlaceDto | null }) {
       <Eyebrow as="div" margin="none">
         Korxonam
       </Eyebrow>
-      <Link to="/joyim" className={styles.company}>
+      <AppLink to="/joyim" className={styles.company}>
         {place.company}
-      </Link>
+      </AppLink>
       <div className={styles.address}>
         {place.address} · radius {place.radiusM} m
       </div>

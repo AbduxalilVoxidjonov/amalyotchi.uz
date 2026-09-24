@@ -1,0 +1,20 @@
+/*
+ * Telegram rejimidagi `<button>` havolasi uchun reset — `<a>` bilan bir xil ko'rinish.
+ * `:where()` — specificity 0: komponentning o'z class'lari (TabBar `.tab`, Button `asChild`) doim ustun.
+ */
+:where(.link) {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--color-link, inherit);
+  text-align: inherit;
+  text-decoration: inherit;
+  width: auto;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
