@@ -85,6 +85,9 @@ services:
       # Kamida 32 belgi — .env da majburiy (bo'sh bo'lsa compose xato beradi).
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?JWT_SIGNING_KEY deploy/.env da berilishi shart (openssl rand -base64 48)}
       Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
+      # Bot long polling (/start, /help, Menu Button → TWA). Bir vaqtda faqat BITTA instansiya polling qilsin (README).
+      Telegram__BotEnabled: ${TELEGRAM_BOT_ENABLED:-true}
+      Telegram__WebAppUrl: ${TWA_PUBLIC_URL:-}
       # Startup'da migratsiya + seed. Demo ma'lumot — faqat demo/stend uchun (production: SEED_DEMO=false).
       Seed__Enabled: "true"
       Seed__Demo: ${SEED_DEMO:-true}

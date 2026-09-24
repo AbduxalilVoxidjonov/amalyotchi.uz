@@ -90,6 +90,8 @@ servislar bir-biriga ichki nom bilan ulanadi (`postgres:5432`, `redis:6379`, `mi
 | `JWT_SIGNING_KEY`    | **majburiy**         | ≥ 32 belgi, `openssl rand -base64 48`                        |
 | `POSTGRES_PASSWORD`  | `amaliyotchi`        | postgres va API ulanish satri                               |
 | `TELEGRAM_BOT_TOKEN` | bo'sh                | BotFather tokeni; bo'sh bo'lsa `/api/auth/telegram` → 403    |
+| `TELEGRAM_BOT_ENABLED` | `true`             | bot long polling (`/start`, `/help`, Menu Button); token va `TWA_PUBLIC_URL` bo'sh bo'lsa baribir o'chiq |
+| `TWA_PUBLIC_URL`     | bo'sh                | TWA ommaviy HTTPS manzili (masalan `https://app.amalyotchi.uz`) — bot tugmasi, Menu Button, CORS |
 | `SEED_DEMO`          | `true`               | demo ma'lumot — **production'da `false`**                    |
 | `ADMIN_HEMIS_ID/PASSWORD` | `100000000001` / `admin12345` | birinchi admin (baza bo'sh bo'lganda bir marta), HEMIS ID — login  |
 | `HOST_IP`            | `127.0.0.10`         | barcha `ports:` bog'lanadigan loopback IP (macOS: `lo0` alias kerak) |
@@ -151,6 +153,24 @@ cloudflared tunnel --url http://127.0.0.10:8091
 `TELEGRAM_BOT_TOKEN` ni `.env` ga yozib `api` ni qayta ko'taring: `docker compose -f deploy/docker-compose.yml up -d api`.
 Tunnel `X-Forwarded-Proto: https` yuboradi — nginx uni API ga uzatadi; API compose tarmog'idan
 (`KnownNetworks`) kelgan sarlavhalarga ishonadi.
+
+## Telegram bot (long polling)
+
+API ichida `TelegramBotService` (BackgroundService) ishlaydi — **webhook emas, long polling**, shuning uchun
+tunnel/nginx sozlamasiga bog'liq emas. Ishga tushishda: `deleteWebhook`, `setMyCommands` (`/start`, `/help`),
+`setChatMenuButton` (“Amalyotchi” → `TWA_PUBLIC_URL`). Javoblar faqat shaxsiy chat'larda: `/start` (parametrli ham) —
+salom + “Ilovani ochish” tugmasi, `/help` — qisqa yordam, boshqa matn — qisqa javob + tugma; guruhlar e'tiborsiz.
+
+Shartlar: `Telegram__BotEnabled=true` + `TELEGRAM_BOT_TOKEN` + `TWA_PUBLIC_URL` (HTTPS). Biror biri yo'q bo'lsa
+log'da bitta `Telegram bot o'chiq: ...` yozuvi chiqadi va xizmat to'xtaydi (API ishlayveradi).
+
+- **Bir vaqtda faqat bitta instansiya polling qilishi kerak.** Ikkinchisi (masalan dev'da lokal API ham shu token
+  bilan yoqilgan bo'lsa) Telegram'dan `409 Conflict` oladi — log'da Warning, xizmat backoff bilan qayta urinadi.
+  API ni bir nechta replika bilan ko'tarsangiz, faqat bittasida `TELEGRAM_BOT_ENABLED=true` qoldiring.
+- Lokal dev'da (`dotnet run`) `Telegram:BotEnabled` — `false` (appsettings.Development.json, token soxta);
+  prod botni lokal sinash kerak bo'lsa, avval Docker'dagi API da `TELEGRAM_BOT_ENABLED=false` qiling.
+- Tekshirish: `docker compose -f deploy/docker-compose.yml logs api | grep -i "telegram bot"` →
+  `Telegram bot @... long polling rejimida ishga tushdi.`
 
 ## Production eslatmalari
 

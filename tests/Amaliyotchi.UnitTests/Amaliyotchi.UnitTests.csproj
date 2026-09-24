@@ -4,6 +4,8 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Amaliyotchi.Application\Amaliyotchi.Application.csproj" />
+    <!-- Bot javob mantig'i (BotReplyPlanner) — sof funksiya, tarmoqsiz -->
+    <ProjectReference Include="..\..\src\Amaliyotchi.Infrastructure\Amaliyotchi.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="xunit" />

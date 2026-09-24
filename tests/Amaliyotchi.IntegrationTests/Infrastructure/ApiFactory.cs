@@ -39,6 +39,8 @@ public sealed class ApiFactory(string connectionString) : WebApplicationFactory<
         builder.UseSetting("Jwt:AccessTokenMinutes", "30");
         builder.UseSetting("Telegram:BotToken", TelegramBotToken);
         builder.UseSetting("Telegram:MaxAgeSeconds", "86400");
+        // Bot polling testlarda hech qachon ishga tushmasin (tarmoq yo'q, soxta token).
+        builder.UseSetting("Telegram:BotEnabled", "false");
         builder.UseSetting("Storage:RootPath", StorageRoot);
         builder.UseSetting("Seed:Enabled", "false");
         builder.UseSetting("Seed:Demo", "false");

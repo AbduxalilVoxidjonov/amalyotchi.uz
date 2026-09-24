@@ -17,6 +17,8 @@ builder.Host.UseSerilog((context, configuration) =>
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+// Telegram bot (long polling) — faqat Telegram:BotEnabled=true va token + WebAppUrl berilganda ishlaydi.
+builder.Services.AddTelegramBot();
 builder.Services.AddJwtAuth(builder.Configuration);
 builder.Services.AddAppRateLimiting(builder.Configuration);
 
@@ -65,8 +67,10 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 app.UseForwardedHeaders();
+// Tartib: request logging exception handler'dan TASHQARIDA — log'dagi status klient olgan javob bilan bir xil
+// (403/404/409 ..., 500 emas), 4xx esa Warning darajada va stack trace'siz (RequestLogging.cs).
+app.UseSerilogRequestLogging(RequestLogging.Configure);
 app.UseExceptionHandler();
-app.UseSerilogRequestLogging();
 
 if (app.Environment.IsDevelopment())
     app.MapOpenApi();

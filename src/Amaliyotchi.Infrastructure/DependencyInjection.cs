@@ -1,6 +1,7 @@
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Features.Admin.Companies;
 using Amaliyotchi.Application.Features.Admin.Students;
+using Amaliyotchi.Infrastructure.Bot;
 using Amaliyotchi.Infrastructure.Excel;
 using Amaliyotchi.Infrastructure.Identity;
 using Amaliyotchi.Infrastructure.Persistence;
@@ -70,6 +71,15 @@ public static class DependencyInjection
         services.AddScoped<DbSeeder>();
         services.AddScoped<DemoDataSeeder>();
 
+        return services;
+    }
+
+    /// <summary>Telegram bot (long polling) — faqat API host'ida ro'yxatdan o'tadi (Worker'da emas: bir vaqtda
+    /// bitta polling). Xizmat <c>Telegram:BotEnabled=false</c> yoki token/WebAppUrl bo'sh bo'lsa darhol chiqadi.
+    /// <see cref="TelegramOptions"/> ni <see cref="AddInfrastructure"/> bog'laydi.</summary>
+    public static IServiceCollection AddTelegramBot(this IServiceCollection services)
+    {
+        services.AddHostedService<TelegramBotService>();
         return services;
     }
 

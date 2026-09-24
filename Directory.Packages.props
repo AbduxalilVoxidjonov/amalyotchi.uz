@@ -10,6 +10,8 @@
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL.NetTopologySuite" Version="10.0.0" />
     <!-- Excel: talabalar importi (shablon yasash va o'qish) -->
     <PackageVersion Include="ClosedXML" Version="0.105.1" />
+    <!-- Telegram bot (long polling: /start, /help, Menu Button) -->
+    <PackageVersion Include="Telegram.Bot" Version="22.10.3.1" />
     <!-- Application -->
     <PackageVersion Include="MediatR" Version="12.4.1" />
     <PackageVersion Include="FluentValidation" Version="11.11.0" />
