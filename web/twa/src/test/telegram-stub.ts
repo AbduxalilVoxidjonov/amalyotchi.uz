@@ -13,6 +13,14 @@ function versionAtLeast(current: string, required: string): boolean {
   return true;
 }
 
+/** `BackButton.onClick` obunachilari. */
+const backClicks = new Set<Listener>();
+
+/** Telegram "orqaga" tugmasi (yoki Android apparat tugmasi) bosildi. */
+export function pressTelegramBack() {
+  backClicks.forEach((cb) => cb());
+}
+
 /** Ochiq QR popup callback'i (`showScanQrPopup`) — `qrPopup` orqali boshqariladi. */
 let qrCallback: ((text: string) => void | true) | null = null;
 
@@ -46,6 +54,21 @@ export const webAppStub = {
     emit('scanQrPopupClosed');
   }),
   openLink: () => undefined,
+  BackButton: {
+    isVisible: false,
+    show: vi.fn(() => {
+      webAppStub.BackButton.isVisible = true;
+    }),
+    hide: vi.fn(() => {
+      webAppStub.BackButton.isVisible = false;
+    }),
+    onClick: vi.fn((cb: Listener) => {
+      backClicks.add(cb);
+    }),
+    offClick: vi.fn((cb: Listener) => {
+      backClicks.delete(cb);
+    }),
+  },
   HapticFeedback: { notificationOccurred: () => undefined },
 };
 
@@ -82,6 +105,12 @@ export function resetTelegramStub() {
   webAppStub.version = '8.0';
   qrCallback = null;
   listeners.clear();
+  backClicks.clear();
+  webAppStub.BackButton.isVisible = false;
+  webAppStub.BackButton.show.mockClear();
+  webAppStub.BackButton.hide.mockClear();
+  webAppStub.BackButton.onClick.mockClear();
+  webAppStub.BackButton.offClick.mockClear();
   webAppStub.showScanQrPopup.mockClear();
   webAppStub.closeScanQrPopup.mockClear();
 }

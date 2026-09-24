@@ -23,6 +23,8 @@ const MAX_PAYLOAD = 1500;
 let memorySent = 0;
 let bootCount = 0;
 let installed = false;
+/** Router'dagi joriy yo'l (Telegram'da memory router — `window.location` doim `/`). */
+let routePath: string | null = null;
 
 function enabled(): boolean {
   return (
@@ -88,7 +90,7 @@ export function diag(event: string, data: Record<string, unknown> = {}): void {
     writeCounter(SENT_KEY, sent + 1);
     const payload = {
       e: event,
-      p: window.location.pathname,
+      p: routePath ?? window.location.pathname,
       t: Math.round(performance.now()),
       b: bootCount,
       n: sent + 1,
@@ -117,8 +119,14 @@ export function diagError(source: string, error: unknown): void {
   diag(source, errorInfo(error));
 }
 
+/** Router'ning joriy yo'lini beacon'siz qayd etish (ishga tushishda). */
+export function setDiagRoutePath(pathname: string): void {
+  routePath = pathname;
+}
+
 /** Route o'zgarishi (router.subscribe dan). */
 export function diagRoute(pathname: string): void {
+  routePath = pathname;
   diag('route', { to: pathname, mem: heap() });
 }
 

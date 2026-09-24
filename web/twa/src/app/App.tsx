@@ -1,11 +1,18 @@
 import { RouterProvider } from 'react-router-dom';
+import { authMode } from '@/shared/auth/mode';
+import { diagRoute, setDiagRoutePath } from '@/shared/lib/diag';
 import { AppProviders } from './providers';
-import { diagRoute } from '@/shared/lib/diag';
 import { createAppRouter } from './router';
+import { bindTelegramBackButton } from './telegram-back-button';
 
-const router = createAppRouter();
-// Diagnostika: har bir route o'zgarishi (pathname + performance.now()).
+// Rejim ilova ishga tushganda bir marta aniqlanadi: Telegram → memory router (URL o'zgarmaydi), web → browser.
+const mode = authMode();
+const router = createAppRouter(mode);
+if (mode === 'telegram') bindTelegramBackButton(router);
+
+// Diagnostika: har bir route o'zgarishi (router pathname + performance.now()).
 let lastPath = router.state.location.pathname;
+setDiagRoutePath(lastPath);
 router.subscribe((state) => {
   if (state.location.pathname === lastPath) return;
   lastPath = state.location.pathname;

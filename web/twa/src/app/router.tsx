@@ -10,6 +10,7 @@ import { LoginScreen } from '@/features/auth/components/LoginScreen';
 import { submitTelegramLink, telegramLinkErrorHint, useAutoLogin } from '@/features/auth/hooks';
 import { errorMessage, isApiError } from '@/shared/api/client';
 import { importWithReload } from '@/shared/lib/chunk-reload';
+import { authMode, type AuthMode } from '@/shared/auth/mode';
 import { useSessionFlags } from '@/shared/auth/session';
 import { Button, LoadingState } from '@/shared/ui';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -118,6 +119,20 @@ export const routes: RouteObject[] = [
   },
 ];
 
-export const createAppRouter = () => createBrowserRouter(routes);
+export type AppRouter = ReturnType<typeof createMemoryRouter>;
+
+/**
+ * Ilova router'i. Rejim ishga tushishda BIR MARTA aniqlanadi:
+ *  - `telegram` — MEMORY router, URL umuman o'zgarmaydi (`pushState`/`replaceState` chaqirilmaydi,
+ *    `#tgWebAppData…` hash ham tegilmaydi). Sabab: Telegram Android WebView sahifa yo'li Mini App ochilgan
+ *    manzildan (`/`) farq qilsa sahifani qayta yuklaydi (production diagnostika: `/kundalik` → reload loop →
+ *    "Failed to load"). Har doim `/` dan boshlanadi; `location.reload()` ham `/` ni ochadi.
+ *  - `web` — oddiy brauzer: `createBrowserRouter` (manzil satri, orqaga/oldinga — o'zgarishsiz).
+ */
+export function createAppRouter(mode: AuthMode = authMode()): AppRouter {
+  if (mode === 'telegram') return createMemoryRouter(routes, { initialEntries: ['/'] });
+  return createBrowserRouter(routes);
+}
+
 export const createTestRouter = (initialEntries: string[] = ['/']) =>
   createMemoryRouter(routes, { initialEntries });
