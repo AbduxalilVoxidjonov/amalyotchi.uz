@@ -16,3 +16,7 @@ TestResults/
 # Lokal fayl xotirasi (Storage:RootPath) va Docker ma'lumotlari
 data/
 scratchpad/
+
+# graphify (lokal bilim grafi) va mashinaga xos Claude sozlamalari
+graphify-out/
+.claude/
