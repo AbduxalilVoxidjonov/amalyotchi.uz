@@ -208,7 +208,6 @@ export function buildTodayResponse(filter: AttendanceFilter, page: number, q = '
   const alerts: TodayAlert[] = [
     { kind: 'outOfRadius', count: 3, href: '/tutor/map', maxDistanceM: 3400 },
     { kind: 'notCheckedIn', count: s.absent, href: '/tutor?status=absent', maxDistanceM: null },
-    { kind: 'newLeaveRequests', count: 2, href: '/tutor/leave-requests', maxDistanceM: null },
     { kind: 'newApplications', count: 7, href: '/tutor/applications', maxDistanceM: null },
   ];
   return {

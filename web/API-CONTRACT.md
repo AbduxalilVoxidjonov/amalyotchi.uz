@@ -1,4 +1,4 @@
-# API-CONTRACT v3.9
+# API-CONTRACT v3.10
 
 Oxirgi yangilanish: 24.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
@@ -11,13 +11,14 @@ v3.5 (bir guruhda bir nechta davr: davr tanlash qoidasi, talaba profilida davr t
 v3.6 (admin davr statistikasi) — §6.12,
 v3.7 (amaliyot joyida QR kod bilan check-in/check-out) — §6.13,
 v3.8 (talaba brauzerda HEMIS ID + parol bilan kiradi, parol almashtirish, talaba kabineti) — §6.14,
-v3.9 (talaba Telegram'ni HEMIS ID + parol bilan bog'laydi — `POST /api/auth/telegram/link`) — §6.15.
+v3.9 (talaba Telegram'ni HEMIS ID + parol bilan bog'laydi — `POST /api/auth/telegram/link`) — §6.15,
+v3.10 (ruxsat so'rash moduli olib tashlandi — talaba va tyutor `leave-requests` endpoint'lari) — §6.16.
 
-Jami **110 ta endpoint**: Auth 7 · Admin 66 · Reports 1 · Tutor 22 · Student (TWA) 12 · Files 1 · Companies 1.
+Jami **106 ta endpoint**: Auth 7 · Admin 66 · Reports 1 · Tutor 20 · Student (TWA) 10 · Files 1 · Companies 1.
 
-> Kontrollerlarda `[Http*]` atributlari **112 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
+> Kontrollerlarda `[Http*]` atributlari **108 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
 > har birida ikkitadan action bor (`multipart/form-data` va `application/json` — `[Consumes]` bilan ajratiladi,
-> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **110**.
+> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **106**.
 
 ---
 
@@ -1355,9 +1356,9 @@ interface TodayStats {
   total: number;
 } // filtr QO'LLANMAGAN barcha qatorlar bo'yicha
 interface TodayAlert {
-  kind: 'outOfRadius' | 'notCheckedIn' | 'newLeaveRequests' | 'newApplications';
+  kind: 'outOfRadius' | 'notCheckedIn' | 'newApplications' /*v3.10: 'newLeaveRequests' olib tashlandi*/;
   count: number;
-  href: string /*"/tutor/map" | "/tutor?status=absent" | "/tutor/leave-requests" | "/tutor/applications"*/;
+  href: string /*"/tutor/map" | "/tutor?status=absent" | "/tutor/applications"*/;
   maxDistanceM: number | null; /*faqat outOfRadius*/
 }
 interface AttendanceRow {
@@ -1785,36 +1786,11 @@ interface MapPoint {
 }
 ```
 
-#### GET `/api/tutor/leave-requests` — `?status=<LeaveRequestStatus>`
+#### ~~`GET /api/tutor/leave-requests` · `POST /api/tutor/leave-requests/{id}/decision`~~ — v3.10 da olib tashlandi
 
-Tartib: `pending` birinchi, keyin `createdAt` desc.
-
-```ts
-interface TutorLeaveRequest {
-  id: string;
-  studentId: string;
-  studentName: string;
-  group: string;
-  dateFrom: string;
-  dateTo: string /*bir kunlik → dateFrom bilan teng, null EMAS*/;
-  reason: string;
-  document: { name: string; url: string | null } | null;
-  status: LeaveRequestStatus;
-  comment: string | null;
-  createdAt: string;
-  decidedAt: string | null;
-}
-```
-
-#### POST `/api/tutor/leave-requests/{id}/decision`
-
-| Maydon     | Tip                     | Majburiy | Validatsiya |
-| ---------- | ----------------------- | -------- | ----------- |
-| `decision` | `'approve' \| 'reject'` | ha       | enum        |
-| `comment`  | string                  | yo'q     | ≤ 1000      |
-
-Response 200 `TutorLeaveRequest`. `approve` → oraliqdagi har ish kuni `excused` (`DailyAttendance` yaratiladi/yangilanadi).
-Xatolar: 400; **404**; **409** — status `pending` emas.
+Ruxsat so'rash moduli foydalanuvchi qarori bilan olib tashlandi (§6.16). Yo'llar endi **404**. Yangi `excused` kun faqat
+qo'lda tuzatish orqali paydo bo'ladi (Domain `DailyAttendance.ManualFix`; uning API endpoint'i **hozircha yo'q**). Bazadagi eski tasdiqlangan ruxsatlar hisoblarda
+(`excused`, `onLeave`, `leaveRequestId`) avvalgidek hisobga olinadi.
 
 #### GET `/api/tutor/grading`
 
@@ -2131,34 +2107,9 @@ interface CalendarMonthDto {
 Davr yo'q: kelajak → `future`, qolgani `dayOff`. Aks holda §4.1 `DayStatus` qoidasi — har kun **o'zini o'z ichiga olgan
 davr** bilan (v3.5: oy kuzgi va bahorgi davrni qamrasa ikkalasi ham ko'rinadi; davrlar tashqarisi — `dayOff`/`future`).
 
-#### GET `/api/student/leave-requests` · POST `/api/student/leave-requests` (201)
+#### ~~`GET /api/student/leave-requests` · `POST /api/student/leave-requests`~~ — v3.10 da olib tashlandi
 
-POST body:
-
-| Maydon             | Tip      | Majburiy | Validatsiya                                              |
-| ------------------ | -------- | -------- | -------------------------------------------------------- |
-| `dateFrom`         | DateOnly | ha       | bo'sh emas (`errors.DateFrom`)                           |
-| `dateTo`           | DateOnly | ha       | ≥ `dateFrom`; oraliq ≤ 31 kun (`errors.DateTo`)          |
-| `reason`           | string   | ha       | trim ≥ 10, ≤ 1000 (`errors.Reason`)                      |
-| `attachmentName`   | string   | yo'q     | ≤ 255 (fayl yuklanmaydi — faqat nom)                     |
-| `attachmentFileId` | GUID     | yo'q     | o'zi yuklagan `StoredFile` bo'lishi shart, aks holda 404 |
-
-Response 201 `LeaveRequestDto`. Davr (v3.5) — `dateFrom..dateTo` ni to'liq qamragan yopilmagan guruh davri (kelgusi davr
-uchun ham so'rash mumkin). Xatolar: 400 validation; **400** davr yo'q / sanalar hech bir davr ichida emas ("Ruxsat sanalari
-amaliyot davri ichida bo'lishi kerak."); **409** — `rejected` bo'lmagan kesishuvchi so'rov bor.
-
-```ts
-interface LeaveRequestDto {
-  id: string;
-  dateFrom: string;
-  dateTo: string;
-  reason: string;
-  status: LeaveRequestStatus;
-  comment: string | null;
-  document: { name: string; url: string | null } | null;
-  createdAt: string; /*ISO datetime*/
-}
-```
+Talaba endi ruxsat so'ramaydi (§6.16); yo'llar **404**. `LeaveRequestDto` olib tashlandi.
 
 #### GET `/api/student/portfolio` — `?periodId=` · 404
 
@@ -2276,15 +2227,14 @@ interface StudentProfileDto {
 | `DiaryStatus`                      | `submitted` · `seen` · `rewrite` · `approved`                                                                                                                                                                                                                                                                                             | diary'lar                                                                              |
 | `DiaryReviewAction` (request)      | `approve` · `score` · `rewrite`                                                                                                                                                                                                                                                                                                           | tutor review                                                                           |
 | `DiaryState`                       | `written` · `pending` (+ `null`)                                                                                                                                                                                                                                                                                                          | tutor today `rows[].diary`                                                             |
-| `LeaveRequestStatus`               | `pending` · `approved` · `rejected`                                                                                                                                                                                                                                                                                                       | leave                                                                                  |
-| `LeaveDecision` (request)          | `approve` · `reject`                                                                                                                                                                                                                                                                                                                      | tutor leave decision                                                                   |
+| `LeaveRequestStatus`               | `pending` · `approved` · `rejected`                                                                                                                                                                                                                                                                                                       | ichki (tarix, v3.10 dan API javoblarida yo'q)                                          |
 | `ApplicationStatus`                | `draft` · `submitted` · `revisionNeeded` · `approved` · `rejected` · `completed`                                                                                                                                                                                                                                                          | applications, TWA place                                                                |
 | `ApplicationDecision` (request)    | `approve` · `return` · `reject`                                                                                                                                                                                                                                                                                                           | tutor decision                                                                         |
 | `PracticePeriodStatus`             | `planned` · `active` · `closed` — admin API'da hisoblanadi (§2.3.4)                                                                                                                                                                                                                                                                       | admin groups `period.status`, admin practice-periods                                   |
 | `WorkDays`                         | bitmask; sozlamada `"1,2,3,4,5,6"` (1=Du … 7=Ya)                                                                                                                                                                                                                                                                                          | settings `workDays`                                                                    |
 | `StudentStatus` (domain, akademik) | `active` · `suspended` · `graduated`                                                                                                                                                                                                                                                                                                      | `TutorStudentDetail.status`                                                            |
 | `TodayFilter` (query)              | `present` · `late` · `absent` · `excused` · `pending` · `suspicious`                                                                                                                                                                                                                                                                      | tutor today `?status=`                                                                 |
-| `TodayAlertKind`                   | `outOfRadius` · `notCheckedIn` · `newLeaveRequests` · `newApplications`                                                                                                                                                                                                                                                                   | tutor today alerts                                                                     |
+| `TodayAlertKind`                   | `outOfRadius` · `notCheckedIn` · `newApplications` (v3.10: `newLeaveRequests` olib tashlandi)                                                                                                                                                                                                                                                                   | tutor today alerts                                                                     |
 | `StudentState`                     | `active` · `redFlag` · `suspicious`                                                                                                                                                                                                                                                                                                       | tutor students (+ detail), company students                                            |
 | `MapPointKind`                     | `ok` · `late` · `bad`                                                                                                                                                                                                                                                                                                                     | tutor map                                                                              |
 | `FacultyStatus`                    | `active` · `attention`                                                                                                                                                                                                                                                                                                                    | admin faculties                                                                        |
@@ -2323,7 +2273,7 @@ Shu xabarlar `TodayDto.checkin.note` da ham keladi (amal hozir mumkin bo'lmasa).
 
 `DIARY_MIN_CHARS` — sozlama `minReportLength` (default **150**, `TodayDto.diary.minChars` dan oling) · `DIARY_MAX_CHARS 10000` ·
 `DIARY_MAX_FILES 5` · `DIARY_MAX_FILE_BYTES 5 MB` · `RADIUS 50..1000 / step 50` · `DEFAULT_RADIUS 200` ·
-`CHECKLIST_ITEMS 7` (indeks 0..6) · `COMMENT_MAX 1000` (ariza, kundalik, ruxsat) · `LEAVE_REASON 10..1000` · `LEAVE_MAX_DAYS 31` ·
+`CHECKLIST_ITEMS 7` (indeks 0..6) · `COMMENT_MAX 1000` (ariza, kundalik) ·
 `TUTOR_POINTS 0..20` · `REFERENCE_POINTS 0..10` · `DIARY_SCORE 1..5` · `PAGE_SIZE default 20, max 100` · `Q_MAX 100` ·
 `CHECKIN_PHOTO_MAX_BYTES 5 MB` · `CHECKIN_REQUEST_MAX_BYTES 6 MB` · `ATTENDANCE_RANGE_MAX_DAYS 400` (`GET /api/tutor/students/{id}/attendance`) ·
 `maxStudentsPerCompany` — sozlama (default **10**, 1..200).
@@ -2740,7 +2690,7 @@ Yangi endpoint yo'q, migratsiya yo'q; barcha o'zgarishlar **qo'shimcha** (buzmay
 | `GET /api/student/portfolio`                                      | `?periodId=`; javobda `periodId`, `periods`                                                         |
 | `GET /api/student/diary`                                          | har yozuvda `periodId`, `periodName`                                                                |
 | `GET /api/student/calendar`                                       | har kun o'z davri bilan (oy ikki davrni qamrashi mumkin)                                            |
-| `POST /api/student/leave-requests`                                | davr — sanalarni qamragan yopilmagan guruh davri (kelgusi ham)                                      |
+| ~~`POST /api/student/leave-requests`~~ (v3.10 da olib tashlandi)  | davr — sanalarni qamragan yopilmagan guruh davri (kelgusi ham)                                      |
 | `GET /api/admin/groups` · `students` · `dashboard` · `faculties`  | sukut bo'yicha davr: tanaffusda tugagan davr (`period.status` `closed` bo'lishi mumkin)             |
 | `GET /api/tutor/students` · `grading` · `today` · `companies`     | sukut bo'yicha davr; korxona statistikasi — ariza davri bo'yicha                                     |
 | `GET /api/reports`                                                | `filter.dateFrom/dateTo` — ko'lam guruhlarining sukut bo'yicha davrlari                              |
@@ -2824,3 +2774,23 @@ Muammo: haqiqiy talabani Telegram'ga bog'laydigan oqim yo'q edi — `POST /api/a
   Telegram'ga bog'langan). Parallel so'rovlar poygasida ham 409 (unikal indeks `users.telegram_user_id`).
 - **Enum:** `AuditAction` + `telegramLinked` (64).
 - Migratsiya yo'q (unikal indeks `telegram_user_id` avvaldan bor).
+
+### 6.16 v3.9 → v3.10 (24.09.2026): ruxsat so'rash moduli olib tashlandi
+
+Foydalanuvchi qarori: talabalar ruxsat (leave) so'ramaydi — funksiya butunlay olib tashlandi.
+
+- **Olib tashlangan endpoint'lar (4):** `GET /api/student/leave-requests`, `POST /api/student/leave-requests`,
+  `GET /api/tutor/leave-requests`, `POST /api/tutor/leave-requests/{id}/decision` → endi **404**.
+  Jami endpoint: **110 → 106** (Tutor 22 → 20, Student 12 → 10; `[Http*]` atributlari 112 → 108).
+- **DTO/enum:** `LeaveRequestDto`, `LeaveDocumentDto`, `TutorLeaveRequest`, `LeaveDocument`, `LeaveDecision` olib
+  tashlandi. `TodayAlertKind.newLeaveRequests` olib tashlandi — `GET /api/tutor/today` endi bu alertni qaytarmaydi
+  (raqam `3` bo'sh qoldirildi, qayta ishlatilmaydi). Konstantalar `LEAVE_REASON`, `LEAVE_MAX_DAYS` — kontraktdan chiqdi.
+- **Saqlanadi (o'zgarmaydi):** `LeaveRequest` jadvali va entity (tarix; **migratsiya yo'q**), `StudentAttendanceDay.leaveRequestId`,
+  `AttendanceStatus.excused`, `CheckInRejectReason.onLeave`, bazadagi **tasdiqlangan** ruxsatlarni davomat/statistika/
+  kalendar/portfolio/baholash hisoblarida hisobga olish, `GET /api/files/{id}` da ruxsat hujjatiga kirish,
+  `AuditAction.leaveApproved/leaveRejected` (audit tarixi uchun; raqamlar o'zgarmadi), Domain `DailyAttendance.ManualFix`
+  (qo'lda tuzatish — API endpoint'i hozircha yo'q, alohida vazifa).
+- **Demo seed:** kutilayotgan (pending) ruxsat so'rovlari endi yaratilmaydi; tarix uchun 1 tasdiqlangan (+ `excused` kun)
+  va 1 rad etilgan so'rov qoladi.
+- **Dashboard:** tyutor "Ruxsat so'rovlari" sahifasi va nav bandi olib tashlandi; `/tutor/leave-requests` → `/tutor`
+  redirect. Talaba tafsilotida `excused` kun va "Ruxsat so'rovi" manba belgisi (eski yozuvlar) saqlanadi.

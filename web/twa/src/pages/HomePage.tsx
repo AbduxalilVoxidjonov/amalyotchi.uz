@@ -8,10 +8,30 @@ import { DiaryForm } from '@/features/diary/components/DiaryForm';
 import { useCreateDiaryEntry, useDiaryQuery } from '@/features/diary/hooks';
 import { rewriteFilesFor } from '@/features/diary/types';
 import { periodPhase } from '@/features/period/types';
+import { PortfolioView } from '@/features/portfolio/components/PortfolioView';
 import styles from './pages.module.css';
 
-/** SPEC-SCREENS §8 `isTalaba` — Bosh ekran: check-in + bugungi kundalik + amaliyot joyi qisqacha. */
+/**
+ * SPEC-SCREENS §8 `isTalaba` — Bosh ekran: check-in + bugungi kundalik + korxona qisqacha,
+ * ostida to'liq portfolio (§16). Ikki blok mustaqil query'lar: portfolio yuklanishi yoki xatosi
+ * bugungi kartani kutdirmaydi (va aksincha).
+ */
 export function HomePage() {
+  return (
+    <div className={styles.stack}>
+      <TodaySection />
+      <section className={styles.stack} aria-labelledby="home-portfolio-title">
+        <h2 id="home-portfolio-title" className={styles.sectionTitle}>
+          Portfolio
+        </h2>
+        <PortfolioView />
+      </section>
+    </div>
+  );
+}
+
+/** Bugungi blok: check-in, kundalik, korxona qisqacha (yoki davrlar oralig'i kartasi). */
+function TodaySection() {
   const today = useTodayQuery();
   const checkinFlow = useCheckinFlow();
   const createDiary = useCreateDiaryEntry();
@@ -29,15 +49,11 @@ export function HomePage() {
   // `period = null` ("Faol amaliyot davri yo'q") — avvalgidek CheckinCard `note` bilan.
   const phase = data.period ? periodPhase(data.period, data.date) : null;
   if (data.period && (phase === 'upcoming' || phase === 'ended')) {
-    return (
-      <div className={styles.stack}>
-        <PeriodGapCard today={data} period={data.period} phase={phase} />
-      </div>
-    );
+    return <PeriodGapCard today={data} period={data.period} phase={phase} />;
   }
 
   return (
-    <div className={styles.stack}>
+    <>
       <CheckinCard today={data} flow={checkinFlow} />
       <Card padded="lg">
         <DiaryForm
@@ -53,7 +69,7 @@ export function HomePage() {
         />
         <PlaceSummary place={data.place} />
       </Card>
-    </div>
+    </>
   );
 }
 

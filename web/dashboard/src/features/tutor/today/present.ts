@@ -67,13 +67,6 @@ export function presentAlert(alert: TodayAlert): AlertModel {
         action: "Ko'rish",
         href: alert.href,
       };
-    case 'newLeaveRequests':
-      return {
-        id: alert.kind,
-        text: `${n} ta yangi ruxsat so'rovi javob kutmoqda`,
-        action: "Ko'rib chiqish",
-        href: alert.href,
-      };
     case 'newApplications':
       return {
         id: alert.kind,

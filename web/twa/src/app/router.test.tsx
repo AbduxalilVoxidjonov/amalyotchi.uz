@@ -29,13 +29,13 @@ describe('TWA router', () => {
   });
 
   it("barcha bo'lim yo'llari ochiladi (SPEC-NAV 3.2)", async () => {
-    const router = renderApp('/portfolio');
-    expect(await screen.findByRole('heading', { name: 'Portfolio', level: 1 })).toBeInTheDocument();
+    const router = renderApp('/kundalik');
+    expect(
+      await screen.findByRole('heading', { name: 'Kundaligim', level: 1 }),
+    ).toBeInTheDocument();
     for (const [path, title] of [
-      ['/kundalik', 'Kundaligim'],
-      ['/joyim', 'Amaliyot joyim'],
+      ['/joyim', 'Korxonam'],
       ['/kalendar', 'Kalendarim'],
-      ['/ruxsat', "Ruxsat so'rash"],
       ['/profil', 'Profil'],
       ['/', 'Bosh ekran'],
     ] as const) {
@@ -48,18 +48,39 @@ describe('TWA router', () => {
     expect(await screen.findByText('404 — Sahifa topilmadi')).toBeInTheDocument();
   });
 
-  it('"Yana" tugmasi qolgan bo\'limlarni ochadi', async () => {
+  it.each(['/portfolio', '/ruxsat'])('eski havola %s → bosh ekranga redirect', async (path) => {
+    const router = renderApp(path);
+    expect(
+      await screen.findByRole('heading', { name: 'Bosh ekran', level: 1 }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/');
+  });
+
+  it("tab-bar: aynan 5 ta to'g'ridan-to'g'ri tab, \"Yana\" va ruxsat so'rash yo'q", async () => {
     renderApp('/');
     await screen.findByRole('heading', { name: 'Bosh ekran', level: 1 });
-    await act(() => {
-      screen.getByRole('button', { name: 'Yana' }).click();
-    });
-    const dialog = screen.getByRole('dialog', { name: 'Yana' });
-    expect(dialog).toHaveTextContent("Ruxsat so'rash");
-    expect(dialog).toHaveTextContent('Portfolio');
-    expect(within(dialog).getByRole('link', { name: 'Profil' })).toHaveAttribute('href', '/profil');
-    expect(dialog).toHaveTextContent('Aliyev Akmal');
-    expect(dialog).toHaveTextContent('412-22 · 3-kurs'); // UserSummaryDto v2: groupName/course
+    const nav = screen.getByRole('navigation', { name: "Bo'limlar" });
+    const tabs = within(nav).getAllByRole('link');
+    expect(tabs.map((t) => [t.getAttribute('aria-label'), t.getAttribute('href')])).toEqual([
+      ['Bosh ekran', '/'],
+      ['Kundaligim', '/kundalik'],
+      ['Kalendarim', '/kalendar'],
+      ['Korxonam', '/joyim'],
+      ['Profil', '/profil'],
+    ]);
+    expect(within(nav).queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Yana' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Ruxsat so'rash/)).not.toBeInTheDocument();
     expect(screen.getByText('Talaba · 3-kurs ishlab chiqarish amaliyoti')).toBeInTheDocument();
+  });
+
+  it('header avatari havola emas (profilga faqat tab orqali)', async () => {
+    renderApp('/');
+    const title = await screen.findByRole('heading', { name: 'Bosh ekran', level: 1 });
+    const header = title.closest('header');
+    expect(header).not.toBeNull();
+    expect(within(header!).queryByRole('link')).not.toBeInTheDocument();
+    expect(header).toHaveTextContent('AA'); // Avatar bosh harflari ko'rinadi
+    expect(screen.getAllByRole('link', { name: /Profil/ })).toHaveLength(1);
   });
 });

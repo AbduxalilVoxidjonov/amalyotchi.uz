@@ -77,7 +77,6 @@ public sealed class TutorTodayTests(ApiFixture fixture)
     {
         var s = await Factory.CreateTutorScenarioAsync();
         await Factory.AddCheckInEventAsync(s.Student, s.Company, Factory.Today(), distanceM: 3400, accepted: false);
-        await Factory.AddLeaveRequestAsync(s.Student, s.Period, Factory.Today().AddDays(3), Factory.Today().AddDays(3));
 
         var body = (await (await s.Client.GetAsync("/api/tutor/today")).Content.ReadAsync<TodayResponse>())!;
 
@@ -85,7 +84,7 @@ public sealed class TutorTodayTests(ApiFixture fixture)
         row.OutOfRadius.Should().BeTrue();
         row.DistanceM.Should().Be(3400);
         body.Alerts.Should().Contain(a => a.Kind == TodayAlertKind.OutOfRadius && a.Count == 1 && a.MaxDistanceM == 3400);
-        body.Alerts.Should().Contain(a => a.Kind == TodayAlertKind.NewLeaveRequests && a.Count == 1);
+        body.Alerts.Should().NotContain(a => (int)a.Kind == 3); // ruxsat so'rovlari alerti olib tashlangan
 
         var suspicious = (await (await s.Client.GetAsync("/api/tutor/today?status=suspicious")).Content.ReadAsync<TodayResponse>())!;
         suspicious.Rows.Items.Should().ContainSingle();

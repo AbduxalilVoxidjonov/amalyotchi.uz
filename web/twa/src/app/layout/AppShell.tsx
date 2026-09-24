@@ -1,5 +1,5 @@
 import { Suspense, useEffect } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Avatar, LoadingState } from '@/shared/ui';
 import { useAuthStore } from '@/shared/auth/store';
 import { crumbFor, navItemForPath } from '../nav';
@@ -9,6 +9,7 @@ import { TabBar } from './TabBar';
 /**
  * Mobil shell (❓ dizayndagi desktop sidebar+header o'rniga):
  *   sticky header (crumb + h1 + Avatar) · bitta ustun kontent · pastki tab-bar.
+ * Avatar — faqat ko'rinish (havola emas); profilga pastki "Profil" tabi orqali kiriladi.
  * Sarlavha nav'dan avtomatik (SPEC-NAV 6: title = activeNav.label).
  */
 export function AppShell() {
@@ -28,13 +29,7 @@ export function AppShell() {
           <div className={styles.crumb}>{crumbFor(user)}</div>
           <h1 className={styles.title}>{title}</h1>
         </div>
-        <Link
-          to="/profil"
-          className={styles.avatarLink}
-          aria-label={`Profil — ${user?.fullName ?? 'Talaba'}`}
-        >
-          <Avatar name={user?.fullName ?? null} variant="card" />
-        </Link>
+        <Avatar name={user?.fullName ?? null} variant="card" className={styles.avatar} />
       </header>
       <main className={styles.content}>
         <Suspense fallback={<LoadingState height={240} />}>

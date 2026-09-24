@@ -365,18 +365,10 @@ public sealed class DemoDataSeeder(
             }
         }
 
-        // 8. Ruxsat so'rovlari: 2 kutilmoqda, 1 tasdiqlangan (+ davomat "sababli"), 1 rad etilgan
-        var sobirov = students[2];
-        var karimov = students[1];
+        // 8. Ruxsat so'rovlari (tarix): 1 tasdiqlangan (+ davomat "sababli"), 1 rad etilgan. Talaba ruxsat so'rash
+        // moduli olib tashlangan (24.09.2026) — kutilayotgan so'rovlar seed qilinmaydi, faqat o'tgan qarorlar.
         var decisionAt = At(today.AddDays(-1), new TimeOnly(12, 0));
-
-        var leaves = new List<LeaveRequest>
-        {
-            LeaveRequest.Create(sobirov.User.Id, period.Id, today.AddDays(2), today.AddDays(2),
-                "Kasallik — poliklinika spravkasi", "spravka.pdf"),
-            LeaveRequest.Create(karimov.User.Id, period.Id, today.AddDays(3), today.AddDays(4),
-                "Oilaviy sabab", "ariza.pdf")
-        };
+        var leaves = new List<LeaveRequest>();
 
         if (excusedDay is { } excused)
         {
@@ -397,7 +389,7 @@ public sealed class DemoDataSeeder(
         // 9. Baholar (yakunlanmagan)
         var grades = new (DemoStudent Student, int? Tutor, int? Reference)[]
         {
-            (yusupova, 19, 10), (students[0], 18, 10), (students[5], 16, 8), (rahimov, 13, 7), (sobirov, null, null)
+            (yusupova, 19, 10), (students[0], 18, 10), (students[5], 16, 8), (rahimov, 13, 7), (students[2], null, null)
         };
         foreach (var (student, tutorPoints, referencePoints) in grades)
         {

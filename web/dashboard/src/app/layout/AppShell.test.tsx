@@ -54,7 +54,8 @@ describe('AppShell', () => {
     loginAs(1);
     const router = renderApp('/tutor');
     const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
-    expect(within(nav).getAllByRole('link')).toHaveLength(10);
+    expect(within(nav).getAllByRole('link')).toHaveLength(9);
+    expect(within(nav).queryByRole('link', { name: /Ruxsat/ })).not.toBeInTheDocument();
     expect(within(nav).getByRole('link', { name: /Bugun/ })).toHaveAttribute(
       'aria-current',
       'page',
@@ -73,6 +74,13 @@ describe('AppShell', () => {
     ).toBeInTheDocument();
     // Sidebar hali ham bor (shell ichida)
     expect(screen.getByRole('navigation', { name: 'Asosiy' })).toBeInTheDocument();
+  });
+
+  it("tyutor: eski /tutor/leave-requests → /tutor (ruxsat so'rash moduli olib tashlangan)", async () => {
+    loginAs(1);
+    const router = renderApp('/tutor/leave-requests');
+    await waitFor(() => expect(router.state.location.pathname).toBe('/tutor'));
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Bugun');
   });
 
   it('Chiqish → sessiya tozalanadi → /login', async () => {

@@ -61,9 +61,6 @@ internal sealed class GetTutorTodayQueryHandler(IApplicationDbContext db, IScope
             .Select(l => l.StudentUserId)
             .ToHashSetAsync(cancellationToken);
 
-        var pendingLeaves = await db.LeaveRequests.AsNoTracking().InScope(scope)
-            .CountAsync(l => l.Status == LeaveRequestStatus.Pending, cancellationToken);
-
         var newApplications = await db.PracticeApplications.AsNoTracking().InScope(scope)
             .CountAsync(a => a.Status == ApplicationStatus.Submitted, cancellationToken);
 
@@ -119,8 +116,6 @@ internal sealed class GetTutorTodayQueryHandler(IApplicationDbContext db, IScope
             alerts.Add(new TodayAlert(TodayAlertKind.OutOfRadius, rejectedAttempts.Count, "/tutor/map", Math.Round(rejectedAttempts.Values.Max(), 0)));
         if (stats.Absent > 0)
             alerts.Add(new TodayAlert(TodayAlertKind.NotCheckedIn, stats.Absent, "/tutor?status=absent"));
-        if (pendingLeaves > 0)
-            alerts.Add(new TodayAlert(TodayAlertKind.NewLeaveRequests, pendingLeaves, "/tutor/leave-requests"));
         if (newApplications > 0)
             alerts.Add(new TodayAlert(TodayAlertKind.NewApplications, newApplications, "/tutor/applications"));
 

@@ -47,20 +47,6 @@ const PATHS: Record<NavIcon, ReactNode> = {
       <path d="M3.5 10h17M8 3v4M16 3v4" />
     </>
   ),
-  leave: (
-    <>
-      <path d="M6 3h9l4 4v14H6z" />
-      <path d="M14 3v5h5" />
-      <path d="M9 13h6M9 17h4" />
-    </>
-  ),
-  portfolio: (
-    <>
-      <rect x="3" y="7" width="18" height="13" rx="2" />
-      <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-      <path d="M3 12h18" />
-    </>
-  ),
   profile: (
     <>
       <circle cx="12" cy="8.5" r="3.8" />

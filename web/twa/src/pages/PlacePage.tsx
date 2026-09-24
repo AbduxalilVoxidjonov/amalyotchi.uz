@@ -25,7 +25,7 @@ const formatCoords = (p: PracticePlaceDto) => `${p.lat.toFixed(4)}, ${p.lng.toFi
 const person = (name: string | null, phone: string | null) =>
   name ? (phone ? `${name} · ${formatPhone(phone)}` : name) : '—';
 
-/** SPEC-SCREENS §14 `isJoyim` — Amaliyot joyim. */
+/** SPEC-SCREENS §14 `isJoyim` — Korxonam (avval "Amaliyot joyim"). */
 export function PlacePage() {
   const place = usePlaceQuery();
   // Ariza davri: `today.period` (§4.6 "current") — tugagan davrga ariza berilmaydi (POST 409),

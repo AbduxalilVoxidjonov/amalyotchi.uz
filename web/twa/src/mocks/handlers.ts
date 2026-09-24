@@ -2,7 +2,6 @@ import { http, HttpResponse, type HttpHandler } from 'msw';
 import { toUserRole, UserRole } from '@amaliyotchi/shared';
 import { calendarHandlers } from '@/features/calendar/mocks';
 import { diaryHandlers } from '@/features/diary/mocks';
-import { leaveHandlers } from '@/features/leave/mocks';
 import { placeHandlers } from '@/features/place/mocks';
 import { portfolioHandlers } from '@/features/portfolio/mocks';
 import { profileHandlers } from '@/features/profile/mocks';
@@ -153,7 +152,6 @@ export const handlers: HttpHandler[] = [
   ...placeHandlers,
   ...diaryHandlers,
   ...calendarHandlers,
-  ...leaveHandlers,
   ...portfolioHandlers,
   ...profileHandlers,
 ];

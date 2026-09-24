@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import {
   createBrowserRouter,
   createMemoryRouter,
+  Navigate,
   Outlet,
   type RouteObject,
 } from 'react-router-dom';
@@ -52,7 +53,6 @@ const StudentDetailPage = lazy(() => import('@/features/tutor/students/StudentDe
 const DiariesPage = lazy(() => import('@/features/tutor/diaries/DiariesPage'));
 const CalendarPage = lazy(() => import('@/features/tutor/calendar/CalendarPage'));
 const MapPage = lazy(() => import('@/features/tutor/map/MapPage'));
-const LeaveRequestsPage = lazy(() => import('@/features/tutor/leave-requests/LeaveRequestsPage'));
 const GradingPage = lazy(() => import('@/features/tutor/grading/GradingPage'));
 const TutorCompaniesPage = lazy(() => import('@/features/tutor/companies/CompaniesPage'));
 const TutorCompanyDetailPage = lazy(() => import('@/features/tutor/companies/CompanyDetailPage'));
@@ -132,7 +132,8 @@ export const routes: RouteObject[] = [
           { path: 'map', element: <MapPage /> },
           { path: 'companies', element: <TutorCompaniesPage /> },
           { path: 'companies/:companyId', element: <TutorCompanyDetailPage /> },
-          { path: 'leave-requests', element: <LeaveRequestsPage /> },
+          // Ruxsat so'rash moduli olib tashlandi (24.09.2026) — eski havolalar "Bugun"ga.
+          { path: 'leave-requests', element: <Navigate to="/tutor" replace /> },
           { path: 'grading', element: <GradingPage /> },
           { path: 'reports', element: <ReportsPage /> },
           { path: '*', element: <ComingSoonPage /> },

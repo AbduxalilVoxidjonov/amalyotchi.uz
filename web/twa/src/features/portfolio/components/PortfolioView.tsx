@@ -15,18 +15,21 @@ import { errorMessage, isApiError } from '@/shared/api/client';
 import { openExternal } from '@/shared/auth/telegram';
 import { formatDate, formatDecimal, formatPercent, formatPeriod } from '@/shared/lib/format';
 import { PeriodPicker } from '@/features/period/components/PeriodPicker';
-import { usePortfolioQuery } from '@/features/portfolio/hooks';
-import { scoreLabel } from '@/features/portfolio/types';
-import pages from './pages.module.css';
-import styles from './PortfolioPage.module.css';
+import { usePortfolioQuery } from '../hooks';
+import { scoreLabel } from '../types';
+import styles from './PortfolioView.module.css';
 
-/** SPEC-SCREENS §16 `isPortfolio` — Portfolio. */
-export function PortfolioPage() {
+/**
+ * SPEC-SCREENS §16 `isPortfolio` — to'liq portfolio (davr tanlagichi, statlar, baho hisobi, xulosa).
+ * Bosh ekranda ishlatiladi: o'z query'si va loading/error holati bor — bugungi kartani kutmaydi va
+ * uni to'xtatmaydi. Sarlavhalar h3 — bo'lim sarlavhasi (h2 "Portfolio") joylashtiruvchida.
+ */
+export function PortfolioView() {
   // null — sukut davr (backend `periodId`); tanlansa `?periodId=` bilan qayta yuklanadi.
   const [periodId, setPeriodId] = useState<string | null>(null);
   const q = usePortfolioQuery(periodId);
 
-  if (q.isPending) return <LoadingState height={360} />;
+  if (q.isPending) return <LoadingState height={360} label="Portfolio yuklanmoqda…" />;
   if (q.isError) {
     if (isApiError(q.error) && q.error.kind === 'not-found') {
       return (
@@ -50,7 +53,7 @@ export function PortfolioPage() {
   ];
 
   return (
-    <div className={pages.stack} aria-busy={q.isPlaceholderData || undefined}>
+    <div className={styles.stack} aria-busy={q.isPlaceholderData || undefined}>
       {p.periods.length >= 2 && (
         <PeriodPicker
           periods={p.periods}
@@ -58,12 +61,12 @@ export function PortfolioPage() {
           onSelect={setPeriodId}
         />
       )}
-      <Card padded="form" aria-labelledby="portfolio-title">
+      <Card padded="form" aria-labelledby="portfolio-student">
         <div className={styles.head}>
           <div className={styles.headText}>
-            <h2 id="portfolio-title" className={styles.name}>
+            <h3 id="portfolio-student" className={styles.name}>
               {p.student} · {p.group}
-            </h2>
+            </h3>
             <div className={styles.sub}>
               {[p.practiceTitle, p.company, formatPeriod(p.periodFrom, p.periodTo)]
                 .filter(Boolean)
@@ -90,7 +93,7 @@ export function PortfolioPage() {
       </Card>
 
       <Card aria-label="Yakuniy baho hisobi">
-        <CardHeader title="Yakuniy baho hisobi" />
+        <CardHeader title="Yakuniy baho hisobi" level={3} />
         <ul className={styles.scoreList}>
           {p.score.map((s) => {
             const label = scoreLabel(s.key);
@@ -131,10 +134,10 @@ export function PortfolioPage() {
         </CardFooter>
       </Card>
 
-      <Card padded aria-labelledby="conclusion-title">
-        <h2 id="conclusion-title" className={pages.sectionTitle}>
+      <Card padded aria-labelledby="portfolio-conclusion">
+        <h3 id="portfolio-conclusion" className={styles.sectionTitle}>
           Tyutor xulosasi
-        </h2>
+        </h3>
         {p.conclusion ? (
           <>
             <p className={styles.conclusion}>{p.conclusion.text}</p>
@@ -151,5 +154,3 @@ export function PortfolioPage() {
     </div>
   );
 }
-
-export default PortfolioPage;

@@ -64,14 +64,6 @@
     padding: 16px 16px 24px;
   }
 }
-.avatarLink {
-  border-radius: 50%;
+.avatar {
   flex-shrink: 0;
-}
-.avatarLink:hover {
-  text-decoration: none;
-}
-.avatarLink:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
 }

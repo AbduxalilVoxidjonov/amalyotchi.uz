@@ -16,7 +16,7 @@ export type AttendanceStatus = 'pending' | 'present' | 'late' | 'absent' | 'excu
 /** Bugungi kundalik holati (backend `DiaryState`; null — ish kuni emas / kelmagan). */
 export type DiaryState = 'written' | 'pending' | null;
 
-export type TodayAlertKind = 'outOfRadius' | 'notCheckedIn' | 'newLeaveRequests' | 'newApplications';
+export type TodayAlertKind = 'outOfRadius' | 'notCheckedIn' | 'newApplications';
 
 export interface TodayStats {
   present: number;
@@ -32,7 +32,7 @@ export interface TodayStats {
 export interface TodayAlert {
   kind: TodayAlertKind;
   count: number;
-  /** Ichki havola (masalan `/tutor/leave-requests`). */
+  /** Ichki havola (masalan `/tutor/applications`). */
   href: string;
   /** Faqat `outOfRadius` — bugungi eng uzoq rad etilgan urinish (m). */
   maxDistanceM?: number | null;

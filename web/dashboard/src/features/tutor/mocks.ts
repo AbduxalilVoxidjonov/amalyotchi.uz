@@ -5,7 +5,6 @@ import { calendarHandlers } from './calendar/mocks';
 import { companiesHandlers } from './companies/mocks';
 import { diariesHandlers, resetDiariesMock } from './diaries/mocks';
 import { gradingHandlers, resetGradingMock } from './grading/mocks';
-import { leaveRequestsHandlers, resetLeaveRequestsMock } from './leave-requests/mocks';
 import { mapHandlers } from './map/mocks';
 import { resetStudentDiaryReviewsMock, studentsHandlers } from './students/mocks';
 import { todayHandlers } from './today/mocks';
@@ -21,7 +20,6 @@ export const tutorHandlers: HttpHandler[] = [
   ...diariesHandlers,
   ...calendarHandlers,
   ...mapHandlers,
-  ...leaveRequestsHandlers,
   ...gradingHandlers,
   ...companiesHandlers,
 ];
@@ -30,7 +28,6 @@ export const tutorHandlers: HttpHandler[] = [
 export function resetTutorMocks() {
   resetApplicationsMock();
   resetDiariesMock();
-  resetLeaveRequestsMock();
   resetGradingMock();
   resetStudentDiaryReviewsMock();
   // Talaba paroli (admin va tyutor profili umumiy mock holati).

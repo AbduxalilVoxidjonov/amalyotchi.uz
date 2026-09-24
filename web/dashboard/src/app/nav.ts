@@ -25,7 +25,6 @@ export const TUTOR_NAV_BADGES: NavBadges = {
   '/tutor/applications': 7,
   '/tutor/students': 38,
   '/tutor/diaries': 12,
-  '/tutor/leave-requests': 2,
 };
 
 const ADMIN_NAV: readonly SidebarNavItem[] = [
@@ -52,7 +51,6 @@ const TUTOR_NAV: readonly SidebarNavItem[] = [
   { label: 'Kalendar', to: '/tutor/calendar' },
   { label: 'Xarita', to: '/tutor/map' },
   { label: 'Korxonalar', to: '/tutor/companies' },
-  { label: "Ruxsat so'rovlari", to: '/tutor/leave-requests' },
   { label: 'Baholash', to: '/tutor/grading' },
   { label: 'Hisobotlar', to: '/tutor/reports' },
 ];

@@ -4,13 +4,13 @@ import { formatDecimal, formatPercent } from '@/shared/lib/format';
 import type { TodayPlaceDto } from '../types';
 import styles from './PlaceSummary.module.css';
 
-/** SPEC-SCREENS §8 o'ng section pastki qismi — "Amaliyot joyim" qisqacha + mini-statlar. `null` → ariza yo'q. */
+/** SPEC-SCREENS §8 o'ng section pastki qismi — "Korxonam" qisqacha + mini-statlar. `null` → ariza yo'q. */
 export function PlaceSummary({ place }: { place: TodayPlaceDto | null }) {
   if (!place) {
     return (
-      <section className={styles.wrap} aria-label="Amaliyot joyim">
+      <section className={styles.wrap} aria-label="Korxonam">
         <Eyebrow as="div" margin="none">
-          Amaliyot joyim
+          Korxonam
         </Eyebrow>
         <EmptyState
           title="Amaliyot joyi hali biriktirilmagan"
@@ -26,9 +26,9 @@ export function PlaceSummary({ place }: { place: TodayPlaceDto | null }) {
     { k: "O'rtacha ball", v: formatDecimal(place.avgScore) },
   ];
   return (
-    <section className={styles.wrap} aria-label="Amaliyot joyim">
+    <section className={styles.wrap} aria-label="Korxonam">
       <Eyebrow as="div" margin="none">
-        Amaliyot joyim
+        Korxonam
       </Eyebrow>
       <Link to="/joyim" className={styles.company}>
         {place.company}

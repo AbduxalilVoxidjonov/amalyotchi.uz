@@ -87,3 +87,15 @@
   color: var(--color-text-faint);
   line-height: var(--lh-note);
 }
+
+/* Bosh ekranga ko'chirilgach pages.module.css'ga bog'liq bo'lmasligi uchun — o'sha qiymatlar. */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-grid-gap);
+}
+.sectionTitle {
+  margin: 0;
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-semibold);
+}

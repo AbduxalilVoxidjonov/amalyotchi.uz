@@ -9,6 +9,8 @@ Talaba interfeysi: Telegram Web App (TWA) · Tyutor/Admin interfeysi: veb-dashbo
 > *har bir jarayon qanday ketma-ketlikda kechishi* haqidagi to'liq funksional tavsif.
 > Kod yozish, TZ tayyorlash va buyurtmachi bilan kelishish uchun asos bo'ladi.
 
+> **Olib tashlandi (24.09.2026, foydalanuvchi qarori):** talabaning ruxsat so'rash moduli (S11) va tyutorning ruxsat so'rovlarini ko'rib chiqishi butunlay olib tashlandi — `/api/student/leave-requests`, `/api/tutor/leave-requests` endpoint'lari, TWA ekrani va dashboard'dagi "Ruxsat so'rovlari" sahifasi yo'q. Kunni `Sababli` qilish — faqat tyutorning qo'lda tuzatishi (Domain'da bor, API endpoint'i hali qurilmagan). Bazadagi eski tasdiqlangan ruxsatlar tarix sifatida hisoblarda qoladi. Quyidagi ruxsat so'rovi haqidagi bandlar tarixiy.
+
 ---
 
 ## 0. Tizim nimani hal qiladi
@@ -465,7 +467,7 @@ Talaba to'ldiradi:
   `Tugallanmagan (avtomatik yopilgan)` deb belgilaydi — tyutor buni ko'radi
 - Check-out ham geofence tekshiruvidan o'tadi (ish joyidan uzoqda "ketdim" bosib bo'lmaydi)
 
-#### S11. Ruxsat so'rash (kelolmasa)
+#### ~~S11. Ruxsat so'rash (kelolmasa)~~ — olib tashlandi (24.09.2026, foydalanuvchi qarori)
 
 1. "Ruxsat so'rash" tugmasi
 2. Sana(lar)ni tanlaydi

@@ -18,7 +18,7 @@ public enum TodayAlertKind
 {
     OutOfRadius = 1,
     NotCheckedIn = 2,
-    NewLeaveRequests = 3,
+    // 3 — NewLeaveRequests: ruxsat so'rash moduli olib tashlandi (24.09.2026); raqam qayta ishlatilmasin.
     NewApplications = 4
 }
 

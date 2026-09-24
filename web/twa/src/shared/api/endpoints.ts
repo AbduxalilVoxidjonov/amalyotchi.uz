@@ -40,8 +40,6 @@ export const STUDENT_ENDPOINTS = {
   diary: '/api/student/diary',
   /** GET ?month=YYYY-MM → CalendarMonthDto */
   calendar: '/api/student/calendar',
-  /** GET → LeaveRequestDto[] · POST {dateFrom,dateTo,reason,attachmentFileId?} → 201 | 400 | 409 (kesishuvchi) */
-  leaveRequests: '/api/student/leave-requests',
   /** GET → PortfolioDto | 404 (faol davr yo'q) */
   portfolio: '/api/student/portfolio',
   /** GET → StudentProfileDto (shaxsiy/o'quv ma'lumotlari, amaliyot xulosasi, hisob holati) */

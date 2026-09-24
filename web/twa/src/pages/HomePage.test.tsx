@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw';
-import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 // `lastCheckinPhoto` mock ichida qayta tayinlanadi — namespace orqali o'qiladi.
 import * as todayMocks from '@/features/today/mocks';
 import {
@@ -256,7 +256,7 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
     expect(screen.queryByRole('button', { name: /KELDIM|KETDIM/ })).not.toBeInTheDocument();
   });
 
-  it('kundalik: hisoblagich va amaliyot joyi qisqachasi', async () => {
+  it('kundalik: hisoblagich va korxona qisqachasi', async () => {
     renderApp('/');
     expect(await screen.findByText('Bugungi kundalik')).toBeInTheDocument();
     expect(screen.getByText('0 / 150 belgi')).toBeInTheDocument();
@@ -265,12 +265,14 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
       fireEvent.change(ta, { target: { value: 'Salom dunyo' } });
     });
     expect(screen.getByText('11 / 150 belgi')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Tech Solutions MChJ' })).toHaveAttribute(
+    // Pastda portfolio ham bor (o'xshash statlar) — korxona bo'limi ichida tekshiriladi.
+    const place = within(screen.getByRole('region', { name: 'Korxonam' }));
+    expect(place.getByRole('link', { name: 'Tech Solutions MChJ' })).toHaveAttribute(
       'href',
       '/joyim',
     );
-    expect(screen.getByText('94%')).toBeInTheDocument();
-    expect(screen.getByText('4,2')).toBeInTheDocument();
+    expect(place.getByText('94%')).toBeInTheDocument();
+    expect(place.getByText('4,2')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('button', { name: 'KELDIM' })).toBeEnabled());
   });
 
@@ -337,17 +339,16 @@ describe("HomePage — ikki davr oralig'i (v3.5 §4.6)", () => {
     ).not.toBeInTheDocument();
   });
 
-  it('faqat tugagan davr: "Amaliyot davri tugagan" + portfolio havolasi', async () => {
+  it('faqat tugagan davr: "Amaliyot davri tugagan", portfolio shu ekranda ostida', async () => {
     setPeriodGap('ended');
     renderApp('/');
 
     expect(
       await screen.findByRole('heading', { name: 'Amaliyot davri tugagan: Kuzgi amaliyot 2026' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Portfolioni ko‘rish' })).toHaveAttribute(
-      'href',
-      '/portfolio',
-    );
+    expect(screen.getByText(/quyidagi portfolioda saqlanadi/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Portfolio', level: 2 })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Portfolio/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /KELDIM|KETDIM/ })).not.toBeInTheDocument();
     expect(screen.queryByText(/kun qoldi/)).not.toBeInTheDocument();
   });

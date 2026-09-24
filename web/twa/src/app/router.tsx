@@ -1,5 +1,10 @@
 import { lazy } from 'react';
-import { createBrowserRouter, createMemoryRouter, type RouteObject } from 'react-router-dom';
+import {
+  createBrowserRouter,
+  createMemoryRouter,
+  Navigate,
+  type RouteObject,
+} from 'react-router-dom';
 import { ForcePasswordScreen } from '@/features/auth/components/ForcePasswordScreen';
 import { LoginScreen } from '@/features/auth/components/LoginScreen';
 import { submitTelegramLink, telegramLinkErrorHint, useAutoLogin } from '@/features/auth/hooks';
@@ -15,8 +20,6 @@ const HomePage = lazy(() => import('@/pages/HomePage'));
 const PlacePage = lazy(() => import('@/pages/PlacePage'));
 const DiaryPage = lazy(() => import('@/pages/DiaryPage'));
 const CalendarPage = lazy(() => import('@/pages/CalendarPage'));
-const LeaveRequestPage = lazy(() => import('@/pages/LeaveRequestPage'));
-const PortfolioPage = lazy(() => import('@/pages/PortfolioPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 
 const TELEGRAM_LINK_KEY = ['auth', 'telegram-link'] as const;
@@ -91,8 +94,9 @@ export const routes: RouteObject[] = [
       { path: '/joyim', element: <PlacePage /> },
       { path: '/kundalik', element: <DiaryPage /> },
       { path: '/kalendar', element: <CalendarPage /> },
-      { path: '/ruxsat', element: <LeaveRequestPage /> },
-      { path: '/portfolio', element: <PortfolioPage /> },
+      // Eski havolalar: portfolio endi bosh ekranda; "Ruxsat so'rash" olib tashlangan.
+      { path: '/portfolio', element: <Navigate to="/" replace /> },
+      { path: '/ruxsat', element: <Navigate to="/" replace /> },
       { path: '/profil', element: <ProfilePage /> },
       { path: '*', element: <NotFoundPage /> },
     ],

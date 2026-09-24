@@ -1,7 +1,6 @@
 import { parseJwt, toUserRole, type UserSummaryDto } from '@amaliyotchi/shared';
 import type { TwaAuthResult } from '@/shared/auth/session';
 import { resetDiaryMocks } from '@/features/diary/mocks';
-import { resetLeaveMocks } from '@/features/leave/mocks';
 import { resetPlaceMocks } from '@/features/place/mocks';
 import { resetTodayMocks } from '@/features/today/mocks';
 
@@ -118,7 +117,7 @@ export function issueSession(user: UserSummaryDto, ttlSeconds = 1800): TwaAuthRe
 
 /**
  * Testlarda har testdan keyin: sessiyalar + o'zgaruvchan talaba holati
- * (check-in, kundalik, ruxsat, amaliyot joyi arizasi).
+ * (check-in, kundalik, amaliyot joyi arizasi).
  */
 export function resetMockState() {
   mockSessions.clear();
@@ -126,6 +125,5 @@ export function resetMockState() {
   mockAccounts = seedAccounts();
   resetTodayMocks();
   resetDiaryMocks();
-  resetLeaveMocks();
   resetPlaceMocks();
 }

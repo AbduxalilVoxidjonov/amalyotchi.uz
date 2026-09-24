@@ -1,7 +1,6 @@
 using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Diary;
-using Amaliyotchi.Domain.Leave;
 using Amaliyotchi.Domain.Practice;
 
 namespace Amaliyotchi.Application.Features.Student;
@@ -109,19 +108,6 @@ public sealed record CalendarMonthDto(
     IReadOnlyList<CalendarDayDto> Days);
 
 public sealed record CalendarDayDto(DateOnly Date, CalendarDayStatus Status);
-
-/// <summary><c>GET/POST /api/student/leave-requests</c>.</summary>
-public sealed record LeaveRequestDto(
-    Guid Id,
-    DateOnly DateFrom,
-    DateOnly DateTo,
-    string Reason,
-    LeaveRequestStatus Status,
-    string? Comment,
-    LeaveDocumentDto? Document,
-    DateTimeOffset CreatedAt);
-
-public sealed record LeaveDocumentDto(string Name, string? Url);
 
 /// <summary><c>GET /api/student/portfolio?periodId=</c> — tanlangan davr (berilmasa sukut bo'yicha: davom etayotgan →
 /// oxirgi tugagan → kelgusi) bo'yicha. <see cref="Periods"/> — talabaning barcha davrlari (tarix), <c>startDate</c> kamayish tartibida.</summary>

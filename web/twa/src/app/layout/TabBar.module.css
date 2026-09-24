@@ -16,6 +16,7 @@
   align-items: center;
   justify-content: center;
   gap: 3px;
+  min-width: 0; /* 360px / 5 = 72px — grid ustuni toraysa ham yorliq kesiladi, toshmaydi */
   min-height: var(--tabbar-h);
   padding: 6px 2px;
   border: 0;
@@ -32,8 +33,7 @@
   text-decoration: none;
   background: var(--color-dark-hover);
 }
-.tab[aria-current='page'],
-.tab[data-active='true'] {
+.tab[aria-current='page'] {
   color: var(--color-text-on-accent);
   background: var(--color-dark-active);
 }
@@ -49,89 +49,12 @@
   line-height: 1.2;
 }
 
-/* ---- "Yana" varag'i ---- */
-.sheetBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-drawer);
-  background: rgb(16 21 18 / 0.45);
-  display: flex;
-  align-items: flex-end;
-}
-.sheet {
-  width: 100%;
-  margin-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
-  background: var(--color-dark-bg);
-  color: var(--color-dark-fg);
-  border-top: 1px solid var(--color-dark-line-2);
-  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
-  padding: var(--sidebar-nav-pad);
-}
-.sheetUser {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 6px 14px;
-  border-bottom: 1px solid var(--color-dark-line);
-  margin-bottom: 8px;
-}
-.sheetUser > :first-child {
-  background: var(--color-dark-avatar);
-  color: var(--color-accent-soft);
-}
-.sheetUserText {
-  min-width: 0;
-}
-.sheetName {
-  font-size: var(--fs-sm2);
-  font-weight: var(--fw-medium);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.sheetRole {
-  font-size: var(--fs-xs);
-  color: var(--color-dark-muted);
-}
-.sheetList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.sheetItem {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: var(--nav-item-pad);
-  border-radius: var(--radius-md);
-  font-size: var(--fs-md2);
-  font-weight: var(--fw-medium);
-  color: var(--color-dark-nav-fg);
-  text-decoration: none;
-}
-.sheetItem:hover {
-  background: var(--color-dark-hover);
-  color: var(--color-dark-fg);
-  text-decoration: none;
-}
-.sheetItem[aria-current='page'] {
-  background: var(--color-dark-active);
-  color: var(--color-text-on-accent);
-}
-
-/* Oddiy brauzer (desktop): tab-bar va "Yana" varag'i markazdagi ≤ 480px ustunga tenglanadi. */
+/* Oddiy brauzer (desktop): tab-bar markazdagi ≤ 480px ustunga tenglanadi. */
 @media (min-width: 560px) {
   :global(html[data-platform='web']) .bar {
     left: 50%;
     right: auto;
     width: var(--web-column-max, 480px);
     transform: translateX(-50%);
-  }
-  :global(html[data-platform='web']) .sheet {
-    max-width: var(--web-column-max, 480px);
-    margin-inline: auto;
   }
 }

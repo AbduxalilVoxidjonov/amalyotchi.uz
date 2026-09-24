@@ -43,10 +43,6 @@ export const tutorKeys = {
   },
   calendar: (params: { month: string }) => ['tutor', 'calendar', params] as const,
   map: () => ['tutor', 'map'] as const,
-  leaveRequests: {
-    all: ['tutor', 'leave-requests'] as const,
-    list: () => ['tutor', 'leave-requests', 'list'] as const,
-  },
   grading: {
     all: ['tutor', 'grading'] as const,
     list: () => ['tutor', 'grading', 'list'] as const,
