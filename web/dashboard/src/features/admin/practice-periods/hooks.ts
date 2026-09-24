@@ -8,12 +8,19 @@ import type { ListParams } from '../shared/types';
 import { practicePeriodsApi } from './api';
 import type { PracticePeriodCreate, PracticePeriodStatus, PracticePeriodUpdate } from './types';
 
-/** `['admin', 'practice-periods', ...]` — ro'yxat (status bo'yicha) va detail. */
+/**
+ * `['admin', 'practice-periods', ...]` — ro'yxat (status bo'yicha), detail, statistika va davr
+ * ichidagi guruh talabalari. Hammasi `all` prefiksi ostida — davr/guruh mutatsiyalari
+ * (`useInvalidatePeriods`) statistikani ham yangilaydi.
+ */
 export const practicePeriodKeys = {
   all: ['admin', 'practice-periods'] as const,
   list: (status: PracticePeriodStatus | null) =>
     ['admin', 'practice-periods', 'list', status ?? 'all'] as const,
   detail: (id: string) => ['admin', 'practice-periods', 'detail', id] as const,
+  stats: (id: string) => ['admin', 'practice-periods', 'stats', id] as const,
+  groupStudents: (id: string, groupId: string) =>
+    ['admin', 'practice-periods', 'group-students', id, groupId] as const,
 };
 
 export function usePracticePeriodsQuery(status: PracticePeriodStatus | null) {
@@ -31,8 +38,24 @@ export function usePracticePeriodQuery(id: string) {
   });
 }
 
+export function usePracticePeriodStatsQuery(id: string) {
+  return useQuery({
+    queryKey: practicePeriodKeys.stats(id),
+    queryFn: () => practicePeriodsApi.stats(id),
+    enabled: id !== '',
+  });
+}
+
+export function usePeriodGroupStudentsQuery(id: string, groupId: string) {
+  return useQuery({
+    queryKey: practicePeriodKeys.groupStudents(id, groupId),
+    queryFn: () => practicePeriodsApi.groupStudents(id, groupId),
+    enabled: id !== '' && groupId !== '',
+  });
+}
+
 /**
- * Davrlar (ro'yxat + detail), guruhlar ro'yxatlari (`period` maydoni o'zgaradi) va dashboard.
+ * Davrlar (ro'yxat + detail + statistika + guruh talabalari), guruhlar ro'yxatlari (`period` maydoni o'zgaradi) va dashboard.
  */
 function useInvalidatePeriods() {
   const queryClient = useQueryClient();

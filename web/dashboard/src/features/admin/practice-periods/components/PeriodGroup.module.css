@@ -1,0 +1,107 @@
+/* Admin · Davr ichidagi guruh sahifasi */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.title {
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+.meta {
+  margin: 0;
+  font-size: var(--fs-sm2);
+  color: var(--color-text-muted-2);
+  overflow-wrap: anywhere;
+}
+.mono {
+  font-family: var(--font-mono);
+}
+.tableTitle {
+  margin: 0;
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+}
+.twoLine {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.sub {
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-weight: var(--fw-regular);
+}
+.sub [data-tone='ok'] {
+  color: var(--color-ok-fg);
+}
+.sub [data-tone='late'] {
+  color: var(--color-late-fg);
+}
+.sub [data-tone='bad'] {
+  color: var(--color-bad-fg);
+}
+.appStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.empty[data-tone] {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+/* Saralanadigan ustun sarlavhasi */
+.sortBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-xs);
+}
+.sortBtn[data-align='right'] {
+  margin-left: auto;
+}
+.sortBtn:hover,
+.sortBtn[data-active] {
+  color: var(--color-text);
+}
+.sortBtn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.sortIcon {
+  font-size: 9px;
+  opacity: 0.55;
+}
+.sortBtn[data-active] .sortIcon {
+  opacity: 1;
+  color: var(--color-accent);
+}

@@ -1,19 +1,20 @@
-# API-CONTRACT v3.5
+# API-CONTRACT v3.6
 
-Oxirgi yangilanish: 23.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
+Oxirgi yangilanish: 24.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
 esa haqiqiy controller/DTO/validator/handler kodidan olingan — har bir maydon, chegara va status kod kodda bor.
 Frontend (`web/dashboard`, `web/twa`, `web/shared`) shu shaklga moslanishi kerak; v1 bilan farqlar §5 da,
 **v2 bilan farqlar §6 da**, v3.1 da qo'shilganlari — §6.6, v3.2 (talabalar Excel importi) — §6.8,
 v3.3 (korxona CRUD, STIR oqimi, ommaviy biriktirish) — §6.9,
 v3.4 (admin amaliyot davrlari) — §6.10,
-v3.5 (bir guruhda bir nechta davr: davr tanlash qoidasi, talaba profilida davr tanlagichi) — §6.11.
+v3.5 (bir guruhda bir nechta davr: davr tanlash qoidasi, talaba profilida davr tanlagichi) — §6.11,
+v3.6 (admin davr statistikasi) — §6.12.
 
-Jami **99 ta endpoint**: Auth 5 · Admin 61 · Reports 1 · Tutor 19 · Student (TWA) 11 · Files 1 · Companies 1.
+Jami **101 ta endpoint**: Auth 5 · Admin 63 · Reports 1 · Tutor 19 · Student (TWA) 11 · Files 1 · Companies 1.
 
-> Kontrollerlarda `[Http*]` atributlari **101 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
+> Kontrollerlarda `[Http*]` atributlari **103 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
 > har birida ikkitadan action bor (`multipart/form-data` va `application/json` — `[Consumes]` bilan ajratiladi,
-> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **99**.
+> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **101**.
 
 ---
 
@@ -1106,6 +1107,89 @@ Yopilgan davr talaba/tyutor oqimlaridan chiqadi (check-in to'xtaydi), tarix saql
 
 Soft delete. Davrda **birorta davomat yozuvi** bo'lsa → 409 ("Davrda davomat yozuvlari bor — uni o'chirib bo'lmaydi,
 "Yopish" dan foydalaning."). O'chirilgan davr ro'yxatda, ustma-ust tekshiruvida va talaba oqimida ko'rinmaydi.
+
+#### GET `/api/admin/practice-periods/{id}/stats` · 200 · 404
+
+Davr ichidagi natijalar: har guruh va jami. Hisob **faqat shu davr** (`periodId == id`) yozuvlari bo'yicha — sukut
+bo'yicha davr tanlash (§4.6) ishlatilmaydi. Talabalar — guruhdagi joriy faol (`StudentStatus.active`, o'chirilmagan)
+profillar (`PracticePeriodGroup.studentsCount` bilan bir xil). 404 — davr yo'q yoki o'chirilgan.
+
+```ts
+interface GradeDistribution { excellent: number; good: number; satisfactory: number; unsatisfactory: number; retake: number; }
+
+interface GroupMetrics {
+  studentsCount: number;
+  attendancePct: number;            // int — talabalar attendancePct o'rtachasi (yaxlitlangan); talaba yo'q → 0
+  lowAttendanceCount: number;       // attendancePct < 70 (MinAttendancePct); elapsedWorkDays == 0 → 0
+  suspiciousDays: number;           // isSuspicious davomat kunlari yig'indisi
+  withCompanyCount: number;         // shu davrda approved (yoki completed) arizasi bor talabalar
+  pendingApplicationsCount: number; // shu davrdagi eng so'nggi arizasi submitted | revisionNeeded
+  diaryCount: number;               // kundalik yozuvlari
+  diaryApprovedCount: number;       // status == approved
+  diaryAvgScore: number;            // baholangan yozuvlar o'rtachasi (1 xona); yo'q → 0
+  avgTotal: number | null;          // GradeCalculator jami ball o'rtachasi (1 xona); talaba yo'q → null
+  finalizedCount: number;           // PracticeGrade yakunlangan
+  grades: GradeDistribution;        // joriy (jonli) hisob: 5/4/3/2; retake — baho null (davomat < 70%)
+}
+
+interface PeriodGroupStats extends GroupMetrics {
+  groupId: string; code: string; course: number; directionName: string;
+}
+
+interface PracticePeriodStats {
+  periodId: string;
+  elapsedWorkDays: number;          // davr boshidan o'tgan ish kunlari: kechagacha + bugun (check-in oynasi yopilgan bo'lsa)
+  requiredDays: number;
+  totals: GroupMetrics;             // barcha guruhlar talabalari bo'yicha (o'rtachalar talabalar bo'yicha)
+  groups: PeriodGroupStats[];       // davrdagi har guruh (0 talabali ham, keyin o'chirilgani ham), code bo'yicha
+}
+```
+
+- Talaba `attendancePct` — §4.2 formulasi (`StudentStatsCalculator`); `elapsedWorkDays` — uning maxraji asosi
+  (sababli kunlar talaba bo'yicha chiqariladi). Boshlanmagan davrda `elapsedWorkDays = 0`, hamma talabada foiz 0.
+- Ballar va baho — §4.4 (`GradeCalculator`, tyutor baholash jadvali bilan bir xil), saqlangan `tutorPoints` /
+  `referencePoints` bilan; yakunlanmagan baho ham jonli hisoblanadi.
+
+#### GET `/api/admin/practice-periods/{id}/groups/{groupId}/students` · 200 · 404
+
+Guruh talabalarining shu davrdagi natijalari. 404 — davr yo'q/o'chirilgan yoki guruh shu davrga biriktirilmagan
+(`detail`: "Guruh shu amaliyot davriga biriktirilmagan.").
+
+```ts
+interface PeriodGroupStudentRow {
+  id: string;                       // User.Id
+  fullName: string;
+  hemisId: string;
+  company: string | null;           // shu davrdagi approved/completed ariza korxonasi (eng so'nggi qaror)
+  applicationStatus: ApplicationStatus | null; // shu davrdagi eng so'nggi ariza holati
+  attendancePct: number;            // 1 xona (§4.2)
+  presentDays: number;              // o'z vaqtida kelgan
+  lateDays: number;                 // kech kelgan
+  absentDays: number;               // kelmagan (hisobga olinadigan kunlardan, sababsiz)
+  excusedDays: number;              // sababli (maxrajdan chiqariladi)
+  suspiciousDays: number;
+  diaryCount: number;
+  diaryAvg: number;                 // baholangan yozuvlar o'rtachasi (1 xona); yo'q → 0
+  attendancePoints: number;         // 0..40
+  reportPoints: number;             // 0..30
+  tutorPoints: number | null;       // 0..20, qo'yilmagan → null
+  referencePoints: number | null;   // 0..10
+  total: number;                    // 0..100
+  grade: 2 | 3 | 4 | 5 | null;      // null — qayta topshiradi
+  finalized: boolean;
+}
+
+interface PeriodGroupStudents {
+  period: { id: string; name: string; status: PracticePeriodStatus; startDate: string; endDate: string };
+  group: { id: string; code: string; course: number; facultyName: string; directionName: string };
+  elapsedWorkDays: number;
+  metrics: GroupMetrics;            // /stats dagi shu guruh qatori bilan bir xil hisob
+  students: PeriodGroupStudentRow[]; // fullName bo'yicha
+}
+```
+
+`presentDays + lateDays + absentDays + excusedDays` = talaba uchun hisobga olingan kunlar (odatda `elapsedWorkDays`;
+bugun oyna yopilmasdan belgilangan kun ham qo'shiladi).
 
 **Ustma-ust tushish (409)** — bitta guruh sanalari kesishadigan (`a.start <= b.end && a.end >= b.start`, chegaralar
 kiradi) ikki **yopilmagan, o'chirilmagan** davrda bo'la olmaydi. Create, PUT (sana o'zgarsa) va PUT `/groups`
@@ -2487,3 +2571,16 @@ Yangi endpoint yo'q, migratsiya yo'q; barcha o'zgarishlar **qo'shimcha** (buzmay
 - `StudentPeriodOption.status` — `PracticePeriod.ResolveStatus` (admin API bilan bir xil): tugagan, lekin yopilmagan davr
   `active` bo'lib qoladi — frontend "tugagan" belgisini `endDate < bugun` dan chiqarishi mumkin.
 - Demo seed (faqat bo'sh baza): ikkinchi davr "Bahorgi amaliyot 2027" (2027-02-01…2027-03-15), 412-22 va 413-22 guruhlari.
+
+### 6.12 v3.5 → v3.6 (24.09.2026): admin davr statistikasi
+
+Admin "Amaliyot davrlari" → davr ichida guruhlar va talabalar natijalari (§2.3.4). Faqat qo'shimcha (buzmaydi),
+migratsiya yo'q.
+
+| #   | Endpoint                                                          | Policy      | Javob                          | Bo'lim  |
+| --- | ----------------------------------------------------------------- | ----------- | ------------------------------ | ------- |
+| N31 | `GET /api/admin/practice-periods/{id}/stats`                      | `AdminOnly` | `PracticePeriodStats` · 404    | §2.3.4  |
+| N32 | `GET /api/admin/practice-periods/{id}/groups/{groupId}/students`  | `AdminOnly` | `PeriodGroupStudents` · 404    | §2.3.4  |
+
+- Jami endpoint: **99 → 101** (Admin 61 → 63).
+- Hisob faqat aniq shu davr yozuvlari bo'yicha (sukut bo'yicha davr tanlash §4.6 ishlatilmaydi); davomat §4.2, ball/baho §4.4.

@@ -1,4 +1,5 @@
 import type { StatusKind } from '@/shared/ui';
+import type { ApplicationStatus } from '../companies/types';
 
 /**
  * Admin · Amaliyot davrlari — backend kontrakti (practice-periods-contract.md) bilan AYNAN.
@@ -78,4 +79,90 @@ export const PERIOD_STATUSES: readonly PracticePeriodStatus[] = ['planned', 'act
 
 export function isPeriodStatus(v: string | null): v is PracticePeriodStatus {
   return v === 'planned' || v === 'active' || v === 'closed';
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Davr ko'rsatkichlari (statistika) — backend `PracticePeriodStatsContracts`.
+ * GET /api/admin/practice-periods/{id}/stats
+ * GET /api/admin/practice-periods/{id}/groups/{groupId}/students
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** Baholar taqsimoti: 5 / 4 / 3 / 2 / qayta topshiradi. */
+export interface GradeDistribution {
+  excellent: number;
+  good: number;
+  satisfactory: number;
+  unsatisfactory: number;
+  retake: number;
+}
+
+/** Guruh (yoki butun davr) bo'yicha jamlangan ko'rsatkichlar. */
+export interface GroupMetrics {
+  studentsCount: number;
+  /** Butun son, o'rtacha davomat foizi. */
+  attendancePct: number;
+  /** Davomati 70% dan past talabalar. */
+  lowAttendanceCount: number;
+  suspiciousDays: number;
+  withCompanyCount: number;
+  pendingApplicationsCount: number;
+  diaryCount: number;
+  diaryApprovedCount: number;
+  /** 0..5; kundalik yo'q → 0. */
+  diaryAvgScore: number;
+  /** 0..100; hali ball yo'q → null. */
+  avgTotal: number | null;
+  finalizedCount: number;
+  grades: GradeDistribution;
+}
+
+export interface PeriodGroupStats extends GroupMetrics {
+  groupId: string;
+  code: string;
+  course: number;
+  directionName: string;
+}
+
+export interface PracticePeriodStats {
+  periodId: string;
+  elapsedWorkDays: number;
+  requiredDays: number;
+  totals: GroupMetrics;
+  groups: PeriodGroupStats[];
+}
+
+export interface PeriodGroupStudent {
+  id: string;
+  fullName: string;
+  hemisId: string;
+  company: string | null;
+  applicationStatus: ApplicationStatus | null;
+  attendancePct: number;
+  presentDays: number;
+  lateDays: number;
+  absentDays: number;
+  excusedDays: number;
+  suspiciousDays: number;
+  diaryCount: number;
+  diaryAvg: number;
+  /** 0..40 */
+  attendancePoints: number;
+  /** 0..30 */
+  reportPoints: number;
+  /** 0..20; hali qo'yilmagan → null. */
+  tutorPoints: number | null;
+  /** 0..10; hali qo'yilmagan → null. */
+  referencePoints: number | null;
+  total: number;
+  /** 2..5; null — qayta topshiradi. */
+  grade: number | null;
+  finalized: boolean;
+}
+
+export interface PeriodGroupStudents {
+  period: Pick<PracticePeriodListItem, 'id' | 'name' | 'status' | 'startDate' | 'endDate'>;
+  group: { id: string; code: string; course: number; facultyName: string; directionName: string };
+  elapsedWorkDays: number;
+  metrics: GroupMetrics;
+  students: PeriodGroupStudent[];
 }

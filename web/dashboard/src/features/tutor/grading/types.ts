@@ -28,7 +28,7 @@ export interface GradingUpdateRequest {
   referencePoints: number | null;
 }
 
-export function gradeLabel(row: GradingRow): { label: string; kind: StatusKind } {
+export function gradeLabel(row: Pick<GradingRow, 'grade'>): { label: string; kind: StatusKind } {
   if (row.grade === null) return { label: 'Qayta topshiradi', kind: 'bad' };
   if (row.grade >= 4) return { label: String(row.grade), kind: 'ok' };
   if (row.grade === 3) return { label: '3', kind: 'late' };

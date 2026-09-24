@@ -1,0 +1,142 @@
+/* Admin · Amaliyot davri ko'rsatkichlari (KPI, baholar taqsimoti, skeleton) */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.sectionTitle {
+  margin: 0;
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+}
+.suffix {
+  font-size: var(--fs-md);
+  color: var(--color-text-faint);
+  font-weight: var(--fw-medium);
+}
+.value[data-kind='ok'] {
+  color: var(--color-ok-fg);
+}
+.value[data-kind='late'] {
+  color: var(--color-late-fg);
+}
+.value[data-kind='bad'] {
+  color: var(--color-bad-fg);
+}
+
+/* Baholar taqsimoti kartasi — kengroq ekranda 2 ustun egallaydi */
+@media (min-width: 560px) {
+  .wide {
+    grid-column: span 2;
+  }
+}
+.gradesValue {
+  margin-top: 10px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-regular);
+  letter-spacing: normal;
+  line-height: var(--lh-body);
+}
+.gradeBar {
+  display: flex;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  background: var(--color-neu-bg);
+}
+.gradeSeg {
+  height: 100%;
+  min-width: 3px;
+}
+.gradeLegend {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--color-text-muted-2);
+}
+.gradeLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.gradeSwatch {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+.gradeLegendItem b {
+  font-family: var(--font-mono);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+}
+.noGrades {
+  color: var(--color-text-faint);
+}
+
+/* Rang: 5 · 4 · 3 · 2 · qayta */
+[data-grade='excellent'] {
+  --grade-color: var(--color-ok-strong);
+}
+[data-grade='good'] {
+  --grade-color: var(--color-info-fg);
+}
+[data-grade='satisfactory'] {
+  --grade-color: var(--color-late-strong);
+}
+[data-grade='unsatisfactory'] {
+  --grade-color: var(--color-bad-fg);
+}
+[data-grade='retake'] {
+  --grade-color: var(--color-bad-strong);
+}
+.gradeSeg,
+.gradeSwatch {
+  background: var(--grade-color);
+}
+
+/* Jadvaldagi ixcham ko'rinish: "8·6·2·0·4" */
+.gradesCompact {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+.gradesCompact [data-grade] {
+  color: var(--grade-color);
+  font-weight: var(--fw-semibold);
+}
+.gradesCompact [data-grade][data-zero] {
+  color: var(--color-text-ghost);
+  font-weight: var(--fw-regular);
+}
+.sep {
+  color: var(--color-text-ghost);
+  padding: 0 2px;
+}
+
+/* Yuklanish skeleti */
+.skeleton {
+  display: inline-block;
+  width: var(--sk-w, 48px);
+  height: var(--sk-h, 12px);
+  border-radius: var(--radius-sm);
+  background: var(--color-neu-bg);
+  vertical-align: middle;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

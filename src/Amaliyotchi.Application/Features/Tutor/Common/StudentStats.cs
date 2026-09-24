@@ -38,14 +38,7 @@ public static class StudentStatsCalculator
         var suspicious = rows.Count(r => r.IsSuspicious);
 
         var byDate = rows.ToDictionary(r => r.Date);
-        var countable = new HashSet<DateOnly>();
-
-        var lastCountable = today < period.Period.EndDate ? today : period.Period.EndDate;
-        foreach (var date in period.WorkDays(period.Period.StartDate, lastCountable))
-        {
-            if (date < today || period.IsWindowClosed(localNow))
-                countable.Add(date);
-        }
+        var countable = new HashSet<DateOnly>(ElapsedWorkDays(period, today, localNow));
 
         // Oyna hali yopilmagan bo'lsa ham, bugun allaqachon belgilangan kun hisobga kiradi.
         foreach (var row in rows.Where(r => r.Status is AttendanceStatus.Present or AttendanceStatus.Late))
@@ -74,6 +67,19 @@ public static class StudentStatsCalculator
         var total = countable.Count - excused;
         var pct = total == 0 ? 0 : Math.Round(attended * 100d / total, 1, MidpointRounding.AwayFromZero);
         return new StudentStats(total, attended, late, excused, suspicious, pct);
+    }
+
+    /// <summary>Davr boshidan hisobga olinadigan (o'tgan) ish kunlari: kechagacha + bugun (check-in oynasi yopilgan
+    /// bo'lsa), davr tugash sanasi bilan cheklangan. <see cref="ComputeAttendance"/> maxrajining asosi (sababli kunlar va
+    /// bugun allaqachon belgilangan kun talaba bo'yicha qo'shimcha hisoblanadi).</summary>
+    public static IEnumerable<DateOnly> ElapsedWorkDays(PeriodContext period, DateOnly today, TimeOnly localNow)
+    {
+        var lastCountable = today < period.Period.EndDate ? today : period.Period.EndDate;
+        foreach (var date in period.WorkDays(period.Period.StartDate, lastCountable))
+        {
+            if (date < today || period.IsWindowClosed(localNow))
+                yield return date;
+        }
     }
 
     public static DiaryStats ComputeDiary(IReadOnlyCollection<int?> scores)

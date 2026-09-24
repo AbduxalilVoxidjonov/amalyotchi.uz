@@ -105,3 +105,27 @@
   flex-direction: column;
   gap: 12px;
 }
+/* Ikki qatorli katak: asosiy qiymat + kichik izoh */
+.twoLine {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.subLine {
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  font-weight: var(--fw-regular);
+  font-family: var(--font-sans);
+}
+.tone[data-tone='late'],
+.subLine[data-tone='late'] {
+  color: var(--color-late-fg);
+}
+.tone[data-tone='bad'],
+.subLine[data-tone='bad'] {
+  color: var(--color-bad-fg);
+}
+.tone[data-tone='ok'] {
+  color: var(--color-ok-fg);
+}

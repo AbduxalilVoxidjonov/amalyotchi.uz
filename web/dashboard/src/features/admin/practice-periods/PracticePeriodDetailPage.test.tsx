@@ -1,7 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { delay, http, HttpResponse } from 'msw';
+import { server } from '@/mocks/server';
 import { renderHierarchyPage } from '../shared/renderHierarchyPage';
-import { resetPracticePeriodsMock } from './mocks';
+import { PRACTICE_PERIODS_ENDPOINT } from './api';
+import { mockPracticePeriodStats, resetPracticePeriodsMock } from './mocks';
 import { PracticePeriodDetailPage } from './PracticePeriodDetailPage';
 
 function renderPage(periodId = 'p1') {
@@ -155,5 +158,78 @@ describe('PracticePeriodDetailPage', () => {
   it('404: davr topilmadi', async () => {
     renderPage('nope');
     expect(await screen.findByText('Amaliyot davri topilmadi.')).toBeInTheDocument();
+  });
+});
+
+describe("PracticePeriodDetailPage — ko'rsatkichlar", () => {
+  afterEach(() => resetPracticePeriodsMock());
+
+  it("davr KPI'lari va guruh ko'rsatkich ustunlari; guruh kodi guruh sahifasiga olib boradi", async () => {
+    const stats = mockPracticePeriodStats('p1')!;
+    const t = stats.totals;
+    renderPage();
+
+    await screen.findByText('Korxonaga biriktirilgan');
+    const kpi = within(screen.getByRole('region', { name: "Davr ko'rsatkichlari" }));
+    expect(kpi.getByText(`${t.attendancePct}%`)).toBeInTheDocument();
+    expect(kpi.getByText(`${t.finalizedCount} tasi yakunlangan`)).toBeInTheDocument();
+    expect(kpi.getByText(`Qayta topshiradi: ${t.grades.retake}`)).toBeInTheDocument();
+    expect(kpi.getByRole('img', { name: /^Baholar: 5 \(a'lo\) — \d+ ta/ })).toBeInTheDocument();
+
+    const table = groupsTable();
+    const g1 = stats.groups.find((g) => g.groupId === 'g1')!;
+    expect(table.getByRole('link', { name: '412-22' })).toHaveAttribute(
+      'href',
+      '/admin/practice-periods/p1/groups/g1',
+    );
+    expect(
+      await table.findByRole('progressbar', { name: "412-22 o'rtacha davomati" }),
+    ).toHaveAttribute('aria-valuenow', String(g1.attendancePct));
+    expect(table.getByText(`${g1.withCompanyCount}/${g1.studentsCount}`)).toBeInTheDocument();
+    expect(
+      table.getByRole('img', { name: new RegExp(`qayta topshiradi — ${g1.grades.retake} ta`) }),
+    ).toBeInTheDocument();
+    // Mavjud funksiya saqlangan.
+    expect(table.getByRole('button', { name: '412-22 guruhini ajratish' })).toBeInTheDocument();
+  });
+
+  it('guruh qatori bosilsa — davr ichidagi guruh sahifasiga o‘tadi', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole('table', { name: 'Biriktirilgan guruhlar' });
+    const code = groupsTable().getByText('413-22');
+    await user.click(code.closest('[role="row"]')!.querySelector('[role="cell"]:nth-child(2)')!);
+    expect(await screen.findByTestId('location')).toHaveTextContent(
+      '/admin/practice-periods/p1/groups/g2',
+    );
+  });
+
+  it("statistika kechiksa — guruhlar baribir ko'rinadi, metrik kataklarda skeleton", async () => {
+    server.use(
+      http.get(`${PRACTICE_PERIODS_ENDPOINT}/:id/stats`, async () => {
+        await delay('infinite');
+        return HttpResponse.json({});
+      }),
+    );
+    renderPage();
+    await screen.findByRole('table', { name: 'Biriktirilgan guruhlar' });
+    expect(groupsTable().getByText('412-22')).toBeInTheDocument();
+    expect(groupsTable().getAllByTestId('metric-skeleton').length).toBeGreaterThan(0);
+    expect(screen.getByRole('region', { name: "Davr ko'rsatkichlari" })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
+  });
+
+  it('rejalashtirilgan davr — "Davr hali boshlanmagan", KPI va metrik ustunlar yo‘q', async () => {
+    renderPage('p3');
+    expect(await screen.findByText('Davr hali boshlanmagan')).toBeInTheDocument();
+    await screen.findByRole('table', { name: 'Biriktirilgan guruhlar' });
+    expect(screen.queryByRole('region', { name: "Davr ko'rsatkichlari" })).not.toBeInTheDocument();
+    expect(groupsTable().queryByRole('columnheader', { name: 'Davomat' })).not.toBeInTheDocument();
+    expect(groupsTable().getByRole('link', { name: '421-23' })).toHaveAttribute(
+      'href',
+      '/admin/practice-periods/p3/groups/g3',
+    );
   });
 });

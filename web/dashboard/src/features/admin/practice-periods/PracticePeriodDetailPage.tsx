@@ -1,24 +1,27 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { errorMessage } from '@/shared/api';
-import { Button, ConfirmDialog, type BreadcrumbItem } from '@/shared/ui';
-import { LoadingState } from '../components/PageStatus';
+import { Button, ConfirmDialog, EmptyState, type BreadcrumbItem } from '@/shared/ui';
+import { ErrorState, LoadingState } from '../components/PageStatus';
 import { HierarchyListPage } from '../faculties/components/HierarchyListPage';
 import { AddGroupsModal } from './components/AddGroupsModal';
 import styles from './components/PeriodDetail.module.css';
 import { PeriodEditModal } from './components/PeriodEditModal';
-import { PeriodGroupsTable } from './components/PeriodGroupsTable';
+import { PeriodGroupsTable, type GroupMetricsState } from './components/PeriodGroupsTable';
 import { PeriodInfoCard } from './components/PeriodInfoCard';
+import { PeriodMetrics, PeriodMetricsSkeleton } from './components/PeriodMetrics';
 import { PeriodStatusBadge } from './components/PeriodStatusBadge';
+import { formatDate } from './dates';
 import {
   useClosePracticePeriod,
   useDeletePracticePeriod,
   usePracticePeriodQuery,
+  usePracticePeriodStatsQuery,
   useSetPracticePeriodGroups,
 } from './hooks';
 import { PRACTICE_PERIODS_HREF } from './paths';
 import type { PeriodFlashState } from './PracticePeriodCreatePage';
-import type { PracticePeriodGroup } from './types';
+import type { PeriodGroupStats, PracticePeriodGroup } from './types';
 
 const ROOT: BreadcrumbItem[] = [{ label: 'Amaliyot davrlari', to: PRACTICE_PERIODS_HREF }];
 
@@ -40,8 +43,10 @@ function readFlash(state: unknown): string | null {
 
 /**
  * Admin · Amaliyot davri (`/admin/practice-periods/:periodId`): sarlavha + amallar
- * (Tahrirlash / Yopish / O'chirish), ma'lumot kartasi va biriktirilgan guruhlar.
+ * (Tahrirlash / Yopish / O'chirish), ma'lumot kartasi, davr ko'rsatkichlari (KPI) va
+ * biriktirilgan guruhlar (ko'rsatkich ustunlari bilan; guruh → davr ichidagi guruh sahifasi).
  * Yopilgan davrda tahrirlash amallari (tahrirlash, yopish, guruh qo'shish/ajratish) yashiriladi.
+ * Rejalashtirilgan davrda statistika so'ralmaydi — "Davr hali boshlanmagan".
  */
 export function PracticePeriodDetailPage() {
   const { periodId = '' } = useParams<{ periodId: string }>();
@@ -49,6 +54,20 @@ export function PracticePeriodDetailPage() {
   const navigate = useNavigate();
   const query = usePracticePeriodQuery(periodId);
   const period = query.data;
+  const planned = period?.status === 'planned';
+  const statsQuery = usePracticePeriodStatsQuery(period && !planned ? periodId : '');
+  const stats = statsQuery.data;
+  const statsByGroup = useMemo(
+    () => new Map<string, PeriodGroupStats>((stats?.groups ?? []).map((g) => [g.groupId, g])),
+    [stats],
+  );
+  const metricsState: GroupMetricsState = planned
+    ? 'hidden'
+    : stats
+      ? 'ready'
+      : statsQuery.isError
+        ? 'unavailable'
+        : 'loading';
 
   const closePeriod = useClosePracticePeriod(periodId);
   const deletePeriod = useDeletePracticePeriod(periodId);
@@ -121,7 +140,27 @@ export function PracticePeriodDetailPage() {
 
           <PeriodInfoCard period={period} />
 
+          {planned ? (
+            <EmptyState
+              title="Davr hali boshlanmagan"
+              description={`Davomat, kundalik va baholar ko'rsatkichlari ${formatDate(period.startDate)} dan boshlab to'planadi.`}
+            />
+          ) : stats ? (
+            <PeriodMetrics
+              metrics={stats.totals}
+              elapsedWorkDays={stats.elapsedWorkDays}
+              requiredDays={stats.requiredDays}
+            />
+          ) : statsQuery.isError ? (
+            <ErrorState error={statsQuery.error} onRetry={() => void statsQuery.refetch()} />
+          ) : (
+            <PeriodMetricsSkeleton />
+          )}
+
           <PeriodGroupsTable
+            periodId={period.id}
+            stats={statsByGroup}
+            metricsState={metricsState}
             groups={period.groups}
             editable={editable}
             onAdd={() => open({ kind: 'groups' })}

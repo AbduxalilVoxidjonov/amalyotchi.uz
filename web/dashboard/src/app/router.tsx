@@ -41,6 +41,7 @@ const PracticePeriodCreatePage = lazy(
 const PracticePeriodDetailPage = lazy(
   () => import('@/features/admin/practice-periods/PracticePeriodDetailPage'),
 );
+const PeriodGroupPage = lazy(() => import('@/features/admin/practice-periods/PeriodGroupPage'));
 const AuditPage = lazy(() => import('@/features/admin/audit/AuditPage'));
 const SettingsPage = lazy(() => import('@/features/admin/settings/SettingsPage'));
 const ReportsPage = lazy(() => import('@/features/reports/ReportsPage'));
@@ -103,6 +104,10 @@ export const routes: RouteObject[] = [
           { path: 'practice-periods', element: <PracticePeriodsPage /> },
           { path: 'practice-periods/new', element: <PracticePeriodCreatePage /> },
           { path: 'practice-periods/:periodId', element: <PracticePeriodDetailPage /> },
+          {
+            path: 'practice-periods/:periodId/groups/:groupId',
+            element: <PeriodGroupPage />,
+          },
           { path: 'reports', element: <ReportsPage /> },
           { path: 'audit', element: <AuditPage /> },
           { path: 'settings', element: <SettingsPage /> },

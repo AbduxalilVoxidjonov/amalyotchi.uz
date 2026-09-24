@@ -28,6 +28,23 @@ public sealed class AdminPracticePeriodsController(ISender sender) : ControllerB
     public async Task<ActionResult<PracticePeriodDetail>> Get(Guid id, CancellationToken cancellationToken)
         => Ok(await sender.Send(new GetPracticePeriodQuery(id), cancellationToken));
 
+    /// <summary>Davr statistikasi: har guruh va jami ko'rsatkichlar (faqat shu davr yozuvlari bo'yicha).</summary>
+    [HttpGet("{id:guid}/stats")]
+    [ProducesResponseType<PracticePeriodStats>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PracticePeriodStats>> Stats(Guid id, CancellationToken cancellationToken)
+        => Ok(await sender.Send(new GetPracticePeriodStatsQuery(id), cancellationToken));
+
+    /// <summary>Guruh talabalarining shu davrdagi natijalari. Guruh davrga biriktirilmagan → 404.</summary>
+    [HttpGet("{id:guid}/groups/{groupId:guid}/students")]
+    [ProducesResponseType<PeriodGroupStudents>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PeriodGroupStudents>> GroupStudents(
+        Guid id, Guid groupId, CancellationToken cancellationToken)
+        => Ok(await sender.Send(new GetPeriodGroupStudentsQuery(id, groupId), cancellationToken));
+
     /// <summary>Yangi davr. Vaqt qoidalari global sozlamalardan nusxalanadi. Guruh noto'g'ri → 400;
     /// guruh sanalari kesishadigan boshqa davrda → 409.</summary>
     [HttpPost]

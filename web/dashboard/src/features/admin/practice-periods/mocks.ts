@@ -4,14 +4,21 @@ import { mockDirections } from '../faculties/directions/mocks';
 import { mockGroups } from '../faculties/groups/mocks';
 import { mockFaculties } from '../faculties/mocks';
 import { problemResponse } from '../shared/mockProblem';
+import { mockStudents as adminMockStudents } from '../students/mocks';
 import { PRACTICE_PERIODS_ENDPOINT } from './api';
 import { isIsoDate, parseWorkDays, rangesOverlap, todayIso } from './dates';
 import type {
+  GradeDistribution,
+  GroupMetrics,
+  PeriodGroupStats,
+  PeriodGroupStudent,
+  PeriodGroupStudents,
   PracticePeriodCreate,
   PracticePeriodDetail,
   PracticePeriodGroup,
   PracticePeriodGroupsUpdate,
   PracticePeriodListItem,
+  PracticePeriodStats,
   PracticePeriodStatus,
   PracticePeriodUpdate,
 } from './types';
@@ -192,11 +199,317 @@ function statusFor(start: string): PracticePeriodStatus {
   return start > todayIso() ? 'planned' : 'active';
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * Ko'rsatkichlar (stats) — deterministik: bir xil davr+guruh uchun har safar bir xil talabalar.
+ * Davr jami (`totals`) va guruh ko'rsatkichlari talabalar ro'yxatidan yig'iladi — raqamlar mos.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const FIRST_NAMES = [
+  'Akmal',
+  'Dilnoza',
+  'Jasur',
+  'Madina',
+  'Sardor',
+  'Nigora',
+  'Bekzod',
+  'Shahzoda',
+  'Otabek',
+  'Zarina',
+  'Javohir',
+  'Malika',
+  'Sherzod',
+  'Gulnoza',
+  'Doston',
+  'Kamola',
+  'Ulugbek',
+  'Feruza',
+  'Aziz',
+  'Sevara',
+  'Rustam',
+  'Laylo',
+  'Temur',
+  'Munisa',
+];
+const LAST_NAMES = [
+  'Karimov',
+  'Yusupova',
+  'Rahimov',
+  'Tosheva',
+  'Qodirov',
+  'Ergasheva',
+  'Nurmatov',
+  'Sobirova',
+  'Hamidov',
+  'Aliyeva',
+  'Xolmatov',
+  'Umarova',
+  'Mirzayev',
+  'Saidova',
+  'Normurodov',
+  'Abdullayeva',
+];
+const COMPANIES = [
+  'Tech Solutions MChJ',
+  'Uzinfocom',
+  'Agrobank ATB',
+  'Mega Servis MChJ',
+  "Ipak Yo'li Logistika",
+  'Qurilish Trest 12',
+  'EPAM Uzbekistan',
+];
+
+/** mulberry32 — urug'li PRNG. */
+function seededRandom(seedText: string): () => number {
+  let a = 0;
+  for (const ch of seedText) a = (Math.imul(a, 31) + ch.charCodeAt(0)) | 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
+function elapsedWorkDaysOf(p: PeriodSeed): number {
+  if (p.status === 'planned') return 0;
+  const today = todayIso();
+  const end = p.status === 'closed' || today > p.endDate ? p.endDate : today;
+  return end < p.startDate ? 0 : workDaysBetween(p.startDate, end, GLOBAL.workDays);
+}
+
+/** Tyutor baholash qoidasi: davomat < 70% yoki jami < 56 → qayta topshiradi (null). */
+function gradeOf(attendancePct: number, total: number): number | null {
+  if (attendancePct < 70 || total < 56) return null;
+  if (total >= 86) return 5;
+  if (total >= 71) return 4;
+  return 3;
+}
+
+interface GeneratedStudent extends PeriodGroupStudent {
+  /** Faqat yig'indi uchun (kontraktda talaba darajasida yo'q). */
+  diaryApproved: number;
+}
+
+function generateStudents(p: PeriodSeed, groupId: string, count: number): GeneratedStudent[] {
+  const rand = seededRandom(`${p.id}:${groupId}`);
+  const pick = <T>(xs: readonly T[]) => xs[Math.floor(rand() * xs.length)] as T;
+  const elapsed = elapsedWorkDaysOf(p);
+  const closed = p.status === 'closed';
+  const known = adminMockStudents.filter((s) => s.groupId === groupId);
+
+  return Array.from({ length: count }, (_, i): GeneratedStudent => {
+    const seedStudent = known[i];
+    const fullName = seedStudent?.fullName ?? `${pick(LAST_NAMES)} ${pick(FIRST_NAMES)}`;
+    const hemisId = seedStudent?.hemisId ?? String(340000 + Math.floor(rand() * 9000));
+    const id = seedStudent?.id ?? `${groupId}-s${i + 1}`;
+
+    const hasCompany = rand() < 0.85;
+    const company = hasCompany ? (seedStudent?.company ?? pick(COMPANIES)) : null;
+    const applicationStatus: PeriodGroupStudent['applicationStatus'] = hasCompany
+      ? closed
+        ? 'completed'
+        : 'approved'
+      : pick(['submitted', 'revisionNeeded', 'draft', null] as const);
+
+    if (elapsed === 0) {
+      return {
+        id,
+        fullName,
+        hemisId,
+        company,
+        applicationStatus,
+        attendancePct: 0,
+        presentDays: 0,
+        lateDays: 0,
+        absentDays: 0,
+        excusedDays: 0,
+        suspiciousDays: 0,
+        diaryCount: 0,
+        diaryAvg: 0,
+        diaryApproved: 0,
+        attendancePoints: 0,
+        reportPoints: 0,
+        tutorPoints: null,
+        referencePoints: null,
+        total: 0,
+        grade: null,
+        finalized: false,
+      };
+    }
+
+    const weak = rand() < 0.15 || !hasCompany;
+    const targetPct = weak ? 45 + rand() * 24 : 76 + rand() * 24;
+    const excusedDays = rand() < 0.25 ? 1 : 0;
+    const attended = Math.min(elapsed - excusedDays, Math.round((elapsed * targetPct) / 100));
+    const lateDays = Math.min(attended, Math.floor(rand() * 3));
+    const presentDays = attended - lateDays;
+    const absentDays = Math.max(0, elapsed - attended - excusedDays);
+    const attendancePct = Math.round((attended / Math.max(1, elapsed - excusedDays)) * 100);
+    const suspiciousDays = rand() < 0.12 ? 1 + Math.floor(rand() * 3) : 0;
+
+    const diaryCount = hasCompany ? Math.round(attended * (0.6 + rand() * 0.4)) : 0;
+    const diaryAvg = diaryCount > 0 ? round1(3.2 + rand() * 1.8) : 0;
+    const diaryApproved = Math.floor(diaryCount * (0.7 + rand() * 0.3));
+
+    const attendancePoints = round1(attendancePct * 0.4);
+    const reportPoints = round1((diaryAvg / 5) * 30 * Math.min(1, diaryCount / elapsed));
+    const scored = closed || rand() < 0.5;
+    const tutorPoints = scored ? 12 + Math.floor(rand() * 9) : null;
+    const referencePoints = scored ? 5 + Math.floor(rand() * 6) : null;
+    const total = round1(
+      attendancePoints + reportPoints + (tutorPoints ?? 0) + (referencePoints ?? 0),
+    );
+
+    return {
+      id,
+      fullName,
+      hemisId,
+      company,
+      applicationStatus,
+      attendancePct,
+      presentDays,
+      lateDays,
+      absentDays,
+      excusedDays,
+      suspiciousDays,
+      diaryCount,
+      diaryAvg,
+      diaryApproved,
+      attendancePoints,
+      reportPoints,
+      tutorPoints,
+      referencePoints,
+      total,
+      grade: gradeOf(attendancePct, total),
+      finalized: closed || (scored && rand() < 0.3),
+    };
+  });
+}
+
+const EMPTY_GRADES: GradeDistribution = {
+  excellent: 0,
+  good: 0,
+  satisfactory: 0,
+  unsatisfactory: 0,
+  retake: 0,
+};
+
+function aggregate(rows: readonly GeneratedStudent[], started: boolean): GroupMetrics {
+  const n = rows.length;
+  const sum = (f: (s: GeneratedStudent) => number) => rows.reduce((acc, s) => acc + f(s), 0);
+  const diaryCount = sum((s) => s.diaryCount);
+  const grades = { ...EMPTY_GRADES };
+  if (started) {
+    for (const s of rows) {
+      if (s.grade === 5) grades.excellent++;
+      else if (s.grade === 4) grades.good++;
+      else if (s.grade === 3) grades.satisfactory++;
+      else if (s.grade === 2) grades.unsatisfactory++;
+      else grades.retake++;
+    }
+  }
+  return {
+    studentsCount: n,
+    attendancePct: started && n > 0 ? Math.round(sum((s) => s.attendancePct) / n) : 0,
+    lowAttendanceCount: started ? rows.filter((s) => s.attendancePct < 70).length : 0,
+    suspiciousDays: sum((s) => s.suspiciousDays),
+    withCompanyCount: rows.filter((s) => s.company !== null).length,
+    pendingApplicationsCount: rows.filter(
+      (s) => s.applicationStatus === 'submitted' || s.applicationStatus === 'revisionNeeded',
+    ).length,
+    diaryCount,
+    diaryApprovedCount: sum((s) => s.diaryApproved),
+    diaryAvgScore: diaryCount > 0 ? round1(sum((s) => s.diaryAvg * s.diaryCount) / diaryCount) : 0,
+    avgTotal: started && n > 0 ? round1(sum((s) => s.total) / n) : null,
+    finalizedCount: rows.filter((s) => s.finalized).length,
+    grades,
+  };
+}
+
+function studentsOf(p: PeriodSeed, groupId: string): GeneratedStudent[] {
+  const info = groupInfo(groupId);
+  return info ? generateStudents(p, groupId, info.studentsCount) : [];
+}
+
+const strip = ({ diaryApproved: _unused, ...s }: GeneratedStudent): PeriodGroupStudent => s;
+
+export function mockPracticePeriodStats(id: string): PracticePeriodStats | null {
+  const p = state.find((x) => x.id === id);
+  if (!p) return null;
+  const elapsed = elapsedWorkDaysOf(p);
+  const started = elapsed > 0;
+  const all: GeneratedStudent[] = [];
+  const groups: PeriodGroupStats[] = [];
+  for (const gid of p.groupIds) {
+    const info = groupInfo(gid);
+    if (!info) continue;
+    const rows = studentsOf(p, gid);
+    all.push(...rows);
+    groups.push({
+      groupId: info.id,
+      code: info.code,
+      course: info.course,
+      directionName: info.directionName,
+      ...aggregate(rows, started),
+    });
+  }
+  return {
+    periodId: p.id,
+    elapsedWorkDays: elapsed,
+    requiredDays: workDaysBetween(p.startDate, p.endDate, GLOBAL.workDays),
+    totals: aggregate(all, started),
+    groups,
+  };
+}
+
+export function mockPeriodGroupStudents(id: string, groupId: string): PeriodGroupStudents | null {
+  const p = state.find((x) => x.id === id);
+  const info = groupInfo(groupId);
+  if (!p || !info || !p.groupIds.includes(groupId)) return null;
+  const elapsed = elapsedWorkDaysOf(p);
+  const rows = studentsOf(p, groupId);
+  return {
+    period: {
+      id: p.id,
+      name: p.name,
+      status: p.status,
+      startDate: p.startDate,
+      endDate: p.endDate,
+    },
+    group: {
+      id: info.id,
+      code: info.code,
+      course: info.course,
+      facultyName: info.facultyName,
+      directionName: info.directionName,
+    },
+    elapsedWorkDays: elapsed,
+    metrics: aggregate(rows, elapsed > 0),
+    students: rows.map(strip),
+  };
+}
+
 const notFound = () => problemResponse(404, 'Topilmadi', 'Amaliyot davri topilmadi.');
 const closedConflict = () =>
   problemResponse(409, 'Ziddiyat', "Yopilgan davrni o'zgartirib bo'lmaydi.");
 
 export const practicePeriodsHandlers: HttpHandler[] = [
+  http.get(`${PRACTICE_PERIODS_ENDPOINT}/:id/stats`, ({ params }) => {
+    const stats = mockPracticePeriodStats(String(params['id']));
+    return stats ? HttpResponse.json(stats) : notFound();
+  }),
+
+  http.get(`${PRACTICE_PERIODS_ENDPOINT}/:id/groups/:groupId/students`, ({ params }) => {
+    const id = String(params['id']);
+    if (!state.some((p) => p.id === id)) return notFound();
+    const data = mockPeriodGroupStudents(id, String(params['groupId']));
+    return data
+      ? HttpResponse.json(data)
+      : problemResponse(404, 'Topilmadi', 'Guruh bu amaliyot davriga biriktirilmagan.');
+  }),
+
   http.get(PRACTICE_PERIODS_ENDPOINT, ({ request }) => {
     const status = new URL(request.url).searchParams.get('status');
     const rows = state
