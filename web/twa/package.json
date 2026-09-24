@@ -19,6 +19,7 @@
     "@amaliyotchi/shared": "*",
     "@tanstack/react-query": "^5.102.8",
     "@twa-dev/sdk": "^8.0.2",
+    "jsqr": "^1.4.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.3",

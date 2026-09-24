@@ -31,6 +31,8 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes('/node_modules/')) return undefined;
           if (id.includes('/@twa-dev/')) return 'telegram';
+          // QR dekoder faqat brauzer kamera skanerida (dinamik import) — asosiy yuklamaga kirmaydi.
+          if (id.includes('/jsqr/')) return 'jsqr';
           if (id.includes('/react-router')) return 'router';
           if (id.includes('/@tanstack/')) return 'query';
           if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/'))

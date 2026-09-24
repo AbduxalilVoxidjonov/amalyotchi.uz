@@ -18,6 +18,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.HemisId).HasMaxLength(HemisId.MaxLength);
         builder.Property(u => u.PasswordHash).HasMaxLength(500);
         builder.Property(u => u.Role).HasConversion<int>().IsRequired();
+        builder.Property(u => u.MustChangePassword).IsRequired();
 
         // Bir xil telefon ikki marta ro'yxatdan o'tmasin (o'chirilganlar hisobga olinmaydi).
         builder.HasIndex(u => u.PhoneNumber)

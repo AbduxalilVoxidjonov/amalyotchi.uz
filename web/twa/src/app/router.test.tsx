@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { useAuthStore } from '@/shared/auth/store';
 import { renderApp } from '@/test/render-app';
 
@@ -13,9 +13,10 @@ describe('TWA router', () => {
     expect(screen.getByRole('link', { name: 'Kundaligim' })).toBeInTheDocument();
   });
 
-  it("Telegram tashqarisida → kirish imkoni yo'q xabari", async () => {
+  it("Telegram tashqarisida (initData yo'q, mock emas) → web login sahifasi", async () => {
     renderApp('/kundalik', { initData: '' });
-    expect(await screen.findByRole('heading', { name: "Kirish imkoni yo'q" })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Tizimga kirish' })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: "Bo'limlar" })).not.toBeInTheDocument();
   });
 
   it("403 (hisob bog'lanmagan) → maxsus ekran + backend `detail`", async () => {
@@ -37,6 +38,7 @@ describe('TWA router', () => {
       ['/joyim', 'Amaliyot joyim'],
       ['/kalendar', 'Kalendarim'],
       ['/ruxsat', "Ruxsat so'rash"],
+      ['/profil', 'Profil'],
       ['/', 'Bosh ekran'],
     ] as const) {
       await act(() => router.navigate(path));
@@ -57,6 +59,7 @@ describe('TWA router', () => {
     const dialog = screen.getByRole('dialog', { name: 'Yana' });
     expect(dialog).toHaveTextContent("Ruxsat so'rash");
     expect(dialog).toHaveTextContent('Portfolio');
+    expect(within(dialog).getByRole('link', { name: 'Profil' })).toHaveAttribute('href', '/profil');
     expect(dialog).toHaveTextContent('Aliyev Akmal');
     expect(dialog).toHaveTextContent('412-22 · 3-kurs'); // UserSummaryDto v2: groupName/course
     expect(screen.getByText('Talaba · 3-kurs ishlab chiqarish amaliyoti')).toBeInTheDocument();

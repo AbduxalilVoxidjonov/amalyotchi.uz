@@ -34,6 +34,8 @@ export const tutorKeys = {
     list: () => ['tutor', 'companies', 'list'] as const,
     detail: (id: string) => ['tutor', 'companies', 'detail', id] as const,
     students: (id: string) => ['tutor', 'companies', 'detail', id, 'students'] as const,
+    /** `GET /companies/{id}/checkin-qr` — korxona check-in QR kodi. */
+    checkinQr: (id: string) => ['tutor', 'companies', 'detail', id, 'checkin-qr'] as const,
   },
   diaries: {
     all: ['tutor', 'diaries'] as const,

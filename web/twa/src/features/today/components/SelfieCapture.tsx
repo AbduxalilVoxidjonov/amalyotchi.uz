@@ -11,11 +11,11 @@ export interface SelfieCaptureProps {
 }
 
 /**
- * Check-in selfie paneli (kontrakt §1) — presentation.
+ * Check-in selfie paneli (kontrakt §1, 3-qadam) — presentation.
  * `capture` bosqichi: kamera kutilmoqda · `preview` bosqichi: rasm ko'rib chiqiladi (qayta olish/tasdiqlash).
  */
 export function SelfieCapture({ flow, onOpenCamera }: SelfieCaptureProps) {
-  const { phase, mode, photo, preparing, pending, error, photoError } = flow;
+  const { phase, mode, photo, preparing, pending, error, photoError, requirements } = flow;
   const busy = preparing || pending;
   const hasPhoto = phase === 'preview' && photo !== null;
 
@@ -93,16 +93,19 @@ export function SelfieCapture({ flow, onOpenCamera }: SelfieCaptureProps) {
             >
               {preparing ? 'Tayyorlanmoqda…' : 'Rasmga olish'}
             </Button>
-            <Button
-              variant="dashed"
-              radius="md2"
-              className={styles.action}
-              onClick={() => flow.submit({ withoutPhoto: true })}
-              disabled={busy}
-              aria-busy={pending || undefined}
-            >
-              {pending ? 'Yuborilmoqda…' : 'Rasmsiz davom etish'}
-            </Button>
+            {/* Sozlama `checkinPhotoRequired=false` bo'lsagina — aks holda server 400 `errors.Photo`. */}
+            {!requirements.photoRequired && (
+              <Button
+                variant="dashed"
+                radius="md2"
+                className={styles.action}
+                onClick={() => flow.submit({ withoutPhoto: true })}
+                disabled={busy}
+                aria-busy={pending || undefined}
+              >
+                {pending ? 'Yuborilmoqda…' : 'Rasmsiz davom etish'}
+              </Button>
+            )}
           </>
         )}
       </div>

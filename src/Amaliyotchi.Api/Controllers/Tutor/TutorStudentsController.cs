@@ -1,4 +1,5 @@
 using Amaliyotchi.Application.Common.Security;
+using Amaliyotchi.Application.Features.Admin.Students;
 using Amaliyotchi.Application.Features.Tutor.Diaries;
 using Amaliyotchi.Application.Features.Tutor.Students;
 using MediatR;
@@ -50,4 +51,18 @@ public sealed class TutorStudentsController(ISender sender) : ControllerBase
     public async Task<ActionResult<IReadOnlyList<TutorDiaryEntry>>> Diaries(
         Guid id, [FromQuery] Guid? periodId, CancellationToken cancellationToken)
         => Ok(await sender.Send(new GetTutorStudentDiariesQuery(id, periodId), cancellationToken));
+
+    /// <summary>Talabaga brauzer orqali (HEMIS ID + parol) kirish uchun vaqtinchalik parol o'rnatish: <c>{ password }</c> → 204.
+    /// Talaba keyingi kirishda parolini almashtirishi kerak (<c>mustChangePassword=true</c>); barcha refresh tokenlari
+    /// bekor qilinadi. Audit: <c>StudentPasswordSet</c>. Ko'lamdan tashqari (yoki yo'q) talaba → 404.</summary>
+    [HttpPost("{id:guid}/password")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetPassword(
+        Guid id, SetStudentPasswordCommand command, CancellationToken cancellationToken)
+    {
+        await sender.Send(command with { Id = id }, cancellationToken);
+        return NoContent();
+    }
 }

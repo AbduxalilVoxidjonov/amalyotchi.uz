@@ -9,6 +9,17 @@ function renderDetail(companyId = 'c1') {
 }
 
 describe('CompanyDetailPage (/tutor/companies/:companyId)', () => {
+  it("check-in QR kartasi tyutor endpoint'idan yuklanadi", async () => {
+    renderDetail();
+    const qr = within(await screen.findByRole('region', { name: 'Check-in QR kodi' }));
+    expect(
+      await qr.findByRole('img', { name: 'Tech Solutions MChJ check-in QR kodi' }),
+    ).toBeInTheDocument();
+    expect(qr.getByText(/^AMLQR:1:[0-9a-f]{32}$/)).toBeInTheDocument();
+    expect(qr.getByRole('button', { name: 'Yuklab olish (PNG)' })).toBeInTheDocument();
+    expect(qr.getByRole('button', { name: 'Yangilash' })).toBeInTheDocument();
+  });
+
   it("korxona kartasi, lokatsiya, davrlar va talabalar ko'rsatiladi", async () => {
     renderDetail();
     expect(await screen.findByRole('heading', { name: 'Tech Solutions MChJ' })).toBeInTheDocument();

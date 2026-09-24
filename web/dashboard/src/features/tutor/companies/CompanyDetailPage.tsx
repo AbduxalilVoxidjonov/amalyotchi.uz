@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 import { isApiError } from '@/shared/api';
 import { Button, EmptyState } from '@/shared/ui';
+import { CheckInQrCard } from '../../shared/checkin-qr';
 import { QueryState } from '../components/QueryState';
 import { CompanyDetailView } from './components/CompanyDetailView';
 import { CompanyStudentsTable } from './components/CompanyStudentsTable';
@@ -11,7 +12,7 @@ const BACK_TO = '/tutor/companies';
 
 /**
  * Tyutor · Korxona sahifasi (`/tutor/companies/:companyId`): korxona kartasi + lokatsiya,
- * STIR nazorati, amaliyot davrlari va ko'lamdagi talabalar jadvali.
+ * STIR nazorati, amaliyot davrlari, check-in QR kodi va ko'lamdagi talabalar jadvali.
  * Tyutor bo'limida breadcrumb yo'q — oddiy orqaga qaytish havolasi.
  */
 export function CompanyDetailPage() {
@@ -47,6 +48,7 @@ export function CompanyDetailPage() {
           {(company) => (
             <>
               <CompanyDetailView company={company} />
+              <CheckInQrCard area="tutor" companyId={company.id} />
               <QueryState
                 status={studentsQuery.status}
                 data={studentsQuery.data}

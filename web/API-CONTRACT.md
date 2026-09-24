@@ -1,4 +1,4 @@
-# API-CONTRACT v3.6
+# API-CONTRACT v3.8
 
 Oxirgi yangilanish: 24.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
@@ -8,13 +8,15 @@ Frontend (`web/dashboard`, `web/twa`, `web/shared`) shu shaklga moslanishi kerak
 v3.3 (korxona CRUD, STIR oqimi, ommaviy biriktirish) — §6.9,
 v3.4 (admin amaliyot davrlari) — §6.10,
 v3.5 (bir guruhda bir nechta davr: davr tanlash qoidasi, talaba profilida davr tanlagichi) — §6.11,
-v3.6 (admin davr statistikasi) — §6.12.
+v3.6 (admin davr statistikasi) — §6.12,
+v3.7 (amaliyot joyida QR kod bilan check-in/check-out) — §6.13,
+v3.8 (talaba brauzerda HEMIS ID + parol bilan kiradi, parol almashtirish, talaba kabineti) — §6.14.
 
-Jami **101 ta endpoint**: Auth 5 · Admin 63 · Reports 1 · Tutor 19 · Student (TWA) 11 · Files 1 · Companies 1.
+Jami **109 ta endpoint**: Auth 6 · Admin 66 · Reports 1 · Tutor 22 · Student (TWA) 12 · Files 1 · Companies 1.
 
-> Kontrollerlarda `[Http*]` atributlari **103 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
+> Kontrollerlarda `[Http*]` atributlari **111 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
 > har birida ikkitadan action bor (`multipart/form-data` va `application/json` — `[Consumes]` bilan ajratiladi,
-> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **101**.
+> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **109**.
 
 ---
 
@@ -40,7 +42,10 @@ Jami **101 ta endpoint**: Auth 5 · Admin 63 · Reports 1 · Tutor 19 · Student
 - **Refresh oqimi**: `POST /api/auth/refresh { refreshToken }` → yangi `AuthResultDto`; eski refresh token **darhol
   bekor qilinadi (rotatsiya)**, bir marta ishlatiladi. Refresh rad etilsa → **403** (401 emas). Mijoz: 401 kelsa bir
   marta refresh qilib so'rovni qaytaradi (single-flight), refresh 403 bersa sessiyani tozalaydi.
-- **Login** (`/api/auth/login`) — faqat admin va tyutor (parol). Talaba hisobi parol bilan kira olmaydi → 403.
+- **Login** (`/api/auth/login`) — HEMIS ID + parol: admin, tyutor va (v3.8) **talaba** — xodim unga parol o'rnatgan
+  bo'lsa (`POST /api/{admin|tutor}/students/{id}/password`). Talaba profil HEMIS ID'si bilan kiradi (brauzer rejimi —
+  bot tayyor bo'lguncha). Paroli yo'q talaba → 403 umumiy xabar. `AuthResultDto.mustChangePassword = true` bo'lsa mijoz
+  foydalanuvchini avval `POST /api/auth/change-password` ga yo'naltiradi.
 - **Telegram** (`/api/auth/telegram`) — faqat talaba. Body `{ initData }` — `window.Telegram.WebApp.initData` xom satri.
   Server `hash` ni `HMAC_SHA256(key=HMAC_SHA256("WebAppData", botToken), data_check_string)` bilan tekshiradi,
   `auth_date` 24 soatdan eski yoki 5 daqiqadan ko'p kelajakda bo'lsa rad. Hisob `user.id` (Telegram) bo'yicha
@@ -153,9 +158,13 @@ Response — TypeScript uslubida. Enum qiymatlari §3 da.
 | `hemisId`  | string | ha       | bo'sh emas, faqat raqamlar, 5–20 xonali (odatda 12 xonali). Noto'g'ri qiymat 403 beradi (mavjudligi oshkor qilinmaydi) |
 | `password` | string | ha       | ≥ 8 belgi                                                                                                              |
 
+Hisob qidiruvi (v3.8): avval `User.HemisId` (admin/tyutor), topilmasa — talaba `StudentProfile.HemisId` (o'chirilmagan
+profil). Parol faollikdan **oldin** tekshiriladi (mavjud qoida).
+
 Response 200 `AuthResultDto`. Xatolar: 400 `errors.HemisId` / `errors.Password`; **403** — HEMIS ID/parol noto'g'ri,
-talaba hisobi, parolsiz hisob (`detail`: "HEMIS ID yoki parol noto'g'ri.") yoki hisob faol emas
-("Hisobingiz faol emas. Administratorga murojaat qiling."); 429.
+parolsiz hisob (masalan faqat Telegram'li talaba) (`detail`: "HEMIS ID yoki parol noto'g'ri.") yoki hisob faol emas
+("Hisobingiz faol emas. Administratorga murojaat qiling."; talabada — "…Tyutoringizga murojaat qiling."); 429.
+Har muvaffaqiyatsiz urinish audit'ga `loginFailed` sifatida yoziladi (talaba uchun ham).
 
 ```ts
 interface AuthResultDto {
@@ -163,6 +172,7 @@ interface AuthResultDto {
   accessTokenExpiresAt: string /*ISO*/;
   refreshToken: string;
   user: UserSummaryDto;
+  mustChangePassword: boolean; // v3.8 — parolni xodim o'rnatgan; login/refresh/telegram — barchasida keladi
 }
 interface UserSummaryDto {
   id: string;
@@ -178,7 +188,8 @@ interface UserSummaryDto {
 ```
 
 **Mock/seed HEMIS ID'lar** (dev): admin `100000000001`; tyutorlar — Nodira Saidova `100000000002`,
-Baxtiyor Rasulov `100000000003`, Dilshod Ergashev `100000000004`.
+Baxtiyor Rasulov `100000000003`, Dilshod Ergashev `100000000004`. **Demo talaba** (v3.8, `SEED_DEMO=true`, brauzer
+login'i): Aliyev Akmal — HEMIS ID `341030`, parol `talaba12345` (`mustChangePassword = false`).
 
 #### POST `/api/auth/telegram` · AllowAnonymous · rate `auth` 10/min
 
@@ -200,6 +211,19 @@ kiring.") yoki hisob faol emas; 429.
 #### POST `/api/auth/logout` · Authenticated
 
 Body `{ refreshToken: string }` + Bearer. Response **204** har doim (token topilmasa ham). Faqat o'z tokenini bekor qiladi.
+
+#### POST `/api/auth/change-password` · Authenticated · rate `auth` 10/min — v3.8
+
+| Maydon            | Tip    | Majburiy | Validatsiya                                                                                      |
+| ----------------- | ------ | -------- | ------------------------------------------------------------------------------------------------ |
+| `currentPassword` | string | ha       | bo'sh emas (`errors.CurrentPassword`); noto'g'ri yoki hisobda parol yo'q → 400 shu kalit bilan   |
+| `newPassword`     | string | ha       | 8–128 belgi (tyutor paroli qoidasi), joriy paroldan farqli (`errors.NewPassword`)                |
+| `refreshToken`    | string | yo'q     | joriy sessiyaning refresh tokeni — berilsa **saqlanadi**, qolgan barcha refresh tokenlar bekor   |
+
+Har qanday rol (paroli bor). Response **204**: yangi parol, `mustChangePassword = false`, boshqa sessiyalar (refresh
+tokenlar) bekor, audit `passwordChanged`. `refreshToken` yuborilmasa **barcha** refresh tokenlar bekor — access token
+tugagach qayta login kerak bo'ladi, shuning uchun mijoz joriy `refreshToken` ni yuborsin. Xatolar: **400**
+`errors.CurrentPassword` ("Joriy parol noto'g'ri.") / `errors.NewPassword`; 401; 429.
 
 #### GET `/api/auth/me` · Authenticated
 
@@ -787,6 +811,13 @@ davr — `periodId` (berilmasa sukut bo'yicha davr), oraliq berilmasa davr boshi
 davr chegaralariga qisiladi, teskari yoki 400 kundan uzun oraliq → 400, davr bo'lmasa — bo'sh massiv,
 begona `periodId` → 404.
 
+#### POST `/api/admin/students/{id}/password` · 204 · 400 · 404 — v3.8
+
+Body `{ password: string }` (8–128 belgi, `errors.Password`). Talabaga brauzer orqali (HEMIS ID + parol) kirish uchun
+**vaqtinchalik** parol o'rnatiladi: `mustChangePassword = true` (talaba birinchi kirishda o'zi almashtiradi), talabaning
+**barcha refresh tokenlari bekor** (Telegram sessiyasi ham — qayta kiradi), audit `studentPasswordSet`.
+Talaba topilmasa (yoki id talabaniki emas) → **404**. Profilda `hasPassword` (§2.5 `TutorStudentDetail`).
+
 #### POST `/api/admin/diaries/{id}/review` · 200 · 400 · 404 · 409
 
 Tyutornikidek (`POST /api/tutor/diaries/{id}/review`, §2.5) — **ayni buyruq va qoidalar**:
@@ -932,6 +963,30 @@ interface CompanyStudent {
 arizasi davri** bo'yicha (v3.5; `period` bilan bir xil; `StudentStatsCalculator`; davr o'chirilgan bo'lsa nollar).
 `state` — o'sha qoida: `totalDays>0 && pct<70` → `redFlag`; `suspiciousCount≥1` → `suspicious`; aks holda `active`.
 
+#### GET `/api/admin/companies/{id}/checkin-qr` · 200 · 404 — v3.7
+
+Korxonada osiladigan **check-in QR kodi** (chop etish uchun). QR ichidagi satr — `payload`; frontend uni o'zi QR
+rasmga aylantiradi. Korxona yo'q (yoki arxivlangan) → 404.
+
+```ts
+interface CompanyCheckInQrDto {
+  companyId: string;
+  companyName: string;
+  payload: string /*"AMLQR:1:<32 belgili kichik hex token>" — QR ichiga aynan shu satr*/;
+  rotatedAt: string /*ISO — token yaratilgan/oxirgi almashtirilgan vaqt*/;
+}
+```
+
+Format: `AMLQR:1:{token}` — prefiks `AMLQR:`, versiya `1`, token 32 ta `[0-9a-f]` (128 bit, `RandomNumberGenerator`).
+Har korxona yaratilganda (qo'lda, Excel importda) avtomatik token oladi; v3.7 migratsiyasi mavjud korxonalarga ham
+token berdi.
+
+#### POST `/api/admin/companies/{id}/checkin-qr/rotate` · 200 · 404 — v3.7
+
+Tanasiz. Yangi token yaratadi → 200 `CompanyCheckInQrDto` (yangi `payload`, `rotatedAt`). **Eski QR darhol
+yaroqsiz** — osilgan qog'ozni almashtirish kerak (eski QR bilan urinish → 409 `qrInvalid`). Audit:
+`companyQrRotated` (`entityName: "Company"`, `entityId` — korxona; token auditga yozilmaydi).
+
 #### GET `/api/admin/audit` — `q`: entityName, entityId, reason, foydalanuvchi ismi; `&action=<AuditAction>`
 
 `action` — enum string (`settingsChanged`); noma'lum → 400. Yangisi birinchi.
@@ -995,13 +1050,16 @@ Sozlamalar (kalit · tur · birlik · default · min–max): `geofenceRadius` in
 `minGpsAccuracy` int m `100` 10–1000 · `autoCheckout` int min `60` 0–360 · `workDays` weekdays `1,2,3,4,5,6` ·
 `dailyReportRequired` bool `true` · `minReportLength` int chars `150` 0–5000 · **`diaryPdfRequired`** bool `false` ·
 `checkInWindow` int min `90` 15–480 ·
-**`checkinPhotoRequired`** bool `false` · **`maxStudentsPerCompany`** int `10` 1–200.
-Ro'yxat tartibi — shu; ikkita oxirgi kalit v3 da qo'shildi (§6); `diaryPdfRequired` — keyinroq (`minReportLength` dan keyin).
+**`checkinPhotoRequired`** bool **`true`** (v3.7 gacha `false`) · **`checkinQrRequired`** bool `true` (v3.7) ·
+**`maxStudentsPerCompany`** int `10` 1–200.
+Ro'yxat tartibi — shu; `checkinPhotoRequired`/`maxStudentsPerCompany` v3 da qo'shildi (§6); `diaryPdfRequired` — keyinroq
+(`minReportLength` dan keyin); `checkinQrRequired` — v3.7 (§6.13).
 Bazada yo'q kalit default bilan qaytadi (`updatedAt: null`).
 
 | Kalit                   | Ta'sir                                                                                                            |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `checkinPhotoRequired`  | `true` bo'lsa `POST /api/student/checkin` va `/checkout` selfisiz qabul qilinmaydi → 400 `errors.Photo` (§2.6)      |
+| `checkinPhotoRequired`  | `true` bo'lsa `POST /api/student/checkin` va `/checkout` selfisiz qabul qilinmaydi → 400 `errors.Photo` (§2.6); talabaga `TodayDto.checkin.photoRequired` |
+| `checkinQrRequired`     | `true` bo'lsa check-in/check-out `qr` siz qabul qilinmaydi → 400 `errors.Qr` (§2.6); talabaga `TodayDto.checkin.qrRequired`. `false` bo'lsa ham **yuborilgan** `qr` tekshiriladi |
 | `diaryPdfRequired`      | `true` bo'lsa `POST /api/student/diary` kamida bitta PDF'siz qabul qilinmaydi → 400 `errors.Files`; talabaga `TodayDto.diary.pdfRequired` |
 | `maxStudentsPerCompany` | `CompanyRow`/`CompanyDetail`/`TutorCompany` dagi `maxStudents` va `overLimit`; bayroq `tooManyStudents` (§2.3)      |
 
@@ -1400,6 +1458,7 @@ interface TutorStudentDetail {
   grade: StudentGrade | null;
   periods: StudentPeriodOption[] /*davr tanlagichi, startDate kamayish tartibida*/;
   selectedPeriodId: string | null /*javobdagi davrga bog'liq bloklar shu davr bo'yicha; davr yo'q → null*/;
+  hasPassword: boolean /*v3.8 — talabaga brauzer login'i uchun parol o'rnatilgan (AdminStudentDetail'da ham)*/;
 }
 
 interface StudentPeriodOption {
@@ -1516,6 +1575,23 @@ interface StudentAttendanceDay {
   diary: { id: string; status: DiaryStatus; score: number | null } | null;
   attempts: number /*shu kundagi urinishlar (AttendanceEvent)*/;
   rejectedAttempts: number /*ulardan rad etilganlari*/;
+  events: StudentAttendanceEvent[] /*kundagi BARCHA urinishlar, vaqt bo'yicha o'sish; bo'lmasa []*/;
+}
+
+interface StudentAttendanceEvent {
+  id: string /*AttendanceEvent id*/;
+  kind: AttendanceEventKind /*checkIn | checkOut*/;
+  at: string /*"08:58" (Toshkent) — server qabul qilgan vaqt, AttendancePunch.at bilan bir xil manba*/;
+  atIso: string /*ReceivedAt, to'liq ISO +05:00*/;
+  accepted: boolean;
+  rejectReason: CheckInRejectReason | null /*§3.1; qabul qilinganda null*/;
+  rejectMessage: string | null /*§3.2 o'zbekcha matni; qabul qilinganda null*/;
+  distanceM: number;
+  accuracyM: number;
+  radiusM: number /*urinish paytidagi korxona radiusi*/;
+  lat: number;
+  lng: number;
+  photoUrl: string | null /*"/api/files/<guid>" — selfi (rad etilgani ham), Bearer kerak*/;
 }
 
 interface AttendancePunch {
@@ -1534,8 +1610,12 @@ Qoidalar:
 
 - Bazada qatori yo'q kun ham qaytariladi — holat `AttendanceStatusResolver` bilan hisoblanadi (ish kuni emas →
   `dayOff`; tasdiqlangan ruxsat → `excused`; o'tgan kun → `absent`; bugun oyna yopilmagan bo'lsa → `pending`).
-- `checkIn`/`checkOut` — **qabul qilingan** belgilar (`DailyAttendance`). Rad etilgan urinishlar faqat
-  `attempts` / `rejectedAttempts` da aks etadi.
+- `checkIn`/`checkOut` — **qabul qilingan** belgilar (`DailyAttendance`). Rad etilgan urinishlar
+  `attempts` / `rejectedAttempts` (faqat check-in soni) va `events` da aks etadi.
+- `events` — shu kundagi barcha check-in **va** check-out urinishlari (`AttendanceEvent`, qabul qilingan ham, rad
+  etilgan ham) rasmi bilan — "talaba qanday rasmga tushdi". Tartib: `atIso` (server qabul qilgan vaqt) bo'yicha
+  o'sish. Faqat shu kun sanasidagi yozuvlar; so'rov oralig'i davr chegarasiga qisilgani uchun boshqa davr urinishlari
+  aralashmaydi. Admin endpoint'i (`/api/admin/students/{id}/attendance`) ham aynan shu shaklni qaytaradi.
 - `lat`/`lng` — `AttendanceEvent.Location` dan; `DailyAttendance` da koordinata saqlanmaydi, shuning uchun qo'lda
   kiritilgan kunda `null`.
 - `photoUrl` — check-in/check-out selfisi (`StoredFileKind.checkInPhoto`, §2.6). Rasm bo'lmasa `null`.
@@ -1559,6 +1639,10 @@ Xatolar:
 Javob — **mavjud** `TutorDiaryEntry[]` (`GET /api/tutor/diaries` bilan bir xil shakl, fayl havolalari bilan) —
 tanlangan davr (`periodId`, berilmasa sukut bo'yicha; talabaning umuman davri bo'lmasa — hammasi) yozuvlari.
 Tartib: `date` desc, keyin `submittedAt` desc. Ko'lamdan tashqari talaba yoki begona `periodId` → **404**.
+
+#### POST `/api/tutor/students/{id}/password` · 204 · 400 · 404 — v3.8
+
+Admin'nikidek (`POST /api/admin/students/{id}/password`, §2.3) — ayni buyruq. Ko'lamdan tashqari talaba → **404**.
 
 #### GET `/api/tutor/companies`
 
@@ -1594,6 +1678,12 @@ Ko'lamda biriktirilgan talabasi yo'q korxona (yoki mavjud bo'lmagan `id`) → **
 
 Shakl — `CompanyStudent[]` (§2.3 bilan bir xil), faqat **ko'lamdagi** talabalar. FISH bo'yicha tartib.
 Ko'lamda biriktirilgan talabasi yo'q korxona → **404**.
+
+#### GET `/api/tutor/companies/{id}/checkin-qr` · POST `/api/tutor/companies/{id}/checkin-qr/rotate` · 200 · 404 — v3.7
+
+Shakl va xulq — admin'dagi bilan bir xil (`CompanyCheckInQrDto`, §2.3; rotate → yangi token, eski QR yaroqsiz, audit
+`companyQrRotated` tyutor nomidan). Ko'lam — `GET /api/tutor/companies/{id}` dagidek: ko'lamda shu korxonaga
+**tasdiqlangan** arizasi bor talaba bo'lmasa (yoki `id` yo'q) → **404**.
 
 #### GET `/api/tutor/diaries` — `?status=<DiaryStatus>`
 
@@ -1753,6 +1843,8 @@ interface TodayCheckInDto {
   suspicious: boolean;
   autoClosed: boolean;
   note: string | null; /*amal mumkin bo'lmasa sabab: "Amaliyot joyingiz hali tasdiqlanmagan." …*/
+  photoRequired: boolean /*v3.7 — sozlama checkinPhotoRequired; true → selfi majburiy*/;
+  qrRequired: boolean /*v3.7 — sozlama checkinQrRequired; true → amaliyot joyidagi QR skanerlanishi majburiy*/;
 }
 interface TodayPlaceDto {
   company: string;
@@ -1789,7 +1881,7 @@ Ikkala endpoint ham **ikki formatni** qabul qiladi. Yo'l bitta, ammo kontrollerd
 | `Content-Type`          | Rasm                | Izoh                                                                       |
 | ----------------------- | ------------------- | -------------------------------------------------------------------------- |
 | `multipart/form-data`   | ixtiyoriy `photo`   | **Asosiy yo'l** — TWA doim shu bilan yuboradi                               |
-| `application/json`      | yo'q                | Eski klientlar va offline navbat; `checkinPhotoRequired=true` bo'lsa → 400 |
+| `application/json`      | yo'q                | Eski klientlar va offline navbat; `checkinPhotoRequired=true` (sukut) bo'lsa → 400 |
 
 Maydonlar (ikkalasi bir xil, `GeoRequestValidator`):
 
@@ -1800,6 +1892,7 @@ Maydonlar (ikkalasi bir xil, `GeoRequestValidator`):
 | `accuracy`   | number (m)   | ha               | 0..100000 (`errors.Accuracy`)                                                   |
 | `occurredAt` | ISO datetime | ha               | ≤ server + 1 min; ≥ server − 10 min (`errors.OccurredAt`)                       |
 | `photo`      | fayl         | sozlamaga qarab  | faqat multipart; ≤ **5 MB**, `image/jpeg,image/png,image/webp,image/heic,image/heif` |
+| `qr`         | string       | sozlamaga qarab  | v3.7 · skanerlangan QR satri `AMLQR:1:{token}` (multipart maydoni yoki JSON `qr`); ≤ 256 belgi (`errors.Qr`) |
 
 So'rov tanasining chegarasi — **6 MB** (`RequestSizeLimit` + `RequestFormLimits`), oshsa **413** (Kestrel, ProblemDetails'siz).
 
@@ -1811,6 +1904,7 @@ interface CheckinFormData {
   accuracy: number;
   occurredAt: string; // ISO 8601
   photo?: File; // checkinPhotoRequired=true bo'lsa majburiy
+  qr?: string; // v3.7 — skanerlangan QR satri; checkinQrRequired=true bo'lsa majburiy
 }
 ```
 
@@ -1821,6 +1915,7 @@ body.append('lng', String(lng));
 body.append('accuracy', String(accuracy));
 body.append('occurredAt', new Date().toISOString());
 if (photo) body.append('photo', photo, 'selfi.jpg');
+if (qr) body.append('qr', qr); // QR skaneridan kelgan satr, o'zgartirmasdan
 await api.post('/api/student/checkin', body); // Content-Type'ni brauzer o'zi qo'yadi (boundary bilan)
 ```
 
@@ -1839,11 +1934,29 @@ Xato → status (`CheckInRejectReason.ToException`), `detail` = §3.2 xabari:
 | `onLeave`                               | 400     | `windowClosed` (18:00 dan keyin)        | 400     |
 | `alreadyCheckedIn`                      | **409** | `poorAccuracy`                          | 400     |
 | `windowNotOpen` (09:00 dan oldin)       | 400     | `outOfRadius`                           | **409** |
-| `windowClosed` (10:30 dan keyin)        | 400     |                                         |         |
+| `windowClosed` (10:30 dan keyin)        | 400     | `qrInvalid` (v3.7; tartibi — pastda)    | **409** |
+| `qrInvalid` (v3.7, QR boshqa joyniki)   | **409** |                                         |         |
 | `poorAccuracy` (accuracy > 100 m)       | 400     |                                         |         |
 | `outOfRadius` (masofa > radius)         | **409** |                                         |         |
 
 Tekshiruv tartibi aynan shu (birinchi mos kelgan sabab qaytadi). Qabul: `localNow ≥ 09:15` → `late`, aks holda `present`.
+Check-out tartibi: `noCheckIn` → `alreadyCheckedOut` → `windowNotOpen` → `windowClosed` → `qrInvalid` → `poorAccuracy` → `outOfRadius`.
+
+**QR (v3.7).** `qr` yuborilgan bo'lsa u **har doim** (sozlamadan qat'i nazar) talabaning shu davrdagi tasdiqlangan
+arizasi korxonasining joriy tokeni bilan solishtiriladi. Mos kelmasa (boshqa korxona QR'i, almashtirilgan eski QR,
+noto'g'ri format — `AMLQR:1:` prefiksi va 32 hex belgidan boshqa har qanday satr) → urinish **rad etiladi**:
+**409**, `detail` = "QR kod bu amaliyot joyiga tegishli emas.", hodisa `rejectReason: "qrInvalid"` bilan selfisi birga
+saqlanadi (tyutor `events[]` da ko'radi). QR tekshiruvi ariza/davr/ish kuni/takror/oyna tekshiruvlaridan **keyin**,
+GPS aniqligi va radiusdan **oldin** — ya'ni QR noto'g'ri bo'lsa, radius tashqarisida bo'lsa ham sabab `qrInvalid`.
+
+**Majburiy qismlar** (`checkinPhotoRequired`, `checkinQrRequired` — ikkalasi sukut bo'yicha `true`): policy'dan
+**oldin** tekshiriladi, hodisa **yozilmaydi**, **400** `ValidationException`. Ikkalasi ham yetishmasa `errors` da
+ikkala kalit bo'ladi, `detail` — rasm xabari.
+
+| Holat                                                      | `detail` / `errors.Qr`                   |
+| ---------------------------------------------------------- | ---------------------------------------- |
+| `checkinQrRequired=true`, `qr` yuborilmagan yoki bo'sh      | "Amaliyot joyidagi QR kodni skanerlang." |
+| `qr` 256 belgidan uzun                                     | "QR kod satri juda uzun."                |
 
 **Rasm (selfi) xatolari** — hammasi **400**, `errors.Photo`:
 
@@ -2083,6 +2196,39 @@ Faqat **faol** korxona qaytadi. Faolsizlantirilgan (`PATCH …/status { isActive
 korxona bu yerda umuman ko'rinmaydi → **404** `"Bu STIR bilan faol korxona topilmadi. Korxona avval tizimga
 kiritilishi kerak — tyutoringizga murojaat qiling."` STIR formati noto'g'ri bo'lsa → **400**.
 
+#### GET `/api/student/profile` · 200 — v3.8
+
+Talaba kabineti (brauzer va TWA). Ko'rsatkichlar tyutor profilidagi (`GET /api/tutor/students/{id}`, sukut bo'yicha
+davr) bilan **ayni handler'dan** olinadi — farq qilmaydi. Admin/tyutor → 403 (body bo'sh).
+
+```ts
+interface StudentProfileDto {
+  id: string;
+  fullName: string;
+  hemisId: string;
+  phoneNumber: string | null;
+  faculty: string;
+  department: string;
+  direction: string;
+  group: string;
+  course: number;
+  tutor: { fullName: string; phoneNumber: string | null } | null; // guruhga biriktirilgan faol tyutor; bir nechta bo'lsa FISH bo'yicha birinchisi
+  telegramLinked: boolean;
+  hasPassword: boolean;
+  mustChangePassword: boolean;
+  practice: {
+    period: { id: string; name: string; status: 'planned' | 'active' | 'closed'; startDate: string; endDate: string };
+    company: { id: string; name: string; address: string | null } | null; // shu davrdagi tasdiqlangan ariza korxonasi
+    elapsedWorkDays: number; // davr boshidan o'tgan ish kunlari (sababli kunlar bilan; bugun — oyna yopilgan yoki belgilangan bo'lsa)
+    attendancePct: number; // sababli kunlar maxrajdan chiqariladi
+    suspiciousDays: number;
+    total: number; // joriy ball 0–100 (GradeCalculator); davr boshlanmagan bo'lsa 0
+    grade: number | null; // 2–5; davomat yetarli emas yoki davr boshlanmagan → null
+    finalized: boolean; // tyutor bahoni yakunlagan
+  } | null; // sukut bo'yicha davr (davom etayotgan → oxirgi tugagan → eng yaqin kelgusi) yo'q → null
+}
+```
+
 
 ## 3. Enum'lar (JSON — camelCase string)
 
@@ -2093,8 +2239,8 @@ kiritilishi kerak — tyutoringizga murojaat qiling."` STIR formati noto'g'ri bo
 | `UserRole`                         | `admin` · `tutor` · `student`                                                                                                                                                                                                                                                                                                             | `UserSummaryDto.role`, `AuditEntryDto.userRole` (JWT claim: `Admin`/`Tutor`/`Student`) |
 | `AttendanceStatus`                 | `pending` · `present` · `late` · `absent` · `excused` · `dayOff`                                                                                                                                                                                                                                                                          | tutor today `rows[].status`, TWA `checkin.status`                                      |
 | `CalendarDayStatus`                | `future` · `pending` · `present` · `late` · `absent` · `excused` · `dayOff`                                                                                                                                                                                                                                                               | tutor/TWA kalendar                                                                     |
-| `AttendanceEventKind`              | `checkIn` · `checkOut`                                                                                                                                                                                                                                                                                                                    | ichki                                                                                  |
-| `CheckInRejectReason`              | `none` · `notApproved` · `notWorkDay` · `periodNotStarted` · `periodEnded` · `windowNotOpen` · `windowClosed` · `poorAccuracy` · `outOfRadius` · `alreadyCheckedIn` · `noCheckIn` · `alreadyCheckedOut` · `onLeave`                                                                                                                       | API'da faqat xabar (§3.2)                                                              |
+| `AttendanceEventKind`              | `checkIn` · `checkOut`                                                                                                                                                                                                                                                                                                                    | `StudentAttendanceDay.events[].kind`                                                   |
+| `CheckInRejectReason`              | `none` · `notApproved` · `notWorkDay` · `periodNotStarted` · `periodEnded` · `windowNotOpen` · `windowClosed` · `poorAccuracy` · `outOfRadius` · `alreadyCheckedIn` · `noCheckIn` · `alreadyCheckedOut` · `onLeave` · `qrInvalid`                                                                                                                     | xabar (§3.2); `events[].rejectReason`                                                              |
 | `DiaryStatus`                      | `submitted` · `seen` · `rewrite` · `approved`                                                                                                                                                                                                                                                                                             | diary'lar                                                                              |
 | `DiaryReviewAction` (request)      | `approve` · `score` · `rewrite`                                                                                                                                                                                                                                                                                                           | tutor review                                                                           |
 | `DiaryState`                       | `written` · `pending` (+ `null`)                                                                                                                                                                                                                                                                                                          | tutor today `rows[].diary`                                                             |
@@ -2114,9 +2260,9 @@ kiritilishi kerak — tyutoringizga murojaat qiling."` STIR formati noto'g'ri bo
 | `TutorScopeLevel`                  | `faculty` · `department` · `direction` · `group`                                                                                                                                                                                                                                                                                          | admin tutors `scopes[].level`, `PUT .../scopes` body                                   |
 | `AdminStudentStatus`               | `active` · `flagged` · `unlinked`                                                                                                                                                                                                                                                                                                         | admin students                                                                         |
 | `CompanyFlag`                      | `suspicious` · `tooManyStudents` · `largeRadius` · `null` — ustuvorlik aynan shu tartibda                                                                                                                                                                                                                                                 | admin companies, tutor companies                                                       |
-| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorScopesChanged` · `studentsImported` · `company*` (§6.9) · `studentsAssignedToCompany` · `practicePeriodCreated` · `practicePeriodUpdated` · `practicePeriodGroupsChanged` · `practicePeriodClosed` · `practicePeriodDeleted` | admin audit `action`, `?action=`                                                       |
+| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorScopesChanged` · `studentsImported` · `company*` (§6.9) · `studentsAssignedToCompany` · `practicePeriodCreated` · `practicePeriodUpdated` · `practicePeriodGroupsChanged` · `practicePeriodClosed` · `practicePeriodDeleted` · `companyQrRotated` (v3.7) · `studentPasswordSet` · `passwordChanged` (v3.8) | admin audit `action`, `?action=`                                                       |
 | `SettingType`                      | `int` · `bool` · `weekdays`                                                                                                                                                                                                                                                                                                               | settings `type`                                                                        |
-| `SettingKey` (string const)        | `geofenceRadius` · `lateTolerance` · `minGpsAccuracy` · `autoCheckout` · `workDays` · `dailyReportRequired` · `minReportLength` · `diaryPdfRequired` · `checkInWindow` · `checkinPhotoRequired` · `maxStudentsPerCompany`                                                                                                                                      | settings                                                                               |
+| `SettingKey` (string const)        | `geofenceRadius` · `lateTolerance` · `minGpsAccuracy` · `autoCheckout` · `workDays` · `dailyReportRequired` · `minReportLength` · `diaryPdfRequired` · `checkInWindow` · `checkinPhotoRequired` · `checkinQrRequired` · `maxStudentsPerCompany`                                                                                                                                    | settings                                                                               |
 | `DocumentTemplateKind`             | `contract` · `referral` · `reference`                                                                                                                                                                                                                                                                                                     | settings templates                                                                     |
 | `StoredFileKind`                   | `contract` · `diaryAttachment` · `leaveDocument` · `template` · `checkInPhoto`                                                                                                                                                                                                                                                            | ichki (files ko'lami); `AttendancePunch.photoUrl`                                      |
 | Grade                              | `2` · `3` · `4` · `5` · `null`                                                                                                                                                                                                                                                                                                            | grading, portfolio (number)                                                            |
@@ -2137,6 +2283,7 @@ kiritilishi kerak — tyutoringizga murojaat qiling."` STIR formati noto'g'ri bo
 | `noCheckIn`         | **409** | Avval kelganingizni belgilang.                                      |
 | `alreadyCheckedOut` | **409** | Ketish allaqachon belgilangan.                                      |
 | `onLeave`           | 400     | Bu kunga ruxsat tasdiqlangan — belgilanish shart emas.              |
+| `qrInvalid`         | **409** | QR kod bu amaliyot joyiga tegishli emas.                            |
 
 Shu xabarlar `TodayDto.checkin.note` da ham keladi (amal hozir mumkin bo'lmasa).
 
@@ -2584,3 +2731,50 @@ migratsiya yo'q.
 
 - Jami endpoint: **99 → 101** (Admin 61 → 63).
 - Hisob faqat aniq shu davr yozuvlari bo'yicha (sukut bo'yicha davr tanlash §4.6 ishlatilmaydi); davomat §4.2, ball/baho §4.4.
+
+### 6.x (24.09.2026): `StudentAttendanceDay.events` — kundagi barcha urinishlar rasmi bilan
+
+Faqat qo'shimcha maydon (buzmaydi), yangi endpoint va migratsiya yo'q. `GET /api/tutor/students/{id}/attendance` va
+`GET /api/admin/students/{id}/attendance` javobidagi har kunga `events: StudentAttendanceEvent[]` qo'shildi (§2.5):
+qabul qilingan va rad etilgan check-in/check-out urinishlari — vaqt, sabab (`rejectReason`/`rejectMessage`),
+masofa/aniqlik/radius, koordinata va selfi (`photoUrl`). Mavjud maydonlar o'zgarmadi.
+
+### 6.13 v3.6 → v3.7 (24.09.2026): amaliyot joyida QR kod bilan check-in/check-out
+
+Oqim: talaba korxonaga keladi → korxonada osilgan QR'ni TWA'da skanerlaydi → GPS → selfi → check-in (check-out ham
+xuddi shunday). Backend QR'ni korxona tokeni bilan solishtiradi.
+
+- **Yangi endpoint'lar (4):** `GET/POST /api/admin/companies/{id}/checkin-qr[/rotate]` (§2.3) va
+  `GET/POST /api/tutor/companies/{id}/checkin-qr[/rotate]` (§2.5, ko'lam — korxona tafsilotidagidek).
+  Javob — `CompanyCheckInQrDto { companyId, companyName, payload: "AMLQR:1:<32 hex>", rotatedAt }`.
+  Jami endpoint: **101 → 105** (Admin 63 → 65, Tutor 19 → 21).
+- **Check-in/check-out:** yangi ixtiyoriy maydon `qr` (multipart va JSON). Noto'g'ri/begona/eskirgan QR →
+  **409** `qrInvalid` ("QR kod bu amaliyot joyiga tegishli emas."), urinish selfisi bilan `AttendanceEvent` ga
+  yoziladi. QR majburiy va yo'q → **400** `errors.Qr` ("Amaliyot joyidagi QR kodni skanerlang."), hodisa yozilmaydi.
+- **Enum'lar:** `CheckInRejectReason` + `qrInvalid` (13); `AuditAction` + `companyQrRotated` (61).
+- **Sozlamalar:** yangi `checkinQrRequired` (bool, sukut `true`); **`checkinPhotoRequired` sukuti `false` → `true`**
+  (yangi o'rnatishlar uchun; mavjud bazadagi qator qiymati o'zgarmaydi — admin sozlamalar sahifasida yoqadi).
+- **TWA:** `TodayDto.checkin.photoRequired` va `TodayDto.checkin.qrRequired` (bool) — talaba qaysi qadamlar
+  majburiyligini shu yerdan biladi (avval `checkinPhotoRequired` talabaga umuman ko'rsatilmas edi).
+- **Breaking (amalda):** sukut bo'yicha rasm ham, QR ham majburiy — rasmsiz JSON yo'li faqat
+  `checkinPhotoRequired=false` bo'lsa ishlaydi (`qr` JSON'da ham yuboriladi); TWA multipart + `photo` + `qr` yuborsin.
+- **Migratsiya** `CompanyCheckInQr`: `companies.check_in_qr_token` (varchar 64, unique) va `check_in_qr_rotated_at`;
+  mavjud korxonalarga token backfill qilinadi.
+
+### 6.14 v3.7 → v3.8 (24.09.2026): talaba brauzerda (HEMIS ID + parol), parol almashtirish, talaba kabineti
+
+Bot tayyor bo'lguncha talaba TWA'ni oddiy brauzerda ham ishlatadi.
+
+- **`POST /api/auth/login`** endi talabani ham qabul qiladi — profil HEMIS ID'si + xodim o'rnatgan parol. Paroli yo'q
+  talaba → 403 "HEMIS ID yoki parol noto'g'ri." (hisob borligi oshkor qilinmaydi). Xato kodi — mavjud qoida bo'yicha
+  **403** (401 emas).
+- **`AuthResultDto.mustChangePassword: boolean`** — login/refresh/telegram javoblarining barchasida.
+- **Yangi endpoint'lar (4):** `POST /api/auth/change-password` (§2.1), `POST /api/admin/students/{id}/password` (§2.3),
+  `POST /api/tutor/students/{id}/password` (§2.5), `GET /api/student/profile` (§2.6).
+  Jami endpoint: **105 → 109** (Auth 5 → 6, Admin 65 → 66, Tutor 21 → 22, Student 11 → 12).
+- **`hasPassword: boolean`** — `TutorStudentDetail` va `AdminStudentDetail` da.
+- **Xato kalitlari PascalCase** (FluentValidation konvensiyasi, §1.7): `errors.CurrentPassword`, `errors.NewPassword`,
+  `errors.Password`.
+- **Enum'lar:** `AuditAction` + `studentPasswordSet` (62), `passwordChanged` (63).
+- **Migratsiya** `StudentWebLogin`: `users.must_change_password` (bool, not null, sukut `false`).
+- **Demo seed:** talaba `341030` / `talaba12345` (mavjud demo bazada ham, parol bo'lmasa, qayta ishga tushganda o'rnatiladi).

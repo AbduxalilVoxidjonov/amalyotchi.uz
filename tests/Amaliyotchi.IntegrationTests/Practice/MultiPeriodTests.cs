@@ -11,6 +11,7 @@ using Amaliyotchi.Domain.Common;
 using Amaliyotchi.Domain.Companies;
 using Amaliyotchi.Domain.Grading;
 using Amaliyotchi.Domain.Practice;
+using Amaliyotchi.Domain.Settings;
 using Amaliyotchi.IntegrationTests.Admin;
 using Amaliyotchi.IntegrationTests.Infrastructure;
 using Amaliyotchi.IntegrationTests.Student;
@@ -177,9 +178,14 @@ public sealed class MultiPeriodTests(ApiFixture fixture)
         today.Checkin.Note.Should().Contain("hali boshlanmagan").And.Contain(s.Spring.Name)
             .And.Contain(s.Spring.StartDate.ToString("dd.MM.yyyy", System.Globalization.CultureInfo.InvariantCulture));
 
-        var response = await s.StudentClient.PostJsonAsync("/api/student/checkin", Factory.Geo());
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await response.Content.ReadAsStringAsync()).Should().Contain("hali boshlanmagan");
+        // Selfi talabi o'chiriladi (JSON yo'li), QR yuboriladi — rad sababi aynan davr bo'lishi uchun.
+        await using (await Factory.UseSettingAsync(SettingKeys.CheckInPhotoRequired, "false"))
+        {
+            var response = await s.StudentClient.PostJsonAsync(
+                "/api/student/checkin", Factory.Geo(qr: s.Company.CheckInQrPayload));
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await response.Content.ReadAsStringAsync()).Should().Contain("hali boshlanmagan");
+        }
 
         var events = await Factory.WithDbAsync(db => db.AttendanceEvents.CountAsync(e => e.StudentUserId == s.Student.Id));
         events.Should().Be(0, "davr yo'q — urinish hodisasi yozilmaydi");

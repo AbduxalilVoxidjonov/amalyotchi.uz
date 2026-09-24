@@ -6,12 +6,13 @@ import type { CheckinRequest, TodayDto } from './types';
  * Check-in/check-out — multipart/form-data (kontrakt §1.3). Kundalik yuborish naqshi bilan bir xil:
  * `api` klienti `FormData` ni o'zgarishsiz uzatadi (Content-Type'ni brauzer boundary bilan qo'yadi).
  */
-function checkinForm({ lat, lng, accuracy, occurredAt, photo }: CheckinRequest): FormData {
+function checkinForm({ lat, lng, accuracy, occurredAt, photo, qr }: CheckinRequest): FormData {
   const form = new FormData();
   form.append('lat', String(lat));
   form.append('lng', String(lng));
   form.append('accuracy', String(accuracy));
   form.append('occurredAt', occurredAt);
+  if (qr) form.append('qr', qr);
   if (photo) form.append('photo', photo, photo.name);
   return form;
 }

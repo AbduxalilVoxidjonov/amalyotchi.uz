@@ -24,6 +24,8 @@ export const STUDENT_ENDPOINTS = {
   leaveRequests: '/api/student/leave-requests',
   /** GET → PortfolioDto | 404 (faol davr yo'q) */
   portfolio: '/api/student/portfolio',
+  /** GET → StudentProfileDto (shaxsiy/o'quv ma'lumotlari, amaliyot xulosasi, hisob holati) */
+  profile: '/api/student/profile',
 } as const;
 
 /**

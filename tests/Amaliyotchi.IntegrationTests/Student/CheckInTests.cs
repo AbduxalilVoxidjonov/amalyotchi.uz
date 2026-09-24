@@ -12,9 +12,21 @@ namespace Amaliyotchi.IntegrationTests.Student;
 /// <summary><c>POST /api/student/checkin</c>: geofence oqimi. Davr standart qoidalar (09:00–17:00, kechikish 09:15,
 /// oyna 10:30 gacha) bilan, soat <see cref="MutableClock"/> orqali kerakli momentga muzlatiladi — haqiqiy vaqtga bog'liq emas.</summary>
 [Collection(ApiCollection.Name)]
-public sealed class CheckInTests(ApiFixture fixture)
+public sealed class CheckInTests(ApiFixture fixture) : IAsyncLifetime
 {
     private ApiFactory Factory => fixture.Factory;
+
+    private IAsyncDisposable? _photoSetting;
+
+    /// <summary>Bu klass geofence/oyna mantiqini rasmsiz JSON yo'li orqali tekshiradi — selfi talabi (sukut <c>true</c>)
+    /// har test uchun o'chiriladi va keyin qaytariladi. QR talabi yoqiq: har so'rov sahna korxonasining QR'ini yuboradi.</summary>
+    public async Task InitializeAsync() => _photoSetting = await Factory.WithoutPhotoRequirementAsync();
+
+    public async Task DisposeAsync()
+    {
+        if (_photoSetting is not null)
+            await _photoSetting.DisposeAsync();
+    }
 
     [Fact]
     public async Task OynaIchida_RadiusIchida_200_Present()
@@ -25,7 +37,7 @@ public sealed class CheckInTests(ApiFixture fixture)
         try
         {
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 5)));
-            var response = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo());
+            var response = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo(qr: scene.Qr()));
 
             response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
             var today = await response.Content.ReadAsync<TodayDto>();
@@ -62,7 +74,7 @@ public sealed class CheckInTests(ApiFixture fixture)
         try
         {
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 20)));
-            var response = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo());
+            var response = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo(qr: scene.Qr()));
 
             response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
             (await response.Content.ReadAsync<TodayDto>())!.Checkin.Status.Should().Be(AttendanceStatus.Late);
@@ -82,7 +94,7 @@ public sealed class CheckInTests(ApiFixture fixture)
         try
         {
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 5)));
-            var response = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo(lat: StudentTestData.FarLat));
+            var response = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo(lat: StudentTestData.FarLat, qr: scene.Qr()));
 
             response.StatusCode.Should().Be(HttpStatusCode.Conflict);
             response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
@@ -119,10 +131,10 @@ public sealed class CheckInTests(ApiFixture fixture)
         try
         {
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 5)));
-            (await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo())).StatusCode.Should().Be(HttpStatusCode.OK);
+            (await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo(qr: scene.Qr()))).StatusCode.Should().Be(HttpStatusCode.OK);
 
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 6)));
-            var second = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo());
+            var second = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo(qr: scene.Qr()));
 
             second.StatusCode.Should().Be(HttpStatusCode.Conflict);
             (await second.Content.ReadAsStringAsync()).Should().Contain("allaqachon");
@@ -149,8 +161,8 @@ public sealed class CheckInTests(ApiFixture fixture)
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 5)));
             var occurredAt = fixture.Clock.UtcNow.AddSeconds(-5);
 
-            var first = await scene.Client.PostJsonAsync("/api/student/checkin", StudentTestData.Geo(occurredAt));
-            var repeat = await scene.Client.PostJsonAsync("/api/student/checkin", StudentTestData.Geo(occurredAt));
+            var first = await scene.Client.PostJsonAsync("/api/student/checkin", StudentTestData.Geo(occurredAt, qr: scene.Qr()));
+            var repeat = await scene.Client.PostJsonAsync("/api/student/checkin", StudentTestData.Geo(occurredAt, qr: scene.Qr()));
 
             first.StatusCode.Should().Be(HttpStatusCode.OK);
             repeat.StatusCode.Should().Be(HttpStatusCode.OK, "takror so'rov (offline navbat) — mavjud natija");
@@ -174,7 +186,7 @@ public sealed class CheckInTests(ApiFixture fixture)
         try
         {
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 5)));
-            var response = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo(accuracy: 500));
+            var response = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo(accuracy: 500, qr: scene.Qr()));
 
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
             (await response.Content.ReadAsStringAsync()).Should().Contain("GPS aniqligi");
@@ -200,7 +212,7 @@ public sealed class CheckInTests(ApiFixture fixture)
         try
         {
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 5)));
-            var response = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo());
+            var response = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo(qr: scene.Qr()));
 
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest, "CheckInRejectReason.NotWorkDay → DomainException (400)");
             (await response.Content.ReadAsStringAsync()).Should().Contain("ish kuni emas");
@@ -226,7 +238,7 @@ public sealed class CheckInTests(ApiFixture fixture)
         try
         {
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(11, 0)));
-            var response = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo());
+            var response = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo(qr: scene.Qr()));
 
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
             (await response.Content.ReadAsStringAsync()).Should().Contain("yopilgan");
@@ -248,7 +260,7 @@ public sealed class CheckInTests(ApiFixture fixture)
         try
         {
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 5)));
-            var response = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo());
+            var response = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo(qr: scene.Qr()));
 
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
             (await response.Content.ReadAsStringAsync()).Should().Contain("tasdiqlanmagan");
@@ -276,7 +288,7 @@ public sealed class CheckInTests(ApiFixture fixture)
         {
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 5)));
             var response = await scene.Client.PostJsonAsync(
-                "/api/student/checkin", StudentTestData.Geo(fixture.Clock.UtcNow.AddSeconds(offsetSeconds)));
+                "/api/student/checkin", StudentTestData.Geo(fixture.Clock.UtcNow.AddSeconds(offsetSeconds), qr: scene.Qr()));
 
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
             (await response.Content.ReadAsStringAsync()).Should().Contain("OccurredAt");

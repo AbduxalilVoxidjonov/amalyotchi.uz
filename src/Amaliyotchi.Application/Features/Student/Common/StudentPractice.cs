@@ -13,7 +13,7 @@ namespace Amaliyotchi.Application.Features.Student.Common;
 
 /// <summary>Tizim sozlamalaridan talaba oqimiga kerakli qismi (yo'q kalit → domain default).</summary>
 internal sealed record StudentSettings(
-    double MinGpsAccuracyM, int MinReportLength, bool CheckInPhotoRequired, bool DiaryPdfRequired);
+    double MinGpsAccuracyM, int MinReportLength, bool CheckInPhotoRequired, bool DiaryPdfRequired, bool CheckInQrRequired);
 
 /// <summary>Bitta talabaning amaliyot holati: profil (foydalanuvchi + guruh), sirt maqsadiga ko'ra tanlangan davr
 /// (<see cref="PeriodSelection"/>), shu davr bo'yicha ariza (korxona bilan), talabaning barcha davrlari, bayramlar,
@@ -130,7 +130,7 @@ internal static class StudentPracticeLoader
         string[] keys =
         [
             SettingKeys.MinGpsAccuracy, SettingKeys.MinReportLength,
-            SettingKeys.CheckInPhotoRequired, SettingKeys.DiaryPdfRequired
+            SettingKeys.CheckInPhotoRequired, SettingKeys.DiaryPdfRequired, SettingKeys.CheckInQrRequired
         ];
         var values = await db.AppSettings
             .AsNoTracking()
@@ -141,7 +141,8 @@ internal static class StudentPracticeLoader
             Int(values, SettingKeys.MinGpsAccuracy),
             Int(values, SettingKeys.MinReportLength),
             Bool(values, SettingKeys.CheckInPhotoRequired),
-            Bool(values, SettingKeys.DiaryPdfRequired));
+            Bool(values, SettingKeys.DiaryPdfRequired),
+            Bool(values, SettingKeys.CheckInQrRequired));
     }
 
     /// <summary>Mantiqiy sozlama: yo'q yoki buzuq qiymat → ta'rifdagi standart.</summary>

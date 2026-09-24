@@ -18,6 +18,7 @@ export type SettingKey =
   | 'minReportLength'
   | 'checkInWindow'
   | 'checkinPhotoRequired'
+  | 'checkinQrRequired'
   | 'maxStudentsPerCompany'
   | 'diaryPdfRequired';
 

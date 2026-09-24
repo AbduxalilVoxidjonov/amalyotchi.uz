@@ -150,3 +150,97 @@
     grid-template-columns: 1fr;
   }
 }
+/* Jadval "Rasm" katagi: kirish va chiqish thumbnail'lari yonma-yon (har biri 54px). */
+.thumbs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.thumbEmpty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border: var(--border-dashed);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+  color: var(--color-text-faint);
+}
+/* Urinishlar galereyasi: ixcham oynada (~640px) 4 tagacha katak bir qatorda, ko'p bo'lsa o'raladi. */
+.attempts {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.attemptGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.attempt {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+  padding: 6px;
+  border: var(--border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.attempt[data-accepted='false'] {
+  border-color: var(--color-bad-border);
+}
+.attemptNoPhoto {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 5;
+  border: var(--border-dashed);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  font-size: var(--fs-sm);
+  color: var(--color-text-faint);
+}
+.attemptHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+.attemptTime {
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-2);
+}
+.attemptKind {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+.attemptBadge {
+  justify-self: start;
+}
+.attemptReason,
+.attemptDistance {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-note);
+  overflow-wrap: anywhere;
+}
+.attemptReason {
+  color: var(--color-bad-fg);
+}
+.attemptDistance {
+  font-family: var(--font-mono);
+  color: var(--color-text-2);
+}
+.attemptDistance .dim,
+.attemptDistance .outNote {
+  font-family: var(--font-sans);
+}
+.attemptDistance .outNote {
+  color: var(--color-bad-fg);
+}

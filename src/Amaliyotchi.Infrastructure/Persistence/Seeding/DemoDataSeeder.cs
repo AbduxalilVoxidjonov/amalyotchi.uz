@@ -35,6 +35,11 @@ public sealed class DemoDataSeeder(
     public const string TutorPhone = "+998907654321";
     public const string TutorHemisId = "100000000002";
     public const string TutorPassword = "tutor12345";
+
+    /// <summary>Brauzer orqali (HEMIS ID + parol) kirishni darhol sinash uchun demo talaba — Aliyev Akmal (412-22).
+    /// Parol "o'zi o'rnatgan" kabi saqlanadi (<c>MustChangePassword=false</c>).</summary>
+    public const string StudentHemisId = "341030";
+    public const string StudentPassword = "talaba12345";
     public const string PeriodName = "Ishlab chiqarish amaliyoti 2026";
 
     /// <summary>Demo ikkinchi davr — bir o'quv yilida kuzgi + bahorgi davr stsenariysi uchun.</summary>
@@ -102,6 +107,7 @@ public sealed class DemoDataSeeder(
         if (await db.Users.AnyAsync(u => u.PhoneNumber == TutorPhone, cancellationToken))
         {
             await TopUpAttendanceEventsAsync(today, random, cancellationToken);
+            await EnsureDemoStudentPasswordAsync(cancellationToken);
             logger.LogInformation("Demo seed: demo tyutor ({Phone}) allaqachon mavjud — o'tkazib yuborildi", TutorPhone);
             return;
         }
@@ -156,7 +162,7 @@ public sealed class DemoDataSeeder(
             TutorScope.Create(tutorEconomics.Id, TutorScopeLevel.Group, economics.Id, economicsBanking.Id, group221.DirectionId, group221.Id),
             TutorScope.Create(tutorConstruction.Id, TutorScopeLevel.Group, construction.Id, constructionEngineering.Id, group318.DirectionId, group318.Id));
 
-        // 3. Korxonalar (Toshkent)
+        // 3. Korxonalar (Toshkent). Har biri Create paytida o'z check-in QR tokenini oladi (AMLQR:1:{token}).
         var companies = new[]
         {
             Company.Create("Tech Solutions MChJ", "304512889", "Dasturiy ta'minot ishlab chiqish",
@@ -190,6 +196,8 @@ public sealed class DemoDataSeeder(
             var phone = "+99890100000" + (i + 1).ToString(CultureInfo.InvariantCulture);
             var user = User.CreateStudent(name, it.Id, phone);
             user.LinkTelegram(FirstTelegramId + i, phone);
+            if (hemisId == StudentHemisId)
+                user.SetPasswordHash(passwordHasher.Hash(StudentPassword));
             var profile = StudentProfile.Create(user.Id, hemisId, groups[groupIndex].Id);
             students.Add(new DemoStudent(user, profile, companies[companyIndex], i));
         }
@@ -410,6 +418,22 @@ public sealed class DemoDataSeeder(
             students.Count, companies.Length,
             string.Join(", ", counts.Select(c => $"{c.Key}={c.Value}")),
             attendanceCount, events.Accepted, events.Rejected, diaryCount, leaves.Count, grades.Length);
+    }
+
+    /// <summary>Eski seed'dan qolgan baza: demo talabada (<see cref="StudentHemisId"/>) parol bo'lmasa — o'rnatiladi
+    /// (brauzer login'ini sinash uchun). Parol allaqachon bor bo'lsa (o'zi o'zgartirgan bo'lishi mumkin) tegilmaydi.</summary>
+    private async Task EnsureDemoStudentPasswordAsync(CancellationToken cancellationToken)
+    {
+        var student = await db.Users
+            .FirstOrDefaultAsync(
+                u => u.Role == UserRole.Student && u.StudentProfile != null && u.StudentProfile.HemisId == StudentHemisId,
+                cancellationToken);
+        if (student is null || student.PasswordHash is not null)
+            return;
+
+        student.SetPasswordHash(passwordHasher.Hash(StudentPassword));
+        await db.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Demo seed: demo talaba ({HemisId}) uchun parol o'rnatildi", StudentHemisId);
     }
 
     /// <summary>Eski seed'dan qolgan baza (hodisalarsiz davomat): demo davri bor, lekin davomat qatorlarining

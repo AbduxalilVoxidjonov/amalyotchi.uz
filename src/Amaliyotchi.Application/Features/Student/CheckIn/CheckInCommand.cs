@@ -10,7 +10,8 @@ namespace Amaliyotchi.Application.Features.Student.CheckIn;
 /// <summary><c>POST /api/student/checkin</c> (multipart yoki JSON). Javob — yangilangan <see cref="TodayDto"/>.
 /// 400: oyna ochilmagan/yopiq, ish kuni emas, GPS aniqligi yomon, davr, rasm qoidalari; 409: radius tashqarisi,
 /// allaqachon belgilangan. Har urinish (rad etilgani ham) <see cref="AttendanceEvent"/> ga rasmi bilan yoziladi.</summary>
-public sealed record CheckInCommand(double Lat, double Lng, double Accuracy, DateTimeOffset OccurredAt, UploadedFile? Photo = null)
+public sealed record CheckInCommand(
+    double Lat, double Lng, double Accuracy, DateTimeOffset OccurredAt, UploadedFile? Photo = null, string? Qr = null)
     : IRequest<TodayDto>, IGeoRequest;
 
 public sealed class CheckInCommandValidator : GeoRequestValidator<CheckInCommand>
@@ -43,7 +44,8 @@ internal sealed class CheckInCommandHandler(
                     AlreadyCheckedIn: s.Attendance is not null,
                     AccuracyM: request.Accuracy,
                     DistanceM: s.DistanceM,
-                    RadiusM: s.Company.RadiusM),
+                    RadiusM: s.Company.RadiusM,
+                    QrValid: s.QrValid),
                 s.Rules),
             apply: (s, verdict, attempt) =>
             {

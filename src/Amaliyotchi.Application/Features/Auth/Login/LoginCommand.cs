@@ -8,7 +8,9 @@ using Hemis = Amaliyotchi.Domain.ValueObjects.HemisId;
 
 namespace Amaliyotchi.Application.Features.Auth.Login;
 
-/// <summary>Admin va tyutor uchun HEMIS ID + parol bilan kirish. Talaba bu yo'ldan kirmaydi.</summary>
+/// <summary>HEMIS ID + parol bilan kirish. Avval xodim (admin/tyutor, <c>User.HemisId</c>) qidiriladi, topilmasa —
+/// talaba (<c>StudentProfile.HemisId</c>, o'chirilmagan profil). Talaba faqat xodim unga parol o'rnatgan bo'lsa
+/// kira oladi (brauzer rejimi); parolsiz hisob umumiy "HEMIS ID yoki parol noto'g'ri" xatosini oladi.</summary>
 public sealed record LoginCommand(string HemisId, string Password) : IRequest<AuthResultDto>;
 
 internal sealed class LoginCommandHandler(
@@ -35,7 +37,16 @@ internal sealed class LoginCommandHandler(
             .Include(u => u.RefreshTokens.Where(t => t.ExpiresAt <= now))
             .FirstOrDefaultAsync(u => u.HemisId == hemisId, cancellationToken);
 
-        if (user is null || user.PasswordHash is null || user.Role == UserRole.Student)
+        // Talaba: login identifikatori — profil HEMIS ID'si (User.HemisId talabada null). O'chirilgan profil
+        // global filtr bilan chiqib ketadi.
+        user ??= await db.Users
+            .WithSummary()
+            .Include(u => u.RefreshTokens.Where(t => t.ExpiresAt <= now))
+            .FirstOrDefaultAsync(
+                u => u.Role == UserRole.Student && u.StudentProfile != null && u.StudentProfile.HemisId == hemisId,
+                cancellationToken);
+
+        if (user is null || user.PasswordHash is null)
         {
             throw await LoginFailedAsync(
                 user, "Foydalanuvchi topilmadi yoki parol bilan kirish mumkin emas",
@@ -51,7 +62,10 @@ internal sealed class LoginCommandHandler(
         {
             throw await LoginFailedAsync(
                 user, "Hisob faol emas",
-                "Hisobingiz faol emas. Administratorga murojaat qiling.", cancellationToken);
+                user.IsStudent
+                    ? "Hisobingiz faol emas. Tyutoringizga murojaat qiling."
+                    : "Hisobingiz faol emas. Administratorga murojaat qiling.",
+                cancellationToken);
         }
 
         if (needsRehash)
@@ -77,7 +91,8 @@ internal sealed class LoginCommandHandler(
             accessToken.Value,
             accessToken.ExpiresAt,
             refreshToken.Token,
-            UserSummaryDto.From(user));
+            UserSummaryDto.From(user),
+            user.MustChangePassword);
     }
 
     /// <summary>Muvaffaqiyatsiz urinishni audit jurnaliga yozib, DARHOL saqlaydi —

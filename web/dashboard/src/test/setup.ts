@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll } from 'vitest';
+import { resetCheckinQrMock } from '@/features/shared/checkin-qr/mocks';
 import { resetTutorMocks } from '@/features/tutor/mocks';
 import { resetMockState } from '@/mocks/data';
 import { server } from '@/mocks/server';
@@ -14,6 +15,7 @@ afterEach(() => {
   resetMockState();
   // Mutatsiya qiladigan mock'lar (ariza qarori, kundalik bahosi, ruxsat, baholash) — testlar bir-biriga ta'sir qilmasin.
   resetTutorMocks();
+  resetCheckinQrMock();
   useAuthStore.getState().clear();
   window.localStorage.clear();
 });

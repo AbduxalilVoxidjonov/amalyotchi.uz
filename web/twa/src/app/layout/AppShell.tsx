@@ -1,5 +1,5 @@
 import { Suspense, useEffect } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Avatar, LoadingState } from '@/shared/ui';
 import { useAuthStore } from '@/shared/auth/store';
 import { crumbFor, navItemForPath } from '../nav';
@@ -28,11 +28,13 @@ export function AppShell() {
           <div className={styles.crumb}>{crumbFor(user)}</div>
           <h1 className={styles.title}>{title}</h1>
         </div>
-        <Avatar
-          name={user?.fullName ?? null}
-          variant="card"
-          aria-label={user?.fullName ?? 'Talaba'}
-        />
+        <Link
+          to="/profil"
+          className={styles.avatarLink}
+          aria-label={`Profil — ${user?.fullName ?? 'Talaba'}`}
+        >
+          <Avatar name={user?.fullName ?? null} variant="card" />
+        </Link>
       </header>
       <main className={styles.content}>
         <Suspense fallback={<LoadingState height={240} />}>

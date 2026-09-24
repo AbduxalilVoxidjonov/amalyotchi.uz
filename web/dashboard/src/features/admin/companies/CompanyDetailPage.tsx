@@ -1,5 +1,6 @@
 import { useParams } from 'react-router-dom';
 import type { BreadcrumbItem } from '@/shared/ui';
+import { CheckInQrCard } from '../../shared/checkin-qr';
 import { LoadingState } from '../components/PageStatus';
 import { HierarchyListPage } from '../faculties/components/HierarchyListPage';
 import { CompanyDetailView } from './components/CompanyDetailView';
@@ -11,7 +12,7 @@ const ROOT: BreadcrumbItem[] = [{ label: 'Korxonalar', to: '/admin/companies' }]
 
 /**
  * Admin · Korxona sahifasi (`/admin/companies/:companyId`): korxona kartasi + lokatsiya,
- * STIR nazorati, amaliyot davrlari kesimi va shu korxonadagi talabalar jadvali.
+ * STIR nazorati, amaliyot davrlari kesimi, check-in QR kodi va shu korxonadagi talabalar jadvali.
  * Breadcrumb/404/xato qobig'i — `HierarchyListPage` (tyutor detali bilan bir xil naqsh).
  */
 export function CompanyDetailPage() {
@@ -34,6 +35,7 @@ export function CompanyDetailPage() {
       {company ? (
         <div className={styles.stack}>
           <CompanyDetailView company={company} />
+          <CheckInQrCard area="admin" companyId={company.id} />
           <CompanyStudentsTable
             rows={studentsQuery.data ?? []}
             isLoading={studentsQuery.isPending}

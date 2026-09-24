@@ -66,9 +66,10 @@ internal sealed class GetStudentAttendanceQueryHandler(IApplicationDbContext db,
 
         var events = (await db.AttendanceEvents.AsNoTracking().InScope(scope)
                 .Where(e => e.StudentUserId == request.StudentId && e.Date >= from && e.Date <= to)
-                .OrderBy(e => e.ReceivedAt)
+                .OrderBy(e => e.ReceivedAt).ThenBy(e => e.Id)
                 .Select(e => new AttendanceEventRow(
-                    e.Date, e.Kind, e.Accepted, e.Location.Latitude, e.Location.Longitude, e.AccuracyM, e.PhotoFileId))
+                    e.Id, e.Date, e.Kind, e.ReceivedAt, e.Accepted, e.RejectReason,
+                    e.Location.Latitude, e.Location.Longitude, e.AccuracyM, e.DistanceM, e.RadiusM, e.PhotoFileId))
                 .ToListAsync(cancellationToken))
             .ToLookup(e => e.Date);
 
@@ -122,10 +123,31 @@ internal sealed class GetStudentAttendanceQueryHandler(IApplicationDbContext db,
                 row?.LeaveRequestId ?? leave?.Id,
                 diaries.GetValueOrDefault(date),
                 checkIns.Count,
-                checkIns.Count(e => !e.Accepted)));
+                checkIns.Count(e => !e.Accepted),
+                dayEvents.Select(ToEvent).ToList()));
         }
 
         return days;
+    }
+
+    /// <summary>Urinish yozuvini API shakliga o'tkazadi. Vaqt — <c>ReceivedAt</c> (punch bilan bir xil manba).</summary>
+    private static StudentAttendanceEvent ToEvent(AttendanceEventRow e)
+    {
+        var rejected = !e.Accepted && e.RejectReason != CheckInRejectReason.None;
+        return new StudentAttendanceEvent(
+            e.Id,
+            e.Kind,
+            PracticeTime.Hm(e.ReceivedAt),
+            PracticeTime.ToLocal(e.ReceivedAt),
+            e.Accepted,
+            rejected ? e.RejectReason : null,
+            rejected ? e.RejectReason.Message() : null,
+            e.DistanceM,
+            e.AccuracyM,
+            e.RadiusM,
+            e.Latitude,
+            e.Longitude,
+            e.PhotoFileId is { } id ? FileUrls.For(id) : null);
     }
 
     /// <summary>Kunlik qatordagi vaqt/masofa + hodisadagi koordinata va aniqlikni birlashtiradi.
@@ -168,10 +190,15 @@ internal sealed record AttendanceDayRow(
 
 /// <summary>Urinish yozuvi — koordinata va aniqlik faqat shu yerda bor.</summary>
 internal sealed record AttendanceEventRow(
+    Guid Id,
     DateOnly Date,
     AttendanceEventKind Kind,
+    DateTimeOffset ReceivedAt,
     bool Accepted,
+    CheckInRejectReason RejectReason,
     double Latitude,
     double Longitude,
     double AccuracyM,
+    double DistanceM,
+    int RadiusM,
     Guid? PhotoFileId);

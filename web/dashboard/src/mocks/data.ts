@@ -45,6 +45,18 @@ export const mockUsers: MockUser[] = [
     hemisId: '100000000004',
     password: 'tutor12345',
   },
+  {
+    // Talaba: backend `/api/auth/login` da 200 qaytaradi (TWA uchun) — dashboard esa rad etadi.
+    id: '33333333-3333-4333-8333-333333333331',
+    fullName: 'Aliyev Akmal',
+    role: 3,
+    facultyId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    phoneNumber: null,
+    groupName: '412-22',
+    course: 4,
+    hemisId: '341030',
+    password: 'student12345',
+  },
 ];
 
 const roleName: Record<number, string> = { 1: 'Admin', 2: 'Tutor', 3: 'Student' };
@@ -90,7 +102,14 @@ export function issueSession(user: MockUser, ttlSeconds?: number): AuthResultDto
   const refreshToken = `mock-refresh-${crypto.randomUUID()}`;
   mockSessions.set(refreshToken, user.id);
   const { password: _password, ...summary } = user;
-  return { accessToken: token, accessTokenExpiresAt: expiresAt, refreshToken, user: summary };
+  return {
+    accessToken: token,
+    accessTokenExpiresAt: expiresAt,
+    refreshToken,
+    user: summary,
+    // Talaba admin/tyutor bergan parol bilan kiradi — birinchi kirishda o'zgartiradi.
+    mustChangePassword: user.role === 3,
+  };
 }
 
 export function problem(

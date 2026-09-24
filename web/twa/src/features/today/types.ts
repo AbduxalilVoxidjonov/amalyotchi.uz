@@ -38,6 +38,16 @@ export interface TodayCheckInDto {
   autoClosed: boolean;
   /** Amal hozir mumkin bo'lmasa — o'zbekcha sabab (ariza yo'q, ish kuni emas, oyna yopiq …). */
   note: string | null;
+  /**
+   * Sozlama `checkinPhotoRequired` (sukut `true`): selfisiz check-in/check-out 400 `errors.Photo`.
+   * Eski backend yubormasa (`undefined`) — majburiy deb hisoblanadi.
+   */
+  photoRequired?: boolean;
+  /**
+   * Sozlama `checkinQrRequired` (sukut `true`): amaliyot joyi QR kodisiz 400 `errors.Qr`.
+   * Yo'q/`undefined` — talab qilinadi (`isQrRequired`).
+   */
+  qrRequired?: boolean;
 }
 
 export interface TodayPlaceDto {
@@ -79,12 +89,13 @@ export interface TodayDto {
 
 /**
  * POST /api/student/checkin | /checkout — **multipart/form-data** (kontrakt §1.3):
- * `lat`, `lng`, `accuracy`, `occurredAt` + ixtiyoriy `photo` (selfie).
- * `photo` majburiyligi server sozlamasiga bog'liq (`checkinPhotoRequired`) — rasmsiz yuborilsa
- * 400 + `errors.Photo` qaytishi mumkin.
+ * `lat`, `lng`, `accuracy`, `occurredAt` + ixtiyoriy `photo` (selfie) va `qr` (amaliyot joyi QR payload'i
+ * `AMLQR:1:{token}`). Majburiyligi sozlamalarga bog'liq: `checkinPhotoRequired` → 400 `errors.Photo`,
+ * `checkinQrRequired` → 400 `errors.Qr`; begona QR → 409 (`qrInvalid`).
  */
 export interface CheckinRequest extends GeoPoint {
   photo: File | null;
+  qr?: string | null;
 }
 
 /** Holat → o'zbekcha yorliq va rang (SPEC-TOKENS 1.5). */

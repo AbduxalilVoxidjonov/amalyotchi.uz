@@ -102,7 +102,8 @@ npm run check      # typecheck + lint + test + build
 ```
 
 Mock rejimida barcha ekranlar MSW handler'lari bilan ishlaydi (kirish: `100000000001 / admin12345`,
-`+998907654321 / tutor12345`). Backend'da hozircha faqat `AuthController` bor — frontend kutayotgan
+`+998907654321 / tutor12345`). Demo seed (`SEED_DEMO=true`) bilan haqiqiy backend'da talaba brauzerda ham kira oladi:
+HEMIS ID `341030` / `talaba12345` (Aliyev Akmal, 412-22). Backend'da hozircha faqat `AuthController` bor — frontend kutayotgan
 qolgan 34 endpoint'ning aniq spetsifikatsiyasi [`web/API-CONTRACT.md`](web/API-CONTRACT.md) da
 (backend modullarini qurishda manba). Batafsil: [`web/README.md`](web/README.md).
 
@@ -129,7 +130,8 @@ qolgan 34 endpoint'ning aniq spetsifikatsiyasi [`web/API-CONTRACT.md`](web/API-C
 
 | Metod | Manzil | Kim | Tavsif |
 |---|---|---|---|
-| POST | `/api/auth/login` | hamma | HEMIS ID + parol (admin, tyutor) |
+| POST | `/api/auth/login` | hamma | HEMIS ID + parol (admin, tyutor; parol o'rnatilgan talaba — brauzer rejimi) |
+| POST | `/api/auth/change-password` | avtorizatsiyalangan | O'z parolini almashtirish (`mustChangePassword` → false) |
 | POST | `/api/auth/refresh` | hamma | Token yangilash (rotatsiya bilan) |
 | POST | `/api/auth/logout` | avtorizatsiyalangan | Refresh tokenni bekor qilish |
 | GET | `/api/auth/me` | avtorizatsiyalangan | Joriy foydalanuvchi |

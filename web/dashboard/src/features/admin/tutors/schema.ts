@@ -1,4 +1,12 @@
 import { z } from 'zod';
+import { passwordField } from '@/features/shared/password/schema';
+
+// Parol sxemasi va zod yordamchisi talaba parol modali bilan umumiy (`features/shared/password`).
+export {
+  firstIssues,
+  passwordResetSchema,
+  type PasswordResetFormValues,
+} from '@/features/shared/password/schema';
 
 /** Telefon: bo'sh (ixtiyoriy) yoki E.164 "+998901234567". Bo'shliq/defis/qavslar olib tashlanadi. */
 const phoneField = z
@@ -23,12 +31,6 @@ const hemisIdField = z
   .min(1, 'HEMIS ID ni kiriting.')
   .regex(/^\d{5,20}$/, "HEMIS ID 5–20 ta raqamdan iborat bo'lishi kerak.");
 
-const passwordField = z
-  .string()
-  .min(1, 'Parolni kiriting.')
-  .min(8, "Parol kamida 8 ta belgidan iborat bo'lishi kerak.")
-  .max(128, 'Parol 128 ta belgidan oshmasligi kerak.');
-
 /** Ko'p tanlov: kamida bitta fakultet. */
 const facultyIdsField = z.array(z.string()).min(1, 'Kamida bitta fakultet tanlang');
 
@@ -48,27 +50,5 @@ export const tutorEditSchema = z.object({
   facultyIds: facultyIdsField,
 });
 
-/** "Parolni tiklash" — yangi parol + tasdiq. */
-export const passwordResetSchema = z
-  .object({
-    password: passwordField,
-    confirm: z.string().min(1, 'Parolni qayta kiriting.'),
-  })
-  .refine((v) => v.password === v.confirm, {
-    message: 'Parollar mos kelmadi.',
-    path: ['confirm'],
-  });
-
 export type TutorCreateFormValues = z.input<typeof tutorCreateSchema>;
 export type TutorEditFormValues = z.input<typeof tutorEditSchema>;
-export type PasswordResetFormValues = z.input<typeof passwordResetSchema>;
-
-/** Zod xatolarini `{ maydon: birinchi xabar }` ko'rinishiga yig'adi. */
-export function firstIssues<K extends string>(issues: readonly z.ZodIssue[]) {
-  const next: Partial<Record<K, string>> = {};
-  for (const issue of issues) {
-    const key = issue.path[0] as K | undefined;
-    if (key && !next[key]) next[key] = issue.message;
-  }
-  return next;
-}

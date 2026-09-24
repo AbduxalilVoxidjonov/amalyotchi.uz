@@ -29,7 +29,13 @@ export const SETTING_GROUPS: readonly SettingGroupDef[] = [
   {
     id: 'report',
     title: 'Talaba hisoboti — nimalar majburiy',
-    keys: ['dailyReportRequired', 'minReportLength', 'checkinPhotoRequired', 'diaryPdfRequired'],
+    keys: [
+      'dailyReportRequired',
+      'minReportLength',
+      'checkinPhotoRequired',
+      'checkinQrRequired',
+      'diaryPdfRequired',
+    ],
   },
   {
     id: 'companies',

@@ -127,3 +127,11 @@
     padding: 28px 20px 40px;
   }
 }
+
+/* Talaba roli rad etilganda — TWA havolasi xato bloki ichida */
+.studentAppLink {
+  color: inherit;
+  font-weight: var(--fw-semibold);
+  text-decoration: underline;
+  word-break: break-all;
+}

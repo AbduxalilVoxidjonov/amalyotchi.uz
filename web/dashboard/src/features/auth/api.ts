@@ -20,6 +20,14 @@ export const authApi = {
   logout: (body: LogoutRequest) =>
     api.post<void>(AUTH_ENDPOINTS.logout, body, { retryOn401: false }),
 
+  /** Store'ga yozilmagan sessiyani yopish (talaba roli rad etilganda) — token qo'lda beriladi. */
+  logoutWithToken: (accessToken: string, body: LogoutRequest) =>
+    api.post<void>(AUTH_ENDPOINTS.logout, body, {
+      auth: false,
+      retryOn401: false,
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }),
+
   me: () => api.get<UserSummaryDto>(AUTH_ENDPOINTS.me),
 
   refresh: refreshSession,

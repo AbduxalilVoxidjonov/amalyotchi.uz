@@ -1,0 +1,137 @@
+.head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.headText {
+  min-width: 0;
+}
+.name {
+  margin: 0;
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-tight);
+  line-height: 1.25;
+}
+.sub {
+  margin-top: 2px;
+  font-size: var(--fs-sm);
+  font-family: var(--font-mono);
+  color: var(--color-text-dim);
+}
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+/* Ma'lumot qatorlari: kalit chapda, qiymat o'ngda (tor ekranda ham bitta qatorda). */
+.info {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: var(--border-inner);
+}
+.row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.k {
+  flex-shrink: 0;
+  font-size: var(--fs-sm);
+  color: var(--color-text-faint);
+}
+.v {
+  margin: 0;
+  min-width: 0;
+  text-align: right;
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-medium);
+  overflow-wrap: anywhere;
+}
+.vMuted {
+  color: var(--color-text-dim);
+  font-weight: var(--fw-regular);
+}
+.mono {
+  font-family: var(--font-mono);
+}
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+  border-top: var(--border-inner);
+}
+.blockFirst {
+  border-top: 0;
+  padding-top: 0;
+}
+.blockTitle {
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+  font-weight: var(--fw-semibold);
+}
+.blockMain {
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-medium);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.blockSub {
+  font-size: var(--fs-sm);
+  color: var(--color-text-dim);
+}
+.facts {
+  margin-top: 4px;
+}
+.gradeLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.empty {
+  margin: 8px 0 0;
+  font-size: var(--fs-md2);
+  color: var(--color-text-dim);
+  line-height: var(--lh-note);
+}
+.note {
+  margin-top: 4px;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  line-height: var(--lh-note);
+}
+.accountActions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: var(--border-inner);
+}
+.pwForm {
+  padding-bottom: 4px;
+}
+.success {
+  font-size: var(--fs-md);
+  color: var(--color-ok-fg);
+  background: var(--color-ok-bg);
+  border-radius: var(--radius-md2);
+  padding: 10px 12px;
+}

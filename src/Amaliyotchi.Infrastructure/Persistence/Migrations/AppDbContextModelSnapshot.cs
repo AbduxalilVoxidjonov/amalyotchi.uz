@@ -327,6 +327,16 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("address");
 
+                    b.Property<DateTimeOffset>("CheckInQrRotatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("check_in_qr_rotated_at");
+
+                    b.Property<string>("CheckInQrToken")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("check_in_qr_token");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -420,6 +430,10 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_companies");
+
+                    b.HasIndex("CheckInQrToken")
+                        .IsUnique()
+                        .HasDatabaseName("ix_companies_check_in_qr_token");
 
                     b.HasIndex("LocationGeog")
                         .HasDatabaseName("ix_companies_location_geog");
@@ -802,6 +816,10 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("LastLoginAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_login_at");
+
+                    b.Property<bool>("MustChangePassword")
+                        .HasColumnType("boolean")
+                        .HasColumnName("must_change_password");
 
                     b.Property<string>("PasswordHash")
                         .HasMaxLength(500)

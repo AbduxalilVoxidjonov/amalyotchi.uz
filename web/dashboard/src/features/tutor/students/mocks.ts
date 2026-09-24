@@ -5,6 +5,7 @@ import { MOCK_TODAY_DATE } from '../today/mocks';
 import type { AttendanceStatus } from '../today/types';
 import { isCompanyBoundApplication } from './types';
 import type {
+  AttendanceAttempt,
   AttendanceDayDiary,
   AttendancePunch,
   AttendanceSummary,
@@ -18,6 +19,7 @@ import type {
   TutorStudent,
   TutorStudentDetail,
 } from './types';
+import { hasMockStudentPassword } from '@/features/shared/student-password/passwordStore';
 
 /**
  * SPEC-SCREENS §5 mock (6 ta). `buildDetail`/`buildAttendance`/`buildDiaries` admin mock'laridan
@@ -388,6 +390,42 @@ const punch = (
   ...rest,
 });
 
+const attempt = (
+  date: string,
+  id: string,
+  kind: AttendanceAttempt['kind'],
+  minutes: number,
+  rest: Omit<AttendanceAttempt, 'id' | 'kind' | 'at' | 'atIso'>,
+): AttendanceAttempt => ({
+  id,
+  kind,
+  at: hhmm(minutes),
+  atIso: `${date}T${hhmm(minutes)}:00+05:00`,
+  ...rest,
+});
+
+/** Qabul qilingan belgilanish → urinish yozuvi (radius tashqarisida qabul qilingan bo'lishi ham mumkin). */
+const fromPunch = (
+  id: string,
+  kind: AttendanceAttempt['kind'],
+  p: AttendancePunch,
+  radiusM: number,
+): AttendanceAttempt => ({
+  id,
+  kind,
+  at: p.at,
+  atIso: p.atIso,
+  accepted: true,
+  rejectReason: null,
+  rejectMessage: null,
+  distanceM: p.distanceM,
+  accuracyM: p.accuracyM,
+  radiusM,
+  lat: p.lat,
+  lng: p.lng,
+  photoUrl: p.photoUrl,
+});
+
 const CODE_STATUS: Record<string, AttendanceStatus> = {
   k: 'present',
   l: 'late',
@@ -436,6 +474,7 @@ export function buildAttendance(
         diary: null,
         attempts: 0,
         rejectedAttempts: 0,
+        events: [],
       });
       continue;
     }
@@ -455,9 +494,11 @@ export function buildAttendance(
     const hasPunch = present && !manual;
     const inMinutes = 9 * 60 + (late ? 38 + ((w * 5) % 17) : 1 + ((w * 7) % 13));
     const distanceM = outside ? radiusM + 380 + ((w * 37) % 900) : 18 + ((w * 13) % 110);
-    // Har 3-kunda check-in selfie'si bor; bitta kun — fayli yo'q (AuthImage fallback'ini ko'rsatadi).
+    // Har 3-kunda (va `x` kunlarda) check-in selfie'si bor; bitta kun — fayli yo'q (AuthImage fallback'ini ko'rsatadi).
+    // Rad etilgan urinishli (`x`) kunlarda qabul qilingan kirish ham selfi bilan — galereyada
+    // rad/qabul rasmlari yonma-yon.
     const photoUrl =
-      !hasPunch || w % 3 !== 1
+      !hasPunch || (w % 3 !== 1 && !rejectedBefore)
         ? null
         : w === 7
           ? '/api/files/missing-photo'
@@ -482,10 +523,48 @@ export function buildAttendance(
             accuracyM: 6 + ((w * 5) % 21),
             lat: Number((baseLat + ((w % 6) - 3) * 0.00039).toFixed(5)),
             lng: Number((baseLng + ((w % 4) - 2) * 0.00047).toFixed(5)),
-            photoUrl: null,
+            // Har 6-kunda (4, 10, 16…) chiqish selfisi ham bor — jadvalda ikki thumbnail yonma-yon.
+            photoUrl: w % 3 === 1 && w % 2 === 0 ? `/api/files/ph-out-${studentId}-${date}` : null,
             outOfRadius: false,
           })
         : null;
+
+    const events: AttendanceAttempt[] = [];
+    if (hasPunch && checkIn) {
+      if (rejectedBefore) {
+        // Qabul qilingan kirishdan oldin 2 ta rad etilgan urinish: radius tashqarisi (selfi bilan)
+        // va QR mos kelmagan (selfisiz — "Selfi yo'q" placeholder).
+        const farM = radiusM + 340 + ((w * 29) % 400);
+        events.push(
+          attempt(date, `${studentId}-${date}-r1`, 'checkIn', inMinutes - 14, {
+            accepted: false,
+            rejectReason: 'outOfRadius',
+            rejectMessage: `Korxona hududidan tashqaridasiz: ${farM} m (ruxsat etilgan ${radiusM} m)`,
+            distanceM: farM,
+            accuracyM: 12,
+            radiusM,
+            lat: Number((baseLat + 0.0041).toFixed(5)),
+            lng: Number((baseLng - 0.0033).toFixed(5)),
+            photoUrl: `/api/files/att-${studentId}-${date}-r1`,
+          }),
+          attempt(date, `${studentId}-${date}-r2`, 'checkIn', inMinutes - 6, {
+            accepted: false,
+            rejectReason: 'qrInvalid',
+            rejectMessage: null,
+            distanceM: 64,
+            accuracyM: 9,
+            radiusM,
+            lat: checkIn.lat,
+            lng: checkIn.lng,
+            photoUrl: null,
+          }),
+        );
+      }
+      events.push(fromPunch(`${studentId}-${date}-in`, 'checkIn', checkIn, radiusM));
+      if (checkOut) {
+        events.push(fromPunch(`${studentId}-${date}-out`, 'checkOut', checkOut, radiusM));
+      }
+    }
 
     const hasDiary = present && w % 5 !== 3;
     const diaryStatus: DiaryStatus =
@@ -499,7 +578,7 @@ export function buildAttendance(
       autoClosed,
       suspicious: rejectedBefore || outside,
       suspiciousReason: rejectedBefore
-        ? 'Radius tashqarisidan 2 ta urinish rad etildi, keyin korxona hududidan belgilandi'
+        ? '2 ta urinish rad etildi (radius tashqarisi, QR mos emas), keyin korxona hududidan belgilandi'
         : outside
           ? `Qabul qilingan belgilanish radius tashqarisida (${Math.round(distanceM)} m > ${radiusM} m)`
           : null,
@@ -509,6 +588,7 @@ export function buildAttendance(
       diary: hasDiary ? dayDiary(`sd-${studentId}-${date}`, diaryStatus, w) : null,
       attempts: rejectedBefore ? 3 : hasPunch ? 1 : 0,
       rejectedAttempts: rejectedBefore ? 2 : 0,
+      events,
     });
   }
   return days;
@@ -677,6 +757,7 @@ export function buildDetail(
       grade: null,
       periods,
       selectedPeriodId: period.id,
+      hasPassword: hasMockStudentPassword(student.id),
     };
   }
 
@@ -730,6 +811,7 @@ export function buildDetail(
     grade: seed.grade,
     periods,
     selectedPeriodId: period.id,
+    hasPassword: hasMockStudentPassword(student.id),
   };
 }
 

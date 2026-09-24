@@ -38,7 +38,8 @@ public sealed record AdminStudentDetail(
     DiarySummary Diary,
     StudentGrade? Grade,
     IReadOnlyList<StudentPeriodOption> Periods,
-    Guid? SelectedPeriodId);
+    Guid? SelectedPeriodId,
+    bool HasPassword);
 
 /// <summary><c>GET /api/admin/students/{id}?periodId=</c> — talaba profili (davrga bog'liq bloklar tanlangan davr bo'yicha).
 /// Talaba topilmasa yoki <c>periodId</c> talabaga tegishli bo'lmasa → 404.</summary>
@@ -101,6 +102,7 @@ internal sealed class GetAdminStudentDetailQueryHandler(IApplicationDbContext db
             profile.Diary,
             profile.Grade,
             profile.Periods,
-            profile.SelectedPeriodId);
+            profile.SelectedPeriodId,
+            profile.HasPassword);
     }
 }

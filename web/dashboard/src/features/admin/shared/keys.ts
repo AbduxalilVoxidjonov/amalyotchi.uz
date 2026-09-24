@@ -44,6 +44,8 @@ export const adminKeys = {
   /** `GET /companies/{id}` — detail sahifasi. */
   company: (id: string) => ['admin', 'company', id] as const,
   companyStudents: (id: string) => ['admin', 'company', id, 'students'] as const,
+  /** `GET /companies/{id}/checkin-qr` — korxona check-in QR kodi. */
+  companyCheckinQr: (id: string) => ['admin', 'company', id, 'checkin-qr'] as const,
   audit: (params: ListParams) => ['admin', 'audit', params] as const,
   settings: () => ['admin', 'settings'] as const,
 };

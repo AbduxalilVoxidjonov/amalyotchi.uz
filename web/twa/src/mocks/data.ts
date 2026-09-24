@@ -1,4 +1,5 @@
-import type { AuthResultDto, UserSummaryDto } from '@amaliyotchi/shared';
+import { parseJwt, toUserRole, type UserSummaryDto } from '@amaliyotchi/shared';
+import type { TwaAuthResult } from '@/shared/auth/session';
 import { resetDiaryMocks } from '@/features/diary/mocks';
 import { resetLeaveMocks } from '@/features/leave/mocks';
 import { resetPlaceMocks } from '@/features/place/mocks';
@@ -18,6 +19,66 @@ export const mockStudent: UserSummaryDto = {
   hemisId: '341030',
 };
 
+/** Ikkinchi talaba (web-login): vaqtinchalik parol, amaliyot davri va tyutor biriktirilmagan. */
+export const mockStudentNew: UserSummaryDto = {
+  id: '44444444-4444-4444-8444-444444444444',
+  fullName: 'Karimova Dilnoza',
+  role: 'student',
+  facultyId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  phoneNumber: null,
+  groupId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbc',
+  groupName: '411-22',
+  course: 3,
+  hemisId: '341031',
+};
+
+/** Xodim (tyutor) — TWA web-login'da rad etilishi kerak. */
+export const mockTutor: UserSummaryDto = {
+  id: '22222222-2222-4222-8222-222222222222',
+  fullName: 'Saidova Nodira',
+  role: 'tutor',
+  facultyId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  phoneNumber: '+998901234567',
+  groupId: null,
+  groupName: null,
+  course: null,
+  hemisId: '100000000002',
+};
+
+export interface MockAccount {
+  user: UserSummaryDto;
+  password: string;
+  mustChangePassword: boolean;
+}
+
+/**
+ * Web-login mock hisoblari (HEMIS ID → hisob). Parollar:
+ *   341030 / talaba12345  — Aliyev Akmal (davr bor, parol doimiy)
+ *   341031 / vaqtincha1   — Karimova Dilnoza (mustChangePassword, davr/tyutor yo'q)
+ *   100000000002 / tyutor123 — tyutor (TWA rad etadi)
+ */
+function seedAccounts(): Map<string, MockAccount> {
+  return new Map([
+    ['341030', { user: mockStudent, password: 'talaba12345', mustChangePassword: false }],
+    ['341031', { user: mockStudentNew, password: 'vaqtincha1', mustChangePassword: true }],
+    ['100000000002', { user: mockTutor, password: 'tyutor123', mustChangePassword: false }],
+  ]);
+}
+
+export let mockAccounts = seedAccounts();
+
+export function accountByUserId(userId: string | null | undefined): MockAccount | undefined {
+  if (!userId) return undefined;
+  for (const a of mockAccounts.values()) if (a.user.id === userId) return a;
+  return undefined;
+}
+
+/** Bearer JWT `sub` (mock token imzosiz) → hisob. */
+export function accountFromRequest(request: Request): MockAccount | undefined {
+  const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+  return accountByUserId(parseJwt(token)?.sub);
+}
+
 export const mockSessions = new Map<string, string>();
 
 function base64Url(input: string): string {
@@ -27,12 +88,12 @@ function base64Url(input: string): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-export function issueSession(user: UserSummaryDto, ttlSeconds = 1800): AuthResultDto {
+export function issueSession(user: UserSummaryDto, ttlSeconds = 1800): TwaAuthResult {
   const now = Math.floor(Date.now() / 1000);
   const payload = {
     sub: user.id,
     name: user.fullName,
-    role: 'Student',
+    role: toUserRole(user.role) ?? 'Student',
     faculty_id: user.facultyId,
     iat: now,
     exp: now + ttlSeconds,
@@ -45,6 +106,7 @@ export function issueSession(user: UserSummaryDto, ttlSeconds = 1800): AuthResul
     accessTokenExpiresAt: new Date((now + ttlSeconds) * 1000).toISOString(),
     refreshToken,
     user,
+    mustChangePassword: accountByUserId(user.id)?.mustChangePassword ?? false,
   };
 }
 
@@ -54,6 +116,7 @@ export function issueSession(user: UserSummaryDto, ttlSeconds = 1800): AuthResul
  */
 export function resetMockState() {
   mockSessions.clear();
+  mockAccounts = seedAccounts();
   resetTodayMocks();
   resetDiaryMocks();
   resetLeaveMocks();

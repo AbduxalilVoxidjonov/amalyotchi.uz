@@ -37,4 +37,20 @@ public sealed class TutorCompaniesController(ISender sender) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IReadOnlyList<CompanyStudent>>> Students(Guid id, CancellationToken cancellationToken)
         => Ok(await sender.Send(new GetTutorCompanyStudentsQuery(id), cancellationToken));
+
+    /// <summary>Korxonaning check-in QR kodi (chop etish uchun). Ko'lamda biriktirilgan talabasi yo'q korxona → 404.</summary>
+    [HttpGet("{id:guid}/checkin-qr")]
+    [ProducesResponseType<CompanyCheckInQrDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CompanyCheckInQrDto>> CheckInQr(Guid id, CancellationToken cancellationToken)
+        => Ok(await sender.Send(new GetTutorCompanyCheckInQrQuery(id), cancellationToken));
+
+    /// <summary>QR kodni almashtirish (eski QR yaroqsiz). Audit: <c>CompanyQrRotated</c>. Ko'lam tashqarisi → 404.</summary>
+    [HttpPost("{id:guid}/checkin-qr/rotate")]
+    [ProducesResponseType<CompanyCheckInQrDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CompanyCheckInQrDto>> RotateCheckInQr(Guid id, CancellationToken cancellationToken)
+        => Ok(await sender.Send(new RotateTutorCompanyCheckInQrCommand(id), cancellationToken));
 }

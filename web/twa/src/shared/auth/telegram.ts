@@ -85,6 +85,73 @@ export function haptic(type: 'success' | 'error' | 'warning'): void {
   }
 }
 
+/**
+ * Telegram native QR skaneri (Bot API `showScanQrPopup` — 6.4+):
+ * - `native` — Telegram ichida, versiya yetarli;
+ * - `outdated` — Telegram ichida, lekin mijoz eski (6.4 dan past) yoki metod yo'q;
+ * - `none` — Telegram tashqarisida (oddiy brauzer — kamera skaneri ishlatiladi).
+ */
+export type TelegramQrSupport = 'native' | 'outdated' | 'none';
+
+export const QR_SCANNER_MIN_VERSION = '6.4';
+
+export function telegramQrSupport(): TelegramQrSupport {
+  if (!isInsideTelegram()) return 'none';
+  try {
+    return versionAtLeast(QR_SCANNER_MIN_VERSION) && typeof WebApp.showScanQrPopup === 'function'
+      ? 'native'
+      : 'outdated';
+  } catch {
+    return 'outdated';
+  }
+}
+
+/**
+ * Telegram native QR skaneri. Birinchi skanerlangan matn bilan resolve bo'ladi (popup darhol yopiladi —
+ * callback `true` qaytaradi); foydalanuvchi popup'ni yopsa (`scanQrPopupClosed`) — `null`.
+ * Skaner mavjud bo'lmasa — reject (`telegramQrSupport()` bilan oldindan tekshiring).
+ */
+export function scanTelegramQr(text: string): Promise<string | null> {
+  return new Promise<string | null>((resolve, reject) => {
+    let settled = false;
+    const onClosed = () => finish(null);
+    function finish(value: string | null) {
+      if (settled) return;
+      settled = true;
+      try {
+        WebApp.offEvent('scanQrPopupClosed', onClosed);
+      } catch {
+        /* ignore */
+      }
+      resolve(value);
+    }
+    try {
+      WebApp.onEvent('scanQrPopupClosed', onClosed);
+      WebApp.showScanQrPopup({ text }, (data) => {
+        finish(data);
+        return true;
+      });
+    } catch (cause) {
+      settled = true;
+      try {
+        WebApp.offEvent('scanQrPopupClosed', onClosed);
+      } catch {
+        /* ignore */
+      }
+      reject(cause instanceof Error ? cause : new Error('QR skaner ochilmadi'));
+    }
+  });
+}
+
+/** Ochiq QR popup'ni yopish (oqim bekor qilinganda). Telegram tashqarisida — hech narsa. */
+export function closeTelegramQrScanner(): void {
+  try {
+    if (telegramQrSupport() === 'native') WebApp.closeScanQrPopup();
+  } catch {
+    /* ignore */
+  }
+}
+
 export { WebApp };
 
 /** Tashqi havola (PDF, shablon): Telegram ichida `openLink`, tashqarida yangi tab. */

@@ -11,12 +11,27 @@ import {
 import { mockPlace, setMockPlace } from '@/features/place/mocks';
 import { server } from '@/mocks/server';
 import { removeGeolocation, renderApp, stubGeolocation } from '@/test/render-app';
+import { qrPopup } from '@/test/telegram-stub';
 
 afterEach(() => removeGeolocation());
+
+/** `mockToday` mock ichida qayta tayinlanadi — joriy qiymat namespace orqali. */
+const mockTodayNow = () => todayMocks.mockToday;
 
 /** Kamera bergan fayl (jsdom'da canvas yo'q — `compressImage` asl faylni qaytaradi). */
 function photoFile(name = 'selfie.jpg', type = 'image/jpeg', bytes = 64): File {
   return new File([new Uint8Array(bytes)], name, { type });
+}
+
+/**
+ * KELDIM/KETDIM → Telegram QR popup (1-qadam) → mock korxona QR'i skanerlanadi.
+ * QR talab qilinadi (`checkinQrRequired` sukuti `true`).
+ */
+async function pressAndScan(name: 'KELDIM' | 'KETDIM') {
+  fireEvent.click(await screen.findByRole('button', { name }));
+  await waitFor(() => expect(qrPopup.isOpen).toBe(true));
+  act(() => qrPopup.scan(todayMocks.MOCK_CHECKIN_QR));
+  expect(await screen.findByText('QR tasdiqlandi')).toBeInTheDocument();
 }
 
 /** Yashirin `input[capture=user]` ga fayl berish — kamera rasm qaytargani bilan bir xil. */
@@ -35,7 +50,7 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
     expect(screen.getByText('45 m / 150 m')).toBeInTheDocument();
 
     // 1-bosqich: tugma → joylashuv so'raladi va kamera ochiladi (panel ko'rinadi).
-    fireEvent.click(screen.getByRole('button', { name: 'KELDIM' }));
+    await pressAndScan('KELDIM');
     expect(await screen.findByText('Selfie bilan tasdiqlang')).toBeInTheDocument();
     expect(screen.getByText('Rasm hali olinmagan')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'KELDIM' })).not.toBeInTheDocument();
@@ -58,7 +73,7 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
     expect(geo).toHaveBeenCalledTimes(1);
 
     // KETDIM ham xuddi shu oqim bilan.
-    fireEvent.click(screen.getByRole('button', { name: 'KETDIM' }));
+    await pressAndScan('KETDIM');
     expect(await screen.findByText('Ketishni selfie bilan tasdiqlang')).toBeInTheDocument();
     capturePhoto(photoFile('ketdim.jpg', 'image/jpeg', 128));
     fireEvent.click(await screen.findByRole('button', { name: 'Tasdiqlash va yuborish' }));
@@ -71,7 +86,7 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
   it('5 MB dan katta rasm rad etiladi — preview chiqmaydi, so’rov ketmaydi', async () => {
     stubGeolocation();
     renderApp('/');
-    fireEvent.click(await screen.findByRole('button', { name: 'KELDIM' }));
+    await pressAndScan('KELDIM');
     capturePhoto(photoFile('katta.jpg', 'image/jpeg', 5 * 1024 * 1024 + 1));
 
     expect(await screen.findByText(/Rasm hajmi 5 MB dan oshmasligi kerak/)).toBeInTheDocument();
@@ -84,7 +99,7 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
   it("rasm bo'lmagan fayl rad etiladi", async () => {
     stubGeolocation();
     renderApp('/');
-    fireEvent.click(await screen.findByRole('button', { name: 'KELDIM' }));
+    await pressAndScan('KELDIM');
     capturePhoto(photoFile('hujjat.pdf', 'application/pdf'));
 
     expect(await screen.findByText(/Faqat rasm yuborish mumkin/)).toBeInTheDocument();
@@ -94,7 +109,7 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
   it("qo'llab-quvvatlanmaydigan rasm formati rad etiladi (siqish mumkin bo'lmaganda)", async () => {
     stubGeolocation();
     renderApp('/');
-    fireEvent.click(await screen.findByRole('button', { name: 'KELDIM' }));
+    await pressAndScan('KELDIM');
     capturePhoto(photoFile('rasm.gif', 'image/gif'));
 
     expect(await screen.findByText(/Rasm formati qo‘llab-quvvatlanmaydi/)).toBeInTheDocument();
@@ -103,7 +118,7 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
   it("joylashuvga ruxsat yo'q → darhol xabar, belgilanish bo'lmaydi", async () => {
     stubGeolocation({ errorCode: 1 });
     renderApp('/');
-    fireEvent.click(await screen.findByRole('button', { name: 'KELDIM' }));
+    await pressAndScan('KELDIM');
 
     expect(await screen.findByText(/Joylashuvga ruxsat berilmadi/)).toBeInTheDocument();
     expect(screen.getByText('Kutilmoqda')).toBeInTheDocument();
@@ -117,7 +132,7 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
   it('radius tashqarisi → server 409 xabari, rasm preview saqlanadi', async () => {
     stubGeolocation({ lat: 41.32, lng: 69.29 }); // ~1 km
     renderApp('/');
-    fireEvent.click(await screen.findByRole('button', { name: 'KELDIM' }));
+    await pressAndScan('KELDIM');
     capturePhoto();
     fireEvent.click(await screen.findByRole('button', { name: 'Tasdiqlash va yuborish' }));
 
@@ -130,7 +145,7 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
     stubGeolocation();
     server.use(http.post('/api/student/checkin', () => HttpResponse.error()));
     renderApp('/');
-    fireEvent.click(await screen.findByRole('button', { name: 'KELDIM' }));
+    await pressAndScan('KELDIM');
     capturePhoto();
     fireEvent.click(await screen.findByRole('button', { name: 'Tasdiqlash va yuborish' }));
 
@@ -141,24 +156,47 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
   it('rasmsiz davom etish — sozlama majbur qilmasa qabul qilinadi', async () => {
     stubGeolocation();
     renderApp('/');
-    fireEvent.click(await screen.findByRole('button', { name: 'KELDIM' }));
+    await pressAndScan('KELDIM');
     fireEvent.click(await screen.findByRole('button', { name: 'Rasmsiz davom etish' }));
 
     expect(await screen.findByText('Belgilandingiz · 09:02')).toBeInTheDocument();
     expect(todayMocks.lastCheckinPhoto).toBeNull();
   });
 
-  it('checkinPhotoRequired=true → rasmsiz yuborish 400 (errors.Photo) bilan rad etiladi', async () => {
+  it("checkinPhotoRequired=true → 'Rasmsiz davom etish' yo'q, selfi bilan qabul qilinadi", async () => {
     stubGeolocation();
     setCheckinPhotoRequired(true);
     renderApp('/');
-    fireEvent.click(await screen.findByRole('button', { name: 'KELDIM' }));
+    await pressAndScan('KELDIM');
+
+    expect(await screen.findByRole('button', { name: 'Rasmga olish' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Rasmsiz davom etish' })).not.toBeInTheDocument();
+
+    capturePhoto();
+    fireEvent.click(await screen.findByRole('button', { name: 'Tasdiqlash va yuborish' }));
+    expect(await screen.findByText('Belgilandingiz · 09:02')).toBeInTheDocument();
+    expect(todayMocks.lastCheckinPhoto).toMatchObject({ type: 'image/jpeg' });
+  });
+
+  it('eskirgan flag (photoRequired=false, server majbur) → 400 errors.Photo ko‘rsatiladi', async () => {
+    stubGeolocation();
+    setCheckinPhotoRequired(true);
+    server.use(
+      http.get('/api/student/today', () =>
+        HttpResponse.json({
+          ...mockTodayNow(),
+          checkin: { ...mockTodayNow().checkin, photoRequired: false },
+        }),
+      ),
+    );
+    renderApp('/');
+    await pressAndScan('KELDIM');
     fireEvent.click(await screen.findByRole('button', { name: 'Rasmsiz davom etish' }));
 
     expect(await screen.findByText('Check-in uchun rasm majburiy.')).toBeInTheDocument();
     expect(screen.getByText('Kutilmoqda')).toBeInTheDocument();
 
-    // Rasm olib qayta yuborilsa — qabul qilinadi.
+    // Rasm olib qayta yuborilsa — qabul qilinadi (QR saqlangan).
     capturePhoto();
     fireEvent.click(await screen.findByRole('button', { name: 'Tasdiqlash va yuborish' }));
     expect(await screen.findByText('Belgilandingiz · 09:02')).toBeInTheDocument();
@@ -167,7 +205,7 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
   it('09:15 dan keyin → Kech keldi', async () => {
     stubGeolocation({ at: '2026-10-12T04:31:00Z' }); // 09:31 Toshkent
     renderApp('/');
-    fireEvent.click(await screen.findByRole('button', { name: 'KELDIM' }));
+    await pressAndScan('KELDIM');
     capturePhoto();
     fireEvent.click(await screen.findByRole('button', { name: 'Tasdiqlash va yuborish' }));
     expect(await screen.findByText('Kech keldi')).toBeInTheDocument();
@@ -334,7 +372,7 @@ describe("HomePage — ikki davr oralig'i (v3.5 §4.6)", () => {
   it('eskirgan ekran: check-in 400 (davr boshlanmagan) matni ko‘rinadi', async () => {
     stubGeolocation();
     renderApp('/');
-    fireEvent.click(await screen.findByRole('button', { name: 'KELDIM' }));
+    await pressAndScan('KELDIM');
     // Ekran ochilgandan keyin server tanaffusga o'tdi — check-in 400 `detail` = today note.
     setPeriodGap('upcoming');
     fireEvent.click(await screen.findByRole('button', { name: 'Rasmsiz davom etish' }));

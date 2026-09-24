@@ -55,7 +55,7 @@ public static class CompanyImportMessages
 }
 
 internal sealed class ImportCompaniesCommandHandler(
-    IApplicationDbContext db, ICompanyImportExcel excel, IAuditWriter audit)
+    IApplicationDbContext db, ICompanyImportExcel excel, IAuditWriter audit, IClock clock)
     : IRequestHandler<ImportCompaniesCommand, ImportResult>
 {
     public async Task<ImportResult> Handle(ImportCompaniesCommand request, CancellationToken cancellationToken)
@@ -139,7 +139,7 @@ internal sealed class ImportCompaniesCommandHandler(
 
             var company = Company.Create(
                 name, tin, activity, address, new GeoPoint(lat.Value, lng.Value), radiusM,
-                supervisor, supervisorPhone, row.MentorName, mentorPhone);
+                supervisor, supervisorPhone, row.MentorName, mentorPhone, clock.UtcNow);
 
             db.Companies.Add(company);
             fileTins.Add(tin);

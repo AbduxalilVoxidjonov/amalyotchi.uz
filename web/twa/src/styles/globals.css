@@ -54,3 +54,23 @@ button {
   isolation: isolate;
   min-height: 100dvh;
 }
+
+/*
+ * Oddiy brauzer (Telegram tashqarisi, `html[data-platform='web']` — shared/lib/platform.ts).
+ * Dizayn faqat oq palitrada: Telegram theme params yo'q, OS qorong'i rejimida ham native
+ * kontrollar (input, scrollbar) oq palitraga mos qoladi. Desktop'da — markazda mobil ustun.
+ */
+html[data-platform='web'] {
+  color-scheme: light;
+}
+@media (min-width: 560px) {
+  html[data-platform='web'] body {
+    background: var(--color-surface-muted);
+  }
+  html[data-platform='web'] #root {
+    max-width: var(--web-column-max, 480px);
+    margin-inline: auto;
+    background: var(--color-bg);
+    border-inline: var(--border);
+  }
+}

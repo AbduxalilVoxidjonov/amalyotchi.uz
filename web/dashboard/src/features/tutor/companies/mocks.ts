@@ -7,6 +7,7 @@ import type {
   TutorCompany,
   TutorCompanyDetail,
 } from './types';
+import { checkinQrHandlers } from '../../shared/checkin-qr/mocks';
 
 const PROBLEM_HEADERS = { 'Content-Type': 'application/problem+json' };
 
@@ -242,6 +243,8 @@ export function mockTutorCompanyStudents(companyId: string): CompanyStudent[] {
 }
 
 export const companiesHandlers: HttpHandler[] = [
+  // Check-in QR — ko'lamdan tashqari korxona → 404 (§ features/shared/checkin-qr).
+  ...checkinQrHandlers('tutor', (id) => mockTutorCompanyDetail(id)?.name ?? null),
   http.get(`${TUTOR_COMPANIES_ENDPOINT}/:id/students`, ({ params }) => {
     const id = String(params['id']);
     if (!mockTutorCompanies.some((c) => c.id === id)) return notFound();

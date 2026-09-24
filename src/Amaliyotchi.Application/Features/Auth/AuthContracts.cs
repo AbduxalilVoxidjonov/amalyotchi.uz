@@ -36,8 +36,11 @@ public sealed record UserSummaryDto(
     }
 }
 
+/// <param name="MustChangePassword">Parolni xodim o'rnatgan (vaqtinchalik) — mijoz foydalanuvchini avval
+/// <c>POST /api/auth/change-password</c> ga yo'naltiradi. Telegram orqali kirishda ham qiymat qaytadi.</param>
 public sealed record AuthResultDto(
     string AccessToken,
     DateTimeOffset AccessTokenExpiresAt,
     string RefreshToken,
-    UserSummaryDto User);
+    UserSummaryDto User,
+    bool MustChangePassword);

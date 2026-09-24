@@ -17,3 +17,7 @@
   color: var(--color-text-muted);
   line-height: var(--lh-note);
 }
+.gateActions {
+  margin-top: 12px;
+  max-width: 400px;
+}

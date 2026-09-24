@@ -60,6 +60,7 @@ public static class SettingKeys
     public const string MinReportLength = "minReportLength";
     public const string CheckInWindow = "checkInWindow";
     public const string CheckInPhotoRequired = "checkinPhotoRequired";
+    public const string CheckInQrRequired = "checkinQrRequired";
     public const string DiaryPdfRequired = "diaryPdfRequired";
     public const string MaxStudentsPerCompany = "maxStudentsPerCompany";
 
@@ -89,7 +90,9 @@ public static class SettingKeys
         new(CheckInWindow, "Check-in oynasi", SettingType.Int, UnitMinutes,
             "Ish boshlanishidan shuncha daqiqa o'tgach check-in yopiladi va talaba \"kelmadi\" bo'ladi.", "90", 15, 480),
         new(CheckInPhotoRequired, "Check-in uchun rasm majburiy", SettingType.Bool, null,
-            "Yoqilgan bo'lsa check-in/check-out so'roviga selfi biriktirilmasa urinish qabul qilinmaydi.", "false"),
+            "Yoqilgan bo'lsa check-in/check-out so'roviga selfi biriktirilmasa urinish qabul qilinmaydi.", "true"),
+        new(CheckInQrRequired, "Check-in uchun QR kod majburiy", SettingType.Bool, null,
+            "Yoqilgan bo'lsa check-in/check-out uchun korxona QR kodi skanerlanishi shart.", "true"),
         new(MaxStudentsPerCompany, "Korxonaga maksimal talaba", SettingType.Int, null,
             "Shu sondan ko'p talaba bitta korxonaga biriktirilsa ogohlantirish chiqadi.", "10", 1, 200)
     ];

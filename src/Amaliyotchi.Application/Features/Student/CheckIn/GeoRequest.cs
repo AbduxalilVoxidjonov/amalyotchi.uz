@@ -20,6 +20,11 @@ public interface IGeoRequest
     /// <summary>Urinish paytidagi selfi (multipart <c>photo</c>). Ixtiyoriy — sozlama
     /// <c>checkinPhotoRequired</c> yoqilgan bo'lsa majburiy.</summary>
     UploadedFile? Photo { get; }
+
+    /// <summary>Amaliyot joyida skanerlangan QR satri (<c>AMLQR:1:{token}</c>). Ixtiyoriy — sozlama
+    /// <c>checkinQrRequired</c> yoqilgan bo'lsa majburiy. Yuborilgan bo'lsa DOIM tekshiriladi: korxona tokeniga
+    /// mos kelmasa urinish <c>QrInvalid</c> bilan rad etiladi (409).</summary>
+    string? Qr { get; }
 }
 
 /// <summary>Koordinata chegaralari, aniqlik va <c>occurredAt</c> yangiligi: 10 daqiqadan eski yoki
@@ -34,6 +39,9 @@ public abstract class GeoRequestValidator<T> : AbstractValidator<T>
 
     /// <summary>Selfi hajmi chegarasi — kundalik ilovalari bilan bir xil.</summary>
     public const long MaxPhotoSizeBytes = 5 * 1024 * 1024;
+
+    /// <summary>QR satri chegarasi — haqiqiy payload 40 belgi; uzun satr format tekshiruvigacha kesiladi.</summary>
+    public const int MaxQrLength = 256;
 
     /// <summary>Faqat rasm: kundalik ilovalaridan farqli, PDF qabul qilinmaydi.</summary>
     public static readonly IReadOnlySet<string> AllowedPhotoContentTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -60,6 +68,10 @@ public abstract class GeoRequestValidator<T> : AbstractValidator<T>
             .WithMessage("Qurilma vaqti kelajakda — telefon soatini tekshiring.")
             .Must(at => at >= clock.UtcNow - MaxAge)
             .WithMessage("Urinish vaqti eskirgan (10 daqiqadan ko'p) — qayta urinib ko'ring.");
+
+        RuleFor(x => x.Qr)
+            .Must(q => q is null || q.Length <= MaxQrLength)
+            .WithMessage("QR kod satri juda uzun.");
 
         When(x => x.Photo is not null, () =>
         {

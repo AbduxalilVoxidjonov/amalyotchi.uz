@@ -1,9 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
-import { mapUser, type LoginRequest } from '@amaliyotchi/shared';
+import { mapUser, toUserRole, UserRole, type LoginRequest } from '@amaliyotchi/shared';
 import { authKeys } from '@/shared/api/query-keys';
 import { useAuthStore } from '@/shared/auth/store';
 import { authApi } from './api';
+
+/**
+ * Backend talabaga ham `/api/auth/login` da 200 qaytaradi (TWA brauzerda kiradi), lekin dashboard
+ * faqat admin/tyutor uchun: talaba sessiyasi saqlanmaydi — tokenlar tashlanadi, server sessiyasi yopiladi.
+ */
+export class StudentLoginRejectedError extends Error {
+  constructor() {
+    super('Talabalar dashboard orqali kirmaydi.');
+    this.name = 'StudentLoginRejectedError';
+  }
+}
+
+export function isStudentLoginRejected(error: unknown): error is StudentLoginRejectedError {
+  return error instanceof StudentLoginRejectedError;
+}
 
 export function useLogin() {
   const setSession = useAuthStore((s) => s.setSession);
@@ -11,7 +26,17 @@ export function useLogin() {
 
   return useMutation({
     mutationKey: ['auth', 'login'],
-    mutationFn: (body: LoginRequest) => authApi.login(body),
+    mutationFn: async (body: LoginRequest) => {
+      const result = await authApi.login(body);
+      if (toUserRole(result.user.role) === UserRole.Student) {
+        // Refresh token server tomonda bekor qilinadi (xatosi kirish xabariga ta'sir qilmaydi).
+        void authApi
+          .logoutWithToken(result.accessToken, { refreshToken: result.refreshToken })
+          .catch(() => undefined);
+        throw new StudentLoginRejectedError();
+      }
+      return result;
+    },
     onSuccess: (result) => {
       setSession(result);
       queryClient.setQueryData(authKeys.me(), result.user);

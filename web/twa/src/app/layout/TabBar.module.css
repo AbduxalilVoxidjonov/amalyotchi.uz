@@ -121,3 +121,17 @@
   background: var(--color-dark-active);
   color: var(--color-text-on-accent);
 }
+
+/* Oddiy brauzer (desktop): tab-bar va "Yana" varag'i markazdagi ≤ 480px ustunga tenglanadi. */
+@media (min-width: 560px) {
+  :global(html[data-platform='web']) .bar {
+    left: 50%;
+    right: auto;
+    width: var(--web-column-max, 480px);
+    transform: translateX(-50%);
+  }
+  :global(html[data-platform='web']) .sheet {
+    max-width: var(--web-column-max, 480px);
+    margin-inline: auto;
+  }
+}

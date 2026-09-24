@@ -18,10 +18,27 @@ function readDevInitData(): string {
   return (import.meta.env.VITE_DEV_INIT_DATA as string | undefined)?.trim() ?? '';
 }
 
+/**
+ * Telegram tashqarisida web-login (HEMIS ID + parol) sahifasini majburan ko'rsatish:
+ *   `?web=1` query yoki `VITE_WEB_LOGIN=true`. Mock rejimida (MSW) va dev initData bor bo'lsa ham
+ * avtomatik Telegram-login o'rniga login sahifasi ochiladi. Haqiqiy Telegram ichida ta'sir qilmaydi.
+ */
+function readForceWebLogin(): boolean {
+  if (isTest) return false;
+  try {
+    const q = new URLSearchParams(window.location.search).get('web');
+    if (q === '1' || q === 'true') return true;
+  } catch {
+    /* window yo'q */
+  }
+  return import.meta.env.VITE_WEB_LOGIN === 'true';
+}
+
 export const env = {
   apiUrl: (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, '') ?? '',
   useMocks: import.meta.env.VITE_USE_MOCKS === 'true',
   isDev,
   isTest,
   devInitData: readDevInitData(),
+  forceWebLogin: readForceWebLogin(),
 } as const;

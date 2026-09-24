@@ -36,9 +36,16 @@ export const studentsApi = {
     area: StudentApiArea = 'tutor',
     periodId: string | null = null,
   ) =>
-    api.get<StudentAttendanceDay[]>(`${studentBase(area, studentId)}/attendance`, {
-      query: { periodId, from: range.from, to: range.to },
-    }),
+    api
+      .get<
+        (Omit<StudentAttendanceDay, 'events'> & {
+          events?: StudentAttendanceDay['events'] | null;
+        })[]
+      >(`${studentBase(area, studentId)}/attendance`, {
+        query: { periodId, from: range.from, to: range.to },
+      })
+      // `events` yangi maydon — eski javobda bo'lmasa bo'sh ro'yxat.
+      .then((days): StudentAttendanceDay[] => days.map((d) => ({ ...d, events: d.events ?? [] }))),
 
   diaries: (studentId: string, area: StudentApiArea = 'tutor', periodId: string | null = null) =>
     api.get<DiaryEntry[]>(`${studentBase(area, studentId)}/diaries`, { query: { periodId } }),

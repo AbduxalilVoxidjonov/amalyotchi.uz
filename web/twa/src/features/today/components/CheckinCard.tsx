@@ -3,7 +3,11 @@ import { Badge, Button, Card, Eyebrow, FactGrid, type FactItem } from '@/shared/
 import { formatDate, formatMeters, formatTime } from '@/shared/lib/format';
 import type { CheckinFlow } from '../hooks';
 import { PHOTO_ACCEPT } from '../photo';
+import { isQrRequired } from '../qr';
 import { ATTENDANCE_STATUS, isCheckedIn, isFinished, type TodayDto } from '../types';
+import { CameraQrScanner } from './CameraQrScanner';
+import { CheckinSteps } from './CheckinSteps';
+import { QrConfirmed, QrScanPanel } from './QrScan';
 import { SelfieCapture } from './SelfieCapture';
 import styles from './CheckinCard.module.css';
 
@@ -63,7 +67,7 @@ function describe(today: TodayDto): { title: string; note: string } {
   }
 }
 
-/** SPEC-SCREENS §8 chap section — check-in + selfie (presentation). */
+/** SPEC-SCREENS §8 chap section — check-in: QR → joylashuv → selfie (presentation). */
 export function CheckinCard({ today, flow }: CheckinCardProps) {
   const { checkin, window: win } = today;
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -72,10 +76,15 @@ export function CheckinCard({ today, flow }: CheckinCardProps) {
   const canAct = checkedIn || checkin.status === 'pending';
   const { title, note } = describe(today);
   const status = ATTENDANCE_STATUS[checkin.status];
+  // Sozlamalar (TodayDto `checkin`): flag yo'q bo'lsa — ikkalasi ham majburiy (backend sukuti `true`).
+  const qrRequired = isQrRequired(checkin.qrRequired);
+  const photoRequired = checkin.photoRequired !== false;
+  const inFlow = canAct && flow.phase !== 'idle';
 
   /**
    * Kamera SHU foydalanuvchi harakatida ochiladi (`input.click()`) — `await` dan keyin
    * chaqirilsa iOS/Telegram WebView bloklaydi. Joylashuv so'rovi `flow.start` da parallel boshlanadi.
+   * QR talab qilinsa KELDIM QR skanerini ochadi; kamera keyin "Rasmga olish" tugmasi bilan ochiladi.
    */
   function openCamera() {
     const el = cameraRef.current;
@@ -123,8 +132,8 @@ export function CheckinCard({ today, flow }: CheckinCardProps) {
           tone={checkedIn ? 'dark' : 'accent'}
           className={styles.button}
           onClick={() => {
-            flow.start(checkedIn ? 'checkout' : 'checkin');
-            openCamera();
+            flow.start(checkedIn ? 'checkout' : 'checkin', { qrRequired, photoRequired });
+            if (!qrRequired) openCamera();
           }}
           disabled={!win.isOpen}
         >
@@ -132,7 +141,15 @@ export function CheckinCard({ today, flow }: CheckinCardProps) {
         </Button>
       ) : null}
 
-      {canAct && flow.phase !== 'idle' && <SelfieCapture flow={flow} onOpenCamera={openCamera} />}
+      {inFlow && <CheckinSteps flow={flow} />}
+      {inFlow && flow.phase === 'qr' && <QrScanPanel flow={flow} />}
+      {inFlow && flow.phase !== 'qr' && (
+        <>
+          {flow.requirements.qrRequired && flow.qr && <QrConfirmed flow={flow} />}
+          <SelfieCapture flow={flow} onOpenCamera={openCamera} />
+        </>
+      )}
+      {inFlow && flow.cameraOpen && <CameraQrScanner onDone={flow.finishCameraScan} />}
 
       <FactGrid items={facts} columns={2} className={styles.facts} />
 

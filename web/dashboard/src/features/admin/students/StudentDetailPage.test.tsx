@@ -92,6 +92,25 @@ describe('Admin StudentDetailPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('admin kun oynasida ham urinishlar galereyasi va jadvalda ikki thumbnail bor', async () => {
+    const user = userEvent.setup();
+    renderPage('s4');
+    const table = await screen.findByRole('table', { name: 'Kundalik jadval' });
+    const row = within(table).getByText('10.09.2026').closest('[role="row"]') as HTMLElement;
+    expect(
+      within(row).getByRole('button', { name: '10.09.2026 check-in rasmi — kattalashtirish' }),
+    ).toBeInTheDocument();
+    expect(
+      within(row).getByRole('button', { name: '10.09.2026 check-out rasmi — kattalashtirish' }),
+    ).toBeInTheDocument();
+
+    await user.click(within(table).getByText('09.09.2026'));
+    const dialog = await screen.findByRole('dialog', { name: /09\.09\.2026 — kun tafsiloti/ });
+    const gallery = within(dialog).getByRole('region', { name: 'Urinishlar' });
+    expect(within(gallery).getAllByRole('listitem')).toHaveLength(4);
+    expect(within(gallery).getByText('QR kod mos emas')).toBeInTheDocument();
+  });
+
   it("kun oynasida admin ham kundalikka ball qo'ya oladi", async () => {
     const user = userEvent.setup();
     renderPage();

@@ -5,6 +5,7 @@ using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Common;
 using Amaliyotchi.Domain.Companies;
 using Amaliyotchi.Domain.Practice;
+using Amaliyotchi.Domain.Settings;
 using Amaliyotchi.IntegrationTests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -101,13 +102,24 @@ public static class StudentTestData
     }
 
     /// <summary>Kontrakt <c>CheckinRequest</c>: API soati (muzlatilgan bo'lsa — o'sha moment) bo'yicha 2 soniya oldingi urinish
-    /// (validator <c>occurredAt</c> ni <c>IClock</c> bilan solishtiradi), korxona nuqtasi (yoki berilgan), aniqlik 10 m.</summary>
-    public static object Geo(this ApiFactory factory, double lat = CompanyLat, double lng = CompanyLng, double accuracy = 10)
-        => Geo(factory.Clock.UtcNow.AddSeconds(-2), lat, lng, accuracy);
+    /// (validator <c>occurredAt</c> ni <c>IClock</c> bilan solishtiradi), korxona nuqtasi (yoki berilgan), aniqlik 10 m,
+    /// ixtiyoriy <paramref name="qr"/> (skanerlangan QR satri; odatda <see cref="Qr"/>).</summary>
+    public static object Geo(
+        this ApiFactory factory, double lat = CompanyLat, double lng = CompanyLng, double accuracy = 10, string? qr = null)
+        => Geo(factory.Clock.UtcNow.AddSeconds(-2), lat, lng, accuracy, qr);
 
     /// <summary>Kontrakt <c>CheckinRequest</c> aniq <paramref name="occurredAt"/> bilan.</summary>
-    public static object Geo(DateTimeOffset occurredAt, double lat = CompanyLat, double lng = CompanyLng, double accuracy = 10)
-        => new { lat, lng, accuracy, occurredAt };
+    public static object Geo(
+        DateTimeOffset occurredAt, double lat = CompanyLat, double lng = CompanyLng, double accuracy = 10, string? qr = null)
+        => new { lat, lng, accuracy, occurredAt, qr };
+
+    /// <summary>Sahna korxonasida osilgan QR satri (<c>AMLQR:1:{token}</c>) — talaba skanerlagan qiymat.</summary>
+    public static string Qr(this StudentScene scene) => scene.Company.CheckInQrPayload;
+
+    /// <summary>Selfi talabini (<c>checkinPhotoRequired</c>, sukut <c>true</c>) vaqtincha o'chiradi — faqat rasmsiz JSON
+    /// yo'lidan foydalanadigan, selfiga aloqasi yo'q testlar uchun (geofence/oyna/davr mantiqi). QR talabi yoqiq qoladi.</summary>
+    public static Task<IAsyncDisposable> WithoutPhotoRequirementAsync(this ApiFactory factory)
+        => factory.UseSettingAsync(SettingKeys.CheckInPhotoRequired, "false");
 
     /// <summary><paramref name="day"/> uchun davomat qatorini to'g'ridan-to'g'ri yozadi (check-in oynasi yopiq holatlar uchun),
     /// kelish vaqti <paramref name="at"/> (standart 09:00).</summary>
@@ -124,14 +136,15 @@ public static class StudentTestData
         });
 
     /// <summary>Check-in/check-out multipart formasi: <c>lat</c>, <c>lng</c>, <c>accuracy</c>, <c>occurredAt</c>
-    /// va ixtiyoriy <c>photo</c>. <c>occurredAt</c> berilmasa — API soati bo'yicha 2 soniya oldin.</summary>
+    /// va ixtiyoriy <c>photo</c>, <c>qr</c>. <c>occurredAt</c> berilmasa — API soati bo'yicha 2 soniya oldin.</summary>
     public static MultipartFormDataContent GeoForm(
         this ApiFactory factory,
         double lat = CompanyLat,
         double lng = CompanyLng,
         double accuracy = 10,
         DateTimeOffset? occurredAt = null,
-        (string Name, string ContentType, byte[] Bytes)? photo = null)
+        (string Name, string ContentType, byte[] Bytes)? photo = null,
+        string? qr = null)
     {
         var form = new MultipartFormDataContent
         {
@@ -147,6 +160,9 @@ public static class StudentTestData
             part.Headers.ContentType = new MediaTypeHeaderValue(contentType);
             form.Add(part, "photo", name);
         }
+
+        if (qr is not null)
+            form.Add(new StringContent(qr), "qr");
 
         return form;
     }

@@ -1,3 +1,4 @@
+import { hasMockStudentPassword } from '@/features/shared/student-password/passwordStore';
 import { http, HttpResponse, type HttpHandler } from 'msw';
 import { problem } from '@/mocks/data';
 import {
@@ -159,6 +160,7 @@ function buildAdminDetail(
     adminStatus: row.status,
     telegramLinked: row.telegramLinked,
     tutor: TUTORS[row.faculty] ?? null,
+    hasPassword: hasMockStudentPassword(row.id),
   };
 }
 

@@ -1,9 +1,10 @@
 /**
  * Talaba navigatsiyasi — SPEC-NAV 2.3 (aynan tartib) + 3.2 marshrutlar.
  * ❓ Dizaynda 250px sidebar; TWA (360–430px) uchun pastki tab-bar: 4 asosiy tab + "Yana"
- * (SPEC-NAV 3.2 tavsiyasi). "Yana" ichida qolgan 2 bo'lim (Ruxsat so'rash, Portfolio) to'liq nomi bilan.
+ * (SPEC-NAV 3.2 tavsiyasi). "Yana" ichida qolgan bo'limlar (Ruxsat so'rash, Portfolio, Profil) to'liq nomi bilan.
+ * "Profil" — web-login bilan birga qo'shildi (shaxsiy ma'lumotlar, amaliyot xulosasi, parol, chiqish).
  */
-export type NavIcon = 'home' | 'place' | 'diary' | 'calendar' | 'leave' | 'portfolio';
+export type NavIcon = 'home' | 'place' | 'diary' | 'calendar' | 'leave' | 'portfolio' | 'profile';
 
 export interface StudentNavItem {
   /** Sarlavha (header h1) va "Yana" ro'yxati — SPEC'dagi aynan nom. */
@@ -21,6 +22,7 @@ export const STUDENT_NAV: readonly StudentNavItem[] = [
   { label: 'Kalendarim', short: 'Kalendarim', to: '/kalendar', icon: 'calendar' },
   { label: "Ruxsat so'rash", short: "Ruxsat so'rash", to: '/ruxsat', icon: 'leave' },
   { label: 'Portfolio', short: 'Portfolio', to: '/portfolio', icon: 'portfolio' },
+  { label: 'Profil', short: 'Profil', to: '/profil', icon: 'profile' },
 ];
 
 /** Tab-bar'da to'g'ridan-to'g'ri ko'rinadigan bo'limlar soni; qolgani "Yana" ichida. */

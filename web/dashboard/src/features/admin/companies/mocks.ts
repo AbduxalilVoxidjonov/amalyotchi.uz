@@ -11,6 +11,7 @@ import type {
   CompanyStudent,
   CompanyStudentState,
 } from './types';
+import { checkinQrHandlers } from '../../shared/checkin-qr/mocks';
 
 /** `maxStudentsPerCompany` sozlamasining demo qiymati (backend default — 10). */
 export const MOCK_MAX_STUDENTS = 10;
@@ -421,6 +422,8 @@ export const mockCompanyImportResult: ImportResult = {
 };
 
 export const companiesHandlers: HttpHandler[] = [
+  // Check-in QR: `GET …/:id/checkin-qr`, `POST …/:id/checkin-qr/rotate` (umumiy mock, § features/shared/checkin-qr).
+  ...checkinQrHandlers('admin', (id) => mockCompanyDetail(id)?.name ?? null),
   // `/import/template` va `/import` — `:id` dan OLDIN (aks holda ular id deb o'qiladi).
   http.get(
     `${COMPANIES_ENDPOINT}/import/template`,

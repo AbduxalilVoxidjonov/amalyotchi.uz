@@ -6,7 +6,7 @@ export const loginSchema = z.object({
     .string()
     .trim()
     .min(1, 'HEMIS ID ni kiriting.')
-    .regex(/^\d{5,20}$/, 'HEMIS ID faqat raqamlardan iborat bo\'lishi kerak.'),
+    .regex(/^\d{5,20}$/, "HEMIS ID faqat raqamlardan iborat bo'lishi kerak."),
   password: z
     .string()
     .min(1, 'Parolni kiriting.')

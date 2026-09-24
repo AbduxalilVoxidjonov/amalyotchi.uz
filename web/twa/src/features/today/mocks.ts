@@ -6,6 +6,7 @@ import { MOCK_AUTUMN_PERIOD, MOCK_GAP_DATE, MOCK_SPRING_PERIOD } from '@/feature
 import { periodPhase } from '@/features/period/types';
 import { formatDate } from '@/shared/lib/format';
 import { PHOTO_CONTENT_TYPES, PHOTO_MAX_BYTES } from './photo';
+import { MOCK_TEST_QR } from './qr';
 import { isCheckedIn, isFinished, type TodayDto } from './types';
 
 /** Mock korxona koordinatasi (SPEC isJoyim: 41.3111, 69.2797) — dev'da DevTools → Sensors bilan qo'ying. */
@@ -38,6 +39,9 @@ function initialToday(): TodayDto {
       suspicious: false,
       autoClosed: false,
       note: null,
+      // Sozlamalar ko'zgusi: `mockCheckinPhotoRequired` (false) va `checkinQrRequired` (backend sukuti true).
+      photoRequired: false,
+      qrRequired: true,
     },
     place: {
       company: 'Tech Solutions MChJ',
@@ -57,8 +61,8 @@ function initialToday(): TodayDto {
 export let mockToday: TodayDto = initialToday();
 
 /**
- * Backend sozlamasi `checkinPhotoRequired` (SettingKeys, default "false") ko'zgusi —
- * testda `setCheckinPhotoRequired(true)` bilan yoqiladi.
+ * Backend sozlamasi `checkinPhotoRequired` ko'zgusi (mock sukuti `false` — mavjud testlar rasmsiz oqimni ham
+ * tekshiradi) — testda `setCheckinPhotoRequired(true)` bilan yoqiladi (`today.checkin.photoRequired` ham).
  */
 export let mockCheckinPhotoRequired = false;
 
@@ -67,6 +71,28 @@ export let lastCheckinPhoto: { name: string; type: string; size: number } | null
 
 export function setCheckinPhotoRequired(value: boolean) {
   mockCheckinPhotoRequired = value;
+  mockToday = { ...mockToday, checkin: { ...mockToday.checkin, photoRequired: value } };
+}
+
+/** Mock korxonaning QR payload'i — boshqa token → 409 (`qrInvalid`). */
+export const MOCK_CHECKIN_QR = MOCK_TEST_QR;
+
+/** Oxirgi qabul qilingan `qr` maydoni (test tekshiruvi uchun). */
+export let lastCheckinQr: string | null = null;
+
+/** Backend sozlamasi `checkinQrRequired` (sukut `true`) ko'zgusi — `today.checkin.qrRequired` bilan. */
+export function setCheckinQrRequired(value: boolean) {
+  mockToday = { ...mockToday, checkin: { ...mockToday.checkin, qrRequired: value } };
+}
+
+/** QR xatolari — backend `AttendanceAttempt` xabarlari bilan bir xil. */
+export const QR_REQUIRED_MESSAGE = 'Amaliyot joyidagi QR kodni skanerlang.';
+export const QR_INVALID_MESSAGE = 'QR kod bu amaliyot joyiga tegishli emas.';
+
+/** Begona token → 409 (`rejectReason: qrInvalid`); aks holda null. */
+function qrRejection(qr: string | null): Response | null {
+  if (qr === null || qr === MOCK_CHECKIN_QR) return null;
+  return problem(409, 'Ziddiyat', QR_INVALID_MESSAGE);
 }
 
 /** Backend sozlamasi `diaryPdfRequired` ko'zgusi — testda `setDiaryPdfRequired(true)` bilan yoqiladi. */
@@ -124,6 +150,7 @@ export function resetTodayMocks() {
   mockToday = initialToday();
   mockCheckinPhotoRequired = false;
   lastCheckinPhoto = null;
+  lastCheckinQr = null;
 }
 
 /** Kundalik yuborilganda bosh ekran hisoblagichini yangilash (diary mock chaqiradi). */
@@ -141,11 +168,12 @@ interface ParsedCheckinForm {
   accuracy: number;
   occurredAt: string;
   photo: File | null;
+  qr: string | null;
 }
 
 /**
- * Kontrakt §1.3 — multipart/form-data: `lat`, `lng`, `accuracy`, `occurredAt`, ixtiyoriy `photo`.
- * Xato → 400 ProblemDetails (`errors.Lat` / `errors.Photo`) — backend validatori bilan bir xil.
+ * Kontrakt §1.3 — multipart/form-data: `lat`, `lng`, `accuracy`, `occurredAt`, ixtiyoriy `photo` va `qr`.
+ * Xato → 400 ProblemDetails (`errors.Lat` / `errors.Photo` / `errors.Qr`) — backend validatori bilan bir xil.
  */
 async function parseCheckinForm(
   request: Request,
@@ -205,8 +233,18 @@ async function parseCheckinForm(
     };
   }
 
+  const qrRaw = data.get('qr');
+  const qr = typeof qrRaw === 'string' && qrRaw.trim() !== '' ? qrRaw.trim() : null;
+  if (qr === null && mockToday.checkin.qrRequired !== false) {
+    return {
+      response: problem(400, "Ma'lumotlar noto'g'ri", QR_REQUIRED_MESSAGE, {
+        errors: { Qr: [QR_REQUIRED_MESSAGE] },
+      }),
+    };
+  }
+
   lastCheckinPhoto = photo ? { name: photo.name, type: photo.type, size: photo.size } : null;
-  return { form: { lat, lng, accuracy, occurredAt, photo } };
+  return { form: { lat, lng, accuracy, occurredAt, photo, qr } };
 }
 
 /**
@@ -234,6 +272,9 @@ export const todayHandlers: HttpHandler[] = [
     if (!mockToday.window.isOpen) {
       return problem(400, "Noto'g'ri amal", 'Bugungi belgilanish oynasi yopilgan.');
     }
+    const qrInvalid = qrRejection(body.qr);
+    if (qrInvalid) return qrInvalid;
+    lastCheckinQr = body.qr;
     const distanceM = Math.round(
       distanceMeters(body.lat, body.lng, MOCK_PLACE.lat, MOCK_PLACE.lng),
     );
@@ -279,6 +320,9 @@ export const todayHandlers: HttpHandler[] = [
     if (!isCheckedIn(mockToday.checkin)) {
       return problem(409, 'Ziddiyat', 'Avval kelganingizni belgilang (KELDIM).');
     }
+    const qrInvalid = qrRejection(body.qr);
+    if (qrInvalid) return qrInvalid;
+    lastCheckinQr = body.qr;
     const distanceM = Math.round(
       distanceMeters(body.lat, body.lng, MOCK_PLACE.lat, MOCK_PLACE.lng),
     );

@@ -10,7 +10,8 @@ namespace Amaliyotchi.Application.Features.Student.CheckOut;
 /// <summary><c>POST /api/student/checkout</c> (multipart yoki JSON). 400: oyna (17:00 gacha / 18:00 dan keyin),
 /// aniqlik, rasm qoidalari; 409: check-in yo'q, allaqachon ketgan, radius tashqarisi.
 /// Har urinish <see cref="AttendanceEvent"/> ga rasmi bilan yoziladi.</summary>
-public sealed record CheckOutCommand(double Lat, double Lng, double Accuracy, DateTimeOffset OccurredAt, UploadedFile? Photo = null)
+public sealed record CheckOutCommand(
+    double Lat, double Lng, double Accuracy, DateTimeOffset OccurredAt, UploadedFile? Photo = null, string? Qr = null)
     : IRequest<TodayDto>, IGeoRequest;
 
 public sealed class CheckOutCommandValidator : GeoRequestValidator<CheckOutCommand>
@@ -38,7 +39,8 @@ internal sealed class CheckOutCommandHandler(
                     AutoClosed: s.Attendance?.AutoClosed ?? false,
                     AccuracyM: request.Accuracy,
                     DistanceM: s.DistanceM,
-                    RadiusM: s.Company.RadiusM),
+                    RadiusM: s.Company.RadiusM,
+                    QrValid: s.QrValid),
                 s.Rules),
             apply: (s, _, attempt) => s.Attendance!.CheckOut(s.ReceivedAt, s.DistanceM, attempt.PhotoFileId),
             cancellationToken);

@@ -3,7 +3,8 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { errorMessage } from '@/shared/api/client';
 import { homePathForRole, useAuth } from '@/shared/auth/useAuth';
 import { Button, Checkbox, Input } from '@/shared/ui';
-import { useLogin } from './hooks';
+import { getTwaUrl } from '@/shared/lib/env';
+import { isStudentLoginRejected, useLogin } from './hooks';
 import styles from './LoginPage.module.css';
 import { loginSchema, type LoginFormValues } from './schema';
 
@@ -140,7 +141,11 @@ export function LoginPage() {
 
           {login.isError && (
             <p id="login-error" role="alert" className={styles.serverError}>
-              {errorMessage(login.error)}
+              {isStudentLoginRejected(login.error) ? (
+                <StudentAppNotice />
+              ) : (
+                errorMessage(login.error)
+              )}
             </p>
           )}
 
@@ -154,10 +159,23 @@ export function LoginPage() {
           >
             {login.isPending ? 'Kirilmoqda…' : 'Kirish'}
           </Button>
-
         </form>
       </main>
     </div>
+  );
+}
+
+/** Talaba dashboard'ga kirmaydi — TWA havolasi (`VITE_TWA_URL`) yoki Telegram bot. */
+function StudentAppNotice() {
+  const twaUrl = getTwaUrl();
+  if (!twaUrl) return <>Talabalar Telegram bot orqali kiradi.</>;
+  return (
+    <>
+      Talabalar uchun alohida ilova:{' '}
+      <a className={styles.studentAppLink} href={twaUrl}>
+        {twaUrl}
+      </a>
+    </>
   );
 }
 

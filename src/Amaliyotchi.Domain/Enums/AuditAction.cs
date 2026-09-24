@@ -85,5 +85,14 @@ public enum AuditAction
     PracticePeriodUpdated = 57,
     PracticePeriodGroupsChanged = 58,
     PracticePeriodClosed = 59,
-    PracticePeriodDeleted = 60
+    PracticePeriodDeleted = 60,
+
+    /// <summary>Admin yoki tyutor korxonaning check-in QR kodini almashtirdi (eski QR yaroqsiz).</summary>
+    CompanyQrRotated = 61,
+
+    /// <summary>Admin yoki tyutor talabaga (brauzer orqali kirish uchun) vaqtinchalik parol o'rnatdi.</summary>
+    StudentPasswordSet = 62,
+
+    /// <summary>Foydalanuvchi o'z parolini o'zgartirdi (<c>POST /api/auth/change-password</c>).</summary>
+    PasswordChanged = 63
 }

@@ -1,13 +1,5 @@
 import { useId, useState } from 'react';
-import {
-  Badge,
-  Chip,
-  ChipRow,
-  DataTable,
-  Eyebrow,
-  Modal,
-  type DataTableColumn,
-} from '@/shared/ui';
+import { Badge, Chip, ChipRow, DataTable, Eyebrow, Modal, type DataTableColumn } from '@/shared/ui';
 import { errorMessage } from '@/shared/api';
 import { fmtDateOnly, fmtDistance } from '../../format';
 import { useDiaryReview } from '../../diaries/hooks';
@@ -15,6 +7,8 @@ import { DIARY_STATUS_LABEL, type DiaryEntry } from '../../diaries/types';
 import {
   dayStatusLabel,
   fmtCoords,
+  rejectReasonText,
+  type AttendanceAttempt,
   type AttendancePunch,
   type StudentApiArea,
   type StudentAttendanceDay,
@@ -44,6 +38,16 @@ function flags(day: StudentAttendanceDay): string[] {
   if (day.rejectedAttempts > 0) out.push(`${day.rejectedAttempts} urinish rad etildi`);
   if (day.leaveRequestId) out.push("Ruxsat so'rovi");
   return out;
+}
+
+/** Jadval katagidagi bitta selfi: bor bo'lsa PhotoPreview (bosish qator bosilishini to'xtatadi), yo'q bo'lsa bo'sh joy. */
+function RowThumb({ url, label, missing }: { url: string | null; label: string; missing: string }) {
+  if (url) return <PhotoPreview url={url} label={label} />;
+  return (
+    <span className={styles.thumbEmpty} title={missing} aria-label={missing} role="img">
+      —
+    </span>
+  );
 }
 
 const COLUMNS: DataTableColumn<StudentAttendanceDay>[] = [
@@ -106,13 +110,20 @@ const COLUMNS: DataTableColumn<StudentAttendanceDay>[] = [
   {
     key: 'photo',
     header: 'Rasm',
-    width: 'minmax(70px, 70px)',
-    render: (d) =>
-      d.checkIn?.photoUrl ? (
-        <PhotoPreview url={d.checkIn.photoUrl} label={`${fmtDateOnly(d.date)} check-in rasmi`} />
-      ) : (
-        <span className={styles.dim}>—</span>
-      ),
+    // Ikki thumbnail (54px) + oraliq — kirish va chiqish yonma-yon.
+    width: 'minmax(128px, 128px)',
+    render: (d) => {
+      const inUrl = d.checkIn?.photoUrl ?? null;
+      const outUrl = d.checkOut?.photoUrl ?? null;
+      if (!inUrl && !outUrl) return <span className={styles.dim}>—</span>;
+      const date = fmtDateOnly(d.date);
+      return (
+        <span className={styles.thumbs}>
+          <RowThumb url={inUrl} label={`${date} check-in rasmi`} missing="Kirish rasmi yo'q" />
+          <RowThumb url={outUrl} label={`${date} check-out rasmi`} missing="Chiqish rasmi yo'q" />
+        </span>
+      );
+    },
   },
   {
     key: 'flags',
@@ -224,11 +235,92 @@ function PunchBlock({
   );
 }
 
+const ATTEMPT_KIND_LABEL: Record<AttendanceAttempt['kind'], string> = {
+  checkIn: 'Kirish',
+  checkOut: 'Chiqish',
+};
+
+/** Bitta urinish kartasi: selfi (yoki "Selfi yo'q"), vaqt + turi, holat, rad sababi, masofa. */
+function AttemptCard({ date, attempt }: { date: string; attempt: AttendanceAttempt }) {
+  const kind = ATTEMPT_KIND_LABEL[attempt.kind];
+  const status = attempt.accepted ? 'Qabul qilindi' : 'Rad etildi';
+  const outOfRadius =
+    attempt.distanceM !== null && attempt.radiusM !== null && attempt.distanceM > attempt.radiusM;
+
+  return (
+    <li
+      className={styles.attempt}
+      data-accepted={attempt.accepted}
+      aria-label={`${kind} ${attempt.at} — ${status}`}
+    >
+      {attempt.photoUrl ? (
+        <PhotoPreview
+          url={attempt.photoUrl}
+          size="tile"
+          label={`${fmtDateOnly(date)} ${attempt.at} ${kind.toLowerCase()} urinishi rasmi`}
+        />
+      ) : (
+        <div className={styles.attemptNoPhoto}>Selfi yo'q</div>
+      )}
+      <div className={styles.attemptHead}>
+        <span className={styles.attemptTime}>{attempt.at}</span>
+        <span className={styles.attemptKind}>{kind}</span>
+      </div>
+      <Badge status={attempt.accepted ? 'ok' : 'bad'} size="sm" className={styles.attemptBadge}>
+        {status}
+      </Badge>
+      {!attempt.accepted && <p className={styles.attemptReason}>{rejectReasonText(attempt)}</p>}
+      {attempt.distanceM !== null && (
+        <p className={styles.attemptDistance}>
+          <span className={styles.dim}>Masofa </span>
+          <span data-out-of-radius={outOfRadius || undefined} className={styles.distance}>
+            {fmtDistance(attempt.distanceM)}
+          </span>
+          {outOfRadius && attempt.radiusM !== null && (
+            <span className={styles.outNote}>
+              {' '}
+              · radius {fmtDistance(attempt.radiusM)} dan tashqarida
+            </span>
+          )}
+        </p>
+      )}
+    </li>
+  );
+}
+
+/** Kundagi barcha urinishlar galereyasi (kirish/chiqish, qabul/rad). Urinish bo'lmasa — chiqmaydi. */
+function AttemptsGallery({
+  date,
+  events,
+}: {
+  date: string;
+  events: readonly AttendanceAttempt[] | undefined;
+}) {
+  const headingId = useId();
+  if (!events || events.length === 0) return null;
+  const sorted = [...events].sort((a, b) => a.atIso.localeCompare(b.atIso));
+  const rejected = sorted.filter((e) => !e.accepted).length;
+
+  return (
+    <section className={styles.attempts} aria-label="Urinishlar">
+      <Eyebrow margin="none" id={headingId}>
+        Urinishlar · {sorted.length} ta{rejected > 0 && ` · ${rejected} rad etilgan`}
+      </Eyebrow>
+      <ul className={styles.attemptGrid} aria-labelledby={headingId}>
+        {sorted.map((e) => (
+          <AttemptCard key={e.id} date={date} attempt={e} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /**
  * Kundalik jadval (KONTRAKT §2.2) — har bir amaliyot kuni bir qator.
  * Sana bosilsa, o'sha kun ixcham **oynada** (modal, ~640px) ochiladi: tepada kirish va chiqish
  * yonma-yon (vaqt, masofa, aniqlik, koordinata, selfi thumbnail), ostida kun sanoqlari bir qatorda
- * (urinishlar · ish kuni · radius), oxirida kundalik (qisqartirilgan matn, baholash, fayllar ro'yxati).
+ * (urinishlar · ish kuni · radius), keyin "Urinishlar" galereyasi (kunning har bir urinishi — selfi, vaqt,
+ * turi, qabul/rad holati, rad sababi, masofa), oxirida kundalik (qisqartirilgan matn, baholash, fayllar).
  */
 export function AttendanceDayTable({
   days,
@@ -252,7 +344,7 @@ export function AttendanceDayTable({
         rows={days}
         rowKey={(d) => d.date}
         density="compact"
-        minWidth="1080px"
+        minWidth="1140px"
         selectedKey={selectedDate}
         onRowClick={(d) => {
           review.reset();
@@ -292,8 +384,7 @@ export function AttendanceDayTable({
                   <dt>Urinishlar</dt>
                   <dd>
                     {selected.attempts} ta
-                    {selected.rejectedAttempts > 0 &&
-                      ` · ${selected.rejectedAttempts} rad etilgan`}
+                    {selected.rejectedAttempts > 0 && ` · ${selected.rejectedAttempts} rad etilgan`}
                   </dd>
                 </div>
                 <div>
@@ -312,6 +403,8 @@ export function AttendanceDayTable({
               )}
               {selected.manualReason && <p className={styles.reason}>{selected.manualReason}</p>}
             </section>
+
+            <AttemptsGallery date={selected.date} events={selected.events} />
 
             <section className={styles.panelDiary} aria-labelledby={diaryHeadingId}>
               <Eyebrow margin="none" id={diaryHeadingId}>

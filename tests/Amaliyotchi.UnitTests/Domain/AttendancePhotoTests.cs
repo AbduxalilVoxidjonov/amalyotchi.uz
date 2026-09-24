@@ -68,13 +68,13 @@ public sealed class AttendancePhotoTests
     }
 
     [Fact]
-    public void Sozlama_CheckInPhotoRequired_MantiqiyVaStandartYoq()
+    public void Sozlama_CheckInPhotoRequired_MantiqiyVaStandartYoqilgan()
     {
         var definition = SettingKeys.Get(SettingKeys.CheckInPhotoRequired);
 
         SettingKeys.CheckInPhotoRequired.Should().Be("checkinPhotoRequired");
         definition.Type.Should().Be(SettingType.Bool);
-        definition.DefaultValue.Should().Be("false");
+        definition.DefaultValue.Should().Be("true");
         definition.Validate("ha").Should().Be("true");
         definition.Validate("yo'q").Should().Be("false");
     }

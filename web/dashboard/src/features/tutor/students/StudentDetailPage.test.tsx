@@ -317,6 +317,29 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
     expect(within(outsideRow as HTMLElement).getByText('Radius tashqarisida')).toBeInTheDocument();
   });
 
+  it('kun oynasida urinishlar galereyasi (mock): rad etilgan va qabul qilingan urinishlar rasm bilan', async () => {
+    const user = userEvent.setup();
+    renderStudentDetail('/tutor/students/s-341034');
+
+    const table = await screen.findByRole('table', { name: 'Kundalik jadval' });
+    await user.click(within(table).getByText('09.09.2026'));
+    const dialog = await screen.findByRole('dialog', { name: /09\.09\.2026 — kun tafsiloti/ });
+    const gallery = within(dialog).getByRole('region', { name: 'Urinishlar' });
+    const cards = within(gallery).getAllByRole('listitem');
+    expect(cards).toHaveLength(4);
+    expect(within(gallery).getAllByText('Rad etildi')).toHaveLength(2);
+    expect(within(gallery).getAllByText('Qabul qilindi')).toHaveLength(2);
+    expect(
+      within(gallery).getByText(/^Korxona hududidan tashqaridasiz: \d+ m/),
+    ).toBeInTheDocument();
+    expect(within(gallery).getByText('QR kod mos emas')).toBeInTheDocument();
+    // QR rad etilgan urinish va chiqish selfisiz; radius rad etilgani va qabul qilingan kirish — rasm bilan.
+    expect(within(gallery).getAllByText("Selfi yo'q")).toHaveLength(2);
+    expect(
+      within(gallery).getAllByRole('button', { name: /urinishi rasmi — kattalashtirish$/ }),
+    ).toHaveLength(2);
+  });
+
   it("ko'lamdan tashqari talaba → 404 bo'sh holati", async () => {
     renderStudentDetail('/tutor/students/s-999999');
     expect(await screen.findByText('Talaba topilmadi.')).toBeInTheDocument();

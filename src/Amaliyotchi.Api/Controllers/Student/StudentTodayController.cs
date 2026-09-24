@@ -12,7 +12,8 @@ namespace Amaliyotchi.Api.Controllers.Student;
 
 /// <summary>Multipart forma: <c>lat</c>, <c>lng</c>, <c>accuracy</c>, <c>occurredAt</c> va ixtiyoriy
 /// <c>photo</c> (selfi, ≤ 5 MB, JPEG/PNG/WebP/HEIC). Sozlama <c>checkinPhotoRequired</c> yoqilgan bo'lsa
-/// rasm majburiy.</summary>
+/// rasm majburiy. <c>qr</c> — amaliyot joyida skanerlangan QR satri (<c>AMLQR:1:…</c>); sozlama
+/// <c>checkinQrRequired</c> yoqilgan bo'lsa majburiy, yuborilgan bo'lsa doim tekshiriladi.</summary>
 public sealed class GeoForm
 {
     public double Lat { get; init; }
@@ -20,13 +21,14 @@ public sealed class GeoForm
     public double Accuracy { get; init; }
     public DateTimeOffset OccurredAt { get; init; }
     public IFormFile? Photo { get; init; }
+    public string? Qr { get; init; }
 
     public UploadedFile? ToUploadedFile()
         => Photo is null ? null : new UploadedFile(Photo.FileName, Photo.ContentType, Photo.Length, Photo.OpenReadStream);
 }
 
 /// <summary>Rasmsiz JSON so'rov (kontrakt <c>CheckinRequest</c>) — eski klientlar va offline navbat uchun saqlanadi.</summary>
-public sealed record GeoJsonRequest(double Lat, double Lng, double Accuracy, DateTimeOffset OccurredAt);
+public sealed record GeoJsonRequest(double Lat, double Lng, double Accuracy, DateTimeOffset OccurredAt, string? Qr = null);
 
 /// <summary>Talabaning bugungi belgilanishi: holat, check-in, check-out. Ko'lam — faqat o'zi (Bearer'dan).
 /// Check-in/check-out ikkala formatda qabul qilinadi: <c>multipart/form-data</c> (selfi bilan) va
@@ -45,7 +47,7 @@ public sealed class StudentTodayController(ISender sender) : ControllerBase
         => Ok(await sender.Send(new GetStudentTodayQuery(), cancellationToken));
 
     /// <summary>Kelganini belgilash (multipart, ixtiyoriy <c>photo</c> selfi). 400 — oyna/ish kuni/GPS aniqligi/rasm;
-    /// 409 — radius tashqarisi yoki allaqachon belgilangan. Rad etilgan urinish rasmi bilan saqlanadi.</summary>
+    /// 409 — radius tashqarisi, QR boshqa joyniki yoki allaqachon belgilangan. Rad etilgan urinish rasmi bilan saqlanadi.</summary>
     [HttpPost("checkin")]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(MaxRequestBodyBytes)]
@@ -55,7 +57,7 @@ public sealed class StudentTodayController(ISender sender) : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<TodayDto>> CheckIn([FromForm] GeoForm form, CancellationToken cancellationToken)
         => Ok(await sender.Send(
-            new CheckInCommand(form.Lat, form.Lng, form.Accuracy, form.OccurredAt, form.ToUploadedFile()), cancellationToken));
+            new CheckInCommand(form.Lat, form.Lng, form.Accuracy, form.OccurredAt, form.ToUploadedFile(), form.Qr), cancellationToken));
 
     /// <summary>Kelganini belgilash (rasmsiz JSON). <c>checkinPhotoRequired</c> yoqilgan bo'lsa — 400.
     /// Bu action'da <c>[Consumes]</c> ATAYLAB yo'q: u cheklovsiz "fallback" bo'lishi shart. Ikkala action'da
@@ -68,7 +70,7 @@ public sealed class StudentTodayController(ISender sender) : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<TodayDto>> CheckInJson(GeoJsonRequest body, CancellationToken cancellationToken)
         => Ok(await sender.Send(
-            new CheckInCommand(body.Lat, body.Lng, body.Accuracy, body.OccurredAt), cancellationToken));
+            new CheckInCommand(body.Lat, body.Lng, body.Accuracy, body.OccurredAt, Qr: body.Qr), cancellationToken));
 
     /// <summary>Ketganini belgilash (multipart, ixtiyoriy <c>photo</c> selfi). 400 — oyna/GPS/rasm;
     /// 409 — avval check-in kerak, allaqachon ketgan, radius tashqarisi.</summary>
@@ -81,7 +83,7 @@ public sealed class StudentTodayController(ISender sender) : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<TodayDto>> CheckOut([FromForm] GeoForm form, CancellationToken cancellationToken)
         => Ok(await sender.Send(
-            new CheckOutCommand(form.Lat, form.Lng, form.Accuracy, form.OccurredAt, form.ToUploadedFile()), cancellationToken));
+            new CheckOutCommand(form.Lat, form.Lng, form.Accuracy, form.OccurredAt, form.ToUploadedFile(), form.Qr), cancellationToken));
 
     /// <summary>Ketganini belgilash (rasmsiz JSON). <c>[Consumes]</c> siz — sabab check-in'dagidek.</summary>
     [HttpPost("checkout")]
@@ -90,5 +92,5 @@ public sealed class StudentTodayController(ISender sender) : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<TodayDto>> CheckOutJson(GeoJsonRequest body, CancellationToken cancellationToken)
         => Ok(await sender.Send(
-            new CheckOutCommand(body.Lat, body.Lng, body.Accuracy, body.OccurredAt), cancellationToken));
+            new CheckOutCommand(body.Lat, body.Lng, body.Accuracy, body.OccurredAt, Qr: body.Qr), cancellationToken));
 }

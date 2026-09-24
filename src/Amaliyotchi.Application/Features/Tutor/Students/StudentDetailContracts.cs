@@ -61,7 +61,8 @@ public sealed record StudentGrade(double Total, int? Grade);
 /// <summary><c>GET /api/tutor/students/{id}?periodId=</c> javobi: profil + korxona + ariza + davr + statistika + baho —
 /// davrga bog'liq bloklar <c>selectedPeriodId</c> davri bo'yicha. <c>company</c> — faqat shu davrdagi
 /// tasdiqlangan (yoki yakunlangan) arizada; <c>period</c>/<c>grade</c> — davr bo'lmasa null (<c>grade</c> —
-/// davr hali boshlanmagan bo'lsa ham null). <c>periods</c> — davr tanlagichi (<c>startDate</c> kamayish tartibida).</summary>
+/// davr hali boshlanmagan bo'lsa ham null). <c>periods</c> — davr tanlagichi (<c>startDate</c> kamayish tartibida).
+/// <c>hasPassword</c> — talabaga brauzer orqali kirish uchun parol o'rnatilganmi.</summary>
 public sealed record TutorStudentDetail(
     Guid Id,
     string Name,
@@ -81,7 +82,8 @@ public sealed record TutorStudentDetail(
     DiarySummary Diary,
     StudentGrade? Grade,
     IReadOnlyList<StudentPeriodOption> Periods,
-    Guid? SelectedPeriodId);
+    Guid? SelectedPeriodId,
+    bool HasPassword);
 
 internal static class WorkDayNumbers
 {

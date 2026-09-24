@@ -149,6 +149,8 @@ export interface TutorStudentDetail {
   periods: StudentPeriodOption[];
   /** Javobdagi davrga bog'liq bloklar shu davr bo'yicha; davr yo'q → null. */
   selectedPeriodId: string | null;
+  /** Talabaga parol o'rnatilganmi (TWA'ga brauzerda HEMIS ID + parol bilan kirish). Admin javobida ham bor. */
+  hasPassword: boolean;
 }
 
 /**
@@ -188,6 +190,74 @@ export interface AttendancePunch {
   outOfRadius: boolean;
 }
 
+/**
+ * Rad etish sababi (backend `CheckInRejectReason`, camelCase — KONTRAKT §3.1). Ro'yxat ochiq:
+ * backend yangi sabab qo'shsa ham ishlaydi (yorliq bo'lmasa `rejectMessage` yoki umumiy matn).
+ */
+export type AttendanceRejectReason =
+  | 'notApproved'
+  | 'notWorkDay'
+  | 'periodNotStarted'
+  | 'periodEnded'
+  | 'windowNotOpen'
+  | 'windowClosed'
+  | 'poorAccuracy'
+  | 'outOfRadius'
+  | 'alreadyCheckedIn'
+  | 'noCheckIn'
+  | 'alreadyCheckedOut'
+  | 'onLeave'
+  | 'qrInvalid'
+  | (string & {});
+
+/** Zaxira yorliqlar (KONTRAKT §3.2 matnlari) — `rejectMessage` bo'lmaganda ishlatiladi. */
+export const REJECT_REASON_LABEL: Record<string, string> = {
+  notApproved: 'Amaliyot joyi hali tasdiqlanmagan',
+  notWorkDay: 'Ish kuni emas',
+  periodNotStarted: 'Amaliyot davri hali boshlanmagan',
+  periodEnded: 'Amaliyot davri tugagan',
+  windowNotOpen: 'Belgilanish oynasi hali ochilmagan',
+  windowClosed: 'Belgilanish oynasi yopilgan',
+  poorAccuracy: 'GPS aniqligi yetarli emas',
+  outOfRadius: 'Amaliyot joyida emas (radius tashqarisi)',
+  alreadyCheckedIn: 'Allaqachon belgilangan',
+  noCheckIn: 'Kirish belgilanmagan',
+  alreadyCheckedOut: 'Ketish allaqachon belgilangan',
+  onLeave: 'Bu kunga ruxsat tasdiqlangan',
+  qrInvalid: 'QR kod mos emas',
+};
+
+export function rejectReasonText(
+  attempt: Pick<AttendanceAttempt, 'rejectReason' | 'rejectMessage'>,
+): string {
+  if (attempt.rejectMessage) return attempt.rejectMessage;
+  if (attempt.rejectReason) return REJECT_REASON_LABEL[attempt.rejectReason] ?? 'Rad etildi';
+  return 'Rad etildi';
+}
+
+/**
+ * Kundagi HAR BIR urinish (qabul qilingan ham, rad etilgan ham) — `StudentAttendanceDay.events`.
+ * Vaqt tartibida keladi. `photoUrl` — `/api/files/{id}` (AuthImage bilan ochiladi).
+ */
+export interface AttendanceAttempt {
+  id: string;
+  kind: 'checkIn' | 'checkOut';
+  /** "09:02" (Toshkent) */
+  at: string;
+  atIso: string;
+  accepted: boolean;
+  rejectReason: AttendanceRejectReason | null;
+  /** Talabaga ko'rsatilgan xabar (o'zbekcha). */
+  rejectMessage: string | null;
+  distanceM: number | null;
+  accuracyM: number | null;
+  /** Urinish paytidagi korxona radiusi. */
+  radiusM: number | null;
+  lat: number | null;
+  lng: number | null;
+  photoUrl: string | null;
+}
+
 export interface AttendanceDayDiary {
   id: string;
   status: DiaryStatus;
@@ -215,6 +285,11 @@ export interface StudentAttendanceDay {
   attempts: number;
   /** Ulardan rad etilganlari — masofasi/nuqtasi `checkIn` da ko'rinmaydi. */
   rejectedAttempts: number;
+  /**
+   * Shu kundagi barcha urinishlar (kirish + chiqish, qabul qilingan + rad etilgan), vaqt tartibida.
+   * Eski backend javobida bo'lmasa `studentsApi.attendance` uni `[]` ga to'ldiradi.
+   */
+  events: AttendanceAttempt[];
 }
 
 /**

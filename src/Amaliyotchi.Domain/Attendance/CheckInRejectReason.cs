@@ -23,7 +23,9 @@ public enum CheckInRejectReason
     NoCheckIn = 10,
     AlreadyCheckedOut = 11,
     /// <summary>Bu kunga tasdiqlangan ruxsat bor — davomat "sababli", belgilanish shart emas.</summary>
-    OnLeave = 12
+    OnLeave = 12,
+    /// <summary>Skanerlangan QR kod talabaning amaliyot joyiga tegishli emas (yoki format noto'g'ri / eskirgan).</summary>
+    QrInvalid = 13
 }
 
 public static class CheckInRejectReasonExtensions
@@ -44,14 +46,16 @@ public static class CheckInRejectReasonExtensions
         CheckInRejectReason.NoCheckIn => "Avval kelganingizni belgilang.",
         CheckInRejectReason.AlreadyCheckedOut => "Ketish allaqachon belgilangan.",
         CheckInRejectReason.OnLeave => "Bu kunga ruxsat tasdiqlangan — belgilanish shart emas.",
+        CheckInRejectReason.QrInvalid => "QR kod bu amaliyot joyiga tegishli emas.",
         _ => "Belgilanish rad etildi."
     };
 
-    /// <summary>Rad sababini API xatosiga aylantiradi: holat ziddiyatlari (radius, takror, check-in'siz) → 409,
+    /// <summary>Rad sababini API xatosiga aylantiradi: holat ziddiyatlari (radius, QR, takror, check-in'siz) → 409,
     /// qolganlari → 400.</summary>
     public static DomainException ToException(this CheckInRejectReason reason) => reason switch
     {
         CheckInRejectReason.OutOfRadius
+            or CheckInRejectReason.QrInvalid
             or CheckInRejectReason.AlreadyCheckedIn
             or CheckInRejectReason.AlreadyCheckedOut
             or CheckInRejectReason.NoCheckIn => new ConflictException(reason.Message()),

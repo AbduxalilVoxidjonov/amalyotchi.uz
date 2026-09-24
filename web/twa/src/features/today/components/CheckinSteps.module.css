@@ -1,0 +1,69 @@
+/* Check-in qadamlari (1 QR · 2 Joylashuv · 3 Selfi) — 360px da bir qatorda sig'adi. */
+.steps {
+  display: flex;
+  gap: 6px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.step {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 7px 8px;
+  border-radius: var(--radius-md2);
+  border: var(--border-inner);
+  background: var(--color-surface-2);
+  color: var(--color-text-faint);
+  font-size: var(--fs-sm);
+}
+.num {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-3);
+  border: var(--border-inner);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+}
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.step[data-state='current'] {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+.step[data-state='current'] .num {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-text-on-accent);
+}
+.step[data-state='done'] {
+  color: var(--color-ok-fg);
+  background: var(--color-ok-bg);
+}
+.step[data-state='done'] .num {
+  background: var(--color-ok-strong);
+  border-color: var(--color-ok-strong);
+  color: var(--color-text-on-accent);
+}
+.step[data-state='error'] {
+  color: var(--color-bad-fg);
+  background: var(--color-bad-bg);
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

@@ -15,6 +15,7 @@ namespace Amaliyotchi.Domain.Attendance;
 /// <param name="AccuracyM">Qurilma GPS aniqligi (m).</param>
 /// <param name="DistanceM">Korxonagacha masofa (m).</param>
 /// <param name="RadiusM">Korxona geofence radiusi (m).</param>
+/// <param name="QrValid">Skanerlangan QR korxonaga mosmi. QR yuborilmagan (va majburiy emas) bo'lsa — <c>true</c>.</param>
 public sealed record CheckInContext(
     DateOnly Date,
     TimeOnly LocalNow,
@@ -27,7 +28,8 @@ public sealed record CheckInContext(
     bool AlreadyCheckedIn,
     double AccuracyM,
     double DistanceM,
-    int RadiusM)
+    int RadiusM,
+    bool QrValid = true)
 {
     public bool IsWorkDay => WorkDays.Includes(Date) && !IsHoliday;
 }
@@ -36,6 +38,7 @@ public sealed record CheckInContext(
 /// <param name="HasCheckedIn">Bugun check-in bormi.</param>
 /// <param name="AlreadyCheckedOut">Check-out allaqachon bormi.</param>
 /// <param name="AutoClosed">Kun avtomatik yopilganmi.</param>
+/// <param name="QrValid">Skanerlangan QR korxonaga mosmi (yuborilmagan bo'lsa — <c>true</c>).</param>
 public sealed record CheckOutContext(
     TimeOnly LocalNow,
     bool HasCheckedIn,
@@ -43,7 +46,8 @@ public sealed record CheckOutContext(
     bool AutoClosed,
     double AccuracyM,
     double DistanceM,
-    int RadiusM);
+    int RadiusM,
+    bool QrValid = true);
 
 /// <summary>Siyosat qarori: qabul qilindi (kech/kech emas) yoki rad (sabab bilan).</summary>
 public sealed record CheckInVerdict(bool Accepted, CheckInRejectReason Reason, bool IsLate)
@@ -58,7 +62,8 @@ public sealed record CheckInVerdict(bool Accepted, CheckInRejectReason Reason, b
 
 /// <summary>Geofence check-in dvigatelining sof qismi: hech qanday I/O yo'q, hammasi kontekstdan.
 /// Tekshiruv tartibi muhim — foydalanuvchi eng "asosiy" sababni ko'rishi kerak
-/// (ariza → davr → ish kuni → ruxsat → takror → oyna → GPS → radius).</summary>
+/// (ariza → davr → ish kuni → ruxsat → takror → oyna → QR → GPS → radius). QR oynadan keyin: yopiq oynada
+/// "QR noto'g'ri" emas, oyna sababi ko'rinadi; GPS'dan oldin: QR — joyda turganlikning kuchliroq isboti.</summary>
 public static class CheckInPolicy
 {
     public static CheckInVerdict Evaluate(CheckInContext ctx, CheckInRules rules)
@@ -82,6 +87,8 @@ public static class CheckInPolicy
             return CheckInVerdict.Reject(CheckInRejectReason.WindowNotOpen);
         if (ctx.LocalNow >= rules.WindowEnd)
             return CheckInVerdict.Reject(CheckInRejectReason.WindowClosed);
+        if (!ctx.QrValid)
+            return CheckInVerdict.Reject(CheckInRejectReason.QrInvalid);
         if (!IsAccuracyOk(ctx.AccuracyM, rules.MinAccuracyM))
             return CheckInVerdict.Reject(CheckInRejectReason.PoorAccuracy);
         if (!IsWithinRadius(ctx.DistanceM, ctx.RadiusM))
@@ -103,6 +110,8 @@ public static class CheckInPolicy
             return CheckInVerdict.Reject(CheckInRejectReason.WindowNotOpen);
         if (ctx.LocalNow >= rules.AutoCloseAt)
             return CheckInVerdict.Reject(CheckInRejectReason.WindowClosed);
+        if (!ctx.QrValid)
+            return CheckInVerdict.Reject(CheckInRejectReason.QrInvalid);
         if (!IsAccuracyOk(ctx.AccuracyM, rules.MinAccuracyM))
             return CheckInVerdict.Reject(CheckInRejectReason.PoorAccuracy);
         if (!IsWithinRadius(ctx.DistanceM, ctx.RadiusM))

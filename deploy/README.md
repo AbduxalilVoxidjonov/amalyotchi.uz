@@ -113,7 +113,7 @@ API konteyneri startup'da o'zi bajaradi (`Seed__Enabled=true`):
 1. `dotnet ef` migratsiyalari (`__migrations` jadvali, idempotent — qayta start xavfsiz);
 2. asosiy seed: sozlama default'lari, birinchi admin (`ADMIN_HEMIS_ID/PASSWORD`, admin bo'lmasa), bayramlar;
 3. `SEED_DEMO=true` bo'lsa demo ma'lumot (AT fakulteti, 412-22/413-22 guruhlari, tyutor `+998907654321`/`tutor12345`,
-   38 talaba, korxonalar, davomat, kundaliklar, baholar). Idempotent — demo tyutor bor bo'lsa qayta yuklanmaydi.
+   38 talaba — brauzer login'i uchun demo talaba HEMIS ID `341030` / `talaba12345`, korxonalar, davomat, kundaliklar, baholar). Idempotent — demo tyutor bor bo'lsa qayta yuklanmaydi.
 
 Healthcheck `start_period` 90 s — shu davrda migratsiya/seed tugaydi; `dashboard`/`twa` API `healthy` bo'lgach ko'tariladi.
 

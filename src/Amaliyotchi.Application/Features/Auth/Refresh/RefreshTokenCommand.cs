@@ -52,7 +52,8 @@ internal sealed class RefreshTokenCommandHandler(
             accessToken.Value,
             accessToken.ExpiresAt,
             newRefreshToken.Token,
-            UserSummaryDto.From(user));
+            UserSummaryDto.From(user),
+            user.MustChangePassword);
     }
 
     private const string TokenRejected = "Sessiya muddati tugagan. Qaytadan kiring.";

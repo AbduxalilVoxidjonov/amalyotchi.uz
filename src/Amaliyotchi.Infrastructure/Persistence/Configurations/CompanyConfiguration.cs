@@ -25,6 +25,9 @@ public sealed class CompanyConfiguration : IEntityTypeConfiguration<Company>
         builder.Property(x => x.SupervisorPhone).HasMaxLength(20).IsRequired();
         builder.Property(x => x.MentorName).HasMaxLength(Company.NameMaxLength);
         builder.Property(x => x.MentorPhone).HasMaxLength(20);
+        builder.Property(x => x.CheckInQrToken).HasMaxLength(CheckInQr.TokenMaxLength).IsRequired();
+        builder.Property(x => x.CheckInQrRotatedAt).IsRequired();
+        builder.Ignore(x => x.CheckInQrPayload);
 
         // Domain GeoPoint (NTS'siz) → ikkita ustun. PostGIS geography — undan hisoblanadigan shadow ustun.
         builder.ComplexProperty(x => x.Location, location =>
@@ -40,6 +43,7 @@ public sealed class CompanyConfiguration : IEntityTypeConfiguration<Company>
 
         builder.HasIndex(LocationGeog).HasMethod("GIST");
         builder.HasIndex(x => x.Tin).IsUnique().HasFilter("is_deleted = false");
+        builder.HasIndex(x => x.CheckInQrToken).IsUnique();
 
         builder.Property<uint>("xmin").IsRowVersion();
     }

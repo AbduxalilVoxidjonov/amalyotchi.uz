@@ -1,4 +1,5 @@
 import type { HttpHandler } from 'msw';
+import { resetStudentPasswordMock } from '@/features/shared/student-password/passwordStore';
 import { applicationsHandlers, resetApplicationsMock } from './applications/mocks';
 import { calendarHandlers } from './calendar/mocks';
 import { companiesHandlers } from './companies/mocks';
@@ -32,4 +33,6 @@ export function resetTutorMocks() {
   resetLeaveRequestsMock();
   resetGradingMock();
   resetStudentDiaryReviewsMock();
+  // Talaba paroli (admin va tyutor profili umumiy mock holati).
+  resetStudentPasswordMock();
 }

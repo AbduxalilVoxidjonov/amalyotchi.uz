@@ -43,6 +43,16 @@ public sealed class Company : AuditableEntity, ISoftDeletable
     public string? MentorName { get; private set; }
     public string? MentorPhone { get; private set; }
 
+    /// <summary>Check-in QR kodi tokeni (32 belgili hex, <see cref="CheckInQr"/>). Korxonada osilgan QR ichida
+    /// <c>AMLQR:1:{token}</c> ko'rinishida; almashtirilganda eski QR darhol yaroqsiz bo'ladi.</summary>
+    public string CheckInQrToken { get; private set; } = string.Empty;
+
+    /// <summary>Token oxirgi marta yaratilgan/almashtirilgan vaqt.</summary>
+    public DateTimeOffset CheckInQrRotatedAt { get; private set; }
+
+    /// <summary>QR ichidagi satr: <c>AMLQR:1:{token}</c>.</summary>
+    public string CheckInQrPayload => CheckInQr.ToPayload(CheckInQrToken);
+
     /// <summary>O'chirish o'rniga faolsizlantiriladi — eski arizalar/davomat bog'liqligi saqlanadi.</summary>
     public bool IsActive { get; private set; }
     public bool IsDeleted { get; set; }
@@ -58,9 +68,11 @@ public sealed class Company : AuditableEntity, ISoftDeletable
         string supervisorName,
         string supervisorPhone,
         string? mentorName = null,
-        string? mentorPhone = null)
+        string? mentorPhone = null,
+        DateTimeOffset? createdAt = null)
     {
         var company = new Company { Location = location, IsActive = true };
+        company.RotateCheckInQr(createdAt ?? DateTimeOffset.UtcNow);
         company.Tin = ValueObjects.Tin.Normalize(tin);
         company.SetRadius(radiusM);
         company.Update(name, activity, address, supervisorName, supervisorPhone, mentorName, mentorPhone);
@@ -99,6 +111,13 @@ public sealed class Company : AuditableEntity, ISoftDeletable
 
         RadiusM = radiusM;
         return true;
+    }
+
+    /// <summary>Yangi QR token yaratadi — eski QR (osilgan qog'oz) shu zahoti yaroqsiz.</summary>
+    public void RotateCheckInQr(DateTimeOffset at)
+    {
+        CheckInQrToken = CheckInQr.NewToken();
+        CheckInQrRotatedAt = at;
     }
 
     public void Relocate(double latitude, double longitude) => Location = new GeoPoint(latitude, longitude);

@@ -27,6 +27,8 @@ public sealed record TodayDto(
 public sealed record TodayWindowDto(string Start, string End, string ClosesAt, string CheckoutAt, bool IsOpen);
 
 /// <param name="Note">Amal hozir mumkin bo'lmasa — o'zbekcha sabab (ariza yo'q, ish kuni emas, oyna yopiq …).</param>
+/// <param name="PhotoRequired">Sozlama <c>checkinPhotoRequired</c>: <c>true</c> bo'lsa check-in/check-out selfisiz qabul qilinmaydi.</param>
+/// <param name="QrRequired">Sozlama <c>checkinQrRequired</c>: <c>true</c> bo'lsa check-in/check-out uchun korxona QR kodi skanerlanishi shart.</param>
 public sealed record TodayCheckInDto(
     AttendanceStatus Status,
     DateTimeOffset? CheckInAt,
@@ -36,7 +38,9 @@ public sealed record TodayCheckInDto(
     double? GpsAccuracyM,
     bool Suspicious,
     bool AutoClosed,
-    string? Note);
+    string? Note,
+    bool PhotoRequired,
+    bool QrRequired);
 
 public sealed record TodayPlaceDto(
     string Company,

@@ -32,6 +32,11 @@ export interface AuthResultDto {
   /** Body'da keladi (cookie EMAS); rotatsiya qilinadi — har refresh'da yangisi. */
   refreshToken: string;
   user: UserSummaryDto;
+  /**
+   * Talaba admin/tyutor bergan parol bilan kirgan — ilova parolni o'zgartirishni talab qiladi.
+   * Admin/tyutorda doim false. Eski javoblarda bo'lmasligi mumkin (ixtiyoriy).
+   */
+  mustChangePassword?: boolean;
 }
 
 /** POST /api/auth/login */

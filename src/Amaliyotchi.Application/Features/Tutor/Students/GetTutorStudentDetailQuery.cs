@@ -141,7 +141,8 @@ internal sealed class GetTutorStudentDetailQueryHandler(IApplicationDbContext db
             new DiarySummary(diary.Count, diary.ScoredCount, diary.Avg),
             grade,
             periodSet.Options(today, defaultPeriod?.Id),
-            periodId);
+            periodId,
+            profile.User.PasswordHash != null);
     }
 
     private static StudentPeriod ToPeriod(PracticePeriod period)

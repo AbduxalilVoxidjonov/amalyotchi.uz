@@ -6,3 +6,12 @@ export const env = {
   isDev: import.meta.env.DEV,
   isTest: import.meta.env.MODE === 'test',
 } as const;
+
+/**
+ * Talaba ilovasi (TWA) manzili — `VITE_TWA_URL` (oxiridagi `/` olib tashlanadi). Bo'sh bo'lsa null:
+ * UI havola qatorini ko'rsatmaydi. Funksiya — testlarda `vi.stubEnv` bilan o'zgartirish mumkin bo'lsin.
+ */
+export function getTwaUrl(): string | null {
+  const raw = (import.meta.env.VITE_TWA_URL as string | undefined)?.trim().replace(/\/+$/, '');
+  return raw ? raw : null;
+}

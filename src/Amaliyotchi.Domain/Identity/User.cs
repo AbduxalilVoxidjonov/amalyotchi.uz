@@ -8,7 +8,8 @@ using Phone = Amaliyotchi.Domain.ValueObjects.PhoneNumber;
 namespace Amaliyotchi.Domain.Identity;
 
 /// <summary>Tizimning har qanday foydalanuvchisi: admin, tyutor yoki talaba.
-/// Admin va tyutor HEMIS ID + parol bilan, talaba Telegram orqali kiradi.</summary>
+/// Admin va tyutor HEMIS ID + parol bilan kiradi; talaba — Telegram orqali yoki (xodim parol o'rnatgan bo'lsa)
+/// <see cref="Students.StudentProfile.HemisId"/> + parol bilan (oddiy brauzer).</summary>
 public sealed class User : AuditableEntity, ISoftDeletable
 {
     private readonly List<RefreshToken> _refreshTokens = [];
@@ -30,9 +31,13 @@ public sealed class User : AuditableEntity, ISoftDeletable
     public UserRole Role { get; private set; }
     public bool IsActive { get; private set; }
 
+    /// <summary>Parolni xodim (admin/tyutor) o'rnatgan — foydalanuvchi keyingi kirishda o'z parolini o'rnatishi kerak.
+    /// <see cref="SetTemporaryPassword"/> true qiladi, <see cref="ChangeOwnPassword"/> false qiladi.</summary>
+    public bool MustChangePassword { get; private set; }
+
     /// <summary>Xodim (admin/tyutor) uchun login identifikatori — HEMIS ID. Faqat parol bilan
     /// yaratilgan hisoblarda to'ldiriladi; talabada null (uning HEMIS ID'si <see cref="Students.StudentProfile.HemisId"/>
-    /// da, login sifatida ishlatilmaydi — talaba Telegram orqali kiradi).</summary>
+    /// da — talaba parol bilan kirganda login shu profil maydoni bo'yicha topiladi).</summary>
     public string? HemisId { get; private set; }
 
     /// <summary>Talaba uchun — Telegram hisobi. Admin/tyutorda bo'lmasligi mumkin.</summary>
@@ -111,14 +116,32 @@ public sealed class User : AuditableEntity, ISoftDeletable
         PhoneNumber = Phone.Normalize(phoneNumber);
     }
 
+    /// <summary>Parol xeshini almashtiradi (<see cref="MustChangePassword"/> ga tegmaydi) — xeshni yangilash (rehash),
+    /// tyutor parolini tiklash va seed uchun.</summary>
     public void SetPasswordHash(string passwordHash)
     {
-        if (Role == UserRole.Student)
-            throw new DomainException("Talabaga parol o'rnatilmaydi.");
         if (string.IsNullOrWhiteSpace(passwordHash))
             throw new DomainException("Parol xeshi bo'sh bo'lishi mumkin emas.");
 
         PasswordHash = passwordHash;
+    }
+
+    /// <summary>Xodim (admin/tyutor) talabaga vaqtinchalik parol o'rnatadi: talaba birinchi kirishda
+    /// o'z parolini o'rnatishi kerak (<see cref="MustChangePassword"/> = true).</summary>
+    public void SetTemporaryPassword(string passwordHash)
+    {
+        if (Role != UserRole.Student)
+            throw new DomainException("Vaqtinchalik parol faqat talabaga o'rnatiladi.");
+
+        SetPasswordHash(passwordHash);
+        MustChangePassword = true;
+    }
+
+    /// <summary>Foydalanuvchi parolini o'zi o'zgartirdi — majburiy almashtirish talabi olib tashlanadi.</summary>
+    public void ChangeOwnPassword(string passwordHash)
+    {
+        SetPasswordHash(passwordHash);
+        MustChangePassword = false;
     }
 
     public void Rename(string fullName) => FullName = Normalize(fullName);

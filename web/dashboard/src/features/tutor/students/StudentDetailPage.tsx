@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { usePageHeader } from '@/app/layout';
+import { StudentPasswordAction } from '@/features/shared/student-password';
 import { isApiError } from '@/shared/api';
 import { Breadcrumb, Button, EmptyState, type BreadcrumbItem } from '@/shared/ui';
 import { QueryState } from '../components/QueryState';
@@ -59,6 +60,7 @@ export function StudentDetailPage() {
               onSelectPeriod={setPeriodId}
               isPlaceholderData={query.isPlaceholderData}
               area="tutor"
+              headerActions={<StudentPasswordAction area="tutor" student={detail} />}
             />
           )}
         </QueryState>

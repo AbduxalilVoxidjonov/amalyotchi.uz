@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { AuthFileButton } from '@/shared/files';
 import {
   Avatar,
@@ -49,10 +50,13 @@ export function StudentDetailView({
   detail,
   selectedPeriod,
   today,
+  actions,
 }: {
   detail: TutorStudentDetail;
   selectedPeriod: StudentPeriodOption | null;
   today: string;
+  /** Sarlavha kartasidagi amallar (masalan "Parol o'rnatish") — belgilar yonida. */
+  actions?: ReactNode;
 }) {
   const planned = selectedPeriod !== null && periodPhase(selectedPeriod, today) === 'planned';
   const plannedText = planned && selectedPeriod ? plannedPeriodText(selectedPeriod) : null;
@@ -93,6 +97,7 @@ export function StudentDetailView({
             <Badge status={state.kind} size="md">
               {state.label}
             </Badge>
+            {actions}
           </div>
         </header>
 

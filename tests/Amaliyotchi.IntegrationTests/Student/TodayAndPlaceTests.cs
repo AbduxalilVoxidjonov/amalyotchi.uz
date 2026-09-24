@@ -108,7 +108,12 @@ public sealed class TodayAndPlaceTests(ApiFixture fixture)
             dto.Window.IsOpen.Should().BeFalse();
             dto.Checkin.Note.Should().Contain("ruxsat");
 
-            (await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo())).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            await using (await Factory.WithoutPhotoRequirementAsync())
+            {
+                var response = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo(qr: scene.Qr()));
+                response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+                (await response.Content.ReadAsStringAsync()).Should().Contain("ruxsat");
+            }
         }
         finally
         {

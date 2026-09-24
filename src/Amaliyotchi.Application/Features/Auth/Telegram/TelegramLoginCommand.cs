@@ -71,7 +71,8 @@ internal sealed class TelegramLoginCommandHandler(
             accessToken.Value,
             accessToken.ExpiresAt,
             refreshToken.Token,
-            UserSummaryDto.From(user));
+            UserSummaryDto.From(user),
+            user.MustChangePassword);
     }
 
     /// <summary>Muvaffaqiyatsiz urinish audit jurnaliga DARHOL yoziladi — tashlanadigan xato

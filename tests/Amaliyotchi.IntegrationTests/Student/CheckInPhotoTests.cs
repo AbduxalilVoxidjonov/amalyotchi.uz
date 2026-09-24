@@ -33,7 +33,7 @@ public sealed class CheckInPhotoTests(ApiFixture fixture)
         try
         {
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 5)));
-            using var form = Factory.GeoForm(photo: ("selfi.png", "image/png", Png));
+            using var form = Factory.GeoForm(photo: ("selfi.png", "image/png", Png), qr: scene.Qr());
             var response = await scene.Client.PostAsync("/api/student/checkin", form);
 
             response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
@@ -68,15 +68,16 @@ public sealed class CheckInPhotoTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task RasmsizMultipart_CheckIn_200_RasmIxtiyoriy()
+    public async Task SozlamaOchiq_RasmsizMultipart_CheckIn_200_RasmIxtiyoriy()
     {
         var day = await Factory.NextWorkDayAsync();
         var scene = await Factory.CreateSceneAsync(day);
+        await using var setting = await Factory.WithoutPhotoRequirementAsync();
 
         try
         {
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 5)));
-            using var form = Factory.GeoForm();
+            using var form = Factory.GeoForm(qr: scene.Qr());
             var response = await scene.Client.PostAsync("/api/student/checkin", form);
 
             response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
@@ -103,7 +104,7 @@ public sealed class CheckInPhotoTests(ApiFixture fixture)
         try
         {
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 5)));
-            using var form = Factory.GeoForm();
+            using var form = Factory.GeoForm(qr: scene.Qr());
             var response = await scene.Client.PostAsync("/api/student/checkin", form);
 
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -112,9 +113,10 @@ public sealed class CheckInPhotoTests(ApiFixture fixture)
             json.RootElement.GetProperty("detail").GetString().Should().Be("Check-in uchun rasm majburiy.");
             json.RootElement.GetProperty("errors").TryGetProperty("Photo", out var errors).Should().BeTrue();
             errors[0].GetString().Should().Be("Check-in uchun rasm majburiy.");
+            json.RootElement.GetProperty("errors").TryGetProperty("Qr", out _).Should().BeFalse("QR yuborilgan");
 
             // Rasm bilan — o'sha sozlamada qabul qilinadi.
-            using var withPhoto = Factory.GeoForm(photo: ("selfi.png", "image/png", Png));
+            using var withPhoto = Factory.GeoForm(photo: ("selfi.png", "image/png", Png), qr: scene.Qr());
             (await scene.Client.PostAsync("/api/student/checkin", withPhoto)).StatusCode.Should().Be(HttpStatusCode.OK);
         }
         finally
@@ -132,7 +134,7 @@ public sealed class CheckInPhotoTests(ApiFixture fixture)
         try
         {
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 5)));
-            using var form = Factory.GeoForm(photo: ("hisobot.pdf", "application/pdf", Png));
+            using var form = Factory.GeoForm(photo: ("hisobot.pdf", "application/pdf", Png), qr: scene.Qr());
             var response = await scene.Client.PostAsync("/api/student/checkin", form);
 
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -160,7 +162,7 @@ public sealed class CheckInPhotoTests(ApiFixture fixture)
         try
         {
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 5)));
-            using var form = Factory.GeoForm(photo: ("katta.jpg", "image/jpeg", tooBig));
+            using var form = Factory.GeoForm(photo: ("katta.jpg", "image/jpeg", tooBig), qr: scene.Qr());
             var response = await scene.Client.PostAsync("/api/student/checkin", form);
 
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -183,7 +185,7 @@ public sealed class CheckInPhotoTests(ApiFixture fixture)
         try
         {
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 5)));
-            using var form = Factory.GeoForm(lat: StudentTestData.FarLat, photo: ("selfi.jpg", "image/jpeg", Png));
+            using var form = Factory.GeoForm(lat: StudentTestData.FarLat, photo: ("selfi.jpg", "image/jpeg", Png), qr: scene.Qr());
             var response = await scene.Client.PostAsync("/api/student/checkin", form);
 
             response.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -221,7 +223,7 @@ public sealed class CheckInPhotoTests(ApiFixture fixture)
         try
         {
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(17, 5)));
-            using var form = Factory.GeoForm(photo: ("ketdim.webp", "image/webp", Png));
+            using var form = Factory.GeoForm(photo: ("ketdim.webp", "image/webp", Png), qr: scene.Qr());
             var response = await scene.Client.PostAsync("/api/student/checkout", form);
 
             response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
@@ -250,7 +252,7 @@ public sealed class CheckInPhotoTests(ApiFixture fixture)
         try
         {
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 5)));
-            using var form = Factory.GeoForm(photo: ("selfi.png", "image/png", Png));
+            using var form = Factory.GeoForm(photo: ("selfi.png", "image/png", Png), qr: scene.Qr());
             (await scene.Client.PostAsync("/api/student/checkin", form)).StatusCode.Should().Be(HttpStatusCode.OK);
         }
         finally
@@ -279,16 +281,42 @@ public sealed class CheckInPhotoTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task JsonSoRov_Rasmsiz_HamonIshlaydi()
+    public async Task Sukut_RasmMajburiy_JsonRasmsiz_400_ErrorsPhoto()
     {
-        // Mavjud klientlar (va offline navbat) uchun JSON yo'li saqlangan.
+        // checkinPhotoRequired sukut bo'yicha yoqilgan: JSON yo'li rasm tashiy olmaydi → 400, hodisa yozilmaydi.
         var day = await Factory.NextWorkDayAsync();
         var scene = await Factory.CreateSceneAsync(day);
 
         try
         {
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 5)));
-            var response = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo());
+            var response = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo(qr: scene.Qr()));
+
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            json.RootElement.GetProperty("errors").TryGetProperty("Photo", out _).Should().BeTrue();
+        }
+        finally
+        {
+            fixture.Clock.Reset();
+        }
+
+        (await Factory.WithDbAsync(db => db.AttendanceEvents.AnyAsync(e => e.StudentUserId == scene.Student.Id)))
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task JsonSoRov_Rasmsiz_SozlamaOchiqBolsa_Ishlaydi()
+    {
+        // Mavjud klientlar (va offline navbat) uchun JSON yo'li saqlangan — selfi talabi o'chirilgan bo'lsa.
+        var day = await Factory.NextWorkDayAsync();
+        var scene = await Factory.CreateSceneAsync(day);
+        await using var setting = await Factory.WithoutPhotoRequirementAsync();
+
+        try
+        {
+            fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 5)));
+            var response = await scene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo(qr: scene.Qr()));
 
             response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
         }
@@ -307,15 +335,16 @@ public sealed class CheckInPhotoTests(ApiFixture fixture)
         var day = await Factory.NextWorkDayAsync();
         var jsonScene = await Factory.CreateSceneAsync(day);
         var formScene = await Factory.CreateSceneAsync(day);
+        await using var setting = await Factory.WithoutPhotoRequirementAsync();
 
         try
         {
             fixture.Clock.Set(PracticeTime.At(day, new TimeOnly(9, 5)));
 
-            var json = await jsonScene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo());
+            var json = await jsonScene.Client.PostJsonAsync("/api/student/checkin", Factory.Geo(qr: jsonScene.Qr()));
             json.StatusCode.Should().Be(HttpStatusCode.OK, "application/json → JSON action");
 
-            using var form = Factory.GeoForm(photo: ("selfi.png", "image/png", Png));
+            using var form = Factory.GeoForm(photo: ("selfi.png", "image/png", Png), qr: formScene.Qr());
             var multipart = await formScene.Client.PostAsync("/api/student/checkin", form);
             multipart.StatusCode.Should().Be(HttpStatusCode.OK, "multipart/form-data → multipart action");
         }

@@ -1,0 +1,59 @@
+/* Brauzer QR skaneri — pastdan chiquvchi sheet (360px kenglikda ham to'liq). */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgb(0 0 0 / 55%);
+}
+.sheet {
+  width: 100%;
+  max-width: 480px;
+  padding: 14px 14px calc(14px + env(safe-area-inset-bottom, 0px));
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--color-surface-2);
+}
+.viewport {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  max-height: 60vh;
+  margin: 0 auto;
+  border-radius: var(--radius-lg);
+  background: #000;
+}
+.video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.frame {
+  position: absolute;
+  inset: 18%;
+  border: 2px solid rgb(255 255 255 / 85%);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 999px rgb(0 0 0 / 30%);
+}
+.loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: var(--fs-sm);
+}
+.prompt {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+.cancel {
+  width: 100%;
+  margin-top: 10px;
+  justify-content: center;
+}

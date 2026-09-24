@@ -14,7 +14,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Amaliyotchi.Application.Features.Student.CheckIn;
 
 /// <summary>Check-in va check-out urinishlarining umumiy qismi: talaba → faol davr → tasdiqlangan ariza → korxona →
-/// masofa (Haversine) → policy → selfi (bo'lsa) → <see cref="AttendanceEvent"/> (HAR urinish, rad etilgani ham) →
+/// masofa (Haversine) → QR mosligi → policy → selfi (bo'lsa) → <see cref="AttendanceEvent"/> (HAR urinish, rad etilgani ham) →
 /// davomat → tranzaksiya. Rad etilganda hodisa avval saqlanadi, keyin xato tashlanadi
 /// (Login'dagi <c>LoginFailedAsync</c> uslubi) — shuning uchun rad etilgan urinishning rasmi ham qoladi.</summary>
 internal sealed class AttendanceAttempt(IApplicationDbContext db, IClock clock, IFileStorage storage, Guid studentUserId)
@@ -30,6 +30,7 @@ internal sealed class AttendanceAttempt(IApplicationDbContext db, IClock clock, 
         DateTimeOffset ReceivedAt,
         GeoPoint Location,
         double DistanceM,
+        bool QrValid,
         DailyAttendance? Attendance,
         bool HasApprovedLeave,
         IReadOnlyList<AttendanceEvent> RecentEvents);
@@ -41,15 +42,9 @@ internal sealed class AttendanceAttempt(IApplicationDbContext db, IClock clock, 
         Action<Situation, CheckInVerdict, AttendanceEvent> apply,
         CancellationToken cancellationToken)
     {
-        // Sozlama yoqilgan bo'lsa rasmsiz urinish umuman qabul qilinmaydi (hodisa ham yozilmaydi):
-        // 400, detail — aniq sabab, errors.Photo.
-        if (request.Photo is null && (await db.LoadStudentSettingsAsync(cancellationToken)).CheckInPhotoRequired)
-        {
-            var message = kind == AttendanceEventKind.CheckIn
-                ? "Check-in uchun rasm majburiy."
-                : "Check-out uchun rasm majburiy.";
-            throw new ValidationException(new Dictionary<string, string[]> { ["Photo"] = [message] }, message);
-        }
+        // Sozlama yoqilgan bo'lsa rasmsiz yoki QR'siz urinish umuman qabul qilinmaydi (hodisa ham yozilmaydi):
+        // 400, detail — birinchi aniq sabab, errors.Photo / errors.Qr.
+        await EnsureRequiredPartsAsync(request, kind, cancellationToken);
 
         // Rasm saqlovchiga tranzaksiya ichida yoziladi; baza xatosida (tranzaksiya qaytsa) fayl o'chiriladi.
         // Rad etilgan urinish esa MUVAFFAQIYATLI commit — fayl qoladi, xato keyin tashlanadi.
@@ -93,6 +88,38 @@ internal sealed class AttendanceAttempt(IApplicationDbContext db, IClock clock, 
 
         return await TodayBuilder.BuildAsync(db, clock, studentUserId, cancellationToken);
     }
+
+    public const string QrRequiredMessage = "Amaliyot joyidagi QR kodni skanerlang.";
+
+    private async Task EnsureRequiredPartsAsync(IGeoRequest request, AttendanceEventKind kind, CancellationToken cancellationToken)
+    {
+        var settings = await db.LoadStudentSettingsAsync(cancellationToken);
+        var errors = new Dictionary<string, string[]>();
+        string? detail = null;
+
+        if (request.Photo is null && settings.CheckInPhotoRequired)
+        {
+            var message = kind == AttendanceEventKind.CheckIn
+                ? "Check-in uchun rasm majburiy."
+                : "Check-out uchun rasm majburiy.";
+            errors["Photo"] = [message];
+            detail = message;
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Qr) && settings.CheckInQrRequired)
+        {
+            errors["Qr"] = [QrRequiredMessage];
+            detail ??= QrRequiredMessage;
+        }
+
+        if (detail is not null)
+            throw new ValidationException(errors, detail);
+    }
+
+    /// <summary>Yuborilgan QR doim tekshiriladi (sozlama o'chiq bo'lsa ham); yuborilmagan bo'lsa — to'siq emas
+    /// (majburiyligi <see cref="EnsureRequiredPartsAsync"/> da).</summary>
+    private static bool IsQrValid(string? qr, Company company)
+        => string.IsNullOrWhiteSpace(qr) || CheckInQr.Matches(qr, company.CheckInQrToken);
 
     /// <summary>Selfini saqlovchiga yozadi va <see cref="StoredFile"/> yaratadi (hali <c>SaveChanges</c> emas).
     /// Rasm yuborilmagan bo'lsa — null.</summary>
@@ -163,6 +190,6 @@ internal sealed class AttendanceAttempt(IApplicationDbContext db, IClock clock, 
 
         return new Situation(
             practice, practice.Period, practice.Company, practice.Rules, today, localNow, receivedAt,
-            location, distance, attendance, hasLeave, recent);
+            location, distance, IsQrValid(request.Qr, practice.Company), attendance, hasLeave, recent);
     }
 }

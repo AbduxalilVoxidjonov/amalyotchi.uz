@@ -45,6 +45,16 @@ describe('CompanyDetailPage', () => {
     expect(periods.getByText('01.09.2026 — 31.10.2026')).toBeInTheDocument();
   });
 
+  it("check-in QR kartasi admin endpoint'idan yuklanadi", async () => {
+    renderPage();
+    const qr = within(await screen.findByRole('region', { name: 'Check-in QR kodi' }));
+    expect(
+      await qr.findByRole('img', { name: 'Tech Solutions MChJ check-in QR kodi' }),
+    ).toBeInTheDocument();
+    expect(qr.getByText(/^AMLQR:1:[0-9a-f]{32}$/)).toBeInTheDocument();
+    expect(qr.getByRole('button', { name: 'Chop etish' })).toBeInTheDocument();
+  });
+
   it("STIR nazorati: chegara doirasida bo'lsa ogohlantirish yo'q", async () => {
     renderPage();
     const control = within(await screen.findByRole('region', { name: 'STIR nazorati' }));

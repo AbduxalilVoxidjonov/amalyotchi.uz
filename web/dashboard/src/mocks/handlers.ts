@@ -2,12 +2,13 @@ import { http, HttpResponse, type HttpHandler } from 'msw';
 import type { LoginRequest, LogoutRequest, RefreshRequest } from '@amaliyotchi/shared';
 import { adminHandlers } from '@/features/admin/mocks';
 import { reportsHandlers } from '@/features/reports/mocks';
+import { studentPasswordHandlers } from '@/features/shared/student-password/mocks';
 import { tutorHandlers } from '@/features/tutor/mocks';
 import { issueSession, mockSessions, mockUsers, problem } from './data';
 
 /**
  * Auth mock'lari — backend AuthController bilan bir xil shakl:
- *   POST /api/auth/login   → 200 AuthResultDto | 400 validation | 403 forbidden
+ *   POST /api/auth/login   → 200 AuthResultDto (talabaga ham) | 400 validation | 403 forbidden
  *   POST /api/auth/refresh → 200 AuthResultDto (rotatsiya) | 403
  *   POST /api/auth/logout  → 204
  *   GET  /api/auth/me      → 200 UserSummaryDto | 401
@@ -57,7 +58,7 @@ export const authHandlers: HttpHandler[] = [
     }
 
     const user = mockUsers.find((u) => u.hemisId === body.hemisId);
-    if (!user || user.password !== body.password || user.role === 3) {
+    if (!user || user.password !== body.password) {
       return problemResponse(403, "Ruxsat yo'q", "HEMIS ID yoki parol noto'g'ri.");
     }
     return HttpResponse.json(issueSession(user));
@@ -95,4 +96,5 @@ export const handlers: HttpHandler[] = [
   ...adminHandlers,
   ...reportsHandlers,
   ...tutorHandlers,
+  ...studentPasswordHandlers,
 ];

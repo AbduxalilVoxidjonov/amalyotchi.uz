@@ -1,5 +1,6 @@
 import { Breadcrumb, Button, EmptyState, type BreadcrumbItem } from '@/shared/ui';
 import { useParams } from 'react-router-dom';
+import { StudentPasswordAction } from '@/features/shared/student-password';
 import { isApiError } from '@/shared/api';
 import { StudentProfile } from '@/features/tutor/students/components/StudentProfile';
 import { usePeriodParam } from '@/features/tutor/students/periods';
@@ -57,6 +58,7 @@ export function StudentDetailPage() {
             onSelectPeriod={setPeriodId}
             isPlaceholderData={query.isPlaceholderData}
             area="admin"
+            headerActions={<StudentPasswordAction area="admin" student={detail} />}
           >
             <AdminStudentMetaCard detail={detail} />
           </StudentProfile>

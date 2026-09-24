@@ -1,0 +1,86 @@
+/* Kirish / parol o'rnatish ekranlari — mobil, bitta ustun (desktop brauzerda ham ≤ 400px forma). */
+.screen {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: calc(32px + env(safe-area-inset-top, 0px)) 20px
+    calc(32px + env(safe-area-inset-bottom, 0px));
+  background: var(--color-bg);
+}
+.inner {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.logo {
+  font-size: var(--fs-logo);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-tight);
+}
+.logoSub {
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-caps-xl);
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  font-weight: var(--fw-medium);
+}
+.card {
+  background: var(--color-surface);
+  border: var(--border);
+  border-radius: var(--radius-xl);
+  padding: 22px 20px;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.title {
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-tight);
+  line-height: 1.2;
+}
+.subtitle {
+  margin-top: -6px;
+  font-size: var(--fs-md2);
+  color: var(--color-text-muted);
+  line-height: var(--lh-note);
+}
+.serverError {
+  font-size: var(--fs-md);
+  color: var(--color-bad-fg);
+  background: var(--color-bad-bg);
+  border: var(--border-w) solid var(--color-bad-border);
+  border-radius: var(--radius-md2);
+  padding: 10px 12px;
+  line-height: var(--lh-note);
+}
+.notice {
+  font-size: var(--fs-md);
+  color: var(--color-ok-fg);
+  background: var(--color-ok-bg);
+  border-radius: var(--radius-md2);
+  padding: 10px 12px;
+  line-height: var(--lh-note);
+}
+.note {
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  line-height: var(--lh-note);
+  text-align: center;
+}
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

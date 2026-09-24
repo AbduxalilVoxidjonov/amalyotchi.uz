@@ -61,6 +61,24 @@ public sealed class AdminCompaniesController(ISender sender) : ControllerBase
         Guid id, UpdateCompanyCommand command, CancellationToken cancellationToken)
         => Ok(await sender.Send(command with { Id = id }, cancellationToken));
 
+    /// <summary>Korxonaning check-in QR kodi (chop etish uchun): <c>payload</c> — <c>AMLQR:1:{token}</c>.
+    /// Korxona topilmasa → 404.</summary>
+    [HttpGet("{id:guid}/checkin-qr")]
+    [ProducesResponseType<CompanyCheckInQrDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CompanyCheckInQrDto>> CheckInQr(Guid id, CancellationToken cancellationToken)
+        => Ok(await sender.Send(new GetCompanyCheckInQrQuery(id), cancellationToken));
+
+    /// <summary>QR kodni almashtirish — eski (osilgan) QR darhol yaroqsiz bo'ladi. Audit: <c>CompanyQrRotated</c>.
+    /// Korxona topilmasa → 404.</summary>
+    [HttpPost("{id:guid}/checkin-qr/rotate")]
+    [ProducesResponseType<CompanyCheckInQrDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CompanyCheckInQrDto>> RotateCheckInQr(Guid id, CancellationToken cancellationToken)
+        => Ok(await sender.Send(new RotateCompanyCheckInQrCommand(id), cancellationToken));
+
     /// <summary>Faol/faol emas. Faolsizlantirilgan korxona STIR qidiruvida chiqmaydi
     /// (<c>GET /api/companies/lookup</c> → 404) — talaba uni tanlay olmaydi.</summary>
     [HttpPatch("{id:guid}/status")]

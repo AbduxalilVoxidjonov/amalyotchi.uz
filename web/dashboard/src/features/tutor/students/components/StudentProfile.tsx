@@ -16,6 +16,8 @@ export interface StudentProfileProps {
   area: StudentApiArea;
   /** Profil bloklari va davomat jadvali orasidagi qo'shimcha bloklar (admin: tashkiliy ma'lumot). */
   children?: ReactNode;
+  /** Sarlavha kartasidagi amallar (parol o'rnatish). */
+  headerActions?: ReactNode;
 }
 
 /**
@@ -29,6 +31,7 @@ export function StudentProfile({
   isPlaceholderData,
   area,
   children,
+  headerActions,
 }: StudentProfileProps) {
   const today = todayInTashkent();
   const selectedId = requestedPeriodId ?? detail.selectedPeriodId;
@@ -49,7 +52,12 @@ export function StudentProfile({
         data-stale={isPlaceholderData || undefined}
         aria-busy={isPlaceholderData || undefined}
       >
-        <StudentDetailView detail={detail} selectedPeriod={shownPeriod} today={today} />
+        <StudentDetailView
+          detail={detail}
+          selectedPeriod={shownPeriod}
+          today={today}
+          actions={headerActions}
+        />
         {children}
         <StudentAttendanceSection detail={detail} period={shownPeriod} area={area} />
       </div>

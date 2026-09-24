@@ -24,7 +24,7 @@ public sealed record CreateCompanyCommand(
     string? MentorPhone) : IRequest<CompanyDetail>;
 
 internal sealed class CreateCompanyCommandHandler(
-    IApplicationDbContext db, IScopeResolver scopeResolver, IAuditWriter audit)
+    IApplicationDbContext db, IScopeResolver scopeResolver, IAuditWriter audit, IClock clock)
     : IRequestHandler<CreateCompanyCommand, CompanyDetail>
 {
     public async Task<CompanyDetail> Handle(CreateCompanyCommand request, CancellationToken cancellationToken)
@@ -36,7 +36,7 @@ internal sealed class CreateCompanyCommandHandler(
         var company = Company.Create(
             request.Name, tin, request.Activity, request.Address,
             new GeoPoint(request.Lat, request.Lng), radiusM,
-            request.SupervisorName, request.SupervisorPhone, request.MentorName, request.MentorPhone);
+            request.SupervisorName, request.SupervisorPhone, request.MentorName, request.MentorPhone, clock.UtcNow);
 
         db.Companies.Add(company);
 
