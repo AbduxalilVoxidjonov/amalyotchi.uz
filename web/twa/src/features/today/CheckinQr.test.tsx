@@ -137,7 +137,10 @@ describe('Check-in: QR → joylashuv → selfi → yuborish', () => {
       'QR kod bu amaliyot joyiga tegishli emas.',
     );
     expect(screen.getByText('Amaliyot joyidagi QR kodni skanerlang')).toBeInTheDocument();
-    expect(screen.getByText('Kutilmoqda')).toBeInTheDocument();
+    // Bosh ekran: "Kutilmoqda" bugungi qator chip'ida ham bor — check-in kartasi (bugungi panel) ichida.
+    expect(
+      within(screen.getByRole('region', { name: /^12\.10 · Dushanba/ })).getByText('Kutilmoqda'),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'QR kodni skanerlash' }));
     await waitFor(() => expect(qrPopup.isOpen).toBe(true));

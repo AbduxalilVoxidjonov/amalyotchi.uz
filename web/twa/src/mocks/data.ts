@@ -1,6 +1,7 @@
 import { parseJwt, toUserRole, type UserSummaryDto } from '@amaliyotchi/shared';
 import type { TwaAuthResult } from '@/shared/auth/session';
 import { resetDiaryMocks } from '@/features/diary/mocks';
+import { resetPeriodDaysMocks } from '@/features/period-days/mocks';
 import { resetPlaceMocks } from '@/features/place/mocks';
 import { resetTodayMocks } from '@/features/today/mocks';
 
@@ -126,4 +127,5 @@ export function resetMockState() {
   resetTodayMocks();
   resetDiaryMocks();
   resetPlaceMocks();
+  resetPeriodDaysMocks();
 }

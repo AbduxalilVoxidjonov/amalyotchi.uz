@@ -1,6 +1,6 @@
 /**
  * Kontrakt v3.5 §4.6 — bir guruhda bir nechta amaliyot davri (kuzgi, bahorgi).
- * `StudentPeriodOption` — `today.period`, `portfolio.periods` da bir xil shakl.
+ * `StudentPeriodOption` — `today.period`, `period-days.periods` da bir xil shakl.
  */
 export type StudentPeriodStatus = 'planned' | 'active' | 'closed';
 
@@ -23,7 +23,10 @@ export interface StudentPeriodOption {
 export type PeriodPhase = 'upcoming' | 'ongoing' | 'ended';
 
 /** `today` — DateOnly "2026-12-20" (server sanasi, `TodayDto.date`). */
-export function periodPhase(period: StudentPeriodOption, today: string): PeriodPhase {
+export function periodPhase(
+  period: Pick<StudentPeriodOption, 'status' | 'startDate' | 'endDate'>,
+  today: string,
+): PeriodPhase {
   if (period.status === 'planned' || period.startDate > today) return 'upcoming';
   if (period.status === 'closed' || period.endDate < today) return 'ended';
   return 'ongoing';

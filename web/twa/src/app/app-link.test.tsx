@@ -28,8 +28,8 @@ describe("Telegram rejimi: ichki havolalarda href yo'q", () => {
   ])('%s — a[href^="/"] 0 ta', async (path, title) => {
     renderApp(path);
     await heading(title);
-    // Bosh ekran: korxona kartasi (PlaceSummary) ham yuklanib bo'lsin.
-    if (path === '/') await screen.findByRole('link', { name: 'Tech Solutions MChJ' });
+    // Bosh ekran: davr kunlari + bugungi panel ("Kundalik yozish") ham yuklanib bo'lsin.
+    if (path === '/') await screen.findByRole('link', { name: 'Kundalik yozish' });
     expect(internalAnchors()).toHaveLength(0);
   });
 
@@ -71,11 +71,14 @@ describe("Telegram rejimi: ichki havolalarda href yo'q", () => {
     expect(internalAnchors()).toHaveLength(0);
   });
 
-  it('bosh ekran kartasi (PlaceSummary) → /joyim', async () => {
+  it('bosh ekran, bugungi panel: "Kundalik yozish" → /kundalik (tugma, href yo\'q)', async () => {
     const router = renderApp('/');
-    fireEvent.click(await screen.findByRole('link', { name: 'Tech Solutions MChJ' }));
-    expect(await heading('Korxonam')).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe('/joyim');
+    const link = await screen.findByRole('link', { name: 'Kundalik yozish' });
+    expect(link.tagName).toBe('BUTTON');
+    expect(internalAnchors()).toHaveLength(0);
+    fireEvent.click(link);
+    expect(await heading('Kundaligim')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/kundalik');
   });
 });
 
@@ -102,8 +105,8 @@ describe('Telegram BackButton: tugma-navigatsiya PUSH sifatida sanaladi', () => 
     await heading('Bosh ekran');
     expect(webAppStub.BackButton.isVisible).toBe(false);
 
-    fireEvent.click(await screen.findByRole('link', { name: 'Tech Solutions MChJ' }));
-    await heading('Korxonam');
+    fireEvent.click(await screen.findByRole('link', { name: 'Kundalik yozish' }));
+    await heading('Kundaligim');
     expect(webAppStub.BackButton.isVisible).toBe(true);
 
     fireEvent.click(tab('Profil'));
@@ -111,7 +114,7 @@ describe('Telegram BackButton: tugma-navigatsiya PUSH sifatida sanaladi', () => 
     expect(actions.filter((a) => a === 'PUSH')).toHaveLength(2);
 
     act(() => pressTelegramBack());
-    expect(await heading('Korxonam')).toBeInTheDocument();
+    expect(await heading('Kundaligim')).toBeInTheDocument();
     expect(webAppStub.BackButton.isVisible).toBe(true);
     act(() => pressTelegramBack());
     expect(await heading('Bosh ekran')).toBeInTheDocument();
@@ -141,9 +144,9 @@ describe('Web rejimi: oddiy <a href> saqlanadi', () => {
       ['A', '/profil'],
     ]);
     expect(tab('Bosh ekran')).toHaveAttribute('aria-current', 'page');
-    expect(await screen.findByRole('link', { name: 'Tech Solutions MChJ' })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: 'Kundalik yozish' })).toHaveAttribute(
       'href',
-      '/joyim',
+      '/kundalik',
     );
   });
 });

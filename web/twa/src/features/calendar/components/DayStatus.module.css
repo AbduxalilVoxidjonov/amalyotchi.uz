@@ -1,0 +1,53 @@
+/*
+ * SPEC-TOKENS 1.5 — kun holati ranglari (CalendarDayStatus enum). Yagona manba: oy gridi katagi,
+ * legend swatch'i va bosh ekrandagi kun chip'i (`DayStatusChip`) shu `--cal-bg/--cal-fg` ni o'qiydi.
+ */
+.tone[data-status='present'] {
+  --cal-bg: var(--color-ok-cal);
+  --cal-fg: var(--color-ok-fg);
+}
+.tone[data-status='late'] {
+  --cal-bg: var(--color-late-cal);
+  --cal-fg: var(--color-late-fg);
+}
+.tone[data-status='absent'] {
+  --cal-bg: var(--color-bad-cal);
+  --cal-fg: var(--color-bad-fg);
+}
+.tone[data-status='excused'] {
+  --cal-bg: var(--color-info-cal);
+  --cal-fg: var(--color-info-fg);
+}
+.tone[data-status='dayOff'] {
+  --cal-bg: var(--color-surface-muted);
+  --cal-fg: var(--color-text-faint);
+}
+.tone[data-status='pending'] {
+  --cal-bg: var(--color-surface-2);
+  --cal-fg: var(--color-text-muted);
+  outline: 1px dashed var(--color-text-faint);
+  outline-offset: -1px;
+}
+.tone[data-status='future'] {
+  --cal-bg: var(--color-surface-3);
+  --cal-fg: var(--color-text-ghost);
+}
+
+/* Bosh ekran kun qatoridagi holat chip'i */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--cal-bg);
+  color: var(--cal-fg);
+  font-size: var(--fs-xs2);
+  font-weight: var(--fw-medium);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.glyph {
+  font-family: var(--font-mono);
+}

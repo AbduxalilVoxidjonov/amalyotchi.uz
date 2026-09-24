@@ -2,18 +2,20 @@ import { http, HttpResponse } from 'msw';
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 // `lastCheckinPhoto` mock ichida qayta tayinlanadi — namespace orqali o'qiladi.
 import * as todayMocks from '@/features/today/mocks';
-import {
-  mockToday,
-  setCheckinPhotoRequired,
-  setDiaryPdfRequired,
-  setPeriodGap,
-} from '@/features/today/mocks';
+import { mockToday, setCheckinPhotoRequired, setPeriodGap } from '@/features/today/mocks';
+import { setPeriodDaysVariant } from '@/features/period-days/mocks';
 import { mockPlace, setMockPlace } from '@/features/place/mocks';
 import { server } from '@/mocks/server';
 import { removeGeolocation, renderApp, stubGeolocation } from '@/test/render-app';
 import { qrPopup } from '@/test/telegram-stub';
 
 afterEach(() => removeGeolocation());
+
+/**
+ * Bugungi (12.10.2026, dushanba) kun paneli — accordion'da avtomatik ochiq. Holat yozuvlari
+ * ("Kutilmoqda", "Keldi"…) qator chip'larida ham bor — check-in kartasi shu panel ichida tekshiriladi.
+ */
+const todayPanel = () => within(screen.getByRole('region', { name: /^12\.10 · Dushanba/ }));
 
 /** `mockToday` mock ichida qayta tayinlanadi — joriy qiymat namespace orqali. */
 const mockTodayNow = () => todayMocks.mockToday;
@@ -46,7 +48,7 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
 
     expect(await screen.findByText('Belgilanish oynasi ochiq')).toBeInTheDocument();
     expect(screen.getByText('Bugun · 12.10.2026')).toBeInTheDocument();
-    expect(screen.getByText('Kutilmoqda')).toBeInTheDocument();
+    expect(todayPanel().getByText('Kutilmoqda')).toBeInTheDocument();
     expect(screen.getByText('45 m / 150 m')).toBeInTheDocument();
 
     // 1-bosqich: tugma → joylashuv so'raladi va kamera ochiladi (panel ko'rinadi).
@@ -65,7 +67,7 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
     // 3-bosqich: yuborish — multipart, `photo` maydoni bilan.
     fireEvent.click(screen.getByRole('button', { name: 'Tasdiqlash va yuborish' }));
     expect(await screen.findByText('Belgilandingiz · 09:02')).toBeInTheDocument();
-    expect(screen.getByText('Keldi')).toBeInTheDocument();
+    expect(todayPanel().getByText('Keldi')).toBeInTheDocument();
     expect(screen.getByText(/Korxonadan \d+ m masofada qayd etildi/)).toBeInTheDocument();
     // jsdom/undici multipart'da fayl NOMI saqlanmaydi ('blob') — tur va hajm tekshiriladi.
     expect(todayMocks.lastCheckinPhoto).toMatchObject({ type: 'image/jpeg', size: 64 });
@@ -93,7 +95,7 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
     expect(screen.queryByAltText('Olingan selfie')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Rasmga olish' })).toBeEnabled();
     expect(todayMocks.lastCheckinPhoto).toBeNull();
-    expect(screen.getByText('Kutilmoqda')).toBeInTheDocument();
+    expect(todayPanel().getByText('Kutilmoqda')).toBeInTheDocument();
   });
 
   it("rasm bo'lmagan fayl rad etiladi", async () => {
@@ -121,7 +123,7 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
     await pressAndScan('KELDIM');
 
     expect(await screen.findByText(/Joylashuvga ruxsat berilmadi/)).toBeInTheDocument();
-    expect(screen.getByText('Kutilmoqda')).toBeInTheDocument();
+    expect(todayPanel().getByText('Kutilmoqda')).toBeInTheDocument();
 
     // Bekor qilish → asosiy tugma qaytadi.
     fireEvent.click(screen.getByRole('button', { name: 'Bekor qilish' }));
@@ -194,7 +196,7 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Rasmsiz davom etish' }));
 
     expect(await screen.findByText('Check-in uchun rasm majburiy.')).toBeInTheDocument();
-    expect(screen.getByText('Kutilmoqda')).toBeInTheDocument();
+    expect(todayPanel().getByText('Kutilmoqda')).toBeInTheDocument();
 
     // Rasm olib qayta yuborilsa — qabul qilinadi (QR saqlangan).
     capturePhoto();
@@ -208,10 +210,10 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
     await pressAndScan('KELDIM');
     capturePhoto();
     fireEvent.click(await screen.findByRole('button', { name: 'Tasdiqlash va yuborish' }));
-    expect(await screen.findByText('Kech keldi')).toBeInTheDocument();
+    expect(await todayPanel().findByText('Kech keldi')).toBeInTheDocument();
   });
 
-  it("server holatlari: autoClosed → 'Kun avtomatik yakunlandi'; absent → tugma yo'q; place null → bo'sh holat", async () => {
+  it("server holatlari: autoClosed → 'Kun avtomatik yakunlandi'; absent → tugma yo'q", async () => {
     server.use(
       http.get('/api/student/today', () =>
         HttpResponse.json({
@@ -229,10 +231,9 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
     );
     renderApp('/');
     expect(await screen.findByText('Kun avtomatik yakunlandi')).toBeInTheDocument();
-    expect(screen.getByText('Kech keldi')).toBeInTheDocument();
+    expect(todayPanel().getByText('Kech keldi')).toBeInTheDocument();
     expect(screen.getByText('Avtomatik yopildi')).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('shubhali');
-    expect(screen.getByText('Amaliyot joyi hali biriktirilmagan')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /KELDIM|KETDIM/ })).not.toBeInTheDocument();
 
     server.use(
@@ -252,39 +253,33 @@ describe('HomePage (isTalaba) — check-in selfie', () => {
     renderApp('/');
     expect(await screen.findByText('Bugun belgilanmadingiz')).toBeInTheDocument();
     expect(screen.getByText('Bugungi belgilanish oynasi yopilgan.')).toBeInTheDocument();
-    expect(screen.getByText('Kelmadi')).toBeInTheDocument();
+    expect(todayPanel().getByText('Kelmadi')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /KELDIM|KETDIM/ })).not.toBeInTheDocument();
   });
 
-  it('kundalik: hisoblagich va korxona qisqachasi', async () => {
-    renderApp('/');
-    expect(await screen.findByText('Bugungi kundalik')).toBeInTheDocument();
-    expect(screen.getByText('0 / 150 belgi')).toBeInTheDocument();
-    const ta = screen.getByPlaceholderText('Bugun bajarilgan ishlar — kamida 150 belgi');
-    await act(() => {
-      fireEvent.change(ta, { target: { value: 'Salom dunyo' } });
-    });
-    expect(screen.getByText('11 / 150 belgi')).toBeInTheDocument();
-    // Pastda portfolio ham bor (o'xshash statlar) — korxona bo'limi ichida tekshiriladi.
-    const place = within(screen.getByRole('region', { name: 'Korxonam' }));
+  it("bugungi kundalik: 'Kundalik yozilmagan' + 'Kundalik yozish' → /kundalik (href'siz)", async () => {
+    const router = renderApp('/');
+    const panel = within(await screen.findByRole('region', { name: /^12\.10 · Dushanba/ }));
+    expect(await panel.findByText('Kundalik yozilmagan')).toBeInTheDocument();
+    // Kundalik formasi bosh ekranda yo'q — `/kundalik` da.
+    expect(screen.queryByText('Bugungi kundalik')).not.toBeInTheDocument();
+    const write = panel.getByRole('link', { name: 'Kundalik yozish' });
     // Telegram rejimi: ichki havola `href`siz (Telegram-Android `<a href>` ni tashqi havola deb ushlaydi).
-    expect(place.getByRole('link', { name: 'Tech Solutions MChJ' })).not.toHaveAttribute('href');
-    expect(place.getByText('94%')).toBeInTheDocument();
-    expect(place.getByText('4,2')).toBeInTheDocument();
+    expect(write).not.toHaveAttribute('href');
     await waitFor(() => expect(screen.getByRole('button', { name: 'KELDIM' })).toBeEnabled());
+    fireEvent.click(write);
+    expect(
+      await screen.findByRole('heading', { name: 'Kundaligim', level: 1 }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/kundalik');
   });
 
-  it("kundalik: diaryPdfRequired → eslatma, PDF'siz yuborilmaydi", async () => {
-    setDiaryPdfRequired(true);
+  it('bugungi kundalik yuborilgan → holat, yozish tugmasi yo‘q', async () => {
+    todayMocks.markDiarySubmitted();
     renderApp('/');
-    expect(await screen.findByText('PDF hisobot majburiy')).toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText('Bugun bajarilgan ishlar — kamida 150 belgi'), {
-      target: { value: 'x'.repeat(160) },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Yuborish' }));
-    expect(await screen.findByText('Hisobotga PDF fayl biriktirilishi shart.')).toBeInTheDocument();
-    expect(screen.queryByText('Kundalik yuborildi.')).not.toBeInTheDocument();
-    expect(mockToday.diary.submittedToday).toBe(false);
+    const panel = within(await screen.findByRole('region', { name: /^12\.10 · Dushanba/ }));
+    expect(await panel.findByText('Yuborilgan')).toBeInTheDocument();
+    expect(panel.queryByRole('link', { name: 'Kundalik yozish' })).not.toBeInTheDocument();
   });
 });
 
@@ -296,14 +291,18 @@ describe("HomePage — ikki davr oralig'i (v3.5 §4.6)", () => {
     setPeriodGap('upcoming');
     renderApp('/');
 
+    // Davr kartasi (sukut — bahorgi) va tanaffus kartasi — ikkalasida ham davr nomi.
     expect(
-      await screen.findByRole('heading', { name: 'Bahorgi amaliyot 2027' }),
-    ).toBeInTheDocument();
-    expect(screen.getByText('01.02.2027 dan boshlanadi')).toBeInTheDocument();
+      (await screen.findAllByRole('heading', { name: 'Bahorgi amaliyot 2027' })).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByText('Rejalashtirilgan')).toBeInTheDocument();
+    expect(await screen.findByText('01.02.2027 dan boshlanadi')).toBeInTheDocument();
     expect(screen.getByText('43 kun qoldi')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /KELDIM|KETDIM/ })).not.toBeInTheDocument();
-    // Tanaffusda kundalik yozilmaydi — forma ko'rsatilmaydi.
-    expect(screen.queryByText('Bugungi kundalik')).not.toBeInTheDocument();
+    // Bugun davrdan tashqarida — hech bir kun ochilmaydi, kundalik tugmasi yo'q.
+    expect(screen.queryByRole('link', { name: 'Kundalik yozish' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { expanded: false }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { expanded: true })).not.toBeInTheDocument();
 
     // Bahorgi davrga ariza yo'q (GET place → 404) → "Amaliyot joyini yuborish".
     const link = await screen.findByRole('link', { name: 'Amaliyot joyini yuborish' });
@@ -335,35 +334,26 @@ describe("HomePage — ikki davr oralig'i (v3.5 §4.6)", () => {
     ).not.toBeInTheDocument();
   });
 
-  it('faqat tugagan davr: "Amaliyot davri tugagan", portfolio shu ekranda ostida', async () => {
+  it('faqat tugagan davr: "Amaliyot davri tugagan", portfolio yo‘q, hech bir kun ochiq emas', async () => {
     setPeriodGap('ended');
     renderApp('/');
 
     expect(
       await screen.findByRole('heading', { name: 'Amaliyot davri tugagan: Kuzgi amaliyot 2026' }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/quyidagi portfolioda saqlanadi/)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Portfolio', level: 2 })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /Portfolio/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/portfolio/i)).not.toBeInTheDocument();
+    expect(screen.getByText('Tugagan')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { expanded: true })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /KELDIM|KETDIM/ })).not.toBeInTheDocument();
     expect(screen.queryByText(/kun qoldi/)).not.toBeInTheDocument();
   });
 
-  it("davr yo'q (period null) → avvalgidek CheckinCard, server note bilan", async () => {
-    server.use(
-      http.get('/api/student/today', () =>
-        HttpResponse.json({
-          ...mockToday,
-          period: null,
-          place: null,
-          window: { ...mockToday.window, isOpen: false },
-          checkin: { ...mockToday.checkin, note: "Faol amaliyot davri yo'q." },
-        }),
-      ),
-    );
+  it("davr biriktirilmagan → bo'sh holat, check-in va kunlar yo'q", async () => {
+    setPeriodDaysVariant('none');
     renderApp('/');
-    expect(await screen.findByText("Faol amaliyot davri yo'q.")).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'KELDIM' })).toBeDisabled();
+    expect(await screen.findByText('Amaliyot davri biriktirilmagan')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /KELDIM|KETDIM/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Amaliyot kunlari' })).not.toBeInTheDocument();
   });
 
   it('eskirgan ekran: check-in 400 (davr boshlanmagan) matni ko‘rinadi', async () => {

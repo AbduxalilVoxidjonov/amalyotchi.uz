@@ -1,0 +1,32 @@
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 8px;
+}
+.title {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-semibold);
+}
+.dates {
+  margin: 6px 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+.progress {
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: var(--border-inner);
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+.count {
+  font-family: var(--font-mono);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+}

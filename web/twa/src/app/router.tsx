@@ -108,7 +108,7 @@ export const routes: RouteObject[] = [
           { path: '/joyim', element: <PlacePage /> },
           { path: '/kundalik', element: <DiaryPage /> },
           { path: '/kalendar', element: <CalendarPage /> },
-          // Eski havolalar: portfolio endi bosh ekranda; "Ruxsat so'rash" olib tashlangan.
+          // Eski havolalar: portfolio bo'limi yo'q (bosh ekranga); "Ruxsat so'rash" olib tashlangan.
           { path: '/portfolio', element: <Navigate to="/" replace /> },
           { path: '/ruxsat', element: <Navigate to="/" replace /> },
           { path: '/profil', element: <ProfilePage /> },

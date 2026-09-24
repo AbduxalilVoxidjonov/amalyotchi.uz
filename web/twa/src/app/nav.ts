@@ -1,7 +1,7 @@
 /**
  * Talaba navigatsiyasi — pastki tab-bar'da aynan shu tartibda 5 ta to'g'ridan-to'g'ri tab ("Yana" yo'q).
  * ❓ Dizaynda 250px sidebar; TWA (360–430px) uchun pastki tab-bar.
- * Portfolio alohida bo'lim emas — bosh ekranda to'liq ko'rsatiladi. "Ruxsat so'rash" olib tashlangan.
+ * Bosh ekran — amaliyot davri va uning kunlari (portfolio ko'rsatilmaydi). "Ruxsat so'rash" olib tashlangan.
  * "Korxonam" — amaliyot joyi (marshrut `/joyim` saqlangan).
  */
 export type NavIcon = 'home' | 'place' | 'diary' | 'calendar' | 'profile';

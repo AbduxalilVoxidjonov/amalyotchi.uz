@@ -6,8 +6,8 @@ import { renderApp } from '@/test/render-app';
 import {
   prodCalendar,
   prodDiary,
+  prodPeriodDays,
   prodPlace,
-  prodPortfolio,
   prodProfile,
   prodToday,
 } from '@/test/fixtures/student-production';
@@ -24,7 +24,7 @@ function useProductionData() {
     http.get('/api/student/calendar', () => HttpResponse.json(prodCalendar)),
     http.get('/api/student/place', () => HttpResponse.json(prodPlace)),
     http.get('/api/student/profile', () => HttpResponse.json(prodProfile)),
-    http.get('/api/student/portfolio', () => HttpResponse.json(prodPortfolio)),
+    http.get('/api/student/period-days', () => HttpResponse.json(prodPeriodDays)),
   );
 }
 

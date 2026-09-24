@@ -40,8 +40,11 @@ export const STUDENT_ENDPOINTS = {
   diary: '/api/student/diary',
   /** GET ?month=YYYY-MM → CalendarMonthDto */
   calendar: '/api/student/calendar',
-  /** GET → PortfolioDto | 404 (faol davr yo'q) */
-  portfolio: '/api/student/portfolio',
+  /**
+   * GET ?periodId=<guid?> → StudentPeriodDays (bosh ekran: davr + har bir kun holati, kundalik holati).
+   * `periodId` berilmasa — sukut davr; davr biriktirilmagan → `period: null`, `days: []`.
+   */
+  periodDays: '/api/student/period-days',
   /** GET → StudentProfileDto (shaxsiy/o'quv ma'lumotlari, amaliyot xulosasi, hisob holati) */
   profile: '/api/student/profile',
 } as const;

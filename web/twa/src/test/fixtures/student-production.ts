@@ -3,7 +3,7 @@
  * almashtirilgan (ism, HEMIS ID, telefonlar, korxona, id'lar). Mock'lardan farqlari (regressiya uchun muhim):
  *  - davr `status: "closed"` (endDate kelajakda bo'lsa ham), bugun check-in `absent` + `note` matni;
  *  - `distanceM`/`gpsAccuracyM`/`checkInAt` — null; `place.contract` — null; `place.comment` — matn;
- *  - `portfolio.grade`/`conclusion`/`pdfUrl` — null, `finalized: false`; `profile.practice.grade` — null;
+ *  - `profile.practice.grade` — null; `period-days`: `closed` davr ichida "bugun", vaqtlar/kundalik null;
  *  - kundalik: `rewrite`/`seen`/`approved`/`submitted`, fayli bor va yo'q, `score` null va raqam;
  *  - kalendar: `present`/`late`/`absent`/`dayOff`/`future` aralash, butun oy.
  * `tabs-production-data.test.tsx` shu javoblar bilan barcha tablarni ochadi.
@@ -323,50 +323,61 @@ export const prodProfile = {
   },
 };
 
-export const prodPortfolio = {
-  student: 'Demo Talaba',
-  group: '412-22',
-  practiceTitle: 'Ishlab chiqarish amaliyoti 2026',
-  company: 'Demo Korxona MChJ',
-  periodFrom: '2026-08-31',
-  periodTo: '2026-10-14',
-  stats: {
-    attendancePct: 54.5,
-    daysPresent: 12,
-    daysTotal: 22,
-    late: 2,
-    excused: 0,
-    reports: 10,
-    avgScore: 4,
+/**
+ * GET /api/student/period-days — `closed` davr (31.08–14.10), bugun (24.09) davr ichida `absent`.
+ * O'tgan kunlar holati qatordan (yakshanba — dam olish): K=present, k=late, a=absent, d=dayOff, f=future.
+ */
+const PROD_DAY_CODES = 'KdKKKKkdKaKKKKdKKaKKadKkKKKdKaKKKKdKaffffdffffffdfff';
+const PROD_STATUS = { K: 'present', k: 'late', a: 'absent', d: 'dayOff', f: 'future' } as const;
+
+function prodDays() {
+  const days = [];
+  const cur = new Date(Date.UTC(2026, 7, 31));
+  for (const code of PROD_DAY_CODES) {
+    const date = cur.toISOString().slice(0, 10);
+    if (date > '2026-10-14') break;
+    const weekday = cur.getUTCDay() === 0 ? 7 : cur.getUTCDay();
+    const status =
+      weekday === 7
+        ? 'dayOff'
+        : date > '2026-09-24'
+          ? 'future'
+          : date === '2026-09-24'
+            ? 'absent'
+            : PROD_STATUS[code as keyof typeof PROD_STATUS];
+    const attended = status === 'present' || status === 'late';
+    days.push({
+      date,
+      weekday,
+      isWorkDay: status !== 'dayOff',
+      holiday: date === '2026-09-01' ? 'Mustaqillik kuni' : null,
+      status: date === '2026-09-01' ? 'dayOff' : status,
+      checkInAt: attended ? '08:57' : null,
+      checkOutAt: null,
+      autoClosed: attended,
+      suspicious: false,
+      manual: false,
+      diary:
+        attended && date < '2026-09-10'
+          ? { id: `diary-${date}`, status: 'seen', score: null }
+          : null,
+    });
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return days;
+}
+
+export const prodPeriodDays = {
+  today: '2026-09-24',
+  period: {
+    id: '0190aaaa-0000-7000-8000-000000000001',
+    name: 'Ishlab chiqarish amaliyoti 2026',
+    status: 'closed',
+    startDate: '2026-08-31',
+    endDate: '2026-10-14',
+    requiredDays: 38,
+    elapsedWorkDays: 22,
   },
-  score: [
-    {
-      key: 'attendance',
-      weightPct: 40,
-      points: 21.8,
-    },
-    {
-      key: 'reports',
-      weightPct: 30,
-      points: 24,
-    },
-    {
-      key: 'tutor',
-      weightPct: 20,
-      points: 18,
-    },
-    {
-      key: 'reference',
-      weightPct: 10,
-      points: 10,
-    },
-  ],
-  total: 73.8,
-  grade: null,
-  finalized: false,
-  conclusion: null,
-  pdfUrl: null,
-  periodId: '0190aaaa-0000-7000-8000-000000000001',
   periods: [
     {
       id: '0190aaaa-0000-7000-8000-000000000001',
@@ -377,4 +388,5 @@ export const prodPortfolio = {
       isDefault: true,
     },
   ],
+  days: prodDays(),
 };

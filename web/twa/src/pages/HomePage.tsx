@@ -1,76 +1,85 @@
-import { Card, ErrorState, LoadingState } from '@/shared/ui';
+import { useCallback, useState } from 'react';
+import { EmptyState, ErrorState, LoadingState } from '@/shared/ui';
 import { errorMessage } from '@/shared/api/client';
-import { CheckinCard } from '@/features/today/components/CheckinCard';
-import { PeriodGapCard } from '@/features/today/components/PeriodGapCard';
-import { PlaceSummary } from '@/features/today/components/PlaceSummary';
-import { useCheckinFlow, useTodayQuery } from '@/features/today/hooks';
-import { DiaryForm } from '@/features/diary/components/DiaryForm';
-import { useCreateDiaryEntry, useDiaryQuery } from '@/features/diary/hooks';
-import { rewriteFilesFor } from '@/features/diary/types';
+import { PeriodPicker } from '@/features/period/components/PeriodPicker';
 import { periodPhase } from '@/features/period/types';
-import { PortfolioView } from '@/features/portfolio/components/PortfolioView';
+import { DayList } from '@/features/period-days/components/DayList';
+import { PeriodOverviewCard } from '@/features/period-days/components/PeriodOverviewCard';
+import { usePeriodDaysQuery } from '@/features/period-days/hooks';
+import { PeriodGapCard } from '@/features/today/components/PeriodGapCard';
+import { useTodayQuery } from '@/features/today/hooks';
 import styles from './pages.module.css';
 
 /**
- * SPEC-SCREENS §8 `isTalaba` — Bosh ekran: check-in + bugungi kundalik + korxona qisqacha,
- * ostida to'liq portfolio (§16). Ikki blok mustaqil query'lar: portfolio yuklanishi yoki xatosi
- * bugungi kartani kutdirmaydi (va aksincha).
+ * SPEC-SCREENS §8 `isTalaba` — Bosh ekran faqat amaliyot davri haqida: davr kartasi (nom, sanalar,
+ * holat, o'tgan ish kunlari), bir nechta davr bo'lsa tanlagich va davrning har bir kuni (accordion).
+ * Bugungi kun avtomatik ochiq — ichida check-in oqimi va bugungi kundalik holati.
  */
 export function HomePage() {
+  // null — sukut davr (server `isDefault`); tanlansa `?periodId=` bilan qayta yuklanadi.
+  const [periodId, setPeriodId] = useState<string | null>(null);
+  const q = usePeriodDaysQuery(periodId);
+  // Bugungi qatorga scroll — sahifa ochilganda faqat bir marta (davr almashganda emas).
+  const [scrolled, setScrolled] = useState(false);
+  const markScrolled = useCallback(() => setScrolled(true), []);
+
+  if (q.isPending) return <LoadingState height={360} />;
+  if (q.isError) {
+    return <ErrorState description={errorMessage(q.error)} onRetry={() => void q.refetch()} />;
+  }
+  const { period, periods, days, today } = q.data;
+
+  if (!period) {
+    return (
+      <div className={styles.stack}>
+        <EmptyState
+          title="Amaliyot davri biriktirilmagan"
+          description="Davr biriktirilgach bu yerda uning sanalari va har bir kuni ko'rinadi."
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className={styles.stack}>
-      <TodaySection />
-      <section className={styles.stack} aria-labelledby="home-portfolio-title">
-        <h2 id="home-portfolio-title" className={styles.sectionTitle}>
-          Portfolio
+    <div className={styles.stack} aria-busy={q.isPlaceholderData || undefined}>
+      {periods.length >= 2 && (
+        <PeriodPicker
+          periods={periods}
+          selectedId={periodId ?? period.id}
+          onSelect={setPeriodId}
+          disabled={q.isFetching}
+        />
+      )}
+      <PeriodOverviewCard period={period} today={today} />
+      <PeriodGap />
+      <section className={styles.list} aria-labelledby="home-days-title">
+        <h2 id="home-days-title" className={styles.sectionTitle}>
+          Kunlar
         </h2>
-        <PortfolioView />
+        <DayList
+          // Davr almashsa ochiq qatorlar qayta boshlanadi (yana faqat bugungi).
+          key={period.id}
+          days={days}
+          today={today}
+          autoScroll={!scrolled}
+          onAutoScrolled={markScrolled}
+        />
       </section>
     </div>
   );
 }
 
-/** Bugungi blok: check-in, kundalik, korxona qisqacha (yoki davrlar oralig'i kartasi). */
-function TodaySection() {
+/**
+ * Ikki davr oralig'i (v3.5 §4.6): bugun hech bir davr ichida emas — belgilanish yopiq;
+ * kelgusi davr uchun amaliyot joyi arizasi holati/tugmasi. Aks holda hech narsa chizilmaydi.
+ */
+function PeriodGap() {
   const today = useTodayQuery();
-  const checkinFlow = useCheckinFlow();
-  const createDiary = useCreateDiaryEntry();
-  // PDF majburiy bo'lsa — qayta yozilayotgan bugungi yozuvdagi PDF ham hisob (faqat shunda yuklanadi).
-  const diaryList = useDiaryQuery({ enabled: today.data?.diary.pdfRequired === true });
-
-  if (today.isPending) return <LoadingState height={320} />;
-  if (today.isError) {
-    return (
-      <ErrorState description={errorMessage(today.error)} onRetry={() => void today.refetch()} />
-    );
-  }
   const data = today.data;
-  // Ikki davr oralig'i (v3.5 §4.6): belgilanish va kundalik yozish yopiq — davr holati ko'rsatiladi.
-  // `period = null` ("Faol amaliyot davri yo'q") — avvalgidek CheckinCard `note` bilan.
-  const phase = data.period ? periodPhase(data.period, data.date) : null;
-  if (data.period && (phase === 'upcoming' || phase === 'ended')) {
-    return <PeriodGapCard today={data} period={data.period} phase={phase} />;
-  }
-
-  return (
-    <>
-      <CheckinCard today={data} flow={checkinFlow} />
-      <Card padded="lg">
-        <DiaryForm
-          title="Bugungi kundalik"
-          minChars={data.diary.minChars}
-          maxFiles={data.diary.maxFiles}
-          pdfRequired={data.diary.pdfRequired}
-          existingFiles={rewriteFilesFor(diaryList.data, data.date)}
-          submittedToday={data.diary.submittedToday}
-          pending={createDiary.isPending}
-          error={createDiary.error}
-          onSubmit={(input) => createDiary.mutateAsync(input)}
-        />
-        <PlaceSummary place={data.place} />
-      </Card>
-    </>
-  );
+  if (!data?.period) return null;
+  const phase = periodPhase(data.period, data.date);
+  if (phase !== 'upcoming' && phase !== 'ended') return null;
+  return <PeriodGapCard today={data} period={data.period} phase={phase} />;
 }
 
 export default HomePage;

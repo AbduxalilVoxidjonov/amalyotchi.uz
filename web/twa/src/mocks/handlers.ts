@@ -3,7 +3,7 @@ import { toUserRole, UserRole } from '@amaliyotchi/shared';
 import { calendarHandlers } from '@/features/calendar/mocks';
 import { diaryHandlers } from '@/features/diary/mocks';
 import { placeHandlers } from '@/features/place/mocks';
-import { portfolioHandlers } from '@/features/portfolio/mocks';
+import { periodDaysHandlers } from '@/features/period-days/mocks';
 import { profileHandlers } from '@/features/profile/mocks';
 import { todayHandlers } from '@/features/today/mocks';
 import {
@@ -152,6 +152,6 @@ export const handlers: HttpHandler[] = [
   ...placeHandlers,
   ...diaryHandlers,
   ...calendarHandlers,
-  ...portfolioHandlers,
+  ...periodDaysHandlers,
   ...profileHandlers,
 ];

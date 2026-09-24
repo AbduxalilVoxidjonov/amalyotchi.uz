@@ -1,4 +1,4 @@
-import { Button, Card } from '@/shared/ui';
+import { Button, Card, cn } from '@/shared/ui';
 import {
   formatMonthLabel,
   parseDateOnly,
@@ -6,6 +6,8 @@ import {
   WEEKDAYS_SHORT_UZ,
 } from '@/shared/lib/format';
 import { DAY_STATUS, DAY_STATUS_ORDER, type CalendarMonthDto } from '../types';
+// `.tone[data-status]` — kalendar ranglari (bosh ekran `DayStatusChip` bilan umumiy).
+import dayStatus from './DayStatus.module.css';
 import styles from './MonthGrid.module.css';
 
 export interface MonthGridProps {
@@ -62,7 +64,7 @@ export function MonthGrid({ data, fetching = false, onMonthChange }: MonthGridPr
           return (
             <li
               key={day.date}
-              className={styles.cell}
+              className={cn(styles.cell, dayStatus.tone)}
               data-status={day.status}
               aria-label={`${p?.d ?? ''} · ${meta.label}`}
               title={meta.label}
@@ -77,7 +79,11 @@ export function MonthGrid({ data, fetching = false, onMonthChange }: MonthGridPr
       <ul className={styles.legend} aria-label="Belgilar">
         {DAY_STATUS_ORDER.map((status) => (
           <li key={status} className={styles.legendItem}>
-            <span className={styles.swatch} data-status={status} aria-hidden="true" />
+            <span
+              className={cn(styles.swatch, dayStatus.tone)}
+              data-status={status}
+              aria-hidden="true"
+            />
             {DAY_STATUS[status].label}
           </li>
         ))}

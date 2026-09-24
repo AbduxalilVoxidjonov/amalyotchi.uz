@@ -50,9 +50,9 @@ export function useToggleCheckin() {
     onSuccess: (data) => {
       haptic('success');
       qc.setQueryData(todayKeys.all, data);
-      // Kalendar/portfolio davomati o'zgargan bo'lishi mumkin.
+      // Kalendar va bosh ekrandagi kunlar ro'yxati (bugungi qator holati) o'zgargan.
       void qc.invalidateQueries({ queryKey: ['student', 'calendar'] });
-      void qc.invalidateQueries({ queryKey: ['student', 'portfolio'] });
+      void qc.invalidateQueries({ queryKey: ['student', 'period-days'] });
     },
     onError: () => haptic('error'),
   });

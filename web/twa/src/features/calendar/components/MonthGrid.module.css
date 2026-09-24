@@ -71,44 +71,7 @@
   line-height: 1;
   min-height: 12px;
 }
-/* SPEC-TOKENS 1.5 — katak ranglari (CalendarDayStatus enum) */
-.cell[data-status='present'],
-.swatch[data-status='present'] {
-  --cal-bg: var(--color-ok-cal);
-  --cal-fg: var(--color-ok-fg);
-}
-.cell[data-status='late'],
-.swatch[data-status='late'] {
-  --cal-bg: var(--color-late-cal);
-  --cal-fg: var(--color-late-fg);
-}
-.cell[data-status='absent'],
-.swatch[data-status='absent'] {
-  --cal-bg: var(--color-bad-cal);
-  --cal-fg: var(--color-bad-fg);
-}
-.cell[data-status='excused'],
-.swatch[data-status='excused'] {
-  --cal-bg: var(--color-info-cal);
-  --cal-fg: var(--color-info-fg);
-}
-.cell[data-status='dayOff'],
-.swatch[data-status='dayOff'] {
-  --cal-bg: var(--color-surface-muted);
-  --cal-fg: var(--color-text-faint);
-}
-.cell[data-status='pending'],
-.swatch[data-status='pending'] {
-  --cal-bg: var(--color-surface-2);
-  --cal-fg: var(--color-text-muted);
-  outline: 1px dashed var(--color-text-faint);
-  outline-offset: -1px;
-}
-.cell[data-status='future'],
-.swatch[data-status='future'] {
-  --cal-bg: var(--color-surface-3);
-  --cal-fg: var(--color-text-ghost);
-}
+/* Holat ranglari (--cal-bg/--cal-fg) — DayStatus.module.css `.tone[data-status]` */
 .legend {
   list-style: none;
   display: flex;

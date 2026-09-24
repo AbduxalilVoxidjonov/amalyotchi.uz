@@ -92,7 +92,7 @@ export function PeriodGapCard({ today, period, phase }: PeriodGapCardProps) {
       </h2>
       <p className={styles.note}>
         Davr {formatPeriod(period.startDate, period.endDate)}. Yangi davr biriktirilgach belgilanish
-        qayta ochiladi. Natijalaringiz quyidagi portfolioda saqlanadi.
+        qayta ochiladi.
       </p>
     </Card>
   );

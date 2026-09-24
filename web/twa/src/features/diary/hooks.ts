@@ -28,7 +28,8 @@ export function useCreateDiaryEntry() {
       );
       // Bosh ekrandagi "Hisobotlar" va diary.submittedToday yangilanadi.
       void qc.invalidateQueries({ queryKey: todayKeys.all });
-      void qc.invalidateQueries({ queryKey: ['student', 'portfolio'] });
+      // Bosh ekran kunlar ro'yxatidagi kundalik holati.
+      void qc.invalidateQueries({ queryKey: ['student', 'period-days'] });
     },
   });
 }

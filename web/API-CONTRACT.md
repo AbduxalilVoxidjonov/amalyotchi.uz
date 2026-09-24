@@ -1,4 +1,4 @@
-# API-CONTRACT v3.10
+# API-CONTRACT v3.11
 
 Oxirgi yangilanish: 24.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
@@ -12,13 +12,14 @@ v3.6 (admin davr statistikasi) — §6.12,
 v3.7 (amaliyot joyida QR kod bilan check-in/check-out) — §6.13,
 v3.8 (talaba brauzerda HEMIS ID + parol bilan kiradi, parol almashtirish, talaba kabineti) — §6.14,
 v3.9 (talaba Telegram'ni HEMIS ID + parol bilan bog'laydi — `POST /api/auth/telegram/link`) — §6.15,
-v3.10 (ruxsat so'rash moduli olib tashlandi — talaba va tyutor `leave-requests` endpoint'lari) — §6.16.
+v3.10 (ruxsat so'rash moduli olib tashlandi — talaba va tyutor `leave-requests` endpoint'lari) — §6.16,
+v3.11 (talaba bosh ekrani: davrning har bir kuni — `GET /api/student/period-days`) — §6.17.
 
-Jami **106 ta endpoint**: Auth 7 · Admin 66 · Reports 1 · Tutor 20 · Student (TWA) 10 · Files 1 · Companies 1.
+Jami **107 ta endpoint**: Auth 7 · Admin 66 · Reports 1 · Tutor 20 · Student (TWA) 11 · Files 1 · Companies 1.
 
-> Kontrollerlarda `[Http*]` atributlari **108 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
+> Kontrollerlarda `[Http*]` atributlari **109 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
 > har birida ikkitadan action bor (`multipart/form-data` va `application/json` — `[Consumes]` bilan ajratiladi,
-> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **106**.
+> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **107**.
 
 ---
 
@@ -2107,6 +2108,44 @@ interface CalendarMonthDto {
 Davr yo'q: kelajak → `future`, qolgani `dayOff`. Aks holda §4.1 `DayStatus` qoidasi — har kun **o'zini o'z ichiga olgan
 davr** bilan (v3.5: oy kuzgi va bahorgi davrni qamrasa ikkalasi ham ko'rinadi; davrlar tashqarisi — `dayOff`/`future`).
 
+#### GET `/api/student/period-days` — `?periodId=` · 200 · 404 — v3.11
+
+Bosh ekran paneli: tanlangan davrning **har bir kalendar kuni** (`startDate..endDate`, o'sish tartibida) bitta so'rovda.
+`periodId` berilmasa — `GET /api/student/today` ko'rsatadigan davr (§4.6 `Current`: davom etayotgan → eng yaqin kelgusi →
+oxirgi tugagan; joriy guruhda bo'lmasa — `Default`, eski guruh davri ham). Talabaga tegishli bo'lmagan `periodId` → **404**.
+Davr umuman yo'q → 200 `{ today, period: null, periods: [], days: [] }`.
+
+```ts
+interface StudentPeriodDaysDto {
+  today: string;                       // "YYYY-MM-DD" (Toshkent)
+  period: {
+    id: string; name: string;
+    status: PracticePeriodStatus;      // effektiv: planned | active | closed
+    startDate: string; endDate: string;
+    requiredDays: number;              // davrdagi ish kunlari (bayramsiz) — PracticePeriod.RequiredDays
+    elapsedWorkDays: number;           // tyutor statistikasi maxraji (§4.2): o'tgan ish kunlari, sababli kunlarsiz
+  } | null;
+  periods: StudentPeriodOption[];      // tanlagich (profil/portfolio bilan bir xil), startDate kamayish tartibida
+  days: {
+    date: string;
+    weekday: number;                   // ISO: 1 = Du … 7 = Ya
+    isWorkDay: boolean;                // davr workDays ga kiradi va bayram emas
+    holiday: string | null;            // bayram nomi
+    status: CalendarDayStatus;         // AYNAN GET /api/student/calendar dagi qiymat (§4.1 DayStatus)
+    checkInAt: string | null;          // "HH:mm" (Toshkent)
+    checkOutAt: string | null;         // "HH:mm"; avto-yopilganda — yopilish vaqti
+    autoClosed: boolean;
+    suspicious: boolean;
+    manual: boolean;                   // tyutor qo'lda kiritgan/tuzatgan
+    diary: { id: string; status: DiaryStatus; score: number | null } | null;
+  }[];
+}
+```
+
+`status`: bugun belgilanmagan va oyna ochiq → `pending` (oyna yopilgan → `absent`); kelgusi ish kuni → `future`,
+kelgusi dam olish/bayram → `dayOff`. Vaqtlar, `autoClosed/suspicious/manual`, `diary` — tyutor
+`GET /api/tutor/students/{id}/attendance` bilan bir manbadan.
+
 #### ~~`GET /api/student/leave-requests` · `POST /api/student/leave-requests`~~ — v3.10 da olib tashlandi
 
 Talaba endi ruxsat so'ramaydi (§6.16); yo'llar **404**. `LeaveRequestDto` olib tashlandi.
@@ -2794,3 +2833,13 @@ Foydalanuvchi qarori: talabalar ruxsat (leave) so'ramaydi — funksiya butunlay 
   va 1 rad etilgan so'rov qoladi.
 - **Dashboard:** tyutor "Ruxsat so'rovlari" sahifasi va nav bandi olib tashlandi; `/tutor/leave-requests` → `/tutor`
   redirect. Talaba tafsilotida `excused` kun va "Ruxsat so'rovi" manba belgisi (eski yozuvlar) saqlanadi.
+
+### 6.17 v3.10 → v3.11 (24.09.2026): talaba bosh ekrani — davrning har bir kuni
+
+- **Yangi endpoint:** `GET /api/student/period-days?periodId=` (§2.6) — davr ma'lumoti (`requiredDays`,
+  `elapsedWorkDays`), davr tanlagichi va davrning har bir kuni (holat, check-in/out `HH:mm`, `autoClosed`,
+  `suspicious`, `manual`, kundalik). Jami endpoint: **106 → 107** (Student 10 → 11; `[Http*]` atributlari 108 → 109).
+- **Holat manbai:** talaba kalendari (§4.1 `AttendanceCalendar.DayStatus`) — TWA kalendar va bosh ekran bir xil ko'rsatadi.
+  Tyutor kun-bakun davomatidan farqi: kelgusi ish kuni tyutorda `pending`, bu yerda `future`; tasdiqlangan ruxsat
+  dam olish kuniga tushsa bu yerda `excused`, tyutorda `dayOff`.
+- Mavjud endpoint'lar o'zgarmadi, migratsiya yo'q.
