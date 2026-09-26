@@ -43,6 +43,67 @@ public sealed class PracticePeriodTests
     }
 
     [Fact]
+    public void ChangeSchedule_SoatVaKunlarOzgaradi_DaqiqaQoidalariSaqlanadi()
+    {
+        var period = NewPeriod(Today.AddDays(-5), Today.AddDays(30));
+        period.Activate();
+
+        period.ChangeSchedule(new TimeOnly(8, 0), new TimeOnly(15, 30), WorkDays.Monday | WorkDays.Saturday, 9);
+
+        period.DailyStart.Should().Be(new TimeOnly(8, 0));
+        period.DailyEnd.Should().Be(new TimeOnly(15, 30));
+        period.WorkDays.Should().Be(WorkDays.Monday | WorkDays.Saturday);
+        period.RequiredDays.Should().Be(9);
+        period.LateToleranceMinutes.Should().Be(CheckInRules.Default.LateToleranceMinutes);
+        period.CheckInWindowMinutes.Should().Be(CheckInRules.Default.CheckInWindowMinutes);
+        period.CheckoutGraceMinutes.Should().Be(CheckInRules.Default.CheckoutGraceMinutes);
+        period.Rules(100).WindowEnd.Should().Be(new TimeOnly(9, 30));
+    }
+
+    [Fact]
+    public void ChangeSchedule_TugashBoshlanishdanOldin_400()
+    {
+        var period = NewPeriod(Today, Today.AddDays(10));
+
+        var act = () => period.ChangeSchedule(new TimeOnly(17, 0), new TimeOnly(9, 0), WorkDays.MondayToFriday, 5);
+
+        act.Should().Throw<DomainException>().WithMessage("Ish tugash vaqti boshlanish vaqtidan keyin bo'lishi kerak.");
+        period.DailyStart.Should().Be(CheckInRules.Default.DailyStart);
+    }
+
+    [Fact]
+    public void ChangeSchedule_CheckInOynasiSigmasa_400()
+    {
+        var period = NewPeriod(Today, Today.AddDays(10));
+
+        // Standart oyna 90 daqiqa: 09:00 + 90 > 10:00.
+        var act = () => period.ChangeSchedule(new TimeOnly(9, 0), new TimeOnly(10, 0), WorkDays.MondayToFriday, 5);
+
+        act.Should().Throw<DomainException>().WithMessage("Check-in oynasi*");
+    }
+
+    [Fact]
+    public void ChangeSchedule_BoshIshKunlari_400()
+    {
+        var period = NewPeriod(Today, Today.AddDays(10));
+
+        var act = () => period.ChangeSchedule(new TimeOnly(9, 0), new TimeOnly(17, 0), WorkDays.None, 0);
+
+        act.Should().Throw<DomainException>();
+    }
+
+    [Fact]
+    public void ChangeSchedule_YopilganDavr_409()
+    {
+        var period = NewPeriod(Today, Today.AddDays(10));
+        period.Close();
+
+        var act = () => period.ChangeSchedule(new TimeOnly(9, 0), new TimeOnly(17, 0), WorkDays.MondayToFriday, 5);
+
+        act.Should().Throw<ConflictException>();
+    }
+
+    [Fact]
     public void Reschedule_Rejalashtirilgan_IkkalaSanaOzgaradi()
     {
         var period = NewPeriod(Today.AddDays(5), Today.AddDays(30));

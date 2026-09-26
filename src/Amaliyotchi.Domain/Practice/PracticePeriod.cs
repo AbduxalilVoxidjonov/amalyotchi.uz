@@ -200,6 +200,30 @@ public sealed class PracticePeriod : AuditableEntity, ISoftDeletable
         RequiredDays = requiredDays;
     }
 
+    /// <summary>Kunlik ish vaqti va ish kunlarini o'zgartirish. Yopilgan davr → 409. Davrning kechikish/check-in oynasi/
+    /// avto-yopish daqiqalari saqlanadi — yangi soatlar ular bilan birga <see cref="CheckInRules"/> orqali tekshiriladi
+    /// (tugash boshlanishdan keyin, check-in oynasi ish tugashigacha yopiladi). <paramref name="requiredDays"/> — yangi
+    /// ish kunlari bo'yicha qayta hisoblangan. Davomat yozuvlari o'zgarmaydi — ish kuni belgisi davrdan dinamik o'qiladi.</summary>
+    public void ChangeSchedule(TimeOnly dailyStart, TimeOnly dailyEnd, WorkDays workDays, int requiredDays)
+    {
+        if (Status == PracticePeriodStatus.Closed)
+            throw new ConflictException("Yopilgan davrni tahrirlab bo'lmaydi.");
+        if (workDays == WorkDays.None)
+            throw new DomainException("Kamida bitta ish kuni belgilanishi kerak.");
+        if (requiredDays < 0)
+            throw new DomainException("Talab qilinadigan kunlar soni manfiy bo'lishi mumkin emas.");
+
+        // GPS aniqligi davrga tegishli emas — tekshiruv uchun standart qiymat.
+        var rules = new CheckInRules(
+            dailyStart, dailyEnd, LateToleranceMinutes, CheckInWindowMinutes, CheckoutGraceMinutes,
+            CheckInRules.Default.MinAccuracyM);
+
+        DailyStart = rules.DailyStart;
+        DailyEnd = rules.DailyEnd;
+        WorkDays = workDays;
+        RequiredDays = requiredDays;
+    }
+
     public void Rename(string name)
     {
         if (Status == PracticePeriodStatus.Closed)

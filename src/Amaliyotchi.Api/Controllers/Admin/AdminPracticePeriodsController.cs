@@ -45,7 +45,8 @@ public sealed class AdminPracticePeriodsController(ISender sender) : ControllerB
         Guid id, Guid groupId, CancellationToken cancellationToken)
         => Ok(await sender.Send(new GetPeriodGroupStudentsQuery(id, groupId), cancellationToken));
 
-    /// <summary>Yangi davr. Vaqt qoidalari global sozlamalardan nusxalanadi. Guruh noto'g'ri → 400;
+    /// <summary>Yangi davr. Ixtiyoriy <c>dailyStart</c>/<c>dailyEnd</c> ("HH:mm") va <c>workDays</c> ("1,2,3,4,5");
+    /// yuborilmasa va qolgan vaqt qoidalari global sozlamalardan nusxalanadi. Guruh/jadval noto'g'ri → 400;
     /// guruh sanalari kesishadigan boshqa davrda → 409.</summary>
     [HttpPost]
     [ProducesResponseType<PracticePeriodDetail>(StatusCodes.Status201Created)]
@@ -59,7 +60,8 @@ public sealed class AdminPracticePeriodsController(ISender sender) : ControllerB
         return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
     }
 
-    /// <summary>Nom va sanalar (<c>id</c> route'dan; body'da bo'lmaydi). Yopilgan → 409; faol davrda <c>startDate</c> o'zgarsa → 400.</summary>
+    /// <summary>Nom, sanalar va ixtiyoriy jadval (<c>dailyStart</c>/<c>dailyEnd</c>/<c>workDays</c>; null → o'zgarmaydi).
+    /// <c>id</c> route'dan; body'da bo'lmaydi. Yopilgan → 409; faol davrda <c>startDate</c> o'zgarsa → 400.</summary>
     [HttpPut("{id:guid}")]
     [ProducesResponseType<PracticePeriodDetail>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

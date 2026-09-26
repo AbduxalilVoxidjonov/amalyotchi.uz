@@ -126,6 +126,34 @@ internal static class PracticePeriodQueries
         }
     }
 
+    /// <summary>Kunlik ish vaqtini davrning daqiqa qoidalari bilan birga tekshiradi (<see cref="CheckInRules"/>).
+    /// Domain xatosi (tugash boshlanishdan oldin, check-in oynasi sig'maydi) → 400 <c>errors.DailyEnd</c>.</summary>
+    public static CheckInRules BuildRules(
+        TimeOnly dailyStart, TimeOnly dailyEnd, int lateToleranceMinutes, int checkInWindowMinutes,
+        int checkoutGraceMinutes, double minAccuracyM)
+    {
+        try
+        {
+            return new CheckInRules(
+                dailyStart, dailyEnd, lateToleranceMinutes, checkInWindowMinutes, checkoutGraceMinutes, minAccuracyM);
+        }
+        catch (DomainException ex)
+        {
+            throw new ValidationException(
+                new Dictionary<string, string[]> { [PracticePeriodValidationRules.DailyEndKey] = [ex.Message] }, ex.Message);
+        }
+    }
+
+    /// <summary>Validator o'tkazgan ixtiyoriy qiymatlar: null → <paramref name="fallback"/>.</summary>
+    public static TimeOnly TimeOr(string? value, TimeOnly fallback)
+        => value is not null && PracticePeriodValidationRules.TryParseTime(value, out var time) ? time : fallback;
+
+    public static WorkDays WorkDaysOr(string? value, WorkDays fallback)
+    {
+        var days = value is null ? null : PracticePeriodValidationRules.TryParseWorkDays(value);
+        return days is null or WorkDays.None ? fallback : days.Value;
+    }
+
     /// <summary>[start, end] dagi ish kunlari (bayramlarsiz) — <c>requiredDays</c>.</summary>
     public static async Task<int> CountRequiredDaysAsync(
         IApplicationDbContext db, DateOnly startDate, DateOnly endDate, WorkDays workDays, CancellationToken cancellationToken)

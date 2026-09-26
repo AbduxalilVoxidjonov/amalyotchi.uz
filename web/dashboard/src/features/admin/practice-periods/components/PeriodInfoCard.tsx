@@ -1,12 +1,13 @@
 import { Card, CardHeader, FactGrid } from '@/shared/ui';
 import { formatCount } from '../../shared/format';
-import { calendarDays, formatDays, formatRange, parseWorkDays, WEEKDAYS } from '../dates';
+import { parseWeekdays, WEEKDAYS } from '../../shared/weekdays';
+import { calendarDays, formatDays, formatRange } from '../dates';
 import type { PracticePeriodDetail } from '../types';
 import styles from './PeriodDetail.module.css';
 
 /** Davr ma'lumotlari: sanalar, ish vaqti, ish kunlari, majburiy kunlar, kundalik talabi. */
 export function PeriodInfoCard({ period }: { period: PracticePeriodDetail }) {
-  const workDays = parseWorkDays(period.workDays);
+  const workDays = parseWeekdays(period.workDays);
   return (
     <Card aria-label="Davr ma'lumotlari">
       <CardHeader title="Davr ma'lumotlari" />

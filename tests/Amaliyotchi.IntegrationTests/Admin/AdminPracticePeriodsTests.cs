@@ -303,6 +303,190 @@ public sealed class AdminPracticePeriodsTests(ApiFixture fixture)
         closed!.Should().Contain(p => p.Id == period.Id);
     }
 
+    private Task<int> ExpectedRequiredDaysAsync(DateOnly start, DateOnly end, WorkDays workDays)
+        => Factory.WithDbAsync(async db =>
+        {
+            var holidays = await db.Holidays.AsNoTracking().ToListAsync();
+            return PracticePeriod.CountWorkDays(start, end, workDays, d => holidays.Any(h => h.AppliesTo(d)));
+        });
+
+    [Fact]
+    public async Task Yaratish_IshVaqtiVaKunlari_Saqlanadi_RequiredDaysHisoblanadi()
+    {
+        var group = await Factory.CreateGroupAsync();
+        var client = await Factory.LoginAsAdminAsync();
+        var start = Factory.Today().AddDays(200);
+        var end = start.AddDays(27);
+
+        var response = await client.PostJsonAsync(Url, new
+        {
+            name = "Maxsus jadval",
+            startDate = D(start),
+            endDate = D(end),
+            groupIds = new[] { group.GroupId },
+            dailyStart = "08:30",
+            dailyEnd = "16:00",
+            workDays = "1,3,5"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
+        var created = (await response.Content.ReadAsync<PracticePeriodDetail>())!;
+        created.DailyStart.Should().Be("08:30");
+        created.DailyEnd.Should().Be("16:00");
+        created.WorkDays.Should().Be("1,3,5");
+        var expected = await ExpectedRequiredDaysAsync(start, end, WorkDays.Monday | WorkDays.Wednesday | WorkDays.Friday);
+        created.RequiredDays.Should().Be(expected);
+        expected.Should().BeLessThanOrEqualTo(12); // 4 hafta × 3 kun
+
+        await Factory.WithDbAsync(async db =>
+        {
+            var period = await db.PracticePeriods.AsNoTracking().SingleAsync(p => p.Id == created.Id);
+            period.DailyStart.Should().Be(new TimeOnly(8, 30));
+            period.DailyEnd.Should().Be(new TimeOnly(16, 0));
+            period.WorkDays.Should().Be(WorkDays.Monday | WorkDays.Wednesday | WorkDays.Friday);
+        });
+    }
+
+    [Fact]
+    public async Task Yaratish_JadvalValidatsiya_400()
+    {
+        var group = await Factory.CreateGroupAsync();
+        var client = await Factory.LoginAsAdminAsync();
+        var start = Factory.Today().AddDays(300);
+
+        async Task<string> Bad(object schedule)
+        {
+            var body = new Dictionary<string, object?>
+            {
+                ["name"] = "X", ["startDate"] = D(start), ["endDate"] = D(start.AddDays(5)),
+                ["groupIds"] = new[] { group.GroupId }
+            };
+            foreach (var prop in schedule.GetType().GetProperties())
+                body[prop.Name] = prop.GetValue(schedule);
+            var response = await client.PostJsonAsync(Url, body);
+            var text = await response.Content.ReadAsStringAsync();
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest, text);
+            return text;
+        }
+
+        (await Bad(new { dailyStart = "17:00", dailyEnd = "09:00" }))
+            .Should().Contain("\"DailyEnd\"").And.Contain("Ish tugash vaqti boshlanish vaqtidan keyin bo'lishi kerak.");
+        (await Bad(new { dailyStart = "9-00" }))
+            .Should().Contain("\"DailyStart\"").And.Contain("Vaqtni HH:mm formatida kiriting.");
+        (await Bad(new { dailyEnd = "25:00" }))
+            .Should().Contain("\"DailyEnd\"").And.Contain("Vaqtni HH:mm formatida kiriting.");
+        (await Bad(new { workDays = "" }))
+            .Should().Contain("\"WorkDays\"").And.Contain("Kamida bitta ish kunini tanlang.");
+        (await Bad(new { workDays = "1,8" }))
+            .Should().Contain("\"WorkDays\"");
+        // Faqat tugash yuborildi — standart 09:00 bilan solishtiriladi (handler, errors.DailyEnd).
+        (await Bad(new { dailyEnd = "08:00" })).Should().Contain("\"DailyEnd\"");
+        // Check-in oynasi (standart 90 daqiqa) ish tugashigacha sig'maydi.
+        (await Bad(new { dailyStart = "09:00", dailyEnd = "10:00" }))
+            .Should().Contain("\"DailyEnd\"").And.Contain("Check-in oynasi");
+    }
+
+    [Fact]
+    public async Task Tahrirlash_IshVaqtiVaKunlari_RequiredDaysQaytaHisoblanadi()
+    {
+        var group = await Factory.CreateGroupAsync();
+        var client = await Factory.LoginAsAdminAsync();
+        var start = Factory.Today().AddDays(220);
+        var end = start.AddDays(20);
+        var period = await CreateAsync(client, start, end, group.GroupId);
+
+        var response = await client.PutAsJsonAsync($"{Url}/{period.Id}", new
+        {
+            name = period.Name, startDate = D(start), endDate = D(end),
+            dailyStart = "10:00", dailyEnd = "18:30", workDays = "6,7"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+        var updated = (await response.Content.ReadAsync<PracticePeriodDetail>())!;
+        updated.DailyStart.Should().Be("10:00");
+        updated.DailyEnd.Should().Be("18:30");
+        updated.WorkDays.Should().Be("6,7");
+        updated.RequiredDays.Should().Be(
+            await ExpectedRequiredDaysAsync(start, end, WorkDays.Saturday | WorkDays.Sunday));
+
+        // Maydonlarsiz eski so'rov — jadval o'zgarmaydi, sana o'zgarsa requiredDays saqlangan workDays bo'yicha.
+        var newEnd = end.AddDays(7);
+        var legacy = await client.PutAsJsonAsync($"{Url}/{period.Id}", new
+        {
+            name = "Eski klient", startDate = D(start), endDate = D(newEnd)
+        });
+        legacy.StatusCode.Should().Be(HttpStatusCode.OK, await legacy.Content.ReadAsStringAsync());
+        var after = (await legacy.Content.ReadAsync<PracticePeriodDetail>())!;
+        after.Name.Should().Be("Eski klient");
+        after.DailyStart.Should().Be("10:00");
+        after.DailyEnd.Should().Be("18:30");
+        after.WorkDays.Should().Be("6,7");
+        after.RequiredDays.Should().Be(
+            await ExpectedRequiredDaysAsync(start, newEnd, WorkDays.Saturday | WorkDays.Sunday));
+
+        // Faqat boshlanish — davrning joriy tugashi (18:30) bilan tekshiriladi.
+        var onlyStart = await client.PutAsJsonAsync($"{Url}/{period.Id}", new
+        {
+            name = "Eski klient", startDate = D(start), endDate = D(newEnd), dailyStart = "08:00"
+        });
+        onlyStart.StatusCode.Should().Be(HttpStatusCode.OK);
+        var o = (await onlyStart.Content.ReadAsync<PracticePeriodDetail>())!;
+        o.DailyStart.Should().Be("08:00");
+        o.DailyEnd.Should().Be("18:30");
+
+        await Factory.WithDbAsync(async db =>
+            (await db.AuditLogs.CountAsync(l => l.Action == AuditAction.PracticePeriodUpdated && l.EntityId == period.Id.ToString()))
+                .Should().Be(3));
+    }
+
+    [Fact]
+    public async Task Tahrirlash_JadvalValidatsiya_400_Yopilgan409()
+    {
+        var group = await Factory.CreateGroupAsync();
+        var admin = await Factory.CreateAdminAsync();
+        var period = await Factory.CreateActivePeriodAsync(group, admin.Id);
+        var client = await Factory.LoginAsync(admin);
+
+        var reversed = await client.PutAsJsonAsync($"{Url}/{period.Id}", new
+        {
+            name = period.Name, startDate = D(period.StartDate), endDate = D(period.EndDate),
+            dailyStart = "12:00", dailyEnd = "11:00"
+        });
+        reversed.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await reversed.Content.ReadAsStringAsync()).Should().Contain("\"DailyEnd\"");
+
+        // Faqat tugash — davrning boshlanishidan (09:00) oldin.
+        var endOnly = await client.PutAsJsonAsync($"{Url}/{period.Id}", new
+        {
+            name = period.Name, startDate = D(period.StartDate), endDate = D(period.EndDate), dailyEnd = "08:00"
+        });
+        endOnly.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await endOnly.Content.ReadAsStringAsync()).Should().Contain("\"DailyEnd\"");
+
+        var emptyDays = await client.PutAsJsonAsync($"{Url}/{period.Id}", new
+        {
+            name = period.Name, startDate = D(period.StartDate), endDate = D(period.EndDate), workDays = " "
+        });
+        emptyDays.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await emptyDays.Content.ReadAsStringAsync()).Should().Contain("\"WorkDays\"").And.Contain("Kamida bitta ish kunini tanlang.");
+
+        // Faol davrda ish kunlari o'zgaradi (davomat yozuvlari tegilmaydi).
+        var ok = await client.PutAsJsonAsync($"{Url}/{period.Id}", new
+        {
+            name = period.Name, startDate = D(period.StartDate), endDate = D(period.EndDate), workDays = "1,2,3,4,5"
+        });
+        ok.StatusCode.Should().Be(HttpStatusCode.OK, await ok.Content.ReadAsStringAsync());
+        (await ok.Content.ReadAsync<PracticePeriodDetail>())!.WorkDays.Should().Be("1,2,3,4,5");
+
+        (await client.PostAsync($"{Url}/{period.Id}/close", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+        var closed = await client.PutAsJsonAsync($"{Url}/{period.Id}", new
+        {
+            name = period.Name, startDate = D(period.StartDate), endDate = D(period.EndDate),
+            dailyStart = "08:00", workDays = "1"
+        });
+        closed.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
     [Fact]
     public async Task Ochirish_204_KeyinTopilmaydi()
     {

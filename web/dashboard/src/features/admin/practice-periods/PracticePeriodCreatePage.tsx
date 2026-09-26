@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { usePageHeader } from '@/app/layout';
 import { isApiError } from '@/shared/api';
 import { Breadcrumb, Button, Card, CardBody, CardHeader } from '@/shared/ui';
+import { useSettingsQuery } from '../settings/hooks';
+import { normalizeWeekdays } from '../shared/weekdays';
 import { GroupPicker } from './components/GroupPicker';
 import { PeriodFields } from './components/PeriodFields';
 import { ServerErrorBanner } from './components/ServerErrorBanner';
@@ -12,8 +14,10 @@ import styles from './PracticePeriodCreatePage.module.css';
 import type { PracticePeriodGroup } from './types';
 import {
   EMPTY_PERIOD_FORM,
+  PERIOD_FORM_FIELDS,
   validatePeriodForm,
   type PeriodFormErrors,
+  type PeriodFormField,
   type PeriodFormValues,
 } from './validation';
 
@@ -23,7 +27,8 @@ export interface PeriodFlashState {
 }
 
 /**
- * Admin · Yangi amaliyot davri. Chapda — davr (nom, sanalar), o'ngda — guruh tanlash
+ * Admin · Yangi amaliyot davri. Chapda — davr (nom, sanalar, ish kunlari, ish vaqti), o'ngda —
+ * guruh tanlash
  * (kaskad, bir nechta yo'nalish/fakultet bo'ylab). Muvaffaqiyatda — davr sahifasiga.
  */
 export function PracticePeriodCreatePage() {
@@ -31,17 +36,37 @@ export function PracticePeriodCreatePage() {
   const navigate = useNavigate();
   const create = useCreatePracticePeriod();
 
-  const [values, setValues] = useState<PeriodFormValues>(EMPTY_PERIOD_FORM);
+  const settings = useSettingsQuery();
+
+  const [draft, setDraft] = useState<PeriodFormValues>(EMPTY_PERIOD_FORM);
   const [groups, setGroups] = useState<PracticePeriodGroup[]>([]);
-  const [touched, setTouched] = useState<Partial<Record<keyof PeriodFormValues, boolean>>>({});
+  const [touched, setTouched] = useState<Partial<Record<PeriodFormField, boolean>>>({});
+  // Foydalanuvchi ish kunlariga tegmaguncha — global sozlamadagi `workDays` (bo'lsa) ko'rsatiladi.
+  const [workDaysEdited, setWorkDaysEdited] = useState(false);
+
+  const settingsWorkDays = normalizeWeekdays(
+    settings.data?.settings.find((s) => s.key === 'workDays')?.value ?? '',
+  );
+  const values: PeriodFormValues =
+    workDaysEdited || !settingsWorkDays ? draft : { ...draft, workDays: settingsWorkDays };
+
+  function handleChange(next: PeriodFormValues) {
+    if (next.workDays !== values.workDays) setWorkDaysEdited(true);
+    setDraft(next);
+  }
 
   const clientErrors = validatePeriodForm(values);
   const apiError = isApiError(create.error) ? create.error : undefined;
   // Maydon xatosi: foydalanuvchi tekkan maydon uchun mijoz tekshiruvi, keyin server `errors`.
   const shown: PeriodFormErrors = {};
-  for (const key of ['name', 'startDate', 'endDate'] as const) {
-    // Tugash < boshlanish — darhol ko'rinsin (ikkala sana tanlangan bo'lsa).
-    const eager = key === 'endDate' && values.startDate !== '' && values.endDate !== '';
+  for (const key of PERIOD_FORM_FIELDS) {
+    // Darhol ko'rinadiganlar: tugash < boshlanish (ikkala sana tanlangan bo'lsa); ish kunlari va
+    // vaqt — ularning standart qiymati bor, xato faqat foydalanuvchi o'zgartirganda paydo bo'ladi.
+    const eager =
+      (key === 'endDate' && values.startDate !== '' && values.endDate !== '') ||
+      key === 'workDays' ||
+      key === 'dailyStart' ||
+      key === 'dailyEnd';
     const msg = touched[key] || eager ? clientErrors[key] : undefined;
     const fromServer = apiError?.fieldError(key);
     const value = msg ?? fromServer;
@@ -53,7 +78,7 @@ export function PracticePeriodCreatePage() {
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setTouched({ name: true, startDate: true, endDate: true });
+    setTouched(Object.fromEntries(PERIOD_FORM_FIELDS.map((f) => [f, true])));
     if (!canSubmit) return;
     const name = values.name.trim();
     create.mutate(
@@ -62,6 +87,9 @@ export function PracticePeriodCreatePage() {
         startDate: values.startDate,
         endDate: values.endDate,
         groupIds: groups.map((g) => g.id),
+        dailyStart: values.dailyStart,
+        dailyEnd: values.dailyEnd,
+        workDays: values.workDays,
       },
       {
         onSuccess: (created) =>
@@ -73,7 +101,7 @@ export function PracticePeriodCreatePage() {
   }
 
   const blocker = !formValid
-    ? 'Davr nomi va sanalarini to‘g‘ri kiriting.'
+    ? 'Davr nomi, sanalari, ish kunlari va vaqtini to‘g‘ri kiriting.'
     : groups.length === 0
       ? 'Kamida bitta guruh tanlang.'
       : null;
@@ -93,7 +121,7 @@ export function PracticePeriodCreatePage() {
               <PeriodFields
                 idPrefix="period"
                 values={values}
-                onChange={setValues}
+                onChange={handleChange}
                 errors={shown}
                 onBlurField={(f) => setTouched((t) => ({ ...t, [f]: true }))}
                 disabled={create.isPending}

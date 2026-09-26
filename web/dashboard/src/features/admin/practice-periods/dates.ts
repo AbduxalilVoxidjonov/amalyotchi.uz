@@ -53,23 +53,3 @@ const tashkentDay = new Intl.DateTimeFormat('en-CA', {
 export function todayIso(now: Date = new Date()): string {
   return tashkentDay.format(now);
 }
-
-/** ISO hafta kunlari: 1 — Dushanba … 7 — Yakshanba (backend `WorkDays`). */
-export const WEEKDAYS = [
-  { day: 1, short: 'Du', name: 'Dushanba' },
-  { day: 2, short: 'Se', name: 'Seshanba' },
-  { day: 3, short: 'Ch', name: 'Chorshanba' },
-  { day: 4, short: 'Pa', name: 'Payshanba' },
-  { day: 5, short: 'Ju', name: 'Juma' },
-  { day: 6, short: 'Sh', name: 'Shanba' },
-  { day: 7, short: 'Ya', name: 'Yakshanba' },
-] as const;
-
-export function parseWorkDays(csv: string): Set<number> {
-  return new Set(
-    csv
-      .split(',')
-      .map((p) => Number(p.trim()))
-      .filter((n) => Number.isInteger(n) && n >= 1 && n <= 7),
-  );
-}

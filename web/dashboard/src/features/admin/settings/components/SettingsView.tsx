@@ -1,37 +1,10 @@
 import { Button, Card, CardHeader, Input, Pill, cn } from '@/shared/ui';
 import { ErrorState } from '../../components/PageStatus';
 import { formatDayMonth } from '../../shared/format';
+import { parseWeekdays, toggleWeekday, WEEKDAYS } from '../../shared/weekdays';
 import { groupSettings } from '../groups';
 import { UNIT_LABEL, type AdminSettings, type Setting } from '../types';
 import styles from './SettingsView.module.css';
-
-/** ISO hafta kunlari: 1 — Dushanba … 7 — Yakshanba (backend `WorkDays`). */
-const WEEKDAYS = [
-  { day: 1, short: 'Du', name: 'Dushanba' },
-  { day: 2, short: 'Se', name: 'Seshanba' },
-  { day: 3, short: 'Ch', name: 'Chorshanba' },
-  { day: 4, short: 'Pa', name: 'Payshanba' },
-  { day: 5, short: 'Ju', name: 'Juma' },
-  { day: 6, short: 'Sh', name: 'Shanba' },
-  { day: 7, short: 'Ya', name: 'Yakshanba' },
-] as const;
-
-function parseWeekdays(csv: string): Set<number> {
-  return new Set(
-    csv
-      .split(',')
-      .map((p) => Number(p.trim()))
-      .filter((n) => Number.isInteger(n) && n >= 1 && n <= 7),
-  );
-}
-
-/** Kunni qo'shadi/olib tashlaydi → tartiblangan CSV ("1,2,3,4,5,6"). */
-function toggleWeekday(csv: string, day: number): string {
-  const days = parseWeekdays(csv);
-  if (days.has(day)) days.delete(day);
-  else days.add(day);
-  return [...days].sort((a, b) => a - b).join(',');
-}
 
 export interface SettingsViewProps {
   data: AdminSettings;

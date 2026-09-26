@@ -6,7 +6,8 @@ import { mockFaculties } from '../faculties/mocks';
 import { problemResponse } from '../shared/mockProblem';
 import { mockStudents as adminMockStudents } from '../students/mocks';
 import { PRACTICE_PERIODS_ENDPOINT } from './api';
-import { isIsoDate, parseWorkDays, rangesOverlap, todayIso } from './dates';
+import { countWorkDays, normalizeWeekdays } from '../shared/weekdays';
+import { isIsoDate, rangesOverlap, todayIso } from './dates';
 import type {
   GradeDistribution,
   GroupMetrics,
@@ -18,6 +19,7 @@ import type {
   PracticePeriodGroup,
   PracticePeriodGroupsUpdate,
   PracticePeriodListItem,
+  PracticePeriodSchedule,
   PracticePeriodStats,
   PracticePeriodStatus,
   PracticePeriodUpdate,
@@ -32,7 +34,7 @@ import { isPeriodStatus } from './types';
  * ❓ `GET /directions/{id}/groups` dagi `period` maydoni groups mock'ida statik (g1, g2, g4 → p1);
  * shu yerdagi o'zgarishlar u yerga aks etmaydi — real backendda bir manba.
  */
-interface PeriodSeed {
+interface PeriodSeed extends PracticePeriodSchedule {
   id: string;
   name: string;
   startDate: string;
@@ -44,13 +46,16 @@ interface PeriodSeed {
   attendanceGroupIds: string[];
 }
 
-/** Global sozlamalar (yaratilishda nusxa olinadi) — settings mock'idagi demo qiymatlar. */
-const GLOBAL = {
+/**
+ * Global sozlamalar — settings mock'idagi demo qiymatlar. Jadval (vaqt, ish kunlari) so'rovda
+ * kelmasa shular olinadi; kelsa — davrga o'zi saqlanadi.
+ */
+const GLOBAL_SCHEDULE: PracticePeriodSchedule = {
   dailyStart: '09:00',
   dailyEnd: '17:00',
   workDays: '1,2,3,4,5,6',
-  dailyReportRequired: true,
 };
+const GLOBAL_DAILY_REPORT_REQUIRED = true;
 
 export const mockPracticePeriods: PeriodSeed[] = [
   {
@@ -63,6 +68,7 @@ export const mockPracticePeriods: PeriodSeed[] = [
     createdAt: '2026-08-01T09:00:00+05:00',
     groupIds: ['g1', 'g2', 'g4'],
     attendanceGroupIds: ['g1'],
+    ...GLOBAL_SCHEDULE,
   },
   {
     id: 'p3',
@@ -73,6 +79,7 @@ export const mockPracticePeriods: PeriodSeed[] = [
     createdAt: '2026-09-10T10:00:00+05:00',
     groupIds: ['g3'],
     attendanceGroupIds: [],
+    ...GLOBAL_SCHEDULE,
   },
   {
     id: 'p2',
@@ -83,6 +90,7 @@ export const mockPracticePeriods: PeriodSeed[] = [
     createdAt: '2026-01-20T09:00:00+05:00',
     groupIds: ['g4'],
     attendanceGroupIds: ['g4'],
+    ...GLOBAL_SCHEDULE,
   },
 ];
 
@@ -116,17 +124,7 @@ function groupInfo(id: string): PracticePeriodGroup | null {
 
 /** Ish kunlari soni (bayramlarsiz — mock'da bayram hisobga olinmaydi). */
 function workDaysBetween(start: string, end: string, csv: string): number {
-  const days = parseWorkDays(csv);
-  let n = 0;
-  for (
-    let t = Date.parse(`${start}T00:00:00Z`);
-    t <= Date.parse(`${end}T00:00:00Z`);
-    t += 86_400_000
-  ) {
-    const iso = ((new Date(t).getUTCDay() + 6) % 7) + 1;
-    if (days.has(iso)) n++;
-  }
-  return n;
+  return countWorkDays(start, end, csv) ?? 0;
 }
 
 function toListItem(p: PeriodSeed): PracticePeriodListItem {
@@ -148,8 +146,11 @@ export function mockPracticePeriodDetail(id: string): PracticePeriodDetail | nul
   if (!p) return null;
   return {
     ...toListItem(p),
-    ...GLOBAL,
-    requiredDays: workDaysBetween(p.startDate, p.endDate, GLOBAL.workDays),
+    dailyStart: p.dailyStart,
+    dailyEnd: p.dailyEnd,
+    workDays: p.workDays,
+    dailyReportRequired: GLOBAL_DAILY_REPORT_REQUIRED,
+    requiredDays: workDaysBetween(p.startDate, p.endDate, p.workDays),
     groups: p.groupIds.map(groupInfo).filter((g): g is PracticePeriodGroup => g !== null),
   };
 }
@@ -172,6 +173,30 @@ function validateDates(body: Partial<PracticePeriodUpdate>): Record<string, stri
   else if (isIsoDate(start) && end < start)
     errors['endDate'] = ["Tugash sanasi boshlanish sanasidan oldin bo'lishi mumkin emas."];
   return errors;
+}
+
+const HH_MM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/**
+ * Jadval maydonlari (ixtiyoriy): kelmasa `fallback`; kelsa — "HH:mm", `dailyEnd > dailyStart`,
+ * kamida bitta 1..7 kun. Natija: normallashtirilgan jadval yoki `errors` ga yozilgan xatolar.
+ */
+function resolveSchedule(
+  body: Partial<PracticePeriodSchedule>,
+  fallback: PracticePeriodSchedule,
+  errors: Record<string, string[]>,
+): PracticePeriodSchedule {
+  const dailyStart = body.dailyStart ?? fallback.dailyStart;
+  const dailyEnd = body.dailyEnd ?? fallback.dailyEnd;
+  const workDays =
+    body.workDays === undefined ? fallback.workDays : normalizeWeekdays(body.workDays);
+  if (!HH_MM.test(dailyStart))
+    errors['DailyStart'] = ["Boshlanish vaqti HH:mm ko'rinishida bo'lsin."];
+  if (!HH_MM.test(dailyEnd)) errors['DailyEnd'] = ["Tugash vaqti HH:mm ko'rinishida bo'lsin."];
+  else if (HH_MM.test(dailyStart) && dailyEnd <= dailyStart)
+    errors['DailyEnd'] = ["Ish tugash vaqti boshlanish vaqtidan keyin bo'lishi kerak."];
+  if (!workDays) errors['WorkDays'] = ['Kamida bitta ish kunini tanlang.'];
+  return { dailyStart, dailyEnd, workDays };
 }
 
 /** Ustma-ust: shu guruhlar sanalari kesishadigan boshqa yopilmagan davrdami. */
@@ -276,7 +301,7 @@ function elapsedWorkDaysOf(p: PeriodSeed): number {
   if (p.status === 'planned') return 0;
   const today = todayIso();
   const end = p.status === 'closed' || today > p.endDate ? p.endDate : today;
-  return end < p.startDate ? 0 : workDaysBetween(p.startDate, end, GLOBAL.workDays);
+  return end < p.startDate ? 0 : workDaysBetween(p.startDate, end, p.workDays);
 }
 
 /** Tyutor baholash qoidasi: davomat < 70% yoki jami < 56 → qayta topshiradi (null). */
@@ -458,7 +483,7 @@ export function mockPracticePeriodStats(id: string): PracticePeriodStats | null 
   return {
     periodId: p.id,
     elapsedWorkDays: elapsed,
-    requiredDays: workDaysBetween(p.startDate, p.endDate, GLOBAL.workDays),
+    requiredDays: workDaysBetween(p.startDate, p.endDate, p.workDays),
     totals: aggregate(all, started),
     groups,
   };
@@ -527,6 +552,7 @@ export const practicePeriodsHandlers: HttpHandler[] = [
   http.post(PRACTICE_PERIODS_ENDPOINT, async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as Partial<PracticePeriodCreate>;
     const errors = validateDates(body);
+    const schedule = resolveSchedule(body, GLOBAL_SCHEDULE, errors);
     const groupIds = Array.isArray(body.groupIds) ? [...new Set(body.groupIds)] : [];
     if (groupIds.length === 0) errors['groupIds'] = ['Kamida bitta guruh tanlang.'];
     else if (groupIds.some((id) => !groupInfo(id)))
@@ -549,6 +575,7 @@ export const practicePeriodsHandlers: HttpHandler[] = [
         createdAt: new Date().toISOString(),
         groupIds,
         attendanceGroupIds: [],
+        ...schedule,
       },
     ];
     return HttpResponse.json(mockPracticePeriodDetail(id), { status: 201 });
@@ -604,6 +631,7 @@ export const practicePeriodsHandlers: HttpHandler[] = [
 
     const body = (await request.json().catch(() => ({}))) as Partial<PracticePeriodUpdate>;
     const errors = validateDates(body);
+    const schedule = resolveSchedule(body, period, errors);
     if (period.status === 'active' && body.startDate !== period.startDate)
       errors['startDate'] = ["Faol davrning boshlanish sanasini o'zgartirib bo'lmaydi."];
     if (
@@ -627,6 +655,7 @@ export const practicePeriodsHandlers: HttpHandler[] = [
             name: input.name.trim(),
             startDate: input.startDate,
             endDate: input.endDate,
+            ...schedule,
             status: p.status === 'planned' ? statusFor(input.startDate) : p.status,
           }
         : p,

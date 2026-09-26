@@ -3,22 +3,72 @@
   flex-direction: column;
   gap: 14px;
 }
-.dates {
+/* Ikki maydon yonma-yon (sanalar, ish vaqti); torda bitta ustun */
+.pair {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 @media (max-width: 480px) {
-  .dates {
+  .pair {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+.group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+/* Field `.label` bilan bir xil ko'rinish */
+.legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}
+.weekdays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dayChip {
+  min-width: 2.6em;
+  font-family: var(--font-mono);
+}
+.error {
+  margin: 6px 0 0;
+  font-size: var(--fs-xs2);
+  color: var(--color-bad-fg);
+  line-height: var(--lh-note);
+}
+.hint {
+  margin: 6px 0 0;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  line-height: var(--lh-note);
+}
+.warning {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--color-late-bg);
+  color: var(--color-late-fg);
+  font-size: var(--fs-xs2);
+  line-height: var(--lh-note);
+}
 .days {
   margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
   font-family: var(--font-mono);
   font-size: var(--fs-sm2);
   font-weight: var(--fw-semibold);
   color: var(--color-text-2);
+}
+.workDays {
+  color: var(--color-accent);
 }
 .note {
   margin: 0;

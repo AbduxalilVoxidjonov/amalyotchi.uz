@@ -1,6 +1,6 @@
-# API-CONTRACT v3.11
+# API-CONTRACT v3.12
 
-Oxirgi yangilanish: 24.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
+Oxirgi yangilanish: 26.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
 esa haqiqiy controller/DTO/validator/handler kodidan olingan — har bir maydon, chegara va status kod kodda bor.
 Frontend (`web/dashboard`, `web/twa`, `web/shared`) shu shaklga moslanishi kerak; v1 bilan farqlar §5 da,
@@ -13,7 +13,8 @@ v3.7 (amaliyot joyida QR kod bilan check-in/check-out) — §6.13,
 v3.8 (talaba brauzerda HEMIS ID + parol bilan kiradi, parol almashtirish, talaba kabineti) — §6.14,
 v3.9 (talaba Telegram'ni HEMIS ID + parol bilan bog'laydi — `POST /api/auth/telegram/link`) — §6.15,
 v3.10 (ruxsat so'rash moduli olib tashlandi — talaba va tyutor `leave-requests` endpoint'lari) — §6.16,
-v3.11 (talaba bosh ekrani: davrning har bir kuni — `GET /api/student/period-days`) — §6.17.
+v3.11 (talaba bosh ekrani: davrning har bir kuni — `GET /api/student/period-days`) — §6.17,
+v3.12 (admin davr yaratish/tahrirlashda ish kunlari va kunlik ish vaqti) — §6.18.
 
 Jami **107 ta endpoint**: Auth 7 · Admin 66 · Reports 1 · Tutor 20 · Student (TWA) 11 · Files 1 · Companies 1.
 
@@ -1137,8 +1138,18 @@ interface PracticePeriodDetail extends PracticePeriodListItem {
   groups: PracticePeriodGroup[]; // code bo'yicha tartiblangan
 }
 
-interface PracticePeriodCreate { name: string; startDate: string; endDate: string; groupIds: string[]; }
-interface PracticePeriodUpdate { name: string; startDate: string; endDate: string; }
+interface PracticePeriodCreate {
+  name: string; startDate: string; endDate: string; groupIds: string[];
+  dailyStart?: string | null; // "HH:mm" (Toshkent); yo'q/null → "09:00"
+  dailyEnd?: string | null;   // "HH:mm"; yo'q/null → "17:00"
+  workDays?: string | null;   // "1,2,3,4,5" (1=Du … 7=Ya, kamida bitta); yo'q/null → global `workDays` sozlamasi
+}
+interface PracticePeriodUpdate {
+  name: string; startDate: string; endDate: string;
+  dailyStart?: string | null; // yo'q/null → o'zgarmaydi
+  dailyEnd?: string | null;   // yo'q/null → o'zgarmaydi
+  workDays?: string | null;   // yo'q/null → o'zgarmaydi
+}
 interface PracticePeriodGroupsUpdate { groupIds: string[]; } // to'liq ro'yxat (set semantikasi)
 ```
 
@@ -1164,14 +1175,22 @@ ham tafsilotda ko'rinadi (tarix).
 Body `PracticePeriodCreate` → 201 `PracticePeriodDetail` (+ `Location: /api/admin/practice-periods/{id}`).
 - Validatsiya (400 `errors`): `Name` trim 1–200; `StartDate`/`EndDate` majburiy, `EndDate >= StartDate`;
   `GroupIds` kamida 1 ta, bo'sh GUID yo'q (takrorlar olib tashlanadi).
+- **Jadval** (v3.12, ixtiyoriy): `DailyStart`/`DailyEnd` — `HH:mm` (aks holda "Vaqtni HH:mm formatida kiriting.");
+  ikkalasi berilsa `DailyEnd > DailyStart` → aks holda `errors.DailyEnd` ("Ish tugash vaqti boshlanish vaqtidan keyin
+  bo'lishi kerak."); `WorkDays` — 1..7 raqamlar vergul bilan (noto'g'ri → `errors.WorkDays` "Ish kunlari 1 (Dushanba)
+  dan 7 (Yakshanba) gacha bo'lgan raqamlar ro'yxati bo'lishi kerak."), bo'sh satr → `errors.WorkDays` ("Kamida bitta
+  ish kunini tanlang."). Yangi soatlar davrning kechikish/check-in oynasi daqiqalari bilan birga tekshiriladi
+  (`CheckInRules`): bittasi yuborilgan bo'lsa ikkinchisi — standart/joriy qiymat; check-in oynasi ish tugashigacha
+  sig'masa yoki tugash boshlanishdan oldin bo'lsa → 400 `errors.DailyEnd` (domain xabari, masalan "Check-in oynasi ish
+  tugashidan oldin yopilishi kerak.").
 - Guruh topilmasa yoki faol emas → 400 `errors.GroupIds` (`detail`: "N ta guruh topilmadi." / "Faol bo'lmagan
   guruhlar: 412-22.").
 - Joriy (faol) o'quv yili yo'q → 400 (`detail`: "Joriy (faol) o'quv yili yo'q — avval o'quv yilini faollashtiring.").
 - **Ustma-ust** → 409 (pastda).
 - Nusxalanadigan qiymatlar (keyin sozlama o'zgarsa davr o'zgarmaydi): `lateTolerance`, `checkInWindow`,
-  `autoCheckout`, `workDays`, `dailyReportRequired` — global sozlamalardan (§2.3 settings); `dailyStart`/`dailyEnd`
-  uchun sozlama kaliti yo'q — standart `09:00`/`17:00`. `requiredDays` = `startDate..endDate` dagi ish kunlari
-  (`workDays` bo'yicha, bayramlarsiz).
+  `autoCheckout`, `dailyReportRequired` va (body'da yo'q bo'lsa) `workDays` — global sozlamalardan (§2.3 settings);
+  `dailyStart`/`dailyEnd` body'da yo'q bo'lsa — standart `09:00`/`17:00` (sozlama kaliti yo'q).
+  `requiredDays` = `startDate..endDate` dagi ish kunlari (yakuniy `workDays` bo'yicha, bayramlarsiz).
 - O'quv yili body'da yuborilmaydi — joriy faol o'quv yili olinadi.
 
 #### PUT `/api/admin/practice-periods/{id}` · 200 · 400 · 404 · 409
@@ -1181,7 +1200,13 @@ Body `PracticePeriodUpdate` (`id` route'dan) → `PracticePeriodDetail`.
 - `active` davrda `startDate` o'zgarsa → 400 ("Faol davrning boshlanish sanasini o'zgartirib bo'lmaydi.");
   `endDate` uzaytiriladi/qisqartiriladi, lekin **bugundan oldin emas** → aks holda 400.
 - `planned` davrda ikkala sana ham o'zgaradi (faqat `endDate >= startDate`).
-- Sana o'zgarsa: ustma-ust qayta tekshiriladi (409) va `requiredDays` qayta hisoblanadi (vaqt qoidalari o'zgarmaydi).
+- Sana o'zgarsa: ustma-ust qayta tekshiriladi (409).
+- **Jadval** (v3.12, ixtiyoriy): `dailyStart`/`dailyEnd`/`workDays` — POST dagi validatsiya bilan bir xil; yuborilmasa
+  (null) o'zgarmaydi. Soat o'zgarsa davrning `lateTolerance`/`checkInWindow`/`autoCheckout` daqiqalari saqlanadi va
+  yangi soatlar ular bilan tekshiriladi (sig'masa → 400 `errors.DailyEnd`). Faol davrda ham o'zgartirish mumkin.
+- Sana yoki `workDays` o'zgarsa `requiredDays` qayta hisoblanadi (bayramlarsiz). Davomat yozuvlari o'zgarmaydi — ish
+  kuni belgisi har so'rovda davrdan o'qiladi (yozuvsiz o'tgan kunlarning `absent`/`dayOff` ko'rinishi yangi `workDays`
+  bo'yicha qayta hisoblanadi).
 
 #### PUT `/api/admin/practice-periods/{id}/groups` · 200 · 400 · 404 · 409
 
@@ -2843,3 +2868,12 @@ Foydalanuvchi qarori: talabalar ruxsat (leave) so'ramaydi — funksiya butunlay 
   Tyutor kun-bakun davomatidan farqi: kelgusi ish kuni tyutorda `pending`, bu yerda `future`; tasdiqlangan ruxsat
   dam olish kuniga tushsa bu yerda `excused`, tyutorda `dayOff`.
 - Mavjud endpoint'lar o'zgarmadi, migratsiya yo'q.
+
+### 6.18 v3.11 → v3.12 (26.09.2026): davr jadvali — ish kunlari va kunlik ish vaqti
+
+- `POST /api/admin/practice-periods` va `PUT /api/admin/practice-periods/{id}` body'lariga ixtiyoriy
+  `dailyStart` / `dailyEnd` (`"HH:mm"`) va `workDays` (`"1,2,3,4,5"`, 1=Du … 7=Ya) qo'shildi (§2.3.4). Yuborilmasa:
+  POST — standart `09:00`/`17:00` va global `workDays`; PUT — o'zgarmaydi. Eski klientlar buzilmaydi.
+- Xatolar: 400 `errors.DailyStart` / `errors.DailyEnd` / `errors.WorkDays` (PascalCase, §1.4/§1.7 konvensiyasi; `web/shared` `ApiError.field()` camelCase kalitni ham topadi);
+  check-in oynasi sig'masa → 400 `errors.DailyEnd`. Yopilgan davr → 409 (o'zgarmadi).
+- Response (`PracticePeriodDetail`) o'zgarmadi. Endpoint soni o'zgarmadi, migratsiya yo'q.

@@ -48,14 +48,25 @@ export interface PracticePeriodDetail extends PracticePeriodListItem {
   groups: PracticePeriodGroup[];
 }
 
-export interface PracticePeriodCreate {
+/** Davr jadvali: kunlik ish vaqti va ish kunlari (backend'da ixtiyoriy, frontend doim yuboradi). */
+export interface PracticePeriodSchedule {
+  /** "HH:mm" */
+  dailyStart: string;
+  /** "HH:mm", `dailyStart` dan keyin. */
+  dailyEnd: string;
+  /** Tartiblangan CSV, 1 — Du … 7 — Ya ("1,2,3,4,5"). */
+  workDays: string;
+}
+
+export interface PracticePeriodCreate extends PracticePeriodSchedule {
   name: string;
   startDate: string;
   endDate: string;
   groupIds: string[];
 }
 
-export interface PracticePeriodUpdate {
+/** Yopilgan davr → 409. `workDays`/sanalar o'zgarsa backend `requiredDays` ni qayta hisoblaydi. */
+export interface PracticePeriodUpdate extends PracticePeriodSchedule {
   name: string;
   startDate: string;
   endDate: string;

@@ -1,9 +1,10 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { delay, http, HttpResponse } from 'msw';
 import { server } from '@/mocks/server';
 import { renderHierarchyPage } from '../shared/renderHierarchyPage';
 import { PRACTICE_PERIODS_ENDPOINT } from './api';
+import { ACTIVE_DAILY_TIME_HINT, ACTIVE_WORK_DAYS_WARNING } from './validation';
 import { mockPracticePeriodStats, resetPracticePeriodsMock } from './mocks';
 import { PracticePeriodDetailPage } from './PracticePeriodDetailPage';
 
@@ -133,6 +134,63 @@ describe('PracticePeriodDetailPage', () => {
     expect(
       await screen.findByRole('heading', { name: 'Ishlab chiqarish amaliyoti (kuz)' }),
     ).toBeInTheDocument();
+  });
+
+  it('tahrirlash: ish kunlari va vaqt mavjud qiymatlardan boshlanadi va PUT bilan yuboriladi', async () => {
+    let sent: Record<string, unknown> | null = null;
+    server.use(
+      http.put(`${PRACTICE_PERIODS_ENDPOINT}/:id`, async ({ request }) => {
+        sent = (await request.clone().json()) as Record<string, unknown>;
+        // undefined → asosiy mock handler javob beradi.
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole('heading', { name: 'Ishlab chiqarish amaliyoti 2026' });
+
+    await user.click(screen.getByRole('button', { name: 'Tahrirlash' }));
+    const dialog = within(await screen.findByRole('dialog', { name: 'Davrni tahrirlash' }));
+    expect(dialog.getByLabelText('Boshlanishi')).toHaveValue('09:00');
+    expect(dialog.getByLabelText('Tugashi')).toHaveValue('17:00');
+    const days = within(dialog.getByRole('group', { name: 'Ish kunlari' }));
+    expect(days.getByRole('button', { name: 'Shanba' })).toHaveAttribute('aria-pressed', 'true');
+    expect(days.getByRole('button', { name: 'Yakshanba' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    // Faol davr: ish kunlari o'zgarishi retroaktiv — ogohlantirish; vaqt — bugundan.
+    expect(dialog.getByRole('group', { name: 'Ish kunlari' })).toHaveAccessibleDescription(
+      ACTIVE_WORK_DAYS_WARNING,
+    );
+    expect(dialog.getByRole('group', { name: 'Ish vaqti' })).toHaveAccessibleDescription(
+      ACTIVE_DAILY_TIME_HINT,
+    );
+
+    // Mijoz validatsiyasi: tugash <= boshlanish.
+    fireEvent.change(dialog.getByLabelText('Tugashi'), { target: { value: '09:00' } });
+    await user.click(dialog.getByRole('button', { name: 'Saqlash' }));
+    expect(
+      dialog.getByText("Ish tugash vaqti boshlanish vaqtidan keyin bo'lishi kerak."),
+    ).toBeInTheDocument();
+    expect(sent).toBeNull();
+
+    await user.click(days.getByRole('button', { name: 'Shanba' }));
+    fireEvent.change(dialog.getByLabelText('Boshlanishi'), { target: { value: '08:30' } });
+    fireEvent.change(dialog.getByLabelText('Tugashi'), { target: { value: '16:30' } });
+    await user.click(dialog.getByRole('button', { name: 'Saqlash' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(sent).toEqual({
+      name: 'Ishlab chiqarish amaliyoti 2026',
+      startDate: '2026-08-31',
+      endDate: '2026-10-14',
+      dailyStart: '08:30',
+      dailyEnd: '16:30',
+      workDays: '1,2,3,4,5',
+    });
+    // Javob (PracticePeriodDetail) ma'lumot kartasida aks etadi.
+    expect(await screen.findByText('08:30–16:30')).toBeInTheDocument();
+    expect(screen.getByLabelText('Shanba: dam olish')).toBeInTheDocument();
   });
 
   it("o'chirish: davomati bor davr — 409; bo'sh davr o'chirilib ro'yxatga qaytadi", async () => {

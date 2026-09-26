@@ -7,12 +7,22 @@ using MediatR;
 
 namespace Amaliyotchi.Application.Features.Admin.PracticePeriods;
 
-/// <summary><c>POST /api/admin/practice-periods</c>: <c>{ name, startDate, endDate, groupIds }</c> → 201
-/// <see cref="PracticePeriodDetail"/>. Vaqt qoidalari, ish kunlari va <c>dailyReportRequired</c> global sozlamalardan
-/// nusxalanadi; <c>requiredDays</c> — oraliqdagi ish kunlari (bayramlarsiz). O'quv yili — joriy (faol), yo'q → 400.
+/// <summary><c>POST /api/admin/practice-periods</c>: <c>{ name, startDate, endDate, groupIds, dailyStart?, dailyEnd?,
+/// workDays? }</c> → 201 <see cref="PracticePeriodDetail"/>. <c>dailyStart</c>/<c>dailyEnd</c> — "HH:mm" (Toshkent),
+/// <c>workDays</c> — "1,2,3,4,5" (1=Du … 7=Ya, kamida bitta); yuborilmasa (null) — standart 09:00/17:00 va global
+/// <c>workDays</c> sozlamasi. Kechikish/check-in oynasi/avto-yopish daqiqalari va <c>dailyReportRequired</c> global
+/// sozlamalardan nusxalanadi; check-in oynasi ish tugashigacha sig'masa → 400 <c>errors.DailyEnd</c>.
+/// <c>requiredDays</c> — oraliqdagi ish kunlari (bayramlarsiz). O'quv yili — joriy (faol), yo'q → 400.
 /// Guruh topilmasa/faol emas → 400 <c>errors.GroupIds</c>; sanalari kesishadigan boshqa ochiq davrda bo'lsa → 409.
 /// Saqlanadigan holat darhol <c>Active</c> (ochiq); <c>planned</c> ko'rinishi sanadan hisoblanadi.</summary>
-public sealed record CreatePracticePeriodCommand(string Name, DateOnly StartDate, DateOnly EndDate, IReadOnlyList<Guid> GroupIds)
+public sealed record CreatePracticePeriodCommand(
+    string Name,
+    DateOnly StartDate,
+    DateOnly EndDate,
+    IReadOnlyList<Guid> GroupIds,
+    string? DailyStart = null,
+    string? DailyEnd = null,
+    string? WorkDays = null)
     : IRequest<PracticePeriodDetail>;
 
 public sealed class CreatePracticePeriodCommandValidator : AbstractValidator<CreatePracticePeriodCommand>
@@ -20,6 +30,7 @@ public sealed class CreatePracticePeriodCommandValidator : AbstractValidator<Cre
     public CreatePracticePeriodCommandValidator()
     {
         PracticePeriodValidationRules.ApplyNameAndDates(this, x => x.Name, x => x.StartDate, x => x.EndDate);
+        PracticePeriodValidationRules.ApplySchedule(this, x => x.DailyStart, x => x.DailyEnd, x => x.WorkDays);
 
         RuleFor(x => x.GroupIds)
             .Cascade(CascadeMode.Stop)
@@ -44,12 +55,19 @@ internal sealed class CreatePracticePeriodCommandHandler(
             db, groupIds, request.StartDate, request.EndDate, excludePeriodId: null, cancellationToken);
 
         var defaults = await PracticePeriodQueries.LoadDefaultsAsync(db, cancellationToken);
+        var d = defaults.Rules;
+        var rules = PracticePeriodQueries.BuildRules(
+            PracticePeriodQueries.TimeOr(request.DailyStart, d.DailyStart),
+            PracticePeriodQueries.TimeOr(request.DailyEnd, d.DailyEnd),
+            d.LateToleranceMinutes, d.CheckInWindowMinutes, d.CheckoutGraceMinutes, d.MinAccuracyM);
+        var workDays = PracticePeriodQueries.WorkDaysOr(request.WorkDays, defaults.WorkDays);
+
         var requiredDays = await PracticePeriodQueries.CountRequiredDaysAsync(
-            db, request.StartDate, request.EndDate, defaults.WorkDays, cancellationToken);
+            db, request.StartDate, request.EndDate, workDays, cancellationToken);
 
         var period = PracticePeriod.Create(
             request.Name, academicYearId, request.StartDate, request.EndDate, userId,
-            defaults.Rules, defaults.WorkDays, requiredDays, defaults.DailyReportRequired);
+            rules, workDays, requiredDays, defaults.DailyReportRequired);
         foreach (var groupId in groupIds)
             period.AttachGroup(groupId);
 
