@@ -27,6 +27,14 @@ public sealed class AdminStudentsController(ISender sender) : ControllerBase
     public async Task<ActionResult<Paged<StudentRow>>> List([FromQuery] GetAdminStudentsQuery query, CancellationToken cancellationToken)
         => Ok(await sender.Send(query, cancellationToken));
 
+    /// <summary>Ro'yxat filtrlari variantlari: fakultetlar, yo'nalishlar (<c>facultyId</c> bilan) va mavjud kurslar —
+    /// fakultet/yo'nalish/guruh ma'lumotlaridan dinamik (yangi yo'nalish qo'shilsa, bu yerda ham paydo bo'ladi).</summary>
+    [HttpGet("filters")]
+    [ProducesResponseType<AdminStudentFiltersDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<AdminStudentFiltersDto>> Filters(CancellationToken cancellationToken)
+        => Ok(await sender.Send(new GetAdminStudentFiltersQuery(), cancellationToken));
+
     /// <summary>To'ldirish uchun <c>.xlsx</c> shablon: "Talabalar" (sarlavha qatori), "Yo'riqnoma" va
     /// mavjud faol guruhlar ro'yxati ("Guruhlar"). Import shu nomlar bo'yicha o'qiydi.</summary>
     [HttpGet("import/template")]

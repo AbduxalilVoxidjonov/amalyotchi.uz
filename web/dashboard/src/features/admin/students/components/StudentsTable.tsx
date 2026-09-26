@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Badge, Button, Checkbox, ProgressBar, type DataTableColumn } from '@/shared/ui';
 import { AdminTable, type TableStateProps } from '../../components/AdminTable';
 import { RowLink } from '../../components/RowLink';
@@ -93,6 +93,10 @@ export interface StudentsTableProps extends TableStateProps<Student> {
   /** Sahifadagi barcha qatorlarni belgilash/bekor qilish. */
   onToggleAll: (checked: boolean) => void;
   onAssignCompany: () => void;
+  /** Qidiruv yonidagi filtr paneli. */
+  filters?: ReactNode;
+  /** Bo'sh natija izohi (masalan filtr bo'yicha topilmadi + "Filtrlarni tozalash"). */
+  emptyDescription?: ReactNode;
 }
 
 export function StudentsTable({
@@ -104,6 +108,8 @@ export function StudentsTable({
   onToggleRow,
   onToggleAll,
   onAssignCompany,
+  filters,
+  emptyDescription,
   ...state
 }: StudentsTableProps) {
   const rows = state.data?.items ?? [];
@@ -165,6 +171,8 @@ export function StudentsTable({
       rowKey={(r) => r.id}
       minWidth="980px"
       emptyTitle="Talabalar yo'q"
+      {...(emptyDescription ? { emptyDescription } : {})}
+      filters={filters}
       rowHref={studentHref}
       actions={
         <>

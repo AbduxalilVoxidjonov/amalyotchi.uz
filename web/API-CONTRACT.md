@@ -1,4 +1,4 @@
-# API-CONTRACT v3.19
+# API-CONTRACT v3.20
 
 Oxirgi yangilanish: 26.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
@@ -21,13 +21,14 @@ v3.15 (korxona sahifalari — faqat hozir aktiv amaliyot o'tayotgan talabalar; o
 v3.16 (sidebar badge'lari va header konteksti — `GET /api/admin/nav`, `GET /api/tutor/nav`) — §6.22,
 v3.17 (talaba profilida barcha davrlar — `GET /api/student/profile` `practices[]`) — §6.23,
 v3.18 (`GET /api/student/place` — `periodId`, `periodName`, `isPast`) — §6.24,
-v3.19 (kundalik faqat davom etayotgan davrda — `TodayDto.canWriteDiary`, `diaryBlockedReason`) — §6.25.
+v3.19 (kundalik faqat davom etayotgan davrda — `TodayDto.canWriteDiary`, `diaryBlockedReason`) — §6.25,
+v3.20 (admin talabalar ro'yxati filtrlari — `facultyId`/`directionId`/`course`, `GET /api/admin/students/filters`) — §6.26.
 
-Jami **110 ta endpoint**: Auth 7 · Admin 68 · Reports 1 · Tutor 21 · Student (TWA) 11 · Files 1 · Companies 1.
+Jami **111 ta endpoint**: Auth 7 · Admin 69 · Reports 1 · Tutor 21 · Student (TWA) 11 · Files 1 · Companies 1.
 
-> Kontrollerlarda `[Http*]` atributlari **112 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
+> Kontrollerlarda `[Http*]` atributlari **113 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
 > har birida ikkitadan action bor (`multipart/form-data` va `application/json` — `[Consumes]` bilan ajratiladi,
-> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **110**.
+> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **111**.
 
 ---
 
@@ -734,7 +735,19 @@ fakultet darajasida tanlangan bo'lsa `departments[].tutorId` null). `tutorId ===
 boshqa → band; boshqa tyutorning tuguni ostidagi yoki ustidagi tugunni tanlash `PUT .../scopes` da 409 beradi — avval
 egasidan ajratish kerak.
 
-#### GET `/api/admin/students` — `q`: FISH, HEMIS ID, telefon, guruh
+#### GET `/api/admin/students` — `q`: FISH, HEMIS ID, telefon, guruh; `&facultyId=&directionId=&course=` — v3.20
+
+Filtrlar (hammasi ixtiyoriy, `q` va bir-biri bilan **AND**; `total` — filtrlangan natija bo'yicha):
+
+| Parametr      | Tur          | Ma'no                                                                 |
+|---------------|--------------|-----------------------------------------------------------------------|
+| `facultyId`   | Guid         | talaba guruhi yo'nalishi kafedrasining fakulteti                      |
+| `directionId` | Guid         | talaba guruhining yo'nalishi                                          |
+| `course`      | int **1..6** | talaba guruhining kursi; oraliqdan tashqari → **400** `errors.Course` |
+
+`directionId` berilgan `facultyId` ga tegishli bo'lmasa yoki mavjud bo'lmasa — **bo'sh natija** (`total: 0`), 400 emas.
+Variantlar — `GET /api/admin/students/filters`. Sidebar (`GET /api/admin/nav`) `students` soni — filtrsiz jami.
+
 
 ```ts
 interface StudentRow {
@@ -752,6 +765,25 @@ interface StudentRow {
   status: AdminStudentStatus; /*!telegramLinked → unlinked; suspiciousDays≥2 || (elapsed>0 && pct<70) → flagged; aks holda active*/
 }
 ```
+
+#### GET `/api/admin/students/filters` · 200 · 401 · 403 — v3.20
+
+Talabalar ro'yxati filtrlari variantlari — admin "Fakultetlar / Yo'nalishlar" bo'limidagi ma'lumotlardan **dinamik**
+(yangi fakultet/yo'nalish/guruh kursi qo'shilsa shu yerda paydo bo'ladi, o'chirilgani yo'qoladi).
+
+```ts
+interface AdminStudentFilters {
+  faculties:  { id: string; name: string }[];
+  directions: { id: string; name: string; facultyId: string /*yo'nalish kafedrasining fakulteti*/ }[];
+  courses: number[];
+}
+```
+
+- `faculties` / `directions` — o'chirilmagan (soft delete) yozuvlar, **nofaollari ham** (`isActive=false` — eski
+  talabalarni filtrlash uchun; `isActive` maydoni qaytmaydi). Tartib — `name` bo'yicha case-insensitive (ordinal),
+  teng bo'lsa `name`, keyin `id`.
+- `courses` — o'chirilmagan guruhlardagi noyob `course` qiymatlari, o'sish tartibida.
+- 3 ta yengil SELECT, sahifalash yo'q.
 
 #### GET `/api/admin/students/import/template` · 200
 
@@ -3113,3 +3145,13 @@ Foydalanuvchi qarori: talabalar ruxsat (leave) so'ramaydi — funksiya butunlay 
   qo'shib bo'lmaydi." yoki "Amaliyot davri hali boshlanmagan." (status 400 o'zgarmadi). Yopilgan davrda bugungi `rewrite`
   yozuvni qayta yozish ham 400.
 - `GET /api/student/diary` eski yozuvlarni qaytarishda davom etadi. Endpoint soni o'zgarmadi, migratsiya yo'q.
+
+### 6.26 v3.19 → v3.20 (26.09.2026): admin talabalar ro'yxati filtrlari
+
+- **Yangi query parametrlar:** `GET /api/admin/students?facultyId=&directionId=&course=` (§2.3) — ixtiyoriy, `q` bilan
+  birga AND; `total` filtrlangan natija bo'yicha. `course` 1..6 dan tashqari → 400 `errors.Course`; `directionId`
+  `facultyId` ga tegishli bo'lmasa — bo'sh natija (400 emas). Parametrsiz so'rov avvalgidek ishlaydi.
+- **Yangi endpoint:** `GET /api/admin/students/filters` (AdminOnly) → `{ faculties, directions, courses }` (§2.3) —
+  filtr variantlari fakultet → kafedra → yo'nalish → guruh ma'lumotlaridan dinamik. Tyutor → 403, anonim → 401.
+- `GET /api/admin/nav` `counts.students` — o'zgarmadi, filtrsiz jami.
+- Endpoint soni **110 → 111** (Admin 68 → 69; `[Http*]` atributlari 112 → 113), migratsiya yo'q.

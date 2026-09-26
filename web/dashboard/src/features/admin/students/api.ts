@@ -1,5 +1,5 @@
 import { api } from '@/shared/api';
-import { toQuery, type ListParams, type Paged } from '../shared/types';
+import { toQuery, type Paged } from '../shared/types';
 import type { ImportResult } from '../shared/types';
 import type {
   AdminStudentDetail,
@@ -7,11 +7,16 @@ import type {
   AssignCompanyResult,
   SetStudentCompanyInput,
   Student,
+  StudentFilters,
+  StudentListParams,
 } from './types';
 
 /**
  * Backend: `AdminStudentsController`.
- * GET  /api/admin/students?q=&page=&pageSize= → Paged<Student> (`q`: FISH, HEMIS ID, telefon, guruh)
+ * GET  /api/admin/students?q=&page=&pageSize=&facultyId=&directionId=&course=
+ *                                             → Paged<Student> (`q`: FISH, HEMIS ID, telefon, guruh;
+ *                                               filtrlar ixtiyoriy, AND; `total` — filtrlangan)
+ * GET  /api/admin/students/filters            → StudentFilters (fakultet/yo'nalish/kurs variantlari)
  * GET  /api/admin/students/{id}?periodId=     → AdminStudentDetail · 404 (talaba yoki begona davr)
  * GET  /api/admin/students/import/template    → .xlsx shablon (Bearer talab qiladi — `downloadAuthFile`)
  * POST /api/admin/students/import             → StudentImportResult (multipart `file`) · 400
@@ -24,6 +29,15 @@ import type {
 export const STUDENTS_ENDPOINT = '/api/admin/students';
 
 /** Shablon `<a href>` bilan ochilmaydi (401) — `downloadAuthFile` token bilan yuklab oladi. */
+/** Filtr variantlari (fakultetlar, yo'nalishlar, kurslar). */
+export const STUDENTS_FILTERS_ENDPOINT = `${STUDENTS_ENDPOINT}/filters`;
+
+/**
+ * Filtr variantlari kaliti. `adminKeys.studentsAll()` prefiksi ostida — import/biriktirishdan keyingi
+ * invalidate ham qamraydi; fakultet/yo'nalish/guruh mutatsiyalari uni alohida invalidate qiladi.
+ */
+export const studentFiltersKey = () => ['admin', 'students', 'filters'] as const;
+
 export const STUDENTS_TEMPLATE_ENDPOINT = `${STUDENTS_ENDPOINT}/import/template`;
 export const STUDENTS_IMPORT_ENDPOINT = `${STUDENTS_ENDPOINT}/import`;
 
@@ -38,8 +52,16 @@ export const studentCompanyEndpoint = (id: string) =>
 export const STUDENTS_TEMPLATE_FILE_NAME = 'talabalar-import-shablon.xlsx';
 
 export const studentsApi = {
-  list: (params: ListParams) =>
-    api.get<Paged<Student>>(STUDENTS_ENDPOINT, { query: toQuery(params) }),
+  list: ({ facultyId, directionId, course, ...params }: StudentListParams) =>
+    api.get<Paged<Student>>(STUDENTS_ENDPOINT, {
+      query: {
+        ...toQuery(params),
+        facultyId: facultyId || undefined,
+        directionId: directionId || undefined,
+        course,
+      },
+    }),
+  filters: () => api.get<StudentFilters>(STUDENTS_FILTERS_ENDPOINT),
   detail: (id: string, periodId: string | null = null) =>
     api.get<AdminStudentDetail>(`${STUDENTS_ENDPOINT}/${id}`, { query: { periodId } }),
   importExcel: (file: File) => {

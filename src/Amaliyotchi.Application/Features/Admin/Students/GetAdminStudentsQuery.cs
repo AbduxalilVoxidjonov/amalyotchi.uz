@@ -30,8 +30,21 @@ public sealed record StudentRow(
     bool TelegramLinked,
     AdminStudentStatus Status);
 
-/// <summary><c>GET /api/admin/students?q&amp;page&amp;pageSize</c> — <c>q</c>: FISH, HEMIS ID, telefon, guruh.</summary>
-public sealed record GetAdminStudentsQuery : PagedQuery, IRequest<Paged<StudentRow>>;
+/// <summary><c>GET /api/admin/students?q&amp;page&amp;pageSize&amp;facultyId&amp;directionId&amp;course</c> — <c>q</c>: FISH,
+/// HEMIS ID, telefon, guruh. Filtrlar ixtiyoriy va birga (AND) qo'llanadi; <c>total</c> filtrlangan natija bo'yicha.
+/// <see cref="DirectionId"/> <see cref="FacultyId"/> ga tegishli bo'lmasa — shunchaki bo'sh natija. Variantlar —
+/// <c>GET /api/admin/students/filters</c> (<see cref="GetAdminStudentFiltersQuery"/>).</summary>
+public sealed record GetAdminStudentsQuery : PagedQuery, IRequest<Paged<StudentRow>>
+{
+    /// <summary>Guruh yo'nalishi kafedrasining fakulteti.</summary>
+    public Guid? FacultyId { get; init; }
+
+    /// <summary>Guruh yo'nalishi.</summary>
+    public Guid? DirectionId { get; init; }
+
+    /// <summary>Guruh kursi (<see cref="StudentGroup.MinCourse"/>..<see cref="StudentGroup.MaxCourse"/>).</summary>
+    public int? Course { get; init; }
+}
 
 internal sealed class GetAdminStudentsQueryHandler(IApplicationDbContext db, IClock clock)
     : IRequestHandler<GetAdminStudentsQuery, Paged<StudentRow>>
@@ -49,6 +62,13 @@ internal sealed class GetAdminStudentsQueryHandler(IApplicationDbContext db, ICl
     public async Task<Paged<StudentRow>> Handle(GetAdminStudentsQuery request, CancellationToken cancellationToken)
     {
         var students = Source(db);
+
+        if (request.FacultyId is { } facultyId)
+            students = students.Where(x => x.Faculty.Id == facultyId);
+        if (request.DirectionId is { } directionId)
+            students = students.Where(x => x.Group.DirectionId == directionId);
+        if (request.Course is { } course)
+            students = students.Where(x => x.Group.Course == course);
 
         if (request.Q is { } q)
         {

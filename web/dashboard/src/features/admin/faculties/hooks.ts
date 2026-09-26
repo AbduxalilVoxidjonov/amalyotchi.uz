@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { navKeys } from '@/app/nav-keys';
 import { adminKeys } from '../shared/keys';
+import { studentFiltersKey } from '../students/api';
 import type { ListParams } from '../shared/types';
 import { facultiesApi } from './api';
 import type { FacultyInput } from './types';
@@ -28,6 +29,7 @@ function useInvalidateFaculties() {
     void queryClient.invalidateQueries({ queryKey: adminKeys.facultiesAll() });
     void queryClient.invalidateQueries({ queryKey: navKeys.all });
     void queryClient.invalidateQueries({ queryKey: adminKeys.dashboard() });
+    void queryClient.invalidateQueries({ queryKey: studentFiltersKey() });
   };
 }
 

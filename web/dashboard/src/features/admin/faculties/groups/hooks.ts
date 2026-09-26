@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminKeys } from '../../shared/keys';
+import { studentFiltersKey } from '../../students/api';
 import type { ListParams } from '../../shared/types';
 import { groupsApi } from './api';
 import type { GroupInput } from './types';
@@ -24,6 +25,7 @@ function useInvalidateGroups(directionId: string, departmentId: string, facultyI
     void queryClient.invalidateQueries({ queryKey: adminKeys.departmentsAll(facultyId) });
     void queryClient.invalidateQueries({ queryKey: adminKeys.facultiesAll() });
     void queryClient.invalidateQueries({ queryKey: adminKeys.dashboard() });
+    void queryClient.invalidateQueries({ queryKey: studentFiltersKey() });
   };
 }
 

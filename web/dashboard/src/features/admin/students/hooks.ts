@@ -5,14 +5,31 @@ import { companiesApi } from '../companies/api';
 import { adminKeys } from '../shared/keys';
 import type { ListParams } from '../shared/types';
 import { useTemplateDownload, type TemplateDownload } from '../shared/useTemplateDownload';
-import { STUDENTS_TEMPLATE_ENDPOINT, STUDENTS_TEMPLATE_FILE_NAME, studentsApi } from './api';
-import type { AssignCompanyInput, SetStudentCompanyInput } from './types';
+import {
+  STUDENTS_TEMPLATE_ENDPOINT,
+  STUDENTS_TEMPLATE_FILE_NAME,
+  studentFiltersKey,
+  studentsApi,
+} from './api';
+import type { AssignCompanyInput, SetStudentCompanyInput, StudentListParams } from './types';
 
-export function useStudentsQuery(params: ListParams) {
+export function useStudentsQuery(params: StudentListParams) {
   return useQuery({
     queryKey: adminKeys.students(params),
     queryFn: () => studentsApi.list(params),
     placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Filtr variantlari (fakultet · yo'nalish · kurs). Kamdan-kam o'zgaradi — 5 daqiqa yangi hisoblanadi;
+ * fakultet/yo'nalish/guruh mutatsiyalari `studentFiltersKey()` ni invalidate qiladi.
+ */
+export function useStudentFilters() {
+  return useQuery({
+    queryKey: studentFiltersKey(),
+    queryFn: studentsApi.filters,
+    staleTime: 5 * 60_000,
   });
 }
 

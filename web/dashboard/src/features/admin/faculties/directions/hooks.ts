@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminKeys } from '../../shared/keys';
+import { studentFiltersKey } from '../../students/api';
 import type { ListParams } from '../../shared/types';
 import { directionsApi } from './api';
 import type { DirectionInput } from './types';
@@ -31,6 +32,7 @@ function useInvalidateDirections(departmentId: string, facultyId: string) {
     void queryClient.invalidateQueries({ queryKey: adminKeys.departmentsAll(facultyId) });
     void queryClient.invalidateQueries({ queryKey: adminKeys.facultiesAll() });
     void queryClient.invalidateQueries({ queryKey: adminKeys.dashboard() });
+    void queryClient.invalidateQueries({ queryKey: studentFiltersKey() });
   };
 }
 

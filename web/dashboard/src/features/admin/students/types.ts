@@ -1,4 +1,5 @@
 import type { TutorStudentDetail } from '@/features/tutor/students/types';
+import type { ListParams } from '../shared/types';
 
 export type { ActiveCompanyRef } from '@/features/tutor/students/types';
 
@@ -101,4 +102,34 @@ export interface SetStudentCompanyInput {
   companyId: string;
   /** Ixtiyoriy izoh (≤ 500) — bo'sh bo'lsa yuborilmaydi. */
   comment?: string;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Ro'yxat filtrlari — `GET /api/admin/students/filters` (variantlar admin "Yo'nalishlar"
+ * bo'limidagi ma'lumotlardan dinamik) va `GET /api/admin/students?facultyId=&directionId=&course=`.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+export interface StudentFilterFaculty {
+  id: string;
+  name: string;
+}
+
+export interface StudentFilterDirection {
+  id: string;
+  name: string;
+  facultyId: string;
+}
+
+export interface StudentFilters {
+  faculties: StudentFilterFaculty[];
+  directions: StudentFilterDirection[];
+  /** O'sish tartibida (1, 2, 3, ...). */
+  courses: number[];
+}
+
+/** Ro'yxat so'rovi: umumiy `q/page/pageSize` + ixtiyoriy filtrlar (AND). */
+export interface StudentListParams extends ListParams {
+  facultyId?: string;
+  directionId?: string;
+  course?: number;
 }

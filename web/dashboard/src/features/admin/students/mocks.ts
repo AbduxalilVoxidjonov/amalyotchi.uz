@@ -9,6 +9,9 @@ import {
   periodNotFound,
 } from '@/features/tutor/students/mocks';
 import { mockCompanies } from '../companies/mocks';
+import { mockDirections } from '../faculties/directions/mocks';
+import { mockGroups } from '../faculties/groups/mocks';
+import { mockFaculties } from '../faculties/mocks';
 import { problemResponse } from '../shared/mockProblem';
 import { paginateMock } from '../shared/paginate';
 import type { ImportResult } from '../shared/types';
@@ -22,6 +25,7 @@ import type { Company } from '../companies/types';
 import {
   STUDENTS_ASSIGN_COMPANY_ENDPOINT,
   STUDENTS_ENDPOINT,
+  STUDENTS_FILTERS_ENDPOINT,
   STUDENTS_IMPORT_ENDPOINT,
   STUDENTS_TEMPLATE_ENDPOINT,
   STUDENTS_TEMPLATE_FILE_NAME,
@@ -33,6 +37,7 @@ import type {
   AssignCompanyInput,
   SetStudentCompanyInput,
   Student,
+  StudentFilters,
 } from './types';
 import { STUDENT_COMPANY_COMMENT_MAX } from './types';
 
@@ -259,6 +264,62 @@ function buildAdminDetail(
   };
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * Filtrlar (`GET /students/filters`, `GET /students?facultyId=&directionId=&course=`).
+ * Qiymatlar mock talabalardan hisoblanadi: fakultet — nomi bo'yicha `mockFaculties`dan,
+ * yo'nalish — guruh kodi bo'yicha ierarxiya mock'idan (`mockGroups` → `mockDirections`).
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+interface StudentScope {
+  faculty: { id: string; name: string } | null;
+  direction: { id: string; name: string } | null;
+}
+
+function studentScope(row: Student): StudentScope {
+  const faculty = mockFaculties.find((f) => f.name === row.faculty) ?? null;
+  const group = mockGroups.find((g) => g.code === row.group);
+  const direction = group ? (mockDirections.find((d) => d.id === group.directionId) ?? null) : null;
+  return {
+    faculty: faculty && { id: faculty.id, name: faculty.name },
+    direction: direction && { id: direction.id, name: direction.name },
+  };
+}
+
+/** Mock talabalardagi fakultet/yo'nalish/kurslar (takrorlarsiz, nom/raqam bo'yicha tartiblangan). */
+export function buildStudentFilters(rows: readonly Student[] = mockStudents): StudentFilters {
+  const faculties = new Map<string, string>();
+  const directions = new Map<string, { id: string; name: string; facultyId: string }>();
+  const courses = new Set<number>();
+  for (const row of rows) {
+    const { faculty, direction } = studentScope(row);
+    courses.add(row.course);
+    if (!faculty) continue;
+    faculties.set(faculty.id, faculty.name);
+    if (direction) directions.set(direction.id, { ...direction, facultyId: faculty.id });
+  }
+  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
+  return {
+    faculties: [...faculties].map(([id, name]) => ({ id, name })).sort(byName),
+    directions: [...directions.values()].sort(byName),
+    courses: [...courses].sort((a, b) => a - b),
+  };
+}
+
+/** `?facultyId=&directionId=&course=` — berilganlari AND bilan qo'llanadi. */
+function applyStudentFilters(rows: readonly Student[], url: string): Student[] {
+  const sp = new URL(url).searchParams;
+  const facultyId = sp.get('facultyId');
+  const directionId = sp.get('directionId');
+  const course = sp.get('course');
+  return rows.filter((row) => {
+    const scope = studentScope(row);
+    if (facultyId && scope.faculty?.id !== facultyId) return false;
+    if (directionId && scope.direction?.id !== directionId) return false;
+    if (course && row.course !== Number(course)) return false;
+    return true;
+  });
+}
+
 /** Mock hisobot: bir nechta qator qabul qilinadi, xatolari ro'yxat bo'lib qaytadi (backend shakli). */
 export const mockImportResult: ImportResult = {
   totalRows: 5,
@@ -393,6 +454,9 @@ export const studentsHandlers: HttpHandler[] = [
     return detail && detail !== 'periodNotFound' ? HttpResponse.json(detail) : notFound();
   }),
 
+  // `/:id` dan oldin — aks holda "filters" talaba id'si sifatida tushib qoladi.
+  http.get(STUDENTS_FILTERS_ENDPOINT, () => HttpResponse.json(buildStudentFilters())),
+
   http.get(`${STUDENTS_ENDPOINT}/:id/attendance`, ({ params, request }) => {
     const source = sourceId(String(params['id']));
     if (!source) return notFound();
@@ -417,7 +481,7 @@ export const studentsHandlers: HttpHandler[] = [
     HttpResponse.json(
       paginateMock(
         request.url,
-        mockStudents.map((s) => {
+        applyStudentFilters(mockStudents, request.url).map((s) => {
           const override = companyOverrides.get(s.id);
           return override ? { ...s, company: override.company.name } : s;
         }),
