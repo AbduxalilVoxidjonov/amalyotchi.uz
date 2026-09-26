@@ -1,4 +1,4 @@
-# API-CONTRACT v3.21
+# API-CONTRACT v3.22
 
 Oxirgi yangilanish: 26.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
@@ -23,13 +23,14 @@ v3.17 (talaba profilida barcha davrlar — `GET /api/student/profile` `practices
 v3.18 (`GET /api/student/place` — `periodId`, `periodName`, `isPast`) — §6.24,
 v3.19 (kundalik faqat davom etayotgan davrda — `TodayDto.canWriteDiary`, `diaryBlockedReason`) — §6.25,
 v3.20 (admin talabalar ro'yxati filtrlari — `facultyId`/`directionId`/`course`, `GET /api/admin/students/filters`) — §6.26,
-v3.21 (admin talabalar ro'yxatida `pageSize` 500 gacha) — §6.27.
+v3.21 (admin talabalar ro'yxatida `pageSize` 500 gacha) — §6.27,
+v3.22 (admin o'z loginini almashtiradi — `GET /api/auth/login-available`, `POST /api/auth/change-login`) — §6.28.
 
-Jami **111 ta endpoint**: Auth 7 · Admin 69 · Reports 1 · Tutor 21 · Student (TWA) 11 · Files 1 · Companies 1.
+Jami **113 ta endpoint**: Auth 9 · Admin 69 · Reports 1 · Tutor 21 · Student (TWA) 11 · Files 1 · Companies 1.
 
-> Kontrollerlarda `[Http*]` atributlari **113 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
+> Kontrollerlarda `[Http*]` atributlari **115 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
 > har birida ikkitadan action bor (`multipart/form-data` va `application/json` — `[Consumes]` bilan ajratiladi,
-> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **111**.
+> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **113**.
 
 ---
 
@@ -271,7 +272,56 @@ tugagach qayta login kerak bo'ladi, shuning uchun mijoz joriy `refreshToken` ni 
 
 #### GET `/api/auth/me` · Authenticated
 
-Response 200 `UserSummaryDto`. 401 (token yo'q), 404 (foydalanuvchi o'chirilgan).
+Response 200 `UserSummaryDto`. 401 (token yo'q), 404 (foydalanuvchi o'chirilgan). v3.22: `hemisId` admin/tyutorda ham
+to'ldiriladi (`User.HemisId`; avval `/me` da faqat talabada kelardi — login javobi bilan bir xil bo'ldi).
+
+#### GET `/api/auth/login-available?login=<string>` · AdminOnly — v3.22
+
+Admin sozlamalari: yangi login (HEMIS ID) bo'shmi. **Har doim 200** (format xatosi ham 400 emas):
+
+```ts
+interface LoginAvailabilityDto {
+  available: boolean;
+  normalized: string; // HemisId.Normalize natijasi (bo'shliqlarsiz); format noto'g'ri bo'lsa — kiritilgan qiymat trim qilingan
+  reason: string | null; // available=false bo'lsa o'zbekcha sabab, aks holda null
+}
+```
+
+| `available` | `reason`                                                                              | Holat                                                          |
+| ----------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `false`     | "Loginni kiriting."                                                                   | `login` bo'sh/yo'q                                             |
+| `false`     | "Login faqat raqamlardan iborat, 5–20 belgi bo'lishi kerak (HEMIS ID formati)."       | format noto'g'ri                                               |
+| `false`     | "Bu sizning joriy loginingiz."                                                        | adminning o'z joriy logini                                     |
+| `false`     | "Bu login allaqachon band."                                                           | admin/tyutor (`users.hemis_id`) yoki talaba (`student_profiles.hemis_id`) — **o'chirilganlari ham** |
+| `true`      | `null`                                                                                | bo'sh                                                          |
+
+Xatolar: 401 (token yo'q), 403 (tyutor/talaba). Rate limit yo'q (mijoz debounce qilsin).
+
+#### POST `/api/auth/change-login` · AdminOnly · rate `auth` 10/min — v3.22
+
+| Maydon            | Tip    | Majburiy | Validatsiya                                                                                              |
+| ----------------- | ------ | -------- | -------------------------------------------------------------------------------------------------------- |
+| `newLogin`        | string | ha       | HEMIS ID formati: faqat raqamlar, 5–20 belgi, bo'shliqlar kesiladi (`errors.NewLogin`)                   |
+| `currentPassword` | string | ha       | bo'sh emas; noto'g'ri → 400 `errors.CurrentPassword` ("Joriy parol noto'g'ri.")                          |
+| `refreshToken`    | string | yo'q     | joriy sessiyaning refresh tokeni — berilsa **saqlanadi**, qolgan refresh tokenlar bekor (change-password kabi); berilmasa sessiyalarga tegilmaydi |
+
+Response **200 `UserSummaryDto`** (`/me` shakli, yangi `hemisId` bilan). JWT'da login claim'i yo'q — joriy access va
+refresh token ishlashda davom etadi; mijoz `me` keshini javob bilan yangilaydi. Audit `loginChanged`
+(`changes: { oldLogin, newLogin }`, parol/sirlarsiz).
+
+Tekshiruv tartibi: format → joriy parol → joriy login bilan bir xil → band.
+
+| Status | Kalit / `detail`                                                          | Holat                                                        |
+| ------ | ------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| 400    | `errors.NewLogin` — format xabari yoki "Loginni kiriting."                | format                                                       |
+| 400    | `errors.CurrentPassword` — "Joriy parol noto'g'ri." / "Joriy parolni kiriting." | parol                                                  |
+| 400    | `errors.NewLogin` — "Yangi login joriy logindan farq qilishi kerak."      | o'z joriy logini                                             |
+| 409    | "Bu login allaqachon band."                                               | admin/tyutor/talaba (o'chirilganlar ham); poyga — unikal indeks ham shu xabar |
+| 401    |                                                                           | token yo'q                                                   |
+| 403    |                                                                           | tyutor/talaba                                                |
+| 429    |                                                                           | rate limit                                                   |
+
+Eslatma: login o'zgargach eski login bilan kirish — **403** "HEMIS ID yoki parol noto'g'ri." (login xatolari 401 emas, 403).
 
 ---
 
@@ -2471,7 +2521,7 @@ Tartib: davom etayotgan ochiq davr(lar) birinchi, keyin `startDate` kamayish (te
 | `TutorScopeLevel`                  | `faculty` · `department` · `direction` · `group`                                                                                                                                                                                                                                                                                          | admin tutors `scopes[].level`, `PUT .../scopes` body                                   |
 | `AdminStudentStatus`               | `active` · `flagged` · `unlinked`                                                                                                                                                                                                                                                                                                         | admin students                                                                         |
 | `CompanyFlag`                      | `suspicious` · `tooManyStudents` · `largeRadius` · `null` — ustuvorlik aynan shu tartibda                                                                                                                                                                                                                                                 | admin companies, tutor companies                                                       |
-| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorScopesChanged` · `studentsImported` · `company*` (§6.9) · `studentsAssignedToCompany` · `practicePeriodCreated` · `practicePeriodUpdated` · `practicePeriodGroupsChanged` · `practicePeriodClosed` · `practicePeriodDeleted` · `companyQrRotated` (v3.7) · `studentPasswordSet` · `passwordChanged` (v3.8) · `telegramLinked` (v3.9) · `studentCompanyReassigned` | admin audit `action`, `?action=`                                                       |
+| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorScopesChanged` · `studentsImported` · `company*` (§6.9) · `studentsAssignedToCompany` · `practicePeriodCreated` · `practicePeriodUpdated` · `practicePeriodGroupsChanged` · `practicePeriodClosed` · `practicePeriodDeleted` · `companyQrRotated` (v3.7) · `studentPasswordSet` · `passwordChanged` (v3.8) · `telegramLinked` (v3.9) · `studentCompanyReassigned` · `loginChanged` (v3.22) | admin audit `action`, `?action=`                                                       |
 | `SettingType`                      | `int` · `bool` · `weekdays`                                                                                                                                                                                                                                                                                                               | settings `type`                                                                        |
 | `SettingKey` (string const)        | `geofenceRadius` · `lateTolerance` · `minGpsAccuracy` · `autoCheckout` · `workDays` · `dailyReportRequired` · `minReportLength` · `diaryPdfRequired` · `checkInWindow` · `checkinPhotoRequired` · `checkinQrRequired` · `maxStudentsPerCompany`                                                                                                                                    | settings                                                                               |
 | `DocumentTemplateKind`             | `contract` · `referral` · `reference`                                                                                                                                                                                                                                                                                                     | settings templates                                                                     |
@@ -3166,3 +3216,14 @@ Foydalanuvchi qarori: talabalar ruxsat (leave) so'ramaydi — funksiya butunlay 
 - Backend: `PagedQuery.MaxPageSizeLimit` (virtual, sukut 100) — `GetAdminStudentsQuery` 500 ga override qiladi.
 - Dashboard: talabalar jadvali footer'ida "Sahifada: [n] ta" (URL `?size=`, sukut 20 URL'da ko'rinmaydi).
 - Yangi maydon/endpoint yo'q, migratsiya yo'q.
+
+### 6.28 v3.21 → v3.22 (26.09.2026): admin o'z loginini almashtiradi
+
+- **Yangi endpoint'lar (2 ta, AdminOnly):** `GET /api/auth/login-available?login=` →
+  `{ available, normalized, reason }` (har doim 200) va `POST /api/auth/change-login`
+  `{ newLogin, currentPassword, refreshToken? }` → 200 `UserSummaryDto` (§2.1). Bandlik tekshiruvi: `users.hemis_id`
+  (admin/tyutor) va `student_profiles.hemis_id` (talaba), o'chirilgan yozuvlar ham band.
+- **Parol almashtirish** — mavjud `POST /api/auth/change-password` admin uchun ham ishlaydi (o'zgarmadi, §2.1).
+- **`GET /api/auth/me`** — admin/tyutorda `hemisId` endi `null` emas (`User.HemisId`), login javobi bilan bir xil.
+- **Enum:** `AuditAction` + `loginChanged` (66).
+- Endpoint soni **111 → 113** (Auth 7 → 9; `[Http*]` atributlari 113 → 115), migratsiya yo'q.

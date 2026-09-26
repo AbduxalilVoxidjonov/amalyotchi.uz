@@ -195,6 +195,21 @@ public sealed class UserTests
     }
 
     [Fact]
+    public void ChangeHemisId_Normallashtiradi_BirXil_Talaba_NotogriFormat_Xato()
+    {
+        var admin = User.CreateWithPassword("Aliyev Ali", HemisId, phoneNumber: null, "hash", UserRole.Admin);
+
+        admin.ChangeHemisId(" 200000000002 ");
+        admin.HemisId.Should().Be("200000000002");
+
+        ((Action)(() => admin.ChangeHemisId("200000000002"))).Should().Throw<DomainException>()
+            .WithMessage(User.SameHemisIdMessage);
+        ((Action)(() => admin.ChangeHemisId("12ab"))).Should().Throw<DomainException>().WithMessage("*HEMIS ID*");
+        ((Action)(() => User.CreateStudent("Karimov Bek", FacultyId).ChangeHemisId("300000000003")))
+            .Should().Throw<DomainException>();
+    }
+
+    [Fact]
     public void LinkTelegram_BoshqaAkkauntBilan_ZiddiyatBeradi()
     {
         var student = User.CreateStudent("Karimov Bek", FacultyId);

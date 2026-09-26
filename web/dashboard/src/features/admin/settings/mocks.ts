@@ -1,5 +1,6 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
 import { SETTINGS_ENDPOINT } from './api';
+import { accountSecurityHandlers } from './security/mocks';
 import type { AdminSettings, Setting, SettingsUpdate } from './types';
 
 const UPDATED = '2026-09-01T04:00:00+00:00';
@@ -198,6 +199,7 @@ function validate(s: Setting, value: string): string | null {
 }
 
 export const settingsHandlers: HttpHandler[] = [
+  ...accountSecurityHandlers,
   http.get(SETTINGS_ENDPOINT, () => HttpResponse.json(state)),
   http.put(SETTINGS_ENDPOINT, async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as Partial<SettingsUpdate>;

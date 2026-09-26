@@ -101,5 +101,9 @@ public enum AuditAction
 
     /// <summary>Admin talaba profilidan uni korxonaga biriktirdi yoki boshqa korxonaga o'tkazdi
     /// (eski ariza <c>Transferred</c>, yangi korxonaga tasdiqlangan ariza).</summary>
-    StudentCompanyReassigned = 65
+    StudentCompanyReassigned = 65,
+
+    /// <summary>Admin o'z loginini (HEMIS ID) almashtirdi (<c>POST /api/auth/change-login</c>). <c>changes</c> —
+    /// <c>{ oldLogin, newLogin }</c>, parol/sirlarsiz.</summary>
+    LoginChanged = 66
 }

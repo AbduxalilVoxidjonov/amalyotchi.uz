@@ -23,5 +23,6 @@ public static class UserQueries
             u.StudentProfile != null ? u.StudentProfile.StudentGroupId : null,
             u.StudentProfile != null ? u.StudentProfile.Group.Name : null,
             u.StudentProfile != null ? u.StudentProfile.Group.Course : null,
-            u.StudentProfile != null ? u.StudentProfile.HemisId : null));
+            // UserSummaryDto.From bilan bir xil: talabada profil HEMIS ID'si, admin/tyutorda User.HemisId.
+            u.StudentProfile != null ? u.StudentProfile.HemisId : u.HemisId));
 }

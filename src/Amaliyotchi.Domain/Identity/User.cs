@@ -150,6 +150,23 @@ public sealed class User : AuditableEntity, ISoftDeletable
 
     public void Rename(string fullName) => FullName = Normalize(fullName);
 
+    /// <summary>Xodim (admin/tyutor) login identifikatorini — HEMIS ID — almashtiradi (normallashtirilgan holda).
+    /// Talabaning logini <see cref="Students.StudentProfile.HemisId"/> da — bu yerdan o'zgartirilmaydi. Joriy login
+    /// bilan bir xil qiymat → xato. Band emasligini (boshqa foydalanuvchi/talaba profili) chaqiruvchi tekshiradi.</summary>
+    public void ChangeHemisId(string hemisId)
+    {
+        if (Role == UserRole.Student)
+            throw new DomainException("Talabaning HEMIS ID'si profil orqali o'zgartiriladi.");
+
+        var normalized = Hemis.Normalize(hemisId);
+        if (normalized == HemisId)
+            throw new DomainException(SameHemisIdMessage);
+
+        HemisId = normalized;
+    }
+
+    public const string SameHemisIdMessage = "Yangi login joriy logindan farq qilishi kerak.";
+
     /// <summary>Aloqa telefonini o'zgartiradi (bo'sh → null). Talabaning telefoni Telegram orqali
     /// bog'lanadi (<see cref="LinkTelegram"/>) — bu yerdan o'zgartirilmaydi.</summary>
     public void ChangePhoneNumber(string? phoneNumber)

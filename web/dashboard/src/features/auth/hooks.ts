@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { mapUser, toUserRole, UserRole, type LoginRequest } from '@amaliyotchi/shared';
 import { authKeys } from '@/shared/api/query-keys';
 import { useAuthStore } from '@/shared/auth/store';
-import { authApi } from './api';
+import { authApi, type ChangeLoginRequest, type ChangePasswordRequest } from './api';
 
 /**
  * Backend talabaga ham `/api/auth/login` da 200 qaytaradi (TWA brauzerda kiradi), lekin dashboard
@@ -105,4 +105,50 @@ export function useSessionBootstrap() {
   }, [status]);
 
   return status;
+}
+
+/** `login-available` kalitlari — 409'dan keyin shu prefiks bo'yicha qayta so'raladi. */
+export const loginAvailabilityKeys = {
+  all: ['auth', 'login-available'] as const,
+  check: (login: string) => ['auth', 'login-available', login] as const,
+};
+
+/**
+ * O'z parolini almashtirish. Joriy refresh token yuboriladi — backend boshqa sessiyalarni bekor
+ * qiladi, joriysini saqlaydi (access token o'zgarmaydi → store yangilanishi shart emas).
+ */
+export function useChangePassword() {
+  return useMutation({
+    mutationKey: ['auth', 'change-password'],
+    mutationFn: (body: Omit<ChangePasswordRequest, 'refreshToken'>) => {
+      const { refreshToken } = useAuthStore.getState();
+      return authApi.changePassword(refreshToken ? { ...body, refreshToken } : body);
+    },
+  });
+}
+
+/** Login bo'shligini tekshirish. `login` — allaqachon debounce qilingan va trim'langan qiymat; bo'sh → so'rov yo'q. */
+export function useLoginAvailability(login: string, enabled = true) {
+  return useQuery({
+    queryKey: loginAvailabilityKeys.check(login),
+    queryFn: ({ signal }) => authApi.loginAvailable(login, signal),
+    enabled: enabled && login.length > 0,
+    staleTime: 15 * 1000,
+    retry: false,
+  });
+}
+
+/** O'z loginini almashtirish → 200 `UserSummaryDto`: store'dagi `user` va `me` keshi yangilanadi. */
+export function useChangeLogin() {
+  const queryClient = useQueryClient();
+  const setUser = useAuthStore((s) => s.setUser);
+  return useMutation({
+    mutationKey: ['auth', 'change-login'],
+    mutationFn: (body: ChangeLoginRequest) => authApi.changeLogin(body),
+    onSuccess: (dto) => {
+      setUser(mapUser(dto));
+      queryClient.setQueryData(authKeys.me(), dto);
+      queryClient.removeQueries({ queryKey: loginAvailabilityKeys.all });
+    },
+  });
 }

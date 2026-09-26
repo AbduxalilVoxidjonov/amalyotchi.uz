@@ -1,0 +1,6 @@
+/* Sozlamalar sahifasi: yuqorida varaqlar (tablist), ostida faol varaq. */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-grid-gap);
+}

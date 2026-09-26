@@ -51,5 +51,10 @@ public interface IApplicationDbContext
     /// (<c>DbTransactions.InTransactionAsync</c>).</summary>
     DatabaseFacade Database { get; }
 
+    /// <summary>Joriy tranzaksiya tugaguncha <paramref name="key"/> bo'yicha eksklyuziv qulf (Postgres
+    /// <c>pg_advisory_xact_lock</c>). Faqat ochiq tranzaksiya ichida (<c>DbTransactions.InTransactionAsync</c>) chaqiriladi —
+    /// bir xil kalit bilan parallel so'rovlar navbatga turadi (masalan, bir loginni ikki so'rov egallamasligi uchun).</summary>
+    Task AcquireTransactionLockAsync(string key, CancellationToken cancellationToken = default);
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

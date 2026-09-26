@@ -1,0 +1,60 @@
+/* Hisob xavfsizligi — ikki karta (parol · login) yonma-yon; tor ekranda ustma-ust. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--section-grid-gap);
+  max-width: 1080px;
+}
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.card {
+  height: 100%;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: var(--card-pad);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--stat-grid-gap);
+}
+
+.success {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-sm2);
+  color: var(--color-ok-fg);
+}
+
+.formError {
+  margin: 0;
+  font-size: var(--fs-xs2);
+  line-height: var(--lh-note);
+  color: var(--color-bad-fg);
+}
+
+/* login-available holat ko'rsatkichi (Input hint ichida). */
+.status[data-tone='ok'] {
+  color: var(--color-ok-fg);
+}
+.status[data-tone='bad'] {
+  color: var(--color-bad-fg);
+}
+.status[data-tone='muted'] {
+  color: var(--color-text-faint);
+}
+.mono {
+  font-family: var(--font-mono);
+}

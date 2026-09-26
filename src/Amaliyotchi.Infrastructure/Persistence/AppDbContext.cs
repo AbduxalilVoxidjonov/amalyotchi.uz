@@ -23,6 +23,9 @@ namespace Amaliyotchi.Infrastructure.Persistence;
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     : DbContext(options), IApplicationDbContext
 {
+    public Task AcquireTransactionLockAsync(string key, CancellationToken cancellationToken = default)
+        => Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock(hashtext({key}))", cancellationToken);
+
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();

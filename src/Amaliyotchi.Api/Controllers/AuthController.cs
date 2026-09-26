@@ -1,5 +1,6 @@
 using Amaliyotchi.Application.Common.Security;
 using Amaliyotchi.Application.Features.Auth;
+using Amaliyotchi.Application.Features.Auth.ChangeLogin;
 using Amaliyotchi.Application.Features.Auth.ChangePassword;
 using Amaliyotchi.Application.Features.Auth.Login;
 using Amaliyotchi.Application.Features.Auth.Logout;
@@ -83,6 +84,29 @@ public sealed class AuthController(ISender sender) : ControllerBase
         await sender.Send(command, cancellationToken);
         return NoContent();
     }
+
+    /// <summary>Admin uchun: yangi login (HEMIS ID) bo'shmi — xodimlar va talaba profillari (o'chirilganlar ham) bo'yicha.
+    /// Har doim 200 <c>{ available, normalized, reason }</c>: format xatosi, band yoki o'zining joriy logini —
+    /// <c>available=false</c> va o'zbekcha <c>reason</c>.</summary>
+    [HttpGet("login-available")]
+    [Authorize(Policy = Policies.AdminOnly)]
+    [ProducesResponseType<LoginAvailabilityDto>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<LoginAvailabilityDto>> LoginAvailable(
+        [FromQuery] string? login, CancellationToken cancellationToken)
+        => Ok(await sender.Send(new CheckLoginAvailableQuery(login), cancellationToken));
+
+    /// <summary>Admin o'z loginini (HEMIS ID) almashtiradi. 400 <c>errors.NewLogin</c> (format / joriy login bilan bir xil)
+    /// yoki <c>errors.CurrentPassword</c> ("Joriy parol noto'g'ri."); 409 "Bu login allaqachon band.". Muvaffaqiyatda
+    /// 200 <see cref="UserSummaryDto"/> (yangi <c>hemisId</c> bilan); joriy access token ishlashda davom etadi.</summary>
+    [HttpPost("change-login")]
+    [Authorize(Policy = Policies.AdminOnly)]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    [ProducesResponseType<UserSummaryDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<UserSummaryDto>> ChangeLogin(
+        ChangeLoginCommand command, CancellationToken cancellationToken)
+        => Ok(await sender.Send(command, cancellationToken));
 
     /// <summary>Joriy foydalanuvchi haqida qisqacha ma'lumot.</summary>
     [HttpGet("me")]
