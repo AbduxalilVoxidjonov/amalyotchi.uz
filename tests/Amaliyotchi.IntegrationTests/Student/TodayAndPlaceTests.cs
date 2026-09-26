@@ -6,6 +6,7 @@ using Amaliyotchi.Domain.Common;
 using Amaliyotchi.Domain.Practice;
 using Amaliyotchi.IntegrationTests.Infrastructure;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.IntegrationTests.Student;
 
@@ -143,9 +144,55 @@ public sealed class TodayAndPlaceTests(ApiFixture fixture)
         place.PeriodTo.Should().Be(scene.Period.EndDate);
         place.Contract.Should().BeNull("test arizasida shartnoma fayli yo'q");
         place.Comment.Should().Be("OK");
+        place.PeriodId.Should().Be(scene.Period.Id);
+        place.PeriodName.Should().Be(scene.Period.Name);
+        place.IsPast.Should().BeFalse("faol davrdagi tasdiqlangan ariza — hozirgi korxona");
 
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         json.RootElement.GetProperty("status").GetString().Should().Be("approved");
+        json.RootElement.GetProperty("periodId").GetString().Should().Be(scene.Period.Id.ToString());
+        json.RootElement.GetProperty("periodName").GetString().Should().Be(scene.Period.Name);
+        json.RootElement.GetProperty("isPast").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Place_YopilganDavr_SanasiOtmagan_IsPastTrue()
+    {
+        var scene = await Factory.CreateSceneAsync();
+        await Factory.WithDbAsync(async db =>
+        {
+            var period = await db.PracticePeriods.FirstAsync(p => p.Id == scene.Period.Id);
+            period.Close();
+            await db.SaveChangesAsync();
+        });
+
+        var response = await scene.Client.GetAsync("/api/student/place");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var place = await response.Content.ReadAsync<PracticePlaceDto>();
+        place!.Company.Should().Be(scene.Company.Name, "yopilgan davr korxonasi oxirgi tugagan davr sifatida qaytadi");
+        place.PeriodId.Should().Be(scene.Period.Id);
+        place.PeriodName.Should().Be(scene.Period.Name);
+        place.PeriodTo.Should().BeAfter(Factory.LocalToday(), "sanasi hali o'tmagan");
+        place.IsPast.Should().BeTrue("davr yopilgan — talaba hozir bu korxonaga biriktirilmagan");
+    }
+
+    [Fact]
+    public async Task Place_TugaganDavr_IsPastTrue()
+    {
+        var today = Factory.LocalToday();
+        var scene = await Factory.CreateSceneAsync(
+            period: (group, tutorId) => Factory.CreatePeriodAtAsync(group, tutorId, today, startDaysAgo: 40, endDaysAhead: -10));
+
+        var response = await scene.Client.GetAsync("/api/student/place");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var place = await response.Content.ReadAsync<PracticePlaceDto>();
+        place!.Company.Should().Be(scene.Company.Name);
+        place.PeriodId.Should().Be(scene.Period.Id);
+        place.PeriodName.Should().Be(scene.Period.Name);
+        place.PeriodTo.Should().BeBefore(today);
+        place.IsPast.Should().BeTrue("davr tugagan (EndDate < bugun)");
     }
 
     [Fact]

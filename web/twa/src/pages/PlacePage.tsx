@@ -14,7 +14,13 @@ import { openExternal } from '@/shared/auth/telegram';
 import { formatDate, formatPeriod, formatPhone } from '@/shared/lib/format';
 import { PlaceSelectForm } from '@/features/place/components/PlaceSelectForm';
 import { usePlaceQuery } from '@/features/place/hooks';
-import { APPLICATION_STATUS, formatTin, type PracticePlaceDto } from '@/features/place/types';
+import {
+  APPLICATION_STATUS,
+  formatTin,
+  isPastPlace,
+  type PracticeContractDto,
+  type PracticePlaceDto,
+} from '@/features/place/types';
 import { periodPhase } from '@/features/period/types';
 import { useTodayQuery } from '@/features/today/hooks';
 import pages from './pages.module.css';
@@ -25,6 +31,18 @@ const formatCoords = (p: PracticePlaceDto) => `${p.lat.toFixed(4)}, ${p.lng.toFi
 const person = (name: string | null, phone: string | null) =>
   name ? (phone ? `${name} · ${formatPhone(phone)}` : name) : '—';
 
+const contractMeta = (c: PracticeContractDto) =>
+  [
+    c.pages !== null ? `${c.pages} bet` : null,
+    formatSize(c.sizeBytes),
+    `${formatDate(c.uploadedAt)} da yuklangan`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+/** O'tgan davr ko'rinishidagi neytral holat (ariza holati o'rniga). */
+const PAST_BADGE = { label: 'Yakunlangan', kind: 'neu' } as const;
+
 /** SPEC-SCREENS §14 `isJoyim` — Korxonam (avval "Amaliyot joyim"). */
 export function PlacePage() {
   const place = usePlaceQuery();
@@ -32,7 +50,7 @@ export function PlacePage() {
   // shuning uchun faqat davom etayotgan yoki kelgusi davr nomi ko'rsatiladi. Place javobida davr nomi yo'q.
   const today = useTodayQuery().data;
   const enrollmentPeriod =
-    today?.period && periodPhase(today.period, today.date) !== 'ended' ? today.period.name : null;
+    today?.period && periodPhase(today.period, today.date) !== 'ended' ? today.period : null;
 
   if (place.isPending) return <LoadingState height={320} />;
   if (place.isError) {
@@ -40,7 +58,7 @@ export function PlacePage() {
     if (isApiError(place.error) && place.error.kind === 'not-found') {
       return (
         <div className={pages.stack}>
-          <PlaceSelectForm periodName={enrollmentPeriod} />
+          <PlaceSelectForm periodName={enrollmentPeriod?.name ?? null} />
         </div>
       );
     }
@@ -49,9 +67,21 @@ export function PlacePage() {
     );
   }
   const p = place.data;
-  const status = APPLICATION_STATUS[p.status];
+  // O'tgan (yopilgan/tugagan) davr: talaba hozir bu korxonaga biriktirilmagan — faqat o'qish uchun.
+  const isPast = isPastPlace(p);
+  const status = isPast ? PAST_BADGE : APPLICATION_STATUS[p.status];
   // Qaytarilgan/rad etilgan ariza — talaba boshqa STIR bilan qayta yuborishi mumkin.
-  const canResubmit = p.status === 'revisionNeeded' || p.status === 'rejected';
+  const canResubmit = !isPast && (p.status === 'revisionNeeded' || p.status === 'rejected');
+  // O'tgan davrdan keyin ochiq (davom etayotgan/kelgusi) davr bo'lsa — yangi davr uchun joy tanlash.
+  const canSelectForNewPeriod =
+    isPast && enrollmentPeriod !== null && enrollmentPeriod.id !== p.periodId;
+  const title = isPast ? "O'tgan amaliyot davri" : "Korxona ma'lumotlari";
+  const periodDates = formatPeriod(p.periodFrom, p.periodTo);
+  const subtitle = isPast
+    ? p.periodName
+      ? `${p.periodName} · ${periodDates}`
+      : periodDates
+    : undefined;
   const fields = [
     { k: 'Korxona', v: p.company },
     { k: 'STIR', v: formatTin(p.tin) },
@@ -66,9 +96,10 @@ export function PlacePage() {
 
   return (
     <div className={pages.stack}>
-      <Card aria-label="Korxona ma'lumotlari">
+      <Card aria-label={title}>
         <CardHeader
-          title="Korxona ma'lumotlari"
+          title={title}
+          subtitle={subtitle}
           actions={<Badge status={status.kind}>{status.label}</Badge>}
         />
         {p.comment && canResubmit && (
@@ -76,7 +107,7 @@ export function PlacePage() {
             Tyutor izohi: {p.comment}
           </p>
         )}
-        {p.status === 'submitted' && (
+        {!isPast && p.status === 'submitted' && (
           <p className={styles.pendingNote} role="status">
             Ariza tyutorga yuborildi — ko'rib chiqilmoqda.
           </p>
@@ -89,56 +120,77 @@ export function PlacePage() {
             </div>
           ))}
         </dl>
-        <p className={styles.note}>
-          Tasdiqlangandan keyin koordinatani o'zgartirish mumkin emas. Korxona manzili o'zgargan
-          bo'lsa tyutorga murojaat qiling.
-        </p>
+        {isPast ? (
+          <p className={styles.note} role="status">
+            Hozirda siz hech bir korxonaga biriktirilmagansiz.
+          </p>
+        ) : (
+          <p className={styles.note}>
+            Tasdiqlangandan keyin koordinatani o'zgartirish mumkin emas. Korxona manzili o'zgargan
+            bo'lsa tyutorga murojaat qiling.
+          </p>
+        )}
       </Card>
 
-      {canResubmit && <PlaceSelectForm resubmit periodName={enrollmentPeriod} />}
+      {canResubmit && <PlaceSelectForm resubmit periodName={enrollmentPeriod?.name ?? null} />}
+      {canSelectForNewPeriod && <PlaceSelectForm periodName={enrollmentPeriod.name} />}
 
-      <Card padded aria-labelledby="contract-title">
-        <h2 id="contract-title" className={pages.sectionTitle}>
-          Shartnoma
-        </h2>
-        {p.contract ? (
-          <>
+      {isPast ? (
+        p.contract && (
+          <Card padded aria-labelledby="contract-title">
+            <h2 id="contract-title" className={pages.sectionTitle}>
+              Shartnoma
+            </h2>
             <FileBox
               className={styles.fileBox}
               name={p.contract.fileName}
-              meta={[
-                p.contract.pages !== null ? `${p.contract.pages} bet` : null,
-                formatSize(p.contract.sizeBytes),
-                `${formatDate(p.contract.uploadedAt)} da yuklangan`,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
+              meta={contractMeta(p.contract)}
             />
-            {p.contract.approvedAt ? (
+            {p.contract.approvedAt && (
               <p className={styles.approved}>
                 {formatDate(p.contract.approvedAt)} da tyutor {p.contract.approvedBy} tasdiqladi
               </p>
-            ) : (
-              <p className={styles.pendingNote}>Tyutor tasdig'i kutilmoqda</p>
             )}
-            {p.contract.templateUrl && (
-              <Button
-                size="sm"
-                className={styles.template}
-                onClick={() => openExternal(p.contract!.templateUrl!)}
-              >
-                Shablonni yuklab olish
-              </Button>
-            )}
-          </>
-        ) : (
-          <EmptyState
-            className={styles.emptyContract}
-            title="Shartnoma hali yuklanmagan"
-            description="Shartnomani tyutor orqali yuklang."
-          />
-        )}
-      </Card>
+          </Card>
+        )
+      ) : (
+        <Card padded aria-labelledby="contract-title">
+          <h2 id="contract-title" className={pages.sectionTitle}>
+            Shartnoma
+          </h2>
+          {p.contract ? (
+            <>
+              <FileBox
+                className={styles.fileBox}
+                name={p.contract.fileName}
+                meta={contractMeta(p.contract)}
+              />
+              {p.contract.approvedAt ? (
+                <p className={styles.approved}>
+                  {formatDate(p.contract.approvedAt)} da tyutor {p.contract.approvedBy} tasdiqladi
+                </p>
+              ) : (
+                <p className={styles.pendingNote}>Tyutor tasdig'i kutilmoqda</p>
+              )}
+              {p.contract.templateUrl && (
+                <Button
+                  size="sm"
+                  className={styles.template}
+                  onClick={() => openExternal(p.contract!.templateUrl!)}
+                >
+                  Shablonni yuklab olish
+                </Button>
+              )}
+            </>
+          ) : (
+            <EmptyState
+              className={styles.emptyContract}
+              title="Shartnoma hali yuklanmagan"
+              description="Shartnomani tyutor orqali yuklang."
+            />
+          )}
+        </Card>
+      )}
 
       <Card padded aria-labelledby="geofence-title">
         <h2 id="geofence-title" className={pages.sectionTitle}>

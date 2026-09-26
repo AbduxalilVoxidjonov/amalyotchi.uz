@@ -47,7 +47,19 @@ export interface PracticePlaceDto {
   periodFrom: string;
   periodTo: string;
   contract: PracticeContractDto | null;
+  /** Ariza tegishli amaliyot davri (eski server yubormasligi mumkin). */
+  periodId?: string;
+  /** Davr nomi, masalan "Kuzgi amaliyot 2026". */
+  periodName?: string;
+  /**
+   * Davr yopilgan yoki tugash sanasi o'tgan — talaba hozir bu korxonaga biriktirilmagan.
+   * Kelmasa `false` deb hisoblanadi (`isPastPlace`).
+   */
+  isPast?: boolean;
 }
+
+/** O'tgan (yopilgan/tugagan) davrga tegishli joymi — `isPast` yo'q bo'lsa `false`. */
+export const isPastPlace = (p: Pick<PracticePlaceDto, 'isPast'>) => p.isPast === true;
 
 /** Ariza holati → o'zbekcha yorliq + Badge rangi. */
 export const APPLICATION_STATUS: Record<ApplicationStatus, { label: string; kind: StatusKind }> = {

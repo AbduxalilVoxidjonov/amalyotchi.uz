@@ -1,4 +1,4 @@
-# API-CONTRACT v3.17
+# API-CONTRACT v3.18
 
 Oxirgi yangilanish: 26.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
@@ -19,7 +19,8 @@ v3.13 (talabani bitta-bitta korxonaga biriktirish/o'tkazish, `ApplicationStatus.
 v3.14 ("aktiv korxona" qoidasi: ro'yxatlarda `company` faqat aktiv korxona, profilda yangi `activeCompany`) — §6.20,
 v3.15 (korxona sahifalari — faqat hozir aktiv amaliyot o'tayotgan talabalar; o'chirish xabari) — §6.21,
 v3.16 (sidebar badge'lari va header konteksti — `GET /api/admin/nav`, `GET /api/tutor/nav`) — §6.22,
-v3.17 (talaba profilida barcha davrlar — `GET /api/student/profile` `practices[]`) — §6.23.
+v3.17 (talaba profilida barcha davrlar — `GET /api/student/profile` `practices[]`) — §6.23,
+v3.18 (`GET /api/student/place` — `periodId`, `periodName`, `isPast`) — §6.24.
 
 Jami **110 ta endpoint**: Auth 7 · Admin 68 · Reports 1 · Tutor 21 · Student (TWA) 11 · Files 1 · Companies 1.
 
@@ -2148,6 +2149,8 @@ Javob — `PracticePlaceDto` (quyidagi shakl), `status: "submitted"` — ariza t
 404 — davr yoki ariza yoki korxona yo'q ("Amaliyot joyi hali biriktirilmagan."). Davr — §4.6 "current"
 (davom etayotgan → eng yaqin kelgusi → oxirgi tugagan): tanaffusda bahorgi davrga ariza berilmagan bo'lsa 404 (TWA ariza
 formasini ko'rsatadi), berilgan bo'lsa — bahorgi ariza; `periodFrom/periodTo` — shu davr sanalari.
+`periodId/periodName` — shu davr; `isPast` — davr yopilgan (`closed`) **yoki** `periodTo < bugun` (Toshkent): talaba
+hozir bu korxonaga biriktirilmagan (§6.20 aktiv korxona emas), TWA bo'limni "O'tgan amaliyot davri" deb ko'rsatadi.
 
 ```ts
 interface PracticePlaceDto {
@@ -2166,6 +2169,9 @@ interface PracticePlaceDto {
   lng: number;
   periodFrom: string;
   periodTo: string;
+  periodId: string /*uuid*/;
+  periodName: string;
+  isPast: boolean /*davr closed yoki periodTo < bugun*/;
   contract: {
     fileId: string;
     fileName: string;
@@ -3071,3 +3077,10 @@ Foydalanuvchi qarori: talabalar ruxsat (leave) so'ramaydi — funksiya butunlay 
 - **Tartib farqi:** `practices` — davom etayotgan ochiq davr birinchi, keyin `startDate` kamayish. `period-days` `periods`
   esa faqat `startDate` kamayish (ongoing birinchi emas) — kelgusi davr ongoing'dan oldin turishi mumkin.
 - `practice` (sukut davri) **o'zgarmadi** — eski klientlar buzilmaydi. Endpoint soni o'zgarmadi, migratsiya yo'q.
+
+### 6.24 v3.17 → v3.18 (26.09.2026): Korxonam — o'tgan davr belgisi
+
+- **Yangi maydonlar:** `GET /api/student/place` (va `POST` javobi — o'sha `PracticePlaceDto`) → `periodId: string`,
+  `periodName: string`, `isPast: boolean` (§2.6). `isPast = true` — javobdagi arizaning davri yopilgan (`closed`,
+  sanasidan qat'i nazar) yoki tugagan (`endDate < bugun`, Toshkent); aks holda `false`.
+- Davr tanlash (§4.6 `current`), 404 holatlari va mavjud maydonlar **o'zgarmadi**. Endpoint soni o'zgarmadi, migratsiya yo'q.

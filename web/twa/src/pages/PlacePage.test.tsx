@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { fireEvent, screen, within } from '@testing-library/react';
 import { server } from '@/mocks/server';
-import { mockCompanies, mockPlace, setMockPlace } from '@/features/place/mocks';
+import { mockCompanies, mockPastPlace, mockPlace, setMockPlace } from '@/features/place/mocks';
 import { renderApp } from '@/test/render-app';
 
 const tinField = () => screen.getByLabelText('Korxona STIR raqami');
@@ -149,5 +149,96 @@ describe('PlacePage (isJoyim)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Sizga allaqachon amaliyot joyi biriktirilgan.',
     );
+  });
+
+  describe("o'tgan amaliyot davri (isPast)", () => {
+    it("sarlavha, davr nomi va sanalari, neytral 'Yakunlangan'; harakatlar yo'q", async () => {
+      setMockPlace(mockPastPlace);
+      renderApp('/joyim');
+      const card = await screen.findByRole('region', { name: "O'tgan amaliyot davri" });
+      expect(
+        within(card).getByRole('heading', { name: "O'tgan amaliyot davri" }),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText('Bahorgi amaliyot 2026 · 02.02–28.03.2026'),
+      ).toBeInTheDocument();
+      expect(within(card).getByText('Yakunlangan')).toBeInTheDocument();
+      expect(
+        within(card).getByText('Hozirda siz hech bir korxonaga biriktirilmagansiz.'),
+      ).toBeInTheDocument();
+      // Faqat o'qish uchun ma'lumot qoladi.
+      expect(within(card).getByText(mockPastPlace.company)).toBeInTheDocument();
+      expect(within(card).getByText('304 512 889')).toBeInTheDocument();
+      expect(within(card).getByText(mockPastPlace.address)).toBeInTheDocument();
+      expect(screen.getByRole('img', { name: 'Xarita (nuqta + 150 m doira)' })).toBeInTheDocument();
+      expect(screen.getByText('shartnoma_aliyev.pdf')).toBeInTheDocument();
+
+      // "Hozirgi korxona" ma'nosidagi matnlar va harakatlar yo'q.
+      expect(screen.queryByText("Korxona ma'lumotlari")).not.toBeInTheDocument();
+      expect(screen.queryByText('Tasdiqlangan')).not.toBeInTheDocument();
+      expect(screen.queryByText(/koordinatani o'zgartirish mumkin emas/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Shablonni yuklab olish' }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText('Amaliyot joyini qayta tanlash')).not.toBeInTheDocument();
+    });
+
+    it("o'tgan davrda rad etilgan ariza → qayta topshirish/izoh yo'q; shartnoma bo'lmasa karta yo'q", async () => {
+      setMockPlace({
+        ...mockPastPlace,
+        status: 'rejected',
+        comment: 'Korxona mos emas',
+        contract: null,
+      });
+      renderApp('/joyim');
+      await screen.findByRole('heading', { name: "O'tgan amaliyot davri" });
+      expect(screen.getByText('Yakunlangan')).toBeInTheDocument();
+      expect(screen.queryByText('Rad etilgan')).not.toBeInTheDocument();
+      expect(screen.queryByText('Tyutor izohi: Korxona mos emas')).not.toBeInTheDocument();
+      expect(screen.queryByText('Amaliyot joyini qayta tanlash')).not.toBeInTheDocument();
+      expect(screen.queryByText('Shartnoma hali yuklanmagan')).not.toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Shartnoma' })).not.toBeInTheDocument();
+    });
+
+    it("ochiq yangi davr bo'lsa — shu davr uchun STIR orqali joy tanlash formasi", async () => {
+      setMockPlace(mockPastPlace);
+      renderApp('/joyim');
+      await screen.findByRole('heading', { name: "O'tgan amaliyot davri" });
+      // today mock: "Kuzgi amaliyot 2026" davom etmoqda, o'tgan joy esa bahorgi davrga tegishli.
+      expect(screen.getByText('Amaliyot joyini tanlash')).toBeInTheDocument();
+      expect(screen.getByText('Kuzgi amaliyot 2026 uchun')).toBeInTheDocument();
+
+      typeTin(mockCompanies[1]!.tin);
+      fireEvent.click(search());
+      await screen.findByLabelText('Topilgan korxona');
+      fireEvent.click(screen.getByRole('button', { name: 'Tasdiqlash va yuborish' }));
+
+      // POST 201 → yangi davrdagi ariza: odatiy "Korxona ma'lumotlari" ko'rinishi.
+      expect(await screen.findByText("Korxona ma'lumotlari")).toBeInTheDocument();
+      expect(screen.getByText('Tekshiruvda')).toBeInTheDocument();
+      expect(screen.queryByText("O'tgan amaliyot davri")).not.toBeInTheDocument();
+    });
+
+    it("isPast: false → hozirgi ko'rinish (regressiya)", async () => {
+      setMockPlace({ ...mockPlace, isPast: false });
+      renderApp('/joyim');
+      expect(await screen.findByText("Korxona ma'lumotlari")).toBeInTheDocument();
+      expect(screen.getByText('Tasdiqlangan')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Shablonni yuklab olish' })).toBeInTheDocument();
+      expect(screen.queryByText("O'tgan amaliyot davri")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Hozirda siz hech bir korxonaga biriktirilmagansiz.'),
+      ).not.toBeInTheDocument();
+    });
+
+    it("eski server (isPast/periodName yo'q) → hozirgi ko'rinish", async () => {
+      const { isPast, periodName, periodId, ...legacy } = mockPlace;
+      server.use(http.get('/api/student/place', () => HttpResponse.json(legacy)));
+      renderApp('/joyim');
+      expect(await screen.findByText("Korxona ma'lumotlari")).toBeInTheDocument();
+      expect(screen.getByText('Tasdiqlangan')).toBeInTheDocument();
+      expect(screen.queryByText("O'tgan amaliyot davri")).not.toBeInTheDocument();
+      expect(screen.queryByText('Yakunlangan')).not.toBeInTheDocument();
+    });
   });
 });

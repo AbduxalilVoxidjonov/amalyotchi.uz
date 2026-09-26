@@ -55,6 +55,10 @@ public sealed record TodayPlaceDto(
 public sealed record TodayDiaryDto(bool SubmittedToday, int MinChars, int MaxFiles, bool PdfRequired);
 
 /// <summary><c>GET /api/student/place</c>. Ariza yo'q → 404.</summary>
+/// <param name="PeriodId">Javobdagi arizaning davri.</param>
+/// <param name="PeriodName">Shu davr nomi.</param>
+/// <param name="IsPast"><c>true</c> — davr yopilgan (<c>Closed</c>) yoki tugagan (<c>EndDate &lt; bugun</c>, Toshkent):
+/// talaba hozir bu korxonaga biriktirilmagan, ilova bo'limni "O'tgan amaliyot davri" deb ko'rsatadi.</param>
 public sealed record PracticePlaceDto(
     ApplicationStatus Status,
     string? Comment,
@@ -71,7 +75,10 @@ public sealed record PracticePlaceDto(
     double Lng,
     DateOnly PeriodFrom,
     DateOnly PeriodTo,
-    PracticeContractDto? Contract);
+    PracticeContractDto? Contract,
+    Guid PeriodId,
+    string PeriodName,
+    bool IsPast);
 
 public sealed record PracticeContractDto(
     Guid FileId,

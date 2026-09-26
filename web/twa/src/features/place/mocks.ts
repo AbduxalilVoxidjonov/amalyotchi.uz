@@ -36,6 +36,23 @@ export const mockPlace: PracticePlaceDto = {
     approvedBy: 'N. Saidova',
     templateUrl: '/files/shartnoma-shablon.docx',
   },
+  periodId: 'cccccccc-0000-4000-8000-000000000001',
+  periodName: 'Kuzgi amaliyot 2026',
+  isPast: false,
+};
+
+/**
+ * O'tgan (yopilgan/tugagan) davrdagi korxona — talaba hozir hech qayerga biriktirilmagan.
+ * `setMockPlace(mockPastPlace)` bilan yoqiladi.
+ */
+export const mockPastPlace: PracticePlaceDto = {
+  ...mockPlace,
+  status: 'completed',
+  periodFrom: '2026-02-02',
+  periodTo: '2026-03-28',
+  periodId: 'cccccccc-0000-4000-8000-000000000000',
+  periodName: 'Bahorgi amaliyot 2026',
+  isPast: true,
 };
 
 /**
@@ -85,15 +102,29 @@ export function setMockPlace(place: PracticePlaceDto | null) {
  * POST ariza davri (§4.6 "enrollment": davom etayotgan → eng yaqin kelgusi) sanalari.
  * Oraliqda `setPeriodGap('upcoming')` bahorgi davrni qo'yadi.
  */
-let enrollmentPeriod = { from: mockPlace.periodFrom, to: mockPlace.periodTo };
+interface MockEnrollmentPeriod {
+  from: string;
+  to: string;
+  id?: string | undefined;
+  name?: string | undefined;
+}
 
-export function setPlaceEnrollmentPeriod(from: string, to: string) {
-  enrollmentPeriod = { from, to };
+const defaultEnrollmentPeriod = (): MockEnrollmentPeriod => ({
+  from: mockPlace.periodFrom,
+  to: mockPlace.periodTo,
+  id: mockPlace.periodId,
+  name: mockPlace.periodName,
+});
+
+let enrollmentPeriod = defaultEnrollmentPeriod();
+
+export function setPlaceEnrollmentPeriod(from: string, to: string, id?: string, name?: string) {
+  enrollmentPeriod = { from, to, id, name };
 }
 
 export function resetPlaceMocks() {
   currentPlace = mockPlace;
-  enrollmentPeriod = { from: mockPlace.periodFrom, to: mockPlace.periodTo };
+  enrollmentPeriod = defaultEnrollmentPeriod();
 }
 
 const NOT_FOUND_MESSAGE =
@@ -128,6 +159,9 @@ function placeFromCompany(company: CompanyLookupDto): PracticePlaceDto {
     periodFrom: enrollmentPeriod.from,
     periodTo: enrollmentPeriod.to,
     contract: null,
+    ...(enrollmentPeriod.id ? { periodId: enrollmentPeriod.id } : {}),
+    ...(enrollmentPeriod.name ? { periodName: enrollmentPeriod.name } : {}),
+    isPast: false,
   };
 }
 
@@ -163,10 +197,12 @@ export const placeHandlers: HttpHandler[] = [
     }
     const company = findCompany(tin);
     if (!company) return problem(404, 'Topilmadi', NOT_FOUND_MESSAGE);
-    if (currentPlace?.status === 'submitted') {
+    // O'tgan davrdagi ariza yangi (enrollment) davrga to'sqinlik qilmaydi — backend davr bo'yicha tekshiradi.
+    const active = currentPlace?.isPast ? null : currentPlace;
+    if (active?.status === 'submitted') {
       return problem(409, 'Ziddiyat', PENDING_MESSAGE);
     }
-    if (currentPlace?.status === 'approved' || currentPlace?.status === 'completed') {
+    if (active?.status === 'approved' || active?.status === 'completed') {
       return problem(409, 'Ziddiyat', ALREADY_APPROVED_MESSAGE);
     }
     currentPlace = placeFromCompany(company);

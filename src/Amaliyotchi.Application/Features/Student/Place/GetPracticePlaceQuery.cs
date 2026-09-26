@@ -19,7 +19,8 @@ internal sealed class GetPracticePlaceQueryHandler(IApplicationDbContext db, ICu
     {
         var userId = currentUser.UserId ?? throw new ForbiddenException("Avtorizatsiya talab qilinadi.");
         // Davom etayotgan → eng yaqin kelgusi (bahorgi davrga oldindan berilgan ariza) → oxirgi tugagan.
-        var practice = await db.LoadStudentPracticeAsync(userId, clock.LocalToday(), PeriodPurpose.Current, cancellationToken);
+        var today = clock.LocalToday();
+        var practice = await db.LoadStudentPracticeAsync(userId, today, PeriodPurpose.Current, cancellationToken);
 
         if (practice.Period is null || practice.Application is null || practice.Company is null)
             throw new NotFoundException("Amaliyot joyi hali biriktirilmagan.");
@@ -72,6 +73,14 @@ internal sealed class GetPracticePlaceQueryHandler(IApplicationDbContext db, ICu
             company.Location.Longitude,
             practice.Period.StartDate,
             practice.Period.EndDate,
-            contract);
+            contract,
+            practice.Period.Id,
+            practice.Period.Name,
+            IsPast(practice.Period, today));
     }
+
+    /// <summary>Davr o'tgan: yopilgan (sanasidan qat'i nazar) yoki <c>EndDate &lt; today</c> (Toshkent).
+    /// Bunday davr korxonasi — talabaning hozirgi korxonasi emas (qarang: <c>ActiveCompanyQueries</c>).</summary>
+    private static bool IsPast(PracticePeriod period, DateOnly today)
+        => period.Status == PracticePeriodStatus.Closed || period.EndDate < today;
 }
