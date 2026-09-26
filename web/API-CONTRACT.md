@@ -1,4 +1,4 @@
-# API-CONTRACT v3.18
+# API-CONTRACT v3.19
 
 Oxirgi yangilanish: 26.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
@@ -20,7 +20,8 @@ v3.14 ("aktiv korxona" qoidasi: ro'yxatlarda `company` faqat aktiv korxona, prof
 v3.15 (korxona sahifalari — faqat hozir aktiv amaliyot o'tayotgan talabalar; o'chirish xabari) — §6.21,
 v3.16 (sidebar badge'lari va header konteksti — `GET /api/admin/nav`, `GET /api/tutor/nav`) — §6.22,
 v3.17 (talaba profilida barcha davrlar — `GET /api/student/profile` `practices[]`) — §6.23,
-v3.18 (`GET /api/student/place` — `periodId`, `periodName`, `isPast`) — §6.24.
+v3.18 (`GET /api/student/place` — `periodId`, `periodName`, `isPast`) — §6.24,
+v3.19 (kundalik faqat davom etayotgan davrda — `TodayDto.canWriteDiary`, `diaryBlockedReason`) — §6.25.
 
 Jami **110 ta endpoint**: Auth 7 · Admin 68 · Reports 1 · Tutor 21 · Student (TWA) 11 · Files 1 · Companies 1.
 
@@ -1958,6 +1959,8 @@ interface TodayDto {
   place: TodayPlaceDto | null;
   diary: TodayDiaryDto;
   period: StudentPeriodOption | null /*v3.5: ko'rsatilayotgan davr (§4.6 "current"), isDefault=true; davr yo'q → null*/;
+  canWriteDiary: boolean /*v3.19 — POST /api/student/diary hozir davr/holat sababli rad etilmaydimi (qoida pastda)*/;
+  diaryBlockedReason: string | null /*v3.19 — canWriteDiary=false bo'lsa POST qaytaradigan `detail` matni; aks holda null*/;
 }
 interface TodayWindowDto {
   start: string /*"09:00" check-in ochiladi*/;
@@ -1996,6 +1999,18 @@ interface TodayDiaryDto {
   pdfRequired: boolean /*sozlama diaryPdfRequired; true → hisobotga kamida bitta PDF shart*/;
 }
 ```
+
+**Kundalik yozish (v3.19)** — `POST /api/student/diary` bilan **bitta qoida** (backend `DiaryWritePolicy`):
+`canWriteDiary = true` ⇔ joriy guruh davrlaridan biri **ochiq** (`closed` emas) va bugunni (Toshkent) o'z ichiga oladi
+(§4.6 `ongoing`) **va** bugungi yozuv yo'q yoki `rewrite` holatida. Aks holda `false` va `diaryBlockedReason` (tartib bilan):
+- bugunni o'z ichiga olgan davr yopilgan, yoki davr tugagan/yopilgan (kelgusi davr yo'q) →
+  `"Amaliyot davri yakunlangan — yangi kundalik yozuvi qo'shib bo'lmaydi."`;
+- kelgusi (ochiq) davr bor → `"Amaliyot davri hali boshlanmagan."`;
+- guruhda davr umuman yo'q → `"Faol amaliyot davri yo'q — hisobot yozib bo'lmaydi."`;
+- davr ochiq, lekin bugungi yozuv allaqachon yuborilgan (`rewrite` emas) → `"Bugungi hisobot allaqachon yuborilgan."` (POST → 409).
+
+Ish kuni, ariza/korxona holati kundalik uchun **tekshirilmaydi** (POST ham tekshirmaydi). Validatsiya xatolari (matn
+uzunligi, fayllar, `pdfRequired`) bu maydonlarga kirmaydi.
 
 `place` — faqat ko'rsatilayotgan davrdagi ariza `approved` va korxona bor bo'lsa. Davr yo'q → `checkin.status="pending"`,
 `note="Faol amaliyot davri yo'q."`, `place=null`, `period=null`.
@@ -2215,7 +2230,10 @@ interface DiaryEntryDto {
 | `files`      | file[] (bir nomda ko'p) | yo'q     | ≤ 5 ta; har biri > 0 va ≤ 5 MB; `image/jpeg,png,webp,heic,heif` yoki `application/pdf`; nom ≤ 255 (`errors.Files`) |
 
 Butun so'rov ≤ 30 MB (`RequestSizeLimit`) — oshsa 413. Response **201** `DiaryEntryDto`.
-Xatolar: 400 validation; **400** davr yo'q / davom etayotgan davr yo'q ("Amaliyot davri bugunni o'z ichiga olmaydi.") / fayllar jami > 5; **409** — bugungi
+Xatolar: 400 validation; **400** davom etayotgan davr yo'q — `detail` = `TodayDto.diaryBlockedReason` matni (v3.19):
+"Amaliyot davri yakunlangan — yangi kundalik yozuvi qo'shib bo'lmaydi." · "Amaliyot davri hali boshlanmagan." ·
+"Faol amaliyot davri yo'q — hisobot yozib bo'lmaydi." (bugungi `rewrite` yozuvni **yakunlangan davrda qayta yozish ham**
+shu 400 bilan rad etiladi); **400** fayllar jami > 5; **409** — bugungi
 hisobot allaqachon bor ("Bugungi hisobot allaqachon yuborilgan."). Istisno: bugungisi `rewrite` holatida → qayta yoziladi
 (`Resubmit`, fayllar qo'shiladi, status → `submitted`), 201.
 **400** `diaryPdfRequired=true` va `files` orasida PDF yo'q (PDF = content-type `application/pdf` yoki `.pdf` kengaytma;
@@ -3084,3 +3102,14 @@ Foydalanuvchi qarori: talabalar ruxsat (leave) so'ramaydi — funksiya butunlay 
   `periodName: string`, `isPast: boolean` (§2.6). `isPast = true` — javobdagi arizaning davri yopilgan (`closed`,
   sanasidan qat'i nazar) yoki tugagan (`endDate < bugun`, Toshkent); aks holda `false`.
 - Davr tanlash (§4.6 `current`), 404 holatlari va mavjud maydonlar **o'zgarmadi**. Endpoint soni o'zgarmadi, migratsiya yo'q.
+
+### 6.25 v3.18 → v3.19 (26.09.2026): kundalik faqat davom etayotgan davrda
+
+- **Yangi maydonlar:** `GET /api/student/today` (va check-in/check-out javobi — o'sha `TodayDto`) →
+  `canWriteDiary: boolean`, `diaryBlockedReason: string | null` (§2.6). Qiymat `POST /api/student/diary` qoidasi bilan
+  aynan bir xil hisoblanadi: `canWriteDiary = true` bo'lsa POST davr/holat sababli rad etilmaydi.
+- **O'zgargan xabar:** `POST /api/student/diary` davom etayotgan davr yo'q bo'lganda eski
+  "Amaliyot davri bugunni o'z ichiga olmaydi." o'rniga holatga qarab "Amaliyot davri yakunlangan — yangi kundalik yozuvi
+  qo'shib bo'lmaydi." yoki "Amaliyot davri hali boshlanmagan." (status 400 o'zgarmadi). Yopilgan davrda bugungi `rewrite`
+  yozuvni qayta yozish ham 400.
+- `GET /api/student/diary` eski yozuvlarni qaytarishda davom etadi. Endpoint soni o'zgarmadi, migratsiya yo'q.

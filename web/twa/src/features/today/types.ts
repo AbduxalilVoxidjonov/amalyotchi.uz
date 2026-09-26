@@ -85,6 +85,14 @@ export interface TodayDto {
   diary: TodayDiaryDto;
   /** v3.5 §4.6 "current": davom etayotgan → eng yaqin kelgusi → oxirgi tugagan; davr yo'q → null. */
   period: StudentPeriodOption | null;
+  /**
+   * Yangi kundalik yozuvi (yoki bugungisini qayta yozish) mumkinmi. `false` — davr yakunlangan yoki hali
+   * boshlanmagan (POST diary → 400 `diaryBlockedReason` matni bilan). Eski backend yubormasa
+   * (`undefined`) — ruxsat deb hisoblanadi (forma ko'rinadi).
+   */
+  canWriteDiary?: boolean;
+  /** `canWriteDiary=false` sababi (o'zbekcha), masalan "Amaliyot davri yakunlangan — …"; aks holda null. */
+  diaryBlockedReason?: string | null;
 }
 
 /**

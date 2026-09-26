@@ -2,7 +2,13 @@ import { cleanup, fireEvent, screen, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { mockDiary } from '@/features/diary/mocks';
 import type { DiaryEntryDto } from '@/features/diary/types';
-import { mockToday, setDiaryPdfRequired } from '@/features/today/mocks';
+import {
+  DIARY_BLOCKED_ENDED_MESSAGE,
+  DIARY_BLOCKED_UPCOMING_MESSAGE,
+  mockToday,
+  setDiaryPdfRequired,
+  setPeriodGap,
+} from '@/features/today/mocks';
 import { problem } from '@/mocks/problem';
 import { server } from '@/mocks/server';
 import { STUDENT_ENDPOINTS } from '@/shared/api/endpoints';
@@ -65,7 +71,7 @@ describe('DiaryPage (kundaligim)', () => {
   it("qisqa matn — mijoz validatsiyasi; to'liq matn → yangi yozuv ro'yxat boshida", async () => {
     renderApp('/kundalik');
     await screen.findByText('Yozuvlarim · 4');
-    const ta = screen.getByPlaceholderText('Bugun bajarilgan ishlar — kamida 150 belgi');
+    const ta = await screen.findByPlaceholderText('Bugun bajarilgan ishlar — kamida 150 belgi');
 
     fireEvent.change(ta, { target: { value: 'Qisqa' } });
     fireEvent.click(screen.getByRole('button', { name: 'Yuborish' }));
@@ -90,7 +96,7 @@ describe('DiaryPage (kundaligim)', () => {
   it('bugungisi allaqachon bor → 409 xabari formada', async () => {
     renderApp('/kundalik');
     await screen.findByText('Yozuvlarim · 4');
-    const ta = screen.getByPlaceholderText('Bugun bajarilgan ishlar — kamida 150 belgi');
+    const ta = await screen.findByPlaceholderText('Bugun bajarilgan ishlar — kamida 150 belgi');
     fireEvent.change(ta, { target: { value: LONG_TEXT } });
     fireEvent.click(screen.getByRole('button', { name: 'Yuborish' }));
     await screen.findByText('Kundalik yuborildi.');
@@ -117,9 +123,12 @@ describe('DiaryPage (kundaligim)', () => {
 
     async function fillText() {
       await screen.findByText('Yozuvlarim · 4');
-      fireEvent.change(screen.getByPlaceholderText('Bugun bajarilgan ishlar — kamida 150 belgi'), {
-        target: { value: LONG_TEXT },
-      });
+      fireEvent.change(
+        await screen.findByPlaceholderText('Bugun bajarilgan ishlar — kamida 150 belgi'),
+        {
+          target: { value: LONG_TEXT },
+        },
+      );
     }
 
     it("true va PDF yo'q → eslatma ko'rinadi, yuborilmaydi", async () => {
@@ -202,9 +211,12 @@ describe('DiaryPage (kundaligim)', () => {
       );
       renderApp('/kundalik');
       await screen.findByText('Yozuvlarim · 5');
-      fireEvent.change(screen.getByPlaceholderText('Bugun bajarilgan ishlar — kamida 150 belgi'), {
-        target: { value: LONG_TEXT },
-      });
+      fireEvent.change(
+        await screen.findByPlaceholderText('Bugun bajarilgan ishlar — kamida 150 belgi'),
+        {
+          target: { value: LONG_TEXT },
+        },
+      );
       expect(await screen.findByText('PDF biriktirilgan')).toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'Yuborish' }));
 
@@ -236,5 +248,145 @@ describe('DiaryPage (kundaligim)', () => {
 
       expect(await screen.findByRole('alert')).toHaveTextContent(PDF_MSG);
     });
+  });
+});
+
+describe('DiaryPage — yakunlangan / boshlanmagan davrda yozish yopiq (canWriteDiary)', () => {
+  const PLACEHOLDER = 'Bugun bajarilgan ishlar — kamida 150 belgi';
+
+  it("yakunlangan davr → forma yo'q, xabar bor, eski yozuvlar ko'rinadi", async () => {
+    setPeriodGap('ended');
+    renderApp('/kundalik');
+
+    const card = await screen.findByRole('region', { name: 'Amaliyot yakunlangan' });
+    expect(card).toHaveTextContent(DIARY_BLOCKED_ENDED_MESSAGE);
+    expect(
+      await within(card).findByText('Oldingi yozuvlaringiz quyida saqlangan.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(PLACEHOLDER)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Yuborish' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('form', { name: 'Yangi yozuv' })).not.toBeInTheDocument();
+
+    expect(await screen.findByText('Yozuvlarim · 4')).toBeInTheDocument();
+    expect(screen.getAllByRole('article')).toHaveLength(4);
+    expect(screen.getByText('Qayta yozish kerak')).toBeInTheDocument();
+  });
+
+  it('boshlanmagan davr → "Amaliyot hali boshlanmagan" xabari', async () => {
+    setPeriodGap('upcoming');
+    renderApp('/kundalik');
+
+    const card = await screen.findByRole('region', { name: 'Amaliyot hali boshlanmagan' });
+    expect(card).toHaveTextContent(DIARY_BLOCKED_UPCOMING_MESSAGE);
+    expect(screen.queryByPlaceholderText(PLACEHOLDER)).not.toBeInTheDocument();
+    expect(await screen.findByText('Yozuvlarim · 4')).toBeInTheDocument();
+  });
+
+  it('yozuvlar yo‘q → "oldingi yozuvlar" izohi chiqmaydi', async () => {
+    setPeriodGap('ended');
+    server.use(http.get(STUDENT_ENDPOINTS.diary, () => HttpResponse.json([])));
+    renderApp('/kundalik');
+
+    await screen.findByText('Yozuvlarim · 0');
+    const card = screen.getByRole('region', { name: 'Amaliyot yakunlangan' });
+    expect(card).not.toHaveTextContent('Oldingi yozuvlaringiz quyida saqlangan.');
+    expect(
+      screen.getByText('Bu amaliyot davrida kundalik yozuvlari yuborilmagan.'),
+    ).toBeInTheDocument();
+  });
+
+  it('faol davr (canWriteDiary=true) → forma ko‘rinadi, blok kartasi yo‘q', async () => {
+    expect(mockToday.canWriteDiary).toBe(true);
+    renderApp('/kundalik');
+
+    expect(await screen.findByPlaceholderText(PLACEHOLDER)).toBeInTheDocument();
+    expect(screen.getByRole('form', { name: 'Yangi yozuv' })).toBeInTheDocument();
+    expect(screen.queryByText('Amaliyot yakunlangan')).not.toBeInTheDocument();
+    expect(screen.queryByText('Amaliyot hali boshlanmagan')).not.toBeInTheDocument();
+  });
+
+  it('faol davr, bugungisi yuborilgan (server canWriteDiary=false) → forma qoladi, 409 avvalgidek', async () => {
+    server.use(
+      http.get(STUDENT_ENDPOINTS.today, () =>
+        HttpResponse.json({
+          ...mockToday,
+          diary: { ...mockToday.diary, submittedToday: true },
+          canWriteDiary: false,
+          diaryBlockedReason: 'Bugungi hisobot allaqachon yuborilgan.',
+        }),
+      ),
+    );
+    renderApp('/kundalik');
+
+    expect(await screen.findByPlaceholderText(PLACEHOLDER)).toBeInTheDocument();
+    expect(screen.queryByText('Amaliyot yakunlangan')).not.toBeInTheDocument();
+  });
+
+  it('davr yo\'q → "Faol amaliyot davri yo\'q" kartasi', async () => {
+    const reason = "Faol amaliyot davri yo'q — hisobot yozib bo'lmaydi.";
+    server.use(
+      http.get(STUDENT_ENDPOINTS.today, () =>
+        HttpResponse.json({
+          ...mockToday,
+          period: null,
+          canWriteDiary: false,
+          diaryBlockedReason: reason,
+        }),
+      ),
+    );
+    renderApp('/kundalik');
+
+    const card = await screen.findByRole('region', { name: "Faol amaliyot davri yo'q" });
+    expect(card).toHaveTextContent(reason);
+    expect(screen.queryByPlaceholderText(PLACEHOLDER)).not.toBeInTheDocument();
+  });
+
+  it('maydon kelmasa (eski backend) → forma ko‘rinadi', async () => {
+    const { canWriteDiary: _c, diaryBlockedReason: _r, ...legacy } = mockToday;
+    server.use(http.get(STUDENT_ENDPOINTS.today, () => HttpResponse.json(legacy)));
+    renderApp('/kundalik');
+
+    expect(await screen.findByPlaceholderText(PLACEHOLDER)).toBeInTheDocument();
+    expect(screen.queryByText('Amaliyot yakunlangan')).not.toBeInTheDocument();
+  });
+
+  it("today yuklanguncha forma ko'rinmaydi (miltillamaydi)", async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => (release = r));
+    setPeriodGap('ended');
+    server.use(
+      http.get(STUDENT_ENDPOINTS.today, async () => {
+        await gate;
+        return HttpResponse.json(mockToday);
+      }),
+    );
+    renderApp('/kundalik');
+
+    await screen.findByText('Yozuvlarim · 4');
+    expect(
+      screen.getByRole('status', { name: 'Kundalik formasi yuklanmoqda…' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(PLACEHOLDER)).not.toBeInTheDocument();
+
+    release();
+    expect(await screen.findByRole('region', { name: 'Amaliyot yakunlangan' })).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(PLACEHOLDER)).not.toBeInTheDocument();
+  });
+
+  it('eskirgan kesh: server 400 (yakunlangan) → xato, today yangilanadi, forma yashirinadi', async () => {
+    renderApp('/kundalik');
+    const ta = await screen.findByPlaceholderText(PLACEHOLDER);
+    await screen.findByText('Yozuvlarim · 4');
+
+    // Davr serverda yopildi, keshdagi today esa hali `canWriteDiary: true`.
+    setPeriodGap('ended');
+    fireEvent.change(ta, { target: { value: LONG_TEXT } });
+    fireEvent.click(screen.getByRole('button', { name: 'Yuborish' }));
+
+    const card = await screen.findByRole('region', { name: 'Amaliyot yakunlangan' });
+    expect(card).toHaveTextContent(DIARY_BLOCKED_ENDED_MESSAGE);
+    expect(screen.queryByPlaceholderText(PLACEHOLDER)).not.toBeInTheDocument();
+    expect(screen.queryByText('Kundalik yuborildi.')).not.toBeInTheDocument();
+    expect(screen.getByText('Yozuvlarim · 4')).toBeInTheDocument();
   });
 });

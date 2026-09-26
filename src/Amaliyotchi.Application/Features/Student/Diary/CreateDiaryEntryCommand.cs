@@ -31,12 +31,10 @@ internal sealed class CreateDiaryEntryCommandHandler(
         var now = clock.UtcNow;
         var today = clock.LocalToday();
 
-        // Hisobot — faqat davom etayotgan davrga (bugunni o'z ichiga olgan, yopilmagan).
+        // Hisobot — faqat davom etayotgan davrga (bugunni o'z ichiga olgan, yopilmagan). Yagona qoida — DiaryWritePolicy
+        // (GET today → canWriteDiary ham shundan); yakunlangan davrda bugungi yozuvni qayta yozish ham taqiqlanadi.
         var practice = await db.LoadStudentPracticeAsync(userId, today, PeriodPurpose.Ongoing, cancellationToken);
-        var period = practice.Period
-            ?? throw new DomainException(practice.Periods.GroupPeriods.Count == 0
-                ? "Faol amaliyot davri yo'q — hisobot yozib bo'lmaydi."
-                : "Amaliyot davri bugunni o'z ichiga olmaydi.");
+        var period = DiaryWritePolicy.RequireOngoingPeriod(practice);
 
         var existing = await db.DiaryEntries
             .Include(d => d.Attachments)
@@ -55,7 +53,7 @@ internal sealed class CreateDiaryEntryCommandHandler(
         }
         else
         {
-            throw new ConflictException("Bugungi hisobot allaqachon yuborilgan.");
+            throw new ConflictException(DiaryWritePolicy.AlreadySubmittedMessage);
         }
 
         if (practice.Settings.DiaryPdfRequired && !await HasPdfAsync(entry, request.Files, cancellationToken))

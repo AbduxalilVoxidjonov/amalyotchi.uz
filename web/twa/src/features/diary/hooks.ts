@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { isApiError } from '@/shared/api/client';
 import { todayKeys } from '@/features/today/hooks';
 import { diaryApi } from './api';
 import type { DiaryEntryDto } from './types';
@@ -30,6 +31,13 @@ export function useCreateDiaryEntry() {
       void qc.invalidateQueries({ queryKey: todayKeys.all });
       // Bosh ekran kunlar ro'yxatidagi kundalik holati.
       void qc.invalidateQueries({ queryKey: ['student', 'period-days'] });
+    },
+    onError: (error) => {
+      // 400 (validatsiyasiz) — masalan davr yakunlangan, keshdagi today esa eskirgan: `canWriteDiary`
+      // yangilanadi va sahifa formani yashiradi.
+      if (isApiError(error) && error.kind === 'bad-request') {
+        void qc.invalidateQueries({ queryKey: todayKeys.all });
+      }
     },
   });
 }

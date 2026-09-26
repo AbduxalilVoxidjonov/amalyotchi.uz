@@ -1,0 +1,17 @@
+.title {
+  margin: 0;
+  font-size: var(--fs-base2);
+  font-weight: var(--fw-semibold);
+}
+.reason {
+  margin: 8px 0 0;
+  font-size: var(--fs-md2);
+  color: var(--color-text-2);
+  line-height: var(--lh-note);
+}
+.hint {
+  margin: 6px 0 0;
+  font-size: var(--fs-sm2);
+  color: var(--color-text-muted);
+  line-height: var(--lh-note);
+}

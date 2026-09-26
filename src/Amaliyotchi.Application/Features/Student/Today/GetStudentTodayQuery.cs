@@ -48,12 +48,21 @@ internal static class TodayBuilder
         var diaryDto = new TodayDiaryDto(
             false, practice.Settings.MinReportLength, DiaryEntry.MaxAttachments, practice.Settings.DiaryPdfRequired);
 
+        // Kundalik yozish imkoni — POST /api/student/diary bilan aynan bir qoida (bugungi yozuv davridan qat'i nazar,
+        // POST ham sana bo'yicha qidiradi).
+        var todayEntryStatus = await db.DiaryEntries
+            .AsNoTracking()
+            .Where(d => d.StudentUserId == studentUserId && d.Date == today)
+            .Select(d => (DiaryStatus?)d.Status)
+            .FirstOrDefaultAsync(cancellationToken);
+        var (canWriteDiary, diaryBlockedReason) = DiaryWritePolicy.Evaluate(practice, todayEntryStatus);
+
         if (practice.Period is null)
         {
             var noPeriod = new TodayCheckInDto(
                 AttendanceStatus.Pending, null, null, null, null, null, false, false, StudentPractice.NoPeriodMessage,
                 practice.Settings.CheckInPhotoRequired, practice.Settings.CheckInQrRequired);
-            return new TodayDto(today, window, noPeriod, null, diaryDto, null);
+            return new TodayDto(today, window, noPeriod, null, diaryDto, null, canWriteDiary, diaryBlockedReason);
         }
 
         var periodId = practice.Period.Id;
@@ -108,7 +117,8 @@ internal static class TodayBuilder
 
         return new TodayDto(
             today, window with { IsOpen = isOpen }, checkin, place, diaryDto,
-            StudentPeriodSet.ToOption(practice.Period, today, isDefault: true));
+            StudentPeriodSet.ToOption(practice.Period, today, isDefault: true),
+            canWriteDiary, diaryBlockedReason);
     }
 
     /// <summary>Hozirgi bosqich uchun amal mumkinmi va bo'lmasa — sababi. GPS/masofa hisobga olinmaydi

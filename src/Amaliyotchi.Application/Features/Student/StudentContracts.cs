@@ -10,13 +10,18 @@ namespace Amaliyotchi.Application.Features.Student;
 /// <summary><c>GET /api/student/today</c>. Ariza yo'q bo'lsa <see cref="Place"/> null, <c>checkin.status = pending</c>
 /// va <c>checkin.note</c> da sabab. <see cref="Period"/> — ko'rsatilayotgan davr (davom etayotgan → eng yaqin kelgusi →
 /// oxirgi tugagan); davr yo'q bo'lsa null. Belgilanish faqat <c>period.status = active</c> va bugun davr ichida bo'lsa mumkin.</summary>
+/// <param name="CanWriteDiary"><c>POST /api/student/diary</c> bugun davr/holat sababli rad etilmaydimi — o'sha qoida
+/// (<c>DiaryWritePolicy</c>): ochiq, bugunni o'z ichiga olgan davr bor va bugungi yozuv yo'q yoki <c>rewrite</c> holatida.</param>
+/// <param name="DiaryBlockedReason"><see cref="CanWriteDiary"/> = <c>false</c> bo'lsa — POST qaytaradigan <c>detail</c> matni; aks holda null.</param>
 public sealed record TodayDto(
     DateOnly Date,
     TodayWindowDto Window,
     TodayCheckInDto Checkin,
     TodayPlaceDto? Place,
     TodayDiaryDto Diary,
-    StudentPeriodOption? Period);
+    StudentPeriodOption? Period,
+    bool CanWriteDiary,
+    string? DiaryBlockedReason);
 
 /// <param name="Start">Check-in ochiladigan vaqt (09:00).</param>
 /// <param name="End">Shu vaqtdan boshlab "kech keldi" (09:15).</param>

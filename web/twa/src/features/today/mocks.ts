@@ -55,6 +55,8 @@ function initialToday(): TodayDto {
     },
     diary: { submittedToday: false, minChars: 150, maxFiles: 5, pdfRequired: false },
     period: MOCK_AUTUMN_PERIOD,
+    canWriteDiary: true,
+    diaryBlockedReason: null,
   };
 }
 
@@ -100,6 +102,11 @@ export function setDiaryPdfRequired(value: boolean) {
   mockToday = { ...mockToday, diary: { ...mockToday.diary, pdfRequired: value } };
 }
 
+/** Backend `diaryBlockedReason` matnlari (`setPeriodGap` bilan today'ga yoziladi). */
+export const DIARY_BLOCKED_ENDED_MESSAGE =
+  "Amaliyot davri yakunlangan — yangi kundalik yozuvi qo'shib bo'lmaydi.";
+export const DIARY_BLOCKED_UPCOMING_MESSAGE = 'Amaliyot davri hali boshlanmagan.';
+
 /**
  * Ikki davr oralig'i (kontrakt v3.5 §4.6, backend `GetStudentTodayQuery` bilan bir xil):
  * - `upcoming` — kuzgi tugagan, bahorgi hali boshlanmagan; bahorgi davrga ariza yo'q (GET place → 404,
@@ -132,6 +139,10 @@ export function setPeriodGap(kind: 'upcoming' | 'ended') {
     // `place` — faqat ko'rsatilayotgan davrdagi tasdiqlangan ariza: bahorgi davrga hali ariza yo'q.
     place: kind === 'upcoming' ? null : mockToday.place,
     diary: { ...mockToday.diary, submittedToday: false },
+    // Backend: davom etayotgan davr yo'q → kundalik yozib bo'lmaydi (POST diary → 400 shu matn bilan).
+    canWriteDiary: false,
+    diaryBlockedReason:
+      kind === 'upcoming' ? DIARY_BLOCKED_UPCOMING_MESSAGE : DIARY_BLOCKED_ENDED_MESSAGE,
   };
   if (kind === 'upcoming') {
     setMockPlace(null);

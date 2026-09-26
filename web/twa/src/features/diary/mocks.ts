@@ -87,6 +87,14 @@ export const diaryHandlers: HttpHandler[] = [
   http.post(STUDENT_ENDPOINTS.diary, async ({ request }) => {
     const denied = requireBearer(request);
     if (denied) return denied;
+    // Davr yakunlangan / boshlanmagan — yangi yozuv ham, bugungisini qayta yozish ham rad etiladi.
+    if (mockToday.canWriteDiary === false) {
+      return problem(
+        400,
+        "Noto'g'ri amal",
+        mockToday.diaryBlockedReason ?? "Kundalik yozib bo'lmaydi.",
+      );
+    }
     const form = await request.formData().catch(() => null);
     const text = String(form?.get('text') ?? '').trim();
     const learned = form?.get('learned');
