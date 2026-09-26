@@ -1,7 +1,7 @@
 # Amaliyotchi — web
 
 npm workspaces monorepo: `dashboard` (admin + tyutor SPA), `twa` (talaba Telegram Web App),
-`shared` (ikkalasi uchun umumiy tokenlar, bazaviy UI kit, API client, auth). Backend — `../src` (.NET, `http://127.0.0.10:5080`).
+`shared` (ikkalasi uchun umumiy tokenlar, bazaviy UI kit, API client, auth). Backend — `../src` (.NET, `http://127.0.0.1:5080`).
 
 Holat (14.09.2026): admin 9, tyutor 8, talaba 6 ekran — barchasi MSW mock bilan ishlaydi.
 Backend'da faqat auth endpoint'lari bor; qolgan kontrakt — [`API-CONTRACT.md`](API-CONTRACT.md).
@@ -15,8 +15,8 @@ Talab: Node ≥ 22.12, npm ≥ 10 (pnpm ishlatilmaydi).
 cd web
 npm install                      # barcha workspace'lar bir joyga o'rnatiladi
 
-npm run dev                      # dashboard → http://127.0.0.10:5173 (/api → 127.0.0.10:5080 proxy)
-npm run dev:twa                  # twa       → http://127.0.0.10:5174
+npm run dev                      # dashboard → http://127.0.0.1:5173 (/api → 127.0.0.1:5080 proxy)
+npm run dev:twa                  # twa       → http://127.0.0.1:5174
 
 npm run typecheck | lint | test | build   # har workspace'da (npm run -ws ...)
 npm run check                    # to'rttasi ketma-ket — PR oldidan
@@ -34,8 +34,8 @@ Backend'da hozircha faqat `AuthController` bor. Ekranlar MSW mock'lari bilan ish
 ```bash
 cd dashboard && cp .env.example .env    # VITE_USE_MOCKS=true qiling
 cd ../twa && cp .env.example .env       # TWA uchun ham shu
-npm run dev        # dashboard → http://127.0.0.10:5173/login
-npm run dev:twa    # twa       → http://127.0.0.10:5174
+npm run dev        # dashboard → http://127.0.0.1:5173/login
+npm run dev:twa    # twa       → http://127.0.0.1:5174
 ```
 
 Mock foydalanuvchilar (`dashboard/src/mocks/data.ts`):
@@ -58,7 +58,7 @@ Production build'da `VITE_USE_MOCKS` berilmasa MSW kodi bundle'ga umuman kirmayd
 
 ### `/dev/kit` — UI kit ko'rgazmasi
 
-`npm run dev` → `http://127.0.0.10:5173/dev/kit` (login shart emas). `dashboard/src/dev/KitPage.tsx` —
+`npm run dev` → `http://127.0.0.1:5173/dev/kit` (login shart emas). `dashboard/src/dev/KitPage.tsx` —
 dizayn tizimidagi barcha komponentlar holatlari bilan (Storybook o'rniga). Faqat `import.meta.env.DEV`
 da mavjud: production build'da marshrut ham, chunk ham yaratilmaydi.
 

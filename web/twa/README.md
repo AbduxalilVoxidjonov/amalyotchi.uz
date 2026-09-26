@@ -6,7 +6,7 @@ Enum'lar camelCase string (`present`, `dayOff`, `revisionNeeded` …) — o'zbek
 (`features/*/types.ts`: `ATTENDANCE_STATUS`, `DAY_STATUS`, `DIARY_STATUS`, `LEAVE_STATUS`, `APPLICATION_STATUS`).
 
 ```bash
-npm run dev -w twa            # http://127.0.0.10:5174, /api → http://127.0.0.10:5080 (vite proxy)
+npm run dev -w twa            # http://127.0.0.1:5174, /api → http://127.0.0.1:5080 (vite proxy)
 npm run test -w twa           # vitest + MSW (mock'lar v2 shaklida)
 ```
 
@@ -28,12 +28,12 @@ uni qo'lda berish mumkin (production bundle'da bu kod yo'q):
    TG_BOT_TOKEN=... node scratchpad/twa-initdata.mjs 100000004
    ```
 2. Natijani `twa/.env.development.local` ga `VITE_DEV_INIT_DATA=...` qilib yozing
-   (namuna: `.env.development.local.example`) **yoki** URL'ga qo'shing: `http://127.0.0.10:5174/?initData=<satr>`
+   (namuna: `.env.development.local.example`) **yoki** URL'ga qo'shing: `http://127.0.0.1:5174/?initData=<satr>`
    (query ustunroq).
-3. `VITE_USE_MOCKS=false` bilan `npm run dev -w twa` — real backend (`127.0.0.10:5080`) bilan ishlaydi.
+3. `VITE_USE_MOCKS=false` bilan `npm run dev -w twa` — real backend (`127.0.0.1:5080`) bilan ishlaydi.
 
 Mock rejimi (`VITE_USE_MOCKS=true`): MSW istalgan initData'ni qabul qiladi; `initData=invalid` → 403 "imzo",
-`initData=unlinked` → 403 "hisob topilmadi" → bog'lash formasi (`http://127.0.0.10:5174/?initData=unlinked`).
+`initData=unlinked` → 403 "hisob topilmadi" → bog'lash formasi (`http://127.0.0.1:5174/?initData=unlinked`).
 Bog'lash mock'i: `341030`/`talaba12345` → 200 · `341031`/`vaqtincha1` → 200 + majburiy parol · noto'g'ri parol → 403 ·
 `341099` → 409 · `341429` → 429.
 
@@ -48,17 +48,17 @@ Keyingi ochilishlarda avtomatik kiriladi.
 ## Telegram'da sinash (HTTPS tunnel)
 
 Telegram Mini App faqat `https://` manzilni ochadi — dev server tunnel orqali beriladi. `/api` Vite proxy orqali
-o'tadi (`127.0.0.10:5080`), shuning uchun **bitta tunnel yetadi** (API uchun alohida tunnel kerak emas).
+o'tadi (`127.0.0.1:5080`), shuning uchun **bitta tunnel yetadi** (API uchun alohida tunnel kerak emas).
 `vite.config.ts` `server.allowedHosts` da `.trycloudflare.com`, `.ngrok-free.app`, `.ngrok.app` ruxsat etilgan (faqat dev).
 
 1. `brew install cloudflared`
 2. API va TWA dev'ni ishga tushiring (real backend, mock emas):
    ```bash
-   dotnet run --project src/Amaliyotchi.Api               # http://127.0.0.10:5080 (repo ildizidan)
-   VITE_USE_MOCKS=false npm run dev -w twa                # http://127.0.0.10:5174 (web/ dan)
+   dotnet run --project src/Amaliyotchi.Api               # http://127.0.0.1:5080 (repo ildizidan)
+   VITE_USE_MOCKS=false npm run dev -w twa                # http://127.0.0.1:5174 (web/ dan)
    ```
-3. Tunnel: `cloudflared tunnel --url http://127.0.0.10:5174` → `https://<tasodifiy>.trycloudflare.com` chiqadi
-   (ngrok: `ngrok http 127.0.0.10:5174`).
+3. Tunnel: `cloudflared tunnel --url http://127.0.0.1:5174` → `https://<tasodifiy>.trycloudflare.com` chiqadi
+   (ngrok: `ngrok http 127.0.0.1:5174`).
 4. BotFather → `/mybots` → bot → *Bot Settings* → *Menu Button* → shu https manzil.
 5. API haqiqiy bot tokeni bilan ishlashi kerak (aks holda initData imzosi tasdiqlanmaydi → 403). `Amaliyotchi.Api`
    loyihasida user-secrets sozlanmagan (`UserSecretsId` yo'q), shuning uchun env orqali bering:

@@ -13,17 +13,10 @@ Joriy holat: **backend — Sprint 1 (M01 fundament, M02 auth/RBAC); frontend —
 
 Talab qilinadi: **.NET 10 SDK** va **Docker**.
 
-Loyiha **`127.0.0.10`** loopback IP sida ishlaydi (har loyihaga alohida loopback IP; portlar o'zgarmaydi).
-macOS'da bir marta (reboot'dan keyin qaytadan) alias qo'shing — Linux'da shart emas:
+Host portlari faqat `127.0.0.1` ga bog'lanadi; tashqaridan kirish Cloudflare Tunnel orqali (`deploy/README.md`).
 
 ```bash
-sudo ifconfig lo0 alias 127.0.0.10 up
-```
-
-Doimiy qilish (LaunchDaemon plist namunasi) — [`deploy/README.md`](deploy/README.md#loopback-ip-1270010) bo'limiga qarang.
-
-```bash
-# 1. Infratuzilma (PostgreSQL+PostGIS, MinIO, Redis, Seq) — host'da 127.0.0.10, postgres porti 55432
+# 1. Infratuzilma (PostgreSQL+PostGIS, MinIO, Redis, Seq) — host'da 127.0.0.1, postgres porti 55432
 docker compose -f deploy/docker-compose.yml up -d
 
 # 2. Paketlar va qurish
@@ -37,8 +30,8 @@ dotnet ef database update -p src/Amaliyotchi.Infrastructure -s src/Amaliyotchi.A
 
 # 4. API
 dotnet run --project src/Amaliyotchi.Api
-# http://127.0.0.10:5080/health
-# http://127.0.0.10:5080/openapi/v1.json   (faqat Development)
+# http://127.0.0.1:5080/health
+# http://127.0.0.1:5080/openapi/v1.json   (faqat Development)
 ```
 
 ### Maxfiy kalitlar
@@ -50,7 +43,7 @@ Lokal ishlash uchun user-secrets:
 cd src/Amaliyotchi.Api
 dotnet user-secrets init
 dotnet user-secrets set "Jwt:SigningKey" "kamida-32-belgidan-iborat-tasodifiy-kalit"
-dotnet user-secrets set "ConnectionStrings:Postgres" "Host=127.0.0.10;Port=55432;Database=amaliyotchi;Username=amaliyotchi;Password=amaliyotchi"
+dotnet user-secrets set "ConnectionStrings:Postgres" "Host=127.0.0.1;Port=55432;Database=amaliyotchi;Username=amaliyotchi;Password=amaliyotchi"
 ```
 
 Ishlab chiqarish muhitida — muhit o'zgaruvchilari yoki vault.
@@ -96,8 +89,8 @@ npm workspaces monorepo (Node ≥ 22.12): `dashboard` — admin (9 ekran) va tyu
 ```bash
 cd web && npm install
 cp dashboard/.env.example dashboard/.env   # VITE_USE_MOCKS=true — backend'siz ishlaydi
-npm run dev        # dashboard → http://127.0.0.10:5173 (/api → 127.0.0.10:5080 proxy)
-npm run dev:twa    # twa       → http://127.0.0.10:5174
+npm run dev        # dashboard → http://127.0.0.1:5173 (/api → 127.0.0.1:5080 proxy)
+npm run dev:twa    # twa       → http://127.0.0.1:5174
 npm run check      # typecheck + lint + test + build
 ```
 

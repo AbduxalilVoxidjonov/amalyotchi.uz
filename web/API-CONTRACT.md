@@ -27,7 +27,7 @@ Jami **107 ta endpoint**: Auth 7 · Admin 66 · Reports 1 · Tutor 20 · Student
 
 ### 1.1 Base path, transport
 
-- Base path: `/api`. Dev API: `http://127.0.0.10:5080`. CORS `Cors:Origins` dan (default `http://127.0.0.10:5173`).
+- Base path: `/api`. Dev API: `http://127.0.0.1:5080`. CORS `Cors:Origins` dan (default `http://127.0.0.1:5173`).
 - So'rov/javob — JSON (`application/json`). Istisno: `POST /api/student/diary` — `multipart/form-data`;
   `POST /api/student/checkin` va `POST /api/student/checkout` — `multipart/form-data` **yoki** `application/json`
   (§2.6); `GET /api/files/{id}` — fayl (`Content-Disposition: attachment`, range qo'llanadi).
