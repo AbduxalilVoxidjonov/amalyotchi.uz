@@ -37,7 +37,7 @@ import {
   type ButtonVariant,
   type DataTableColumn,
 } from '@/shared/ui';
-import { navForRole } from '@/app/nav';
+import { navForRole, type NavBadges } from '@/app/nav';
 import { formatClock } from '@/app/layout/useClock';
 import styles from './KitPage.module.css';
 
@@ -130,6 +130,20 @@ const COLUMNS: DataTableColumn<DemoStudent>[] = [
     render: (r) => <ProgressBar value={r.pct} label={`${r.name} davomati`} />,
   },
 ];
+
+/** Faqat UI kit namoyishi uchun (dizayndagi qiymatlar) — ilovada badge'lar `useNavData` dan keladi. */
+const DEMO_ADMIN_BADGES: NavBadges = {
+  '/admin/faculties': 11,
+  '/admin/tutors': 18,
+  '/admin/companies': 412,
+  '/admin/students': '1\u2009284',
+};
+const DEMO_TUTOR_BADGES: NavBadges = {
+  '/tutor': 38,
+  '/tutor/applications': 7,
+  '/tutor/students': 38,
+  '/tutor/diaries': 12,
+};
 
 const VARIANTS: ButtonVariant[] = ['primary', 'secondary', 'danger', 'dashed', 'alert'];
 const SIZES: ButtonSize[] = ['xs', 'sm', 'md', 'lg'];
@@ -474,10 +488,10 @@ export function KitPage() {
       <Section id="sidebar" title="SidebarNav — aktiv (aria-current), badge (tyutor ro'yxati)">
         <div className={styles.grid2}>
           <div className={styles.dark}>
-            <SidebarNav items={navForRole('Tutor')} />
+            <SidebarNav items={navForRole('Tutor', DEMO_TUTOR_BADGES)} />
           </div>
           <div className={styles.dark}>
-            <SidebarNav items={navForRole('Admin')} />
+            <SidebarNav items={navForRole('Admin', DEMO_ADMIN_BADGES)} />
           </div>
         </div>
         <p className={styles.code}>

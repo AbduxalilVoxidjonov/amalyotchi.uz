@@ -3,6 +3,9 @@ using Amaliyotchi.Application.Common.Models;
 using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Features.Admin.Common;
 using Amaliyotchi.Domain.Attendance;
+using Amaliyotchi.Domain.Identity;
+using Amaliyotchi.Domain.Organization;
+using Amaliyotchi.Domain.Students;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,14 +36,19 @@ public sealed record GetAdminStudentsQuery : PagedQuery, IRequest<Paged<StudentR
 internal sealed class GetAdminStudentsQueryHandler(IApplicationDbContext db, IClock clock)
     : IRequestHandler<GetAdminStudentsQuery, Paged<StudentRow>>
 {
+    /// <summary>Ro'yxatning sukut (filtrsiz) to'plami: talaba profili → guruh → yo'nalish → kafedra → fakultet
+    /// zanjiri to'liq bo'lganlar. Sidebar hisoblagichi (<c>GET /api/admin/nav</c>) ham shu manbadan sanaydi.</summary>
+    internal static IQueryable<AdminStudentSource> Source(IApplicationDbContext db)
+        => from p in db.StudentProfiles.AsNoTracking()
+           join g in db.StudentGroups on p.StudentGroupId equals g.Id
+           join d in db.Directions on g.DirectionId equals d.Id
+           join dept in db.Departments on d.DepartmentId equals dept.Id
+           join f in db.Faculties on dept.FacultyId equals f.Id
+           select new AdminStudentSource { Profile = p, User = p.User, Group = g, Faculty = f };
+
     public async Task<Paged<StudentRow>> Handle(GetAdminStudentsQuery request, CancellationToken cancellationToken)
     {
-        var students = from p in db.StudentProfiles.AsNoTracking()
-                       join g in db.StudentGroups on p.StudentGroupId equals g.Id
-                       join d in db.Directions on g.DirectionId equals d.Id
-                       join dept in db.Departments on d.DepartmentId equals dept.Id
-                       join f in db.Faculties on dept.FacultyId equals f.Id
-                       select new { Profile = p, User = p.User, Group = g, Faculty = f };
+        var students = Source(db);
 
         if (request.Q is { } q)
         {
@@ -112,4 +120,13 @@ internal sealed class GetAdminStudentsQueryHandler(IApplicationDbContext db, ICl
 
         return new Paged<StudentRow>(rows, page.Page, page.PageSize, page.Total);
     }
+}
+
+/// <summary>Admin talabalar ro'yxati manbasi qatori (EF kompozitsiyasi uchun init-xossali tur, konstruktor emas).</summary>
+internal sealed class AdminStudentSource
+{
+    public required StudentProfile Profile { get; init; }
+    public required User User { get; init; }
+    public required StudentGroup Group { get; init; }
+    public required Faculty Faculty { get; init; }
 }

@@ -2,6 +2,7 @@ using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Models;
 using Amaliyotchi.Application.Features.Admin.Common;
 using Amaliyotchi.Domain.Attendance;
+using Amaliyotchi.Domain.Organization;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,9 +28,13 @@ public sealed record GetFacultiesQuery : PagedQuery, IRequest<Paged<FacultyRow>>
 internal sealed class GetFacultiesQueryHandler(IApplicationDbContext db, IClock clock)
     : IRequestHandler<GetFacultiesQuery, Paged<FacultyRow>>
 {
+    /// <summary>Ro'yxatning sukut (filtrsiz) to'plami — barcha fakultetlar (faol/nofaol). Sidebar hisoblagichi
+    /// (<c>GET /api/admin/nav</c>) ham shu manbadan sanaydi, ro'yxat <c>total</c>i bilan mos bo'lishi uchun.</summary>
+    internal static IQueryable<Faculty> Source(IApplicationDbContext db) => db.Faculties.AsNoTracking();
+
     public async Task<Paged<FacultyRow>> Handle(GetFacultiesQuery request, CancellationToken cancellationToken)
     {
-        var faculties = db.Faculties.AsNoTracking();
+        var faculties = Source(db);
         if (request.Q is { } q)
         {
             var pattern = AdminSearch.Pattern(q);

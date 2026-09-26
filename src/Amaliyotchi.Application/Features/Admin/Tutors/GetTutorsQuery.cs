@@ -2,6 +2,7 @@ using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Models;
 using Amaliyotchi.Application.Features.Admin.Common;
 using Amaliyotchi.Domain.Enums;
+using Amaliyotchi.Domain.Identity;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -36,7 +37,7 @@ internal sealed class GetTutorsQueryHandler(IApplicationDbContext db, IClock clo
 {
     public async Task<Paged<TutorRow>> Handle(GetTutorsQuery request, CancellationToken cancellationToken)
     {
-        var tutors = db.Users.AsNoTracking().Where(u => u.Role == UserRole.Tutor);
+        var tutors = Source(db);
 
         if (request.FacultyId is { } facultyId)
             tutors = tutors.Where(u => u.Faculties.Any(tf => tf.FacultyId == facultyId));
@@ -76,6 +77,11 @@ internal sealed class GetTutorsQueryHandler(IApplicationDbContext db, IClock clo
 
         return new Paged<TutorRow>(rows, page.Page, page.PageSize, page.Total);
     }
+
+    /// <summary>Ro'yxatning sukut (filtrsiz) to'plami — barcha tyutorlar (faol/nofaol). Sidebar hisoblagichi
+    /// (<c>GET /api/admin/nav</c>) ham shu manbadan sanaydi, ro'yxat <c>total</c>i bilan mos bo'lishi uchun.</summary>
+    internal static IQueryable<User> Source(IApplicationDbContext db)
+        => db.Users.AsNoTracking().Where(u => u.Role == UserRole.Tutor);
 
     internal static DateTimeOffset? Latest(DateTimeOffset? a, DateTimeOffset? b)
         => a is null ? b : b is null ? a : a > b ? a : b;

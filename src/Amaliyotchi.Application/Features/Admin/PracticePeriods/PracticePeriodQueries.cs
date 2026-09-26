@@ -4,6 +4,7 @@ using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Exceptions;
+using Amaliyotchi.Domain.Organization;
 using Amaliyotchi.Domain.Practice;
 using Amaliyotchi.Domain.Settings;
 using Amaliyotchi.Domain.Students;
@@ -195,12 +196,17 @@ internal static class PracticePeriodQueries
             string.Equals(Raw(SettingKeys.DailyReportRequired), "true", StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>Joriy o'quv yili tanlash qoidasi: faol, eng kech boshlangani birinchi (<c>FirstOrDefault</c> bilan olinadi).
+    /// Davr yaratish va sidebar konteksti (<c>GET /api/admin/nav</c>) bir xil yilni ko'rsin.</summary>
+    public static IQueryable<AcademicYear> CurrentAcademicYear(IApplicationDbContext db)
+        => db.AcademicYears.AsNoTracking()
+            .Where(y => y.IsActive)
+            .OrderByDescending(y => y.StartDate);
+
     /// <summary>Joriy o'quv yili (faol). Yo'q bo'lsa → 400.</summary>
     public static async Task<Guid> CurrentAcademicYearIdAsync(IApplicationDbContext db, CancellationToken cancellationToken)
     {
-        var yearId = await db.AcademicYears.AsNoTracking()
-            .Where(y => y.IsActive)
-            .OrderByDescending(y => y.StartDate)
+        var yearId = await CurrentAcademicYear(db)
             .Select(y => (Guid?)y.Id)
             .FirstOrDefaultAsync(cancellationToken);
 

@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { navKeys } from '@/app/nav-keys';
 import { adminKeys } from '../shared/keys';
 import type { ListParams } from '../shared/types';
 import { useTemplateDownload, type TemplateDownload } from '../shared/useTemplateDownload';
@@ -37,6 +38,7 @@ function useInvalidateCompanies() {
   const queryClient = useQueryClient();
   return (id?: string) => {
     void queryClient.invalidateQueries({ queryKey: adminKeys.companiesAll() });
+    void queryClient.invalidateQueries({ queryKey: navKeys.all });
     if (id) void queryClient.invalidateQueries({ queryKey: adminKeys.company(id) });
     void queryClient.invalidateQueries({ queryKey: adminKeys.dashboard() });
   };

@@ -2,6 +2,7 @@ using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Models;
 using Amaliyotchi.Application.Features.Admin.Common;
 using Amaliyotchi.Application.Common.Time;
+using Amaliyotchi.Domain.Companies;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,9 +33,13 @@ public sealed record GetCompaniesQuery : PagedQuery, IRequest<Paged<CompanyRow>>
 internal sealed class GetCompaniesQueryHandler(IApplicationDbContext db, IClock clock)
     : IRequestHandler<GetCompaniesQuery, Paged<CompanyRow>>
 {
+    /// <summary>Ro'yxatning sukut (filtrsiz) to'plami — barcha korxonalar (faol/nofaol). Sidebar hisoblagichi
+    /// (<c>GET /api/admin/nav</c>) ham shu manbadan sanaydi, ro'yxat <c>total</c>i bilan mos bo'lishi uchun.</summary>
+    internal static IQueryable<Company> Source(IApplicationDbContext db) => db.Companies.AsNoTracking();
+
     public async Task<Paged<CompanyRow>> Handle(GetCompaniesQuery request, CancellationToken cancellationToken)
     {
-        var companies = db.Companies.AsNoTracking();
+        var companies = Source(db);
         if (request.Q is { } q)
         {
             var pattern = AdminSearch.Pattern(q);

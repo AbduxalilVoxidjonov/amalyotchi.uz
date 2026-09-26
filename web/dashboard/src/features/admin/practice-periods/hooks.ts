@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { navKeys } from '@/app/nav-keys';
 import { departmentsApi } from '../faculties/departments/api';
 import { directionsApi } from '../faculties/directions/api';
 import { groupsApi } from '../faculties/groups/api';
@@ -61,6 +62,8 @@ function useInvalidatePeriods() {
   const queryClient = useQueryClient();
   return () => {
     void queryClient.invalidateQueries({ queryKey: practicePeriodKeys.all });
+    // Nav crumb konteksti (o'quv yili / davr nomi) davrlarga bog'liq.
+    void queryClient.invalidateQueries({ queryKey: navKeys.all });
     void queryClient.invalidateQueries({ queryKey: ['admin', 'groups'] });
     void queryClient.invalidateQueries({ queryKey: adminKeys.dashboard() });
   };

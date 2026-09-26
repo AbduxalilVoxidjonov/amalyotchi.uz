@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { navKeys } from '@/app/nav-keys';
 import { keepPreviousForSameStudent } from '@/features/tutor/students/hooks';
 import { companiesApi } from '../companies/api';
 import { adminKeys } from '../shared/keys';
@@ -34,6 +35,7 @@ export function useImportStudents() {
     onSuccess: (result) => {
       if (result.created === 0) return;
       void queryClient.invalidateQueries({ queryKey: adminKeys.studentsAll() });
+      void queryClient.invalidateQueries({ queryKey: navKeys.all });
       void queryClient.invalidateQueries({ queryKey: adminKeys.dashboard() });
     },
   });
@@ -69,6 +71,7 @@ export function useAssignCompany() {
     onSuccess: (result) => {
       if (result.assigned === 0) return;
       void queryClient.invalidateQueries({ queryKey: adminKeys.studentsAll() });
+      void queryClient.invalidateQueries({ queryKey: navKeys.all });
       void queryClient.invalidateQueries({ queryKey: adminKeys.dashboard() });
       void queryClient.invalidateQueries({ queryKey: ['admin', 'companies'] });
     },
@@ -93,6 +96,7 @@ export function useSetStudentCompany(studentId: string) {
         predicate: (q) => q.queryKey[3] !== null,
       });
       void queryClient.invalidateQueries({ queryKey: adminKeys.studentsAll() });
+      void queryClient.invalidateQueries({ queryKey: navKeys.all });
       void queryClient.invalidateQueries({ queryKey: adminKeys.dashboard() });
       void queryClient.invalidateQueries({ queryKey: adminKeys.companiesAll() });
       void queryClient.invalidateQueries({ queryKey: ['admin', 'company'] });

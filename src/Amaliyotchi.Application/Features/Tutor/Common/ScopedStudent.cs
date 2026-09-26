@@ -22,14 +22,24 @@ internal static class ScopedStudentQueries
         => profiles.Select(p => new ScopedStudent(
             p.UserId, p.User.FullName, p.HemisId, p.StudentGroupId, p.Group.Name, p.Group.Course, p.Status));
 
+    /// <summary>Ko'lamdagi talabalar manbasi — ro'yxat (<see cref="LoadScopedStudentsAsync"/>) va hisoblagich
+    /// (<see cref="CountScopedStudentsAsync"/>) bir xil to'plamni ko'rsin.</summary>
+    private static IQueryable<StudentProfile> ScopedProfiles(this IApplicationDbContext db, DataScope scope)
+        => db.StudentProfiles.AsNoTracking().InScope(scope);
+
     /// <summary>Ko'lamdagi barcha talabalar, FISH bo'yicha tartiblangan.</summary>
     public static Task<List<ScopedStudent>> LoadScopedStudentsAsync(
         this IApplicationDbContext db, DataScope scope, CancellationToken cancellationToken)
-        => db.StudentProfiles
-            .AsNoTracking()
-            .InScope(scope)
+        => db.ScopedProfiles(scope)
             .OrderBy(p => p.User.FullName)
             .ThenBy(p => p.UserId)
             .SelectScoped()
             .ToListAsync(cancellationToken);
+
+    /// <summary><see cref="LoadScopedStudentsAsync"/> natijasi soni — xotiraga yuklamasdan (bitta COUNT).</summary>
+    public static Task<int> CountScopedStudentsAsync(
+        this IApplicationDbContext db, DataScope scope, CancellationToken cancellationToken)
+        => db.ScopedProfiles(scope)
+            .SelectScoped()
+            .CountAsync(cancellationToken);
 }

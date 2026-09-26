@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { navKeys } from '@/app/nav-keys';
 import { tutorKeys } from '../query-keys';
 import { applicationsApi } from './api';
 import type { ApplicationDecisionRequest, ApplicationTab } from './types';
@@ -19,13 +20,17 @@ export function useApplicationDetailQuery(id: string | null) {
   });
 }
 
-/** Qaror → ro'yxat + detail invalidatsiya (nav badge ham shu kalitdan olinadi keyinchalik). */
+/** Qaror → ro'yxat + detail invalidatsiya + sidebar nav badge'lari. */
 export function useApplicationDecision() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ['tutor', 'applications', 'decision'],
     mutationFn: ({ id, body }: { id: string; body: ApplicationDecisionRequest }) =>
       applicationsApi.decide(id, body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: tutorKeys.applications.all }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: tutorKeys.applications.all });
+      // Sidebar "Arizalar" badge'i (yangi arizalar soni).
+      void queryClient.invalidateQueries({ queryKey: navKeys.all });
+    },
   });
 }

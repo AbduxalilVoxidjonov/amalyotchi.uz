@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { navKeys } from '@/app/nav-keys';
 import { tutorKeys } from '../query-keys';
 import type { StudentApiArea } from '../students/types';
 import { diariesApi } from './api';
@@ -23,6 +24,7 @@ export function useDiaryReview(area: StudentApiArea = 'tutor') {
     onSuccess: () => {
       for (const queryKey of [
         tutorKeys.diaries.all,
+        navKeys.all,
         ['tutor', 'students'],
         ['admin', 'students'],
         ['admin', 'student'],

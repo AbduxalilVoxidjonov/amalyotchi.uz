@@ -1,5 +1,6 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
 import type { LoginRequest, LogoutRequest, RefreshRequest } from '@amaliyotchi/shared';
+import { navHandlers } from '@/app/nav-mocks';
 import { adminHandlers } from '@/features/admin/mocks';
 import { reportsHandlers } from '@/features/reports/mocks';
 import { studentPasswordHandlers } from '@/features/shared/student-password/mocks';
@@ -93,6 +94,7 @@ export const authHandlers: HttpHandler[] = [
 
 export const handlers: HttpHandler[] = [
   ...authHandlers,
+  ...navHandlers,
   ...adminHandlers,
   ...reportsHandlers,
   ...tutorHandlers,

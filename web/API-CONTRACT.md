@@ -1,4 +1,4 @@
-# API-CONTRACT v3.15
+# API-CONTRACT v3.16
 
 Oxirgi yangilanish: 26.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
@@ -17,13 +17,14 @@ v3.11 (talaba bosh ekrani: davrning har bir kuni — `GET /api/student/period-da
 v3.12 (admin davr yaratish/tahrirlashda ish kunlari va kunlik ish vaqti) — §6.18,
 v3.13 (talabani bitta-bitta korxonaga biriktirish/o'tkazish, `ApplicationStatus.transferred`) — §6.19,
 v3.14 ("aktiv korxona" qoidasi: ro'yxatlarda `company` faqat aktiv korxona, profilda yangi `activeCompany`) — §6.20,
-v3.15 (korxona sahifalari — faqat hozir aktiv amaliyot o'tayotgan talabalar; o'chirish xabari) — §6.21.
+v3.15 (korxona sahifalari — faqat hozir aktiv amaliyot o'tayotgan talabalar; o'chirish xabari) — §6.21,
+v3.16 (sidebar badge'lari va header konteksti — `GET /api/admin/nav`, `GET /api/tutor/nav`) — §6.22.
 
-Jami **108 ta endpoint**: Auth 7 · Admin 67 · Reports 1 · Tutor 20 · Student (TWA) 11 · Files 1 · Companies 1.
+Jami **110 ta endpoint**: Auth 7 · Admin 68 · Reports 1 · Tutor 21 · Student (TWA) 11 · Files 1 · Companies 1.
 
-> Kontrollerlarda `[Http*]` atributlari **110 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
+> Kontrollerlarda `[Http*]` atributlari **112 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
 > har birida ikkitadan action bor (`multipart/form-data` va `application/json` — `[Consumes]` bilan ajratiladi,
-> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **108**.
+> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **110**.
 
 ---
 
@@ -289,6 +290,25 @@ urinishniki ham). Havola shakli o'zgarmagan: `"/api/files/<guid>"`, Bearer talab
 ### 2.3 Admin — `Controllers/Admin/*` · hammasi `AdminOnly`
 
 Ro'yxatlar `?q&page&pageSize` (§1.6) → `Paged<T>`. 400 — `q` > 100 belgi. 403 — admin emas.
+
+#### GET `/api/admin/nav` · 200 · 401 · 403 — v3.16
+
+Sidebar badge'lari va header crumb konteksti. Har sahifada chaqiriladi — faqat COUNT'lar (5 ta yengil so'rov).
+
+```ts
+interface AdminNavDto {
+  counts: {
+    faculties: number; // = GET /api/admin/faculties  (filtrsiz) total
+    tutors: number;    // = GET /api/admin/tutors     (filtrsiz) total — faol va nofaol
+    companies: number; // = GET /api/admin/companies  (filtrsiz) total — faol va nofaol
+    students: number;  // = GET /api/admin/students   (filtrsiz) total
+  };
+  context: { academicYear: string | null }; // joriy (faol) o'quv yili nomi, masalan "2026-2027"; yo'q → null
+}
+```
+
+Sonlar ro'yxat handler'larining o'sha manbasidan (`Source(db)`) olinadi — `?q` berilmagan ro'yxat `total`i bilan
+har doim teng. `academicYear` — faol yillardan eng kech boshlangani (davr yaratishdagi qoida bilan bir xil).
 
 #### GET `/api/admin/dashboard`
 
@@ -1395,6 +1415,30 @@ interface ReportCard {
 ### 2.5 Tutor — `Controllers/Tutor/*` · hammasi `TutorOnly`
 
 Ko'lam — biriktirilgan guruhlar. Hamma ro'yxat (today'dan tashqari) sahifalanmagan massiv.
+
+#### GET `/api/tutor/nav` · 200 · 401 · 403 — v3.16
+
+Sidebar badge'lari va header crumb konteksti (tyutor ko'lami bo'yicha; begona guruhlar kirmaydi).
+
+```ts
+interface TutorNavDto {
+  counts: {
+    today: number;        // = GET /api/tutor/today → stats.total (bugungi jadval qatorlari = ko'lamdagi talabalar)
+    applications: number; // = GET /api/tutor/applications → counts.submitted (ko'rib chiqilishi kerak)
+    students: number;     // = GET /api/tutor/students massivi uzunligi
+    diaries: number;      // tekshirilmagan kundaliklar: GET /api/tutor/diaries dagi status submitted|seen soni
+  };
+  context: {
+    groups: string[];          // ko'lamdagi guruh nomlari, ordinal tartibda; guruhsiz tyutor → []
+    periodName: string | null; // guruhlar uchun joriy davr nomi; davr yo'q → null
+  };
+}
+```
+
+`periodName`: har guruhning sukut davri (§4 davr tanlash qoidasi: davom etayotgan → oxirgi tugagan → kelgusi);
+guruhlar turli davrlarda bo'lsa, o'sha nomzodlarga yana shu qoida qo'llanadi (davom etayotgani ustun), teng holatda —
+ko'proq guruhning davri, keyin kechroq boshlangani. `today` va `students` hozir doim teng (bugun jadvali ko'lamdagi
+har talabaga bitta qator beradi) — alohida kalitlar sahifa semantikasi o'zgarsa kontrakt buzilmasligi uchun.
 
 #### GET `/api/tutor/today` — `?status=&q=&page=&pageSize=`
 
@@ -3000,3 +3044,12 @@ Foydalanuvchi qarori: talabalar ruxsat (leave) so'ramaydi — funksiya butunlay 
   bo'lsa — avvalgi xabar, N = aktiv son.
 - `GET /api/admin/dashboard` `companiesActive` — o'zgarmadi: bu korxona **holati** (`isActive`) bo'yicha son, talabaga bog'liq emas.
 - Endpoint soni o'zgarmadi, migratsiya yo'q.
+
+### 6.22 v3.15 → v3.16 (26.09.2026): sidebar badge'lari va header konteksti
+
+- **Yangi:** `GET /api/admin/nav` (AdminOnly) va `GET /api/tutor/nav` (TutorOnly) — §2.3, §2.5. Frontend'dagi statik
+  mock badge'lar (`nav.ts`: 11/18/1284/412, 38/7/38/12) va crumb matni ("Admin · 2026-2027", "Tyutor · 412-22, … ")
+  shu javoblar bilan almashtiriladi.
+- Har son tegishli sahifaning sukut (filtrsiz) holatidagi jami bilan **aynan teng** (integration testlar ikkalasini
+  solishtiradi). Admin → `/api/tutor/nav` va tyutor → `/api/admin/nav` — 403; anonim — 401.
+- Mavjud endpoint'lar shakli/semantikasi o'zgarmadi. Endpoint soni 108 → 110 (Admin 68, Tutor 21), migratsiya yo'q.

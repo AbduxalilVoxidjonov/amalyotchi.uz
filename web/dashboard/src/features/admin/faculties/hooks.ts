@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { navKeys } from '@/app/nav-keys';
 import { adminKeys } from '../shared/keys';
 import type { ListParams } from '../shared/types';
 import { facultiesApi } from './api';
@@ -25,6 +26,7 @@ function useInvalidateFaculties() {
   const queryClient = useQueryClient();
   return () => {
     void queryClient.invalidateQueries({ queryKey: adminKeys.facultiesAll() });
+    void queryClient.invalidateQueries({ queryKey: navKeys.all });
     void queryClient.invalidateQueries({ queryKey: adminKeys.dashboard() });
   };
 }

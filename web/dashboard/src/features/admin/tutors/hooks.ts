@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { navKeys } from '@/app/nav-keys';
 import { facultiesApi } from '../faculties/api';
 import { adminKeys } from '../shared/keys';
 import type { ListParams } from '../shared/types';
@@ -40,6 +41,7 @@ function useInvalidateTutors() {
   const queryClient = useQueryClient();
   return (id?: string) => {
     void queryClient.invalidateQueries({ queryKey: adminKeys.tutorsAll() });
+    void queryClient.invalidateQueries({ queryKey: navKeys.all });
     if (id) void queryClient.invalidateQueries({ queryKey: adminKeys.tutor(id) });
     void queryClient.invalidateQueries({ queryKey: adminKeys.dashboard() });
     // Guruhlar jadvalidagi "Tyutor" ustuni ham o'zgaradi.

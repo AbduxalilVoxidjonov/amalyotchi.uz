@@ -4,7 +4,8 @@ import { UserRole } from '@amaliyotchi/shared/auth';
 import { useLogout } from '@/features/auth/hooks';
 import { homePathForRole, useAuth } from '@/shared/auth/useAuth';
 import { Topbar } from '@/shared/ui';
-import { CRUMB, navForRole, ROLE_LABEL, titleForPath, type NavRole } from '../nav';
+import { navForRole, ROLE_LABEL, titleForPath, type NavRole } from '../nav';
+import { navBadges, navCrumb, useNavData } from '../nav-data';
 import styles from './AppShell.module.css';
 import { PageHeaderContext, type PageHeaderOverride } from './page-header-context';
 import { Sidebar } from './Sidebar';
@@ -29,9 +30,14 @@ export function AppShell() {
   const [actionsEl, setActionsEl] = useState<HTMLElement | null>(null);
 
   const role: NavRole = isNavRole(user?.role) ? user.role : UserRole.Tutor;
-  const items = useMemo(() => navForRole(role), [role]);
+  // Badge/crumb — real API; yuklanish yoki xatoda badge yo'q, crumb faqat rol nomi.
+  const nav = useNavData(role);
+  const items = useMemo(
+    () => navForRole(role, nav.data ? navBadges(nav.data) : undefined),
+    [role, nav.data],
+  );
   const title = override.title ?? titleForPath(items, location.pathname);
-  const crumb = override.crumb ?? CRUMB[role];
+  const crumb = override.crumb ?? navCrumb(role, nav.data);
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   useEffect(() => {
