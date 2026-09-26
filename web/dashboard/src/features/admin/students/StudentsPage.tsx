@@ -25,14 +25,14 @@ export function StudentsPage() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
 
-  const { page, params, filters, setFilters, hasFilters, clearFilters } = list;
+  const { page, params, filters, setFilters, hasFilters, clearFilters, setPageSize } = list;
   const rows = query.data?.items;
 
-  // Sahifa, qidiruv yoki filtr o'zgarsa tanlov ma'nosini yo'qotadi — tozalanadi (yashirin qolgan
+  // Sahifa, sahifa hajmi, qidiruv yoki filtr o'zgarsa tanlov ma'nosini yo'qotadi — tozalanadi (yashirin qolgan
   // talabalar ko'rinmasdan korxonaga biriktirilib ketmasligi uchun).
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [page, params.q, params.facultyId, params.directionId, params.course]);
+  }, [page, params.pageSize, params.q, params.facultyId, params.directionId, params.course]);
 
   /** Fakultet o'zgarsa va tanlangan yo'nalish unga tegishli bo'lmasa — yo'nalish tozalanadi. */
   function handleFacultyChange(facultyId: string) {
@@ -83,6 +83,7 @@ export function StudentsPage() {
         onToggleRow={toggleRow}
         onToggleAll={toggleAll}
         onAssignCompany={() => setAssignOpen(true)}
+        onPageSizeChange={setPageSize}
         filters={
           <StudentFiltersBar
             options={filterOptions.data}

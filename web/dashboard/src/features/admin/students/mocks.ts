@@ -14,7 +14,8 @@ import { mockGroups } from '../faculties/groups/mocks';
 import { mockFaculties } from '../faculties/mocks';
 import { problemResponse } from '../shared/mockProblem';
 import { paginateMock } from '../shared/paginate';
-import type { ImportResult } from '../shared/types';
+import { DEFAULT_PAGE_SIZE, type ImportResult } from '../shared/types';
+import { MAX_STUDENT_PAGE_SIZE } from './pageSize';
 import type {
   ActiveCompanyRef,
   StudentApplication,
@@ -341,6 +342,18 @@ export const mockImportResult: ImportResult = {
   ],
 };
 
+/** Backend qoidasi: talabalar ro'yxatida `pageSize` 1..500; oraliqdan tashqarida → sukut (20). */
+function withStudentPageSize(url: string): string {
+  const u = new URL(url);
+  const raw = u.searchParams.get('pageSize');
+  if (raw !== null) {
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 1 || n > MAX_STUDENT_PAGE_SIZE)
+      u.searchParams.set('pageSize', String(DEFAULT_PAGE_SIZE));
+  }
+  return u.toString();
+}
+
 export const studentsHandlers: HttpHandler[] = [
   // Shablon — haqiqiy .xlsx emas, faqat oqimni tekshirish uchun (blob + fayl nomi).
   http.get(
@@ -480,7 +493,7 @@ export const studentsHandlers: HttpHandler[] = [
   http.get(STUDENTS_ENDPOINT, ({ request }) =>
     HttpResponse.json(
       paginateMock(
-        request.url,
+        withStudentPageSize(request.url),
         applyStudentFilters(mockStudents, request.url).map((s) => {
           const override = companyOverrides.get(s.id);
           return override ? { ...s, company: override.company.name } : s;

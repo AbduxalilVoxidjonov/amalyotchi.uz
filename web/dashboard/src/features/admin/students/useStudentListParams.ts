@@ -2,10 +2,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DEFAULT_PAGE_SIZE } from '../shared/types';
 import { useDebouncedValue } from '../shared/useDebouncedValue';
+import { clampPageSize } from './pageSize';
 import type { StudentListParams } from './types';
 
-/** URL kalitlari: `?q=&page=&faculty=&direction=&course=`. */
-const KEY = { q: 'q', page: 'page', faculty: 'faculty', direction: 'direction', course: 'course' };
+/** URL kalitlari: `?q=&page=&size=&faculty=&direction=&course=`. */
+const KEY = {
+  q: 'q',
+  page: 'page',
+  size: 'size',
+  faculty: 'faculty',
+  direction: 'direction',
+  course: 'course',
+};
 
 /** Tanlangan filtrlar (`''` — barchasi). */
 export interface StudentFilterValues {
@@ -21,6 +29,11 @@ const FILTER_KEYS: Record<keyof StudentFilterValues, string> = {
   course: KEY.course,
 };
 
+/** `?size=` → 1..500 (noto'g'ri/yo'q bo'lsa — sukut). */
+function parsePageSize(raw: string | null, fallback: number): number {
+  return raw === null ? fallback : (clampPageSize(raw) ?? fallback);
+}
+
 function parseCourse(raw: string | null): string {
   const n = Number(raw);
   return Number.isInteger(n) && n > 0 ? String(n) : '';
@@ -28,13 +41,14 @@ function parseCourse(raw: string | null): string {
 
 /**
  * Talabalar ro'yxati holati URL'da (`useListParams` o'rniga): sahifa yangilansa yoki profildan
- * orqaga qaytilsa qidiruv, sahifa va filtrlar saqlanadi. Yozuvlar `replace` bilan — tarix
+ * orqaga qaytilsa qidiruv, sahifa, sahifa hajmi (`size`, sukut bo'lsa URL'da yo'q) va filtrlar saqlanadi. Yozuvlar `replace` bilan — tarix
  * har bir harf/filtr bilan to'lmaydi. Qidiruv (300ms debounce) yoki filtr o'zgarsa — 1-sahifa.
  * Qaytaradigan shakli `useListParams()` bilan mos (`tableState()` ga beriladi).
  */
-export function useStudentListParams(pageSize = DEFAULT_PAGE_SIZE) {
+export function useStudentListParams(defaultPageSize = DEFAULT_PAGE_SIZE) {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlQ = searchParams.get(KEY.q) ?? '';
+  const pageSize = parsePageSize(searchParams.get(KEY.size), defaultPageSize);
   const page = Math.max(1, Math.floor(Number(searchParams.get(KEY.page))) || 1);
   const filters = useMemo<StudentFilterValues>(
     () => ({
@@ -88,6 +102,15 @@ export function useStudentListParams(pageSize = DEFAULT_PAGE_SIZE) {
     [update],
   );
 
+  /** Sahifa hajmi (1..500 ga qisiladi) — sukut bo'lsa URL'dan o'chiriladi; sahifa 1 ga qaytadi. */
+  const setPageSize = useCallback(
+    (next: number) => {
+      const size = clampPageSize(String(next)) ?? defaultPageSize;
+      update({ [KEY.size]: size === defaultPageSize ? null : String(size) });
+    },
+    [update, defaultPageSize],
+  );
+
   /** Filtrlarni o'zgartirish (qisman) — sahifa 1 ga qaytadi. */
   const setFilters = useCallback(
     (patch: Partial<StudentFilterValues>) => {
@@ -125,6 +148,8 @@ export function useStudentListParams(pageSize = DEFAULT_PAGE_SIZE) {
     setSearch,
     page,
     setPage,
+    pageSize,
+    setPageSize,
     params,
     filters,
     setFilters,

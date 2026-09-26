@@ -34,6 +34,9 @@ export interface AdminTableProps<T> extends TableStateProps<T> {
   emptyTitle: string;
   emptyDescription?: ReactNode;
   minWidth?: string;
+  /** Footer'da pager tugmalaridan oldingi qo'shimcha boshqaruv (masalan sahifa hajmi). Ixtiyoriy —
+   * berilmasa footer o'zgarmaydi. */
+  footerControls?: ReactNode;
 }
 
 /**
@@ -54,6 +57,7 @@ export function AdminTable<T>({
   emptyTitle,
   emptyDescription,
   minWidth,
+  footerControls,
   data,
   isLoading,
   error,
@@ -118,6 +122,7 @@ export function AdminTable<T>({
             {from}–{to} / {total}
           </span>
           <span className={styles.pager}>
+            {footerControls}
             <Button size="xs" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
               Oldingi
             </Button>

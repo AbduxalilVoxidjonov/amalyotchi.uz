@@ -30,12 +30,16 @@ public sealed record StudentRow(
     bool TelegramLinked,
     AdminStudentStatus Status);
 
-/// <summary><c>GET /api/admin/students?q&amp;page&amp;pageSize&amp;facultyId&amp;directionId&amp;course</c> — <c>q</c>: FISH,
+/// <summary><c>GET /api/admin/students?q&amp;page&amp;pageSize&amp;facultyId&amp;directionId&amp;course</c> (<c>pageSize</c> ≤ 500,
+/// boshqa ro'yxatlarda ≤ 100) — <c>q</c>: FISH,
 /// HEMIS ID, telefon, guruh. Filtrlar ixtiyoriy va birga (AND) qo'llanadi; <c>total</c> filtrlangan natija bo'yicha.
 /// <see cref="DirectionId"/> <see cref="FacultyId"/> ga tegishli bo'lmasa — shunchaki bo'sh natija. Variantlar —
 /// <c>GET /api/admin/students/filters</c> (<see cref="GetAdminStudentFiltersQuery"/>).</summary>
 public sealed record GetAdminStudentsQuery : PagedQuery, IRequest<Paged<StudentRow>>
 {
+    /// <summary>Admin talabalar jadvalida foydalanuvchi sahifa hajmini o'zi tanlaydi — 500 gacha.</summary>
+    public override int MaxPageSizeLimit => ExtendedMaxPageSize;
+
     /// <summary>Guruh yo'nalishi kafedrasining fakulteti.</summary>
     public Guid? FacultyId { get; init; }
 

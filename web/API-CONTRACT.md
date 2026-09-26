@@ -1,4 +1,4 @@
-# API-CONTRACT v3.20
+# API-CONTRACT v3.21
 
 Oxirgi yangilanish: 26.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
@@ -22,7 +22,8 @@ v3.16 (sidebar badge'lari va header konteksti — `GET /api/admin/nav`, `GET /ap
 v3.17 (talaba profilida barcha davrlar — `GET /api/student/profile` `practices[]`) — §6.23,
 v3.18 (`GET /api/student/place` — `periodId`, `periodName`, `isPast`) — §6.24,
 v3.19 (kundalik faqat davom etayotgan davrda — `TodayDto.canWriteDiary`, `diaryBlockedReason`) — §6.25,
-v3.20 (admin talabalar ro'yxati filtrlari — `facultyId`/`directionId`/`course`, `GET /api/admin/students/filters`) — §6.26.
+v3.20 (admin talabalar ro'yxati filtrlari — `facultyId`/`directionId`/`course`, `GET /api/admin/students/filters`) — §6.26,
+v3.21 (admin talabalar ro'yxatida `pageSize` 500 gacha) — §6.27.
 
 Jami **111 ta endpoint**: Auth 7 · Admin 69 · Reports 1 · Tutor 21 · Student (TWA) 11 · Files 1 · Companies 1.
 
@@ -108,8 +109,8 @@ Kirishda `occurredAt` uchun `"Z"` ham, offset ham qabul qilinadi. "Bugun", "ish 
 ### 1.6 Sahifalash (`Paged<T>`, `PagedQuery`)
 
 ```ts
-// So'rov: ?q=<matn>&page=<1..>&pageSize=<1..100>
-// q bo'sh/whitespace → e'tiborsiz (null). page < 1 → 1. pageSize 1..100 dan tashqari → 20 (xato EMAS).
+// So'rov: ?q=<matn>&page=<1..>&pageSize=<1..100>  (GET /api/admin/students — <1..500>, v3.21)
+// q bo'sh/whitespace → e'tiborsiz (null). page < 1 → 1. pageSize 1..max dan tashqari → 20 (xato EMAS).
 // q > 100 belgi → 400 (errors.Q). Admin ro'yxatlarida validator bor; tutor/today'da validator YO'Q (faqat normalizatsiya).
 interface Paged<T> {
   items: T[];
@@ -736,6 +737,8 @@ boshqa → band; boshqa tyutorning tuguni ostidagi yoki ustidagi tugunni tanlash
 egasidan ajratish kerak.
 
 #### GET `/api/admin/students` — `q`: FISH, HEMIS ID, telefon, guruh; `&facultyId=&directionId=&course=` — v3.20
+
+`pageSize` — **1..500** (v3.21; boshqa ro'yxatlarda 1..100); oraliqdan tashqarida → 20 (§1.6, xato emas).
 
 Filtrlar (hammasi ixtiyoriy, `q` va bir-biri bilan **AND**; `total` — filtrlangan natija bo'yicha):
 
@@ -3155,3 +3158,11 @@ Foydalanuvchi qarori: talabalar ruxsat (leave) so'ramaydi — funksiya butunlay 
   filtr variantlari fakultet → kafedra → yo'nalish → guruh ma'lumotlaridan dinamik. Tyutor → 403, anonim → 401.
 - `GET /api/admin/nav` `counts.students` — o'zgarmadi, filtrsiz jami.
 - Endpoint soni **110 → 111** (Admin 68 → 69; `[Http*]` atributlari 112 → 113), migratsiya yo'q.
+
+### 6.27 v3.20 → v3.21 (26.09.2026): talabalar ro'yxatida katta sahifa hajmi
+
+- `GET /api/admin/students` — `pageSize` chegarasi **100 → 500** (§1.6, §2.3). Oraliqdan tashqari qiymat avvalgidek
+  xato emas — sukut `20` ga tushiriladi (`pageSize` javobda aks etadi). Boshqa ro'yxatlar 1..100 da qoldi.
+- Backend: `PagedQuery.MaxPageSizeLimit` (virtual, sukut 100) — `GetAdminStudentsQuery` 500 ga override qiladi.
+- Dashboard: talabalar jadvali footer'ida "Sahifada: [n] ta" (URL `?size=`, sukut 20 URL'da ko'rinmaydi).
+- Yangi maydon/endpoint yo'q, migratsiya yo'q.

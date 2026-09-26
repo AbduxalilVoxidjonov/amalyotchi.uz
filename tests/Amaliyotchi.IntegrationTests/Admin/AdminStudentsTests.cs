@@ -97,4 +97,35 @@ public sealed class AdminStudentsTests(ApiFixture fixture)
 
         (await client.GetAsync("/api/admin/students")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    [Fact]
+    public async Task Talabalar_PageSize_500gacha_Ruxsat_Oshsa_Sukut20()
+    {
+        var group = await Factory.CreateGroupAsync();
+        for (var i = 0; i < 3; i++)
+            await Factory.CreateStudentAsync(group: group);
+
+        var client = await Factory.LoginAsAdminAsync();
+
+        // 100 dan katta hajm talabalar ro'yxatida qabul qilinadi va javobda aks etadi.
+        var filtered = await client.GetPagedAsync<StudentRow>($"/api/admin/students?q={group.GroupName}&pageSize=250");
+        filtered.PageSize.Should().Be(250);
+        filtered.Items.Should().HaveCount(3);
+
+        var all = await client.GetPagedAsync<StudentRow>("/api/admin/students?pageSize=250");
+        all.PageSize.Should().Be(250);
+        all.Items.Should().HaveCount(Math.Min(all.Total, 250));
+
+        var max = await client.GetPagedAsync<StudentRow>("/api/admin/students?pageSize=500");
+        max.PageSize.Should().Be(500);
+
+        // Chegaradan oshsa — mavjud qoida: xato emas, sukut (20) ga tushiriladi.
+        var over = await client.GetAsync("/api/admin/students?pageSize=501");
+        over.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await client.GetPagedAsync<StudentRow>("/api/admin/students?pageSize=501")).PageSize.Should().Be(20);
+
+        // Boshqa ro'yxatlar 100 chegarasida qoladi.
+        using var companies = JsonDocument.Parse(await (await client.GetAsync("/api/admin/companies?pageSize=250")).Content.ReadAsStringAsync());
+        companies.RootElement.GetProperty("pageSize").GetInt32().Should().Be(20);
+    }
 }

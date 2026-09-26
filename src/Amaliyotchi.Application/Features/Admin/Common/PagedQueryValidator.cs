@@ -21,7 +21,7 @@ public abstract class PagedQueryValidator<T> : AbstractValidator<T>
             .GreaterThanOrEqualTo(1).WithMessage("Sahifa raqami 1 dan kichik bo'lishi mumkin emas.");
 
         RuleFor(x => x.PageSize)
-            .InclusiveBetween(1, PagedQuery.MaxPageSize)
-            .WithMessage($"Sahifa hajmi 1–{PagedQuery.MaxPageSize} oralig'ida bo'lishi kerak.");
+            .Must((query, size) => size >= 1 && size <= query.MaxPageSizeLimit)
+            .WithMessage(query => $"Sahifa hajmi 1–{query.MaxPageSizeLimit} oralig'ida bo'lishi kerak.");
     }
 }

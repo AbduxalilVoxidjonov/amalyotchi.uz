@@ -3,6 +3,7 @@ import { Badge, Button, Checkbox, ProgressBar, type DataTableColumn } from '@/sh
 import { AdminTable, type TableStateProps } from '../../components/AdminTable';
 import { RowLink } from '../../components/RowLink';
 import { STUDENT_STATUS_LABEL, type Student } from '../types';
+import { PageSizeInput } from './PageSizeInput';
 import styles from './StudentsTable.module.css';
 
 /** Belgilash katagi: matnli label yo'q (jadval ustuni), nom `aria-label` orqali beriladi. */
@@ -95,6 +96,8 @@ export interface StudentsTableProps extends TableStateProps<Student> {
   onAssignCompany: () => void;
   /** Qidiruv yonidagi filtr paneli. */
   filters?: ReactNode;
+  /** Berilsa — footer'da "Sahifada: [n] ta" boshqaruvi (1..500). */
+  onPageSizeChange?: (size: number) => void;
   /** Bo'sh natija izohi (masalan filtr bo'yicha topilmadi + "Filtrlarni tozalash"). */
   emptyDescription?: ReactNode;
 }
@@ -109,6 +112,7 @@ export function StudentsTable({
   onToggleAll,
   onAssignCompany,
   filters,
+  onPageSizeChange,
   emptyDescription,
   ...state
 }: StudentsTableProps) {
@@ -174,6 +178,11 @@ export function StudentsTable({
       {...(emptyDescription ? { emptyDescription } : {})}
       filters={filters}
       rowHref={studentHref}
+      footerControls={
+        onPageSizeChange ? (
+          <PageSizeInput value={pageSize} onChange={onPageSizeChange} />
+        ) : undefined
+      }
       actions={
         <>
           {selectedCount > 0 && (
