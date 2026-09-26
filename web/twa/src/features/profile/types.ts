@@ -2,7 +2,9 @@ import type { StudentPeriodStatus } from '@/features/period/types';
 
 /**
  * GET /api/student/profile — talaba profili (shaxsiy + o'quv ma'lumotlari, amaliyot xulosasi, hisob).
- * `practice === null` — talabaga amaliyot davri biriktirilmagan.
+ * `practices` — talabaning BARCHA amaliyot davrlari (davom etayotgan ochiq davr birinchi, keyin `startDate`
+ * kamayish tartibida); davr yo'q → `[]`. `practice` — sukut davr (eski maydon, orqaga moslik uchun qoladi;
+ * `null` — davr biriktirilmagan).
  */
 export interface StudentProfileDto {
   id: string;
@@ -19,6 +21,8 @@ export interface StudentProfileDto {
   hasPassword: boolean;
   mustChangePassword: boolean;
   practice: StudentProfilePracticeDto | null;
+  /** Yangi maydon; eski server yubormasligi mumkin → `profilePractices()` `practice` ga qaytadi. */
+  practices?: StudentProfilePracticeDto[];
 }
 
 export interface StudentProfilePracticeDto {

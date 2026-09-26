@@ -1,0 +1,72 @@
+/* Profildagi amaliyot davri kartasi (ixcham). Faol davr — aksent chegara va yumshoq fon. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: var(--border-inner);
+  border-radius: var(--radius-md2);
+}
+.card[data-active] {
+  border: 1.5px solid var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.name {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-semibold);
+  overflow-wrap: anywhere;
+}
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.sub {
+  font-size: var(--fs-sm);
+  color: var(--color-text-dim);
+}
+.mono {
+  font-family: var(--font-mono);
+}
+.company {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 6px;
+  border-top: var(--border-inner);
+}
+.companyName {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+}
+.progress {
+  margin-top: 4px;
+}
+.facts {
+  margin-top: 2px;
+}
+.gradeLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.warn {
+  font-size: var(--fs-sm);
+  color: var(--color-late-fg);
+}
+.note {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--color-text-faint);
+}

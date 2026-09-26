@@ -1,4 +1,4 @@
-# API-CONTRACT v3.16
+# API-CONTRACT v3.17
 
 Oxirgi yangilanish: 26.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
@@ -18,7 +18,8 @@ v3.12 (admin davr yaratish/tahrirlashda ish kunlari va kunlik ish vaqti) — §6
 v3.13 (talabani bitta-bitta korxonaga biriktirish/o'tkazish, `ApplicationStatus.transferred`) — §6.19,
 v3.14 ("aktiv korxona" qoidasi: ro'yxatlarda `company` faqat aktiv korxona, profilda yangi `activeCompany`) — §6.20,
 v3.15 (korxona sahifalari — faqat hozir aktiv amaliyot o'tayotgan talabalar; o'chirish xabari) — §6.21,
-v3.16 (sidebar badge'lari va header konteksti — `GET /api/admin/nav`, `GET /api/tutor/nav`) — §6.22.
+v3.16 (sidebar badge'lari va header konteksti — `GET /api/admin/nav`, `GET /api/tutor/nav`) — §6.22,
+v3.17 (talaba profilida barcha davrlar — `GET /api/student/profile` `practices[]`) — §6.23.
 
 Jami **110 ta endpoint**: Auth 7 · Admin 68 · Reports 1 · Tutor 21 · Student (TWA) 11 · Files 1 · Companies 1.
 
@@ -2370,8 +2371,16 @@ interface StudentProfileDto {
     grade: number | null; // 2–5; davomat yetarli emas yoki davr boshlanmagan → null
     finalized: boolean; // tyutor bahoni yakunlagan
   } | null; // sukut bo'yicha davr (davom etayotgan → oxirgi tugagan → eng yaqin kelgusi) yo'q → null
+  practices: StudentProfilePracticeDto[]; // v3.17 — BARCHA davrlar, element shakli `practice` bilan bir xil
 }
 ```
+
+`practices` (v3.17) — talabaning barcha davrlari: to'plam `GET /api/student/period-days` dagi `periods` bilan **aynan bir xil**
+(bir manba — guruhiga biriktirilgan davrlar ∪ talabaning yozuvlari bor davrlar, o'chirilganlar chiqmaydi). Har element
+**o'z davri** bo'yicha (`GET /api/tutor/students/{id}?periodId=` bilan bir xil hisob): `company` — shu davrdagi
+`approved`/`completed` ariza korxonasi (`transferred` hisobga olinmaydi; yo'q → null), `status` — `PracticePeriod.ResolveStatus`.
+Tartib: davom etayotgan ochiq davr(lar) birinchi, keyin `startDate` kamayish (teng bo'lsa `name`). Davr yo'q → `[]`.
+`practice` o'zgarmadi (sukut davri; `practices` dagi o'z elementiga teng).
 
 
 ## 3. Enum'lar (JSON — camelCase string)
@@ -3053,3 +3062,12 @@ Foydalanuvchi qarori: talabalar ruxsat (leave) so'ramaydi — funksiya butunlay 
 - Har son tegishli sahifaning sukut (filtrsiz) holatidagi jami bilan **aynan teng** (integration testlar ikkalasini
   solishtiradi). Admin → `/api/tutor/nav` va tyutor → `/api/admin/nav` — 403; anonim — 401.
 - Mavjud endpoint'lar shakli/semantikasi o'zgarmadi. Endpoint soni 108 → 110 (Admin 68, Tutor 21), migratsiya yo'q.
+
+### 6.23 v3.16 → v3.17 (26.09.2026): talaba profilida barcha davrlar
+
+- **Yangi maydon:** `GET /api/student/profile` → `practices: StudentProfilePracticeDto[]` (§2.6) — element shakli `practice`
+  bilan bir xil. To'plam `GET /api/student/period-days` `periods` bilan bir xil id'lar; har element o'z davri bo'yicha
+  (korxona, davomat, ball, yakunlanganlik). Davr yo'q → `[]`.
+- **Tartib farqi:** `practices` — davom etayotgan ochiq davr birinchi, keyin `startDate` kamayish. `period-days` `periods`
+  esa faqat `startDate` kamayish (ongoing birinchi emas) — kelgusi davr ongoing'dan oldin turishi mumkin.
+- `practice` (sukut davri) **o'zgarmadi** — eski klientlar buzilmaydi. Endpoint soni o'zgarmadi, migratsiya yo'q.

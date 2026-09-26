@@ -1,4 +1,5 @@
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Application.Features.Tutor.Students;
 using Amaliyotchi.Domain.Exceptions;
@@ -31,7 +32,10 @@ public sealed record StudentProfilePracticeDto(
     bool Finalized);
 
 /// <summary><c>GET /api/student/profile</c> javobi — talabaning shaxsiy kabineti (brauzer va TWA).
-/// <c>practice</c> — sukut bo'yicha davr (davom etayotgan → oxirgi tugagan → eng yaqin kelgusi); davr yo'q → null.</summary>
+/// <c>practice</c> — sukut bo'yicha davr (davom etayotgan → oxirgi tugagan → eng yaqin kelgusi); davr yo'q → null.
+/// <c>practices</c> — talabaning BARCHA davrlari (<c>GET /api/student/period-days</c> dagi <c>periods</c> bilan bir xil to'plam),
+/// har biri o'z davri bo'yicha; tartib: davom etayotgan ochiq davr(lar) birinchi, keyin <c>startDate</c> kamayish tartibida.
+/// Davr yo'q → bo'sh ro'yxat.</summary>
 public sealed record StudentProfileDto(
     Guid Id,
     string FullName,
@@ -46,7 +50,8 @@ public sealed record StudentProfileDto(
     bool TelegramLinked,
     bool HasPassword,
     bool MustChangePassword,
-    StudentProfilePracticeDto? Practice);
+    StudentProfilePracticeDto? Practice,
+    IReadOnlyList<StudentProfilePracticeDto> Practices);
 
 public sealed record GetStudentProfileQuery : IRequest<StudentProfileDto>;
 
@@ -83,6 +88,40 @@ internal sealed class GetStudentProfileQueryHandler(IApplicationDbContext db, IC
                            select new StudentProfileTutorDto(u.FullName, u.PhoneNumber))
             .FirstOrDefaultAsync(cancellationToken);
 
+        var today = clock.LocalToday();
+        var options = detail.Periods;
+
+        // Yakunlangan baholar — barcha davrlar uchun bitta so'rov.
+        var periodIds = options.Select(o => o.Id).ToList();
+        var finalizedIds = periodIds.Count == 0
+            ? new HashSet<Guid>()
+            : (await db.PracticeGrades.AsNoTracking()
+                .Where(g => g.StudentUserId == userId && periodIds.Contains(g.PeriodId) && g.FinalizedAt != null)
+                .Select(g => g.PeriodId)
+                .ToListAsync(cancellationToken))
+            .ToHashSet();
+
+        // Har davr ko'rsatkichlari tyutor/admin profili bilan AYNAN bir manbadan (GetTutorStudentDetailQuery, periodId bilan).
+        // Sukut davri uchun yuqoridagi `detail` qayta ishlatiladi; qolgan har davr uchun bitta qo'shimcha chaqiruv
+        // (cheklangan sondagi so'rovlar). Talaba davrlari soni amalda 1–3 ta — so'rovlar soni davrlar soniga chiziqli, lekin kichik.
+        var details = new Dictionary<Guid, TutorStudentDetail>();
+        if (detail.Period is { } defaultPeriod)
+            details[defaultPeriod.Id] = detail;
+        foreach (var option in options)
+        {
+            if (!details.ContainsKey(option.Id))
+                details[option.Id] = await sender.Send(new GetTutorStudentDetailQuery(userId, option.Id), cancellationToken);
+        }
+
+        var practices = options
+            .OrderByDescending(o => IsOngoing(o, today))
+            .ThenByDescending(o => o.StartDate)
+            .ThenBy(o => o.Name, StringComparer.Ordinal)
+            .Select(o => ToPractice(details[o.Id], o.Status, finalizedIds.Contains(o.Id)))
+            .OfType<StudentProfilePracticeDto>()
+            .ToList();
+
+        // `practice` — sukut davri (o'zgarmagan qoida); holati PracticePeriod.ResolveStatus bilan.
         StudentProfilePracticeDto? practice = null;
         if (detail.Period is { } period)
         {
@@ -90,22 +129,7 @@ internal sealed class GetStudentProfileQueryHandler(IApplicationDbContext db, IC
                 .Where(p => p.Id == period.Id)
                 .Select(p => p.Status)
                 .FirstAsync(cancellationToken);
-
-            var finalized = await db.PracticeGrades.AsNoTracking()
-                .AnyAsync(g => g.StudentUserId == userId && g.PeriodId == period.Id && g.FinalizedAt != null, cancellationToken);
-
-            practice = new StudentProfilePracticeDto(
-                new StudentProfilePeriodDto(
-                    period.Id, period.Name,
-                    PracticePeriod.ResolveStatus(status, period.StartDate, clock.LocalToday()),
-                    period.StartDate, period.EndDate),
-                detail.Company is { } company ? new StudentProfileCompanyDto(company.Id, company.Name, company.Address) : null,
-                detail.Attendance.TotalDays + detail.Attendance.ExcusedDays,
-                detail.Attendance.AttendancePct,
-                detail.Attendance.SuspiciousDays,
-                detail.Grade?.Total ?? 0,
-                detail.Grade?.Grade,
-                finalized);
+            practice = ToPractice(detail, PracticePeriod.ResolveStatus(status, period.StartDate, today), finalizedIds.Contains(period.Id));
         }
 
         return new StudentProfileDto(
@@ -122,6 +146,25 @@ internal sealed class GetStudentProfileQueryHandler(IApplicationDbContext db, IC
             org.TelegramLinked,
             detail.HasPassword,
             org.MustChangePassword,
-            practice);
+            practice,
+            practices);
     }
+
+    /// <summary>Davom etayotgan ochiq davr: yopilmagan, boshlangan va tugash sanasi o'tmagan.</summary>
+    private static bool IsOngoing(StudentPeriodOption option, DateOnly today)
+        => option.Status == PracticePeriodStatus.Active && option.StartDate <= today && today <= option.EndDate;
+
+    /// <summary>Bitta davr bo'yicha tyutor profili bloklaridan talaba kabineti elementini yig'adi.</summary>
+    private static StudentProfilePracticeDto? ToPractice(TutorStudentDetail d, PracticePeriodStatus status, bool finalized)
+        => d.Period is not { } period
+            ? null
+            : new StudentProfilePracticeDto(
+                new StudentProfilePeriodDto(period.Id, period.Name, status, period.StartDate, period.EndDate),
+                d.Company is { } company ? new StudentProfileCompanyDto(company.Id, company.Name, company.Address) : null,
+                d.Attendance.TotalDays + d.Attendance.ExcusedDays,
+                d.Attendance.AttendancePct,
+                d.Attendance.SuspiciousDays,
+                d.Grade?.Total ?? 0,
+                d.Grade?.Grade,
+                finalized);
 }

@@ -3,9 +3,54 @@ import { STUDENT_ENDPOINTS } from '@/shared/api/endpoints';
 import { accountFromRequest, mockStudent, mockStudentNew, type MockAccount } from '@/mocks/data';
 import { problem, requireBearer } from '@/mocks/problem';
 import { MOCK_AUTUMN_PERIOD } from '@/features/period/mocks';
-import type { StudentProfileDto } from './types';
+import { MOCK_PD_SUMMER_PERIOD } from '@/features/period-days/mocks';
+import type { StudentProfileDto, StudentProfilePracticeDto } from './types';
 
-/** Aliyev Akmal — faol davr, korxona, tyutor bor (Telegram bog'langan). */
+/** Kuzgi (faol, sukut) davr — bosh ekran davr tanlagichidagi "Kuzgi amaliyot 2026" bilan bir xil id/nom. */
+export const mockAutumnPractice: StudentProfilePracticeDto = {
+  period: {
+    id: MOCK_AUTUMN_PERIOD.id,
+    name: MOCK_AUTUMN_PERIOD.name,
+    status: 'active',
+    startDate: MOCK_AUTUMN_PERIOD.startDate,
+    endDate: MOCK_AUTUMN_PERIOD.endDate,
+  },
+  company: {
+    id: 'dddddddd-0000-4000-8000-000000000001',
+    name: 'Tech Solutions MChJ',
+    address: "Toshkent sh., Mirzo Ulug'bek tumani, Buyuk Ipak Yo'li 24",
+  },
+  elapsedWorkDays: 17,
+  attendancePct: 88.2,
+  suspiciousDays: 1,
+  total: 62.5,
+  grade: 4,
+  finalized: false,
+};
+
+/** Yozgi (yopilgan, yakuniy baholangan) davr — bosh ekrandagi "Yozgi amaliyot 2026" bilan bir xil id/nom. */
+export const mockSummerPractice: StudentProfilePracticeDto = {
+  period: {
+    id: MOCK_PD_SUMMER_PERIOD.id,
+    name: MOCK_PD_SUMMER_PERIOD.name,
+    status: 'closed',
+    startDate: MOCK_PD_SUMMER_PERIOD.startDate,
+    endDate: MOCK_PD_SUMMER_PERIOD.endDate,
+  },
+  company: {
+    id: 'dddddddd-0000-4000-8000-000000000002',
+    name: 'Digital Soft MChJ',
+    address: "Toshkent sh., Yunusobod tumani, Amir Temur ko'chasi 108",
+  },
+  elapsedWorkDays: 36,
+  attendancePct: 94.4,
+  suspiciousDays: 0,
+  total: 91,
+  grade: 5,
+  finalized: true,
+};
+
+/** Aliyev Akmal — ikki davr (kuzgi faol + yozgi yakunlangan), korxona, tyutor bor (Telegram bog'langan). */
 export const mockProfile: StudentProfileDto = {
   id: mockStudent.id,
   fullName: mockStudent.fullName,
@@ -20,26 +65,14 @@ export const mockProfile: StudentProfileDto = {
   telegramLinked: true,
   hasPassword: true,
   mustChangePassword: false,
-  practice: {
-    period: {
-      id: MOCK_AUTUMN_PERIOD.id,
-      name: MOCK_AUTUMN_PERIOD.name,
-      status: 'active',
-      startDate: MOCK_AUTUMN_PERIOD.startDate,
-      endDate: MOCK_AUTUMN_PERIOD.endDate,
-    },
-    company: {
-      id: 'dddddddd-0000-4000-8000-000000000001',
-      name: 'Tech Solutions MChJ',
-      address: "Toshkent sh., Mirzo Ulug'bek tumani, Buyuk Ipak Yo'li 24",
-    },
-    elapsedWorkDays: 17,
-    attendancePct: 88.2,
-    suspiciousDays: 1,
-    total: 62.5,
-    grade: 4,
-    finalized: false,
-  },
+  practice: mockAutumnPractice,
+  practices: [mockAutumnPractice, mockSummerPractice],
+};
+
+/** Bitta davrli variant (faqat kuzgi). */
+export const mockProfileSinglePractice: StudentProfileDto = {
+  ...mockProfile,
+  practices: [mockAutumnPractice],
 };
 
 /** Karimova Dilnoza — davr va tyutor biriktirilmagan, Telegram bog'lanmagan. */
@@ -58,6 +91,7 @@ export const mockProfileNoPractice: StudentProfileDto = {
   hasPassword: true,
   mustChangePassword: true,
   practice: null,
+  practices: [],
 };
 
 function profileFor(account: MockAccount | undefined): StudentProfileDto | null {

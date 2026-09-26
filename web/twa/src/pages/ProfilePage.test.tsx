@@ -1,6 +1,12 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
-import { mockProfile, mockProfileNoPractice } from '@/features/profile/mocks';
+import {
+  mockAutumnPractice,
+  mockProfile,
+  mockProfileNoPractice,
+  mockProfileSinglePractice,
+  mockSummerPractice,
+} from '@/features/profile/mocks';
 import { server } from '@/mocks/server';
 import { useSessionFlags } from '@/shared/auth/session';
 import { useAuthStore } from '@/shared/auth/store';
@@ -8,6 +14,15 @@ import { renderApp } from '@/test/render-app';
 
 function profileSection(name: string) {
   return screen.getByRole('region', { name });
+}
+
+/** "Amaliyot xulosasi" bo'limidagi davr kartalari (ekrandagi tartibda). */
+function periodCards() {
+  return within(profileSection('Amaliyot xulosasi')).getAllByRole('article');
+}
+
+function mockProfileResponse(body: Record<string, unknown>) {
+  server.use(http.get('/api/student/profile', () => HttpResponse.json(body)));
 }
 
 describe('ProfilePage (/profil)', () => {
@@ -29,49 +44,128 @@ describe('ProfilePage (/profil)', () => {
       'tel:+998901234567',
     );
 
-    const practice = profileSection('Amaliyot xulosasi');
-    expect(practice).toHaveTextContent('Kuzgi amaliyot 2026');
-    expect(practice).toHaveTextContent('Faol');
-    expect(practice).toHaveTextContent('01.10–15.11.2026');
-    expect(practice).toHaveTextContent('Tech Solutions MChJ');
-    expect(practice).toHaveTextContent("Buyuk Ipak Yo'li 24");
-    expect(within(practice).getByRole('progressbar', { name: 'Davomat' })).toHaveAttribute(
+    const cards = periodCards();
+    expect(cards).toHaveLength(2);
+    const autumn = within(profileSection('Amaliyot xulosasi')).getByRole('article', {
+      name: 'Kuzgi amaliyot 2026',
+    });
+    expect(autumn).toHaveAttribute('data-active', 'true');
+    expect(autumn).toHaveTextContent('Faol');
+    expect(autumn).toHaveTextContent('01.10–15.11.2026');
+    expect(autumn).toHaveTextContent('Tech Solutions MChJ');
+    expect(autumn).toHaveTextContent("Buyuk Ipak Yo'li 24");
+    expect(within(autumn).getByRole('progressbar', { name: 'Davomat' })).toHaveAttribute(
       'aria-valuenow',
       '88',
     );
-    expect(practice).toHaveTextContent("O'tgan ish kunlari17");
-    expect(practice).toHaveTextContent('Shubhali kunlar1');
-    expect(practice).toHaveTextContent('Joriy ball62,5');
-    expect(practice).toHaveTextContent('Baho: 4 (joriy)');
-    expect(within(practice).getByText('Joriy hisob')).toBeInTheDocument();
+    expect(autumn).toHaveTextContent('Davomat88%');
+    expect(autumn).toHaveTextContent('Ish kunlari17');
+    expect(autumn).toHaveTextContent('Joriy ball62,5');
+    expect(autumn).toHaveTextContent('Baho: 4 (joriy)');
+    expect(autumn).toHaveTextContent('Shubhali kunlar: 1');
+    expect(within(autumn).getByText('Joriy hisob')).toBeInTheDocument();
 
     const account = profileSection('Hisob');
     expect(account).toHaveTextContent("Bog'langan");
     expect(account).not.toHaveTextContent('Bot tayyor bo');
   });
 
-  it('yakunlangan davr → "Joriy hisob" belgisi yo\'q, "Yakuniy ball"', async () => {
-    server.use(
-      http.get('/api/student/profile', () =>
-        HttpResponse.json({
-          ...mockProfile,
-          practice: {
-            ...mockProfile.practice!,
-            period: { ...mockProfile.practice!.period, status: 'closed' },
-            finalized: true,
-            grade: 5,
-            total: 91,
-          },
-        }),
-      ),
-    );
+  it('ikki davr: faol birinchi (ajralgan), yopilgan — yakuniy ball/baho, "Joriy hisob" yo\'q', async () => {
     renderApp('/profil');
     await screen.findByRole('heading', { name: 'Aliyev Akmal' });
-    const practice = profileSection('Amaliyot xulosasi');
-    expect(practice).toHaveTextContent('Yakunlangan');
-    expect(practice).toHaveTextContent('Yakuniy ball91,0');
-    expect(practice).toHaveTextContent('Baho: 5');
-    expect(within(practice).queryByText('Joriy hisob')).not.toBeInTheDocument();
+    expect(profileSection('Amaliyot xulosasi')).toHaveTextContent('2 ta davr');
+
+    const [first, second] = periodCards() as [HTMLElement, HTMLElement];
+    expect(first).toHaveAccessibleName('Kuzgi amaliyot 2026');
+    expect(second).toHaveAccessibleName('Yozgi amaliyot 2026');
+    expect(second).not.toHaveAttribute('data-active');
+
+    expect(second).toHaveTextContent('Yakunlangan');
+    expect(second).toHaveTextContent('01.06–11.07.2026');
+    expect(second).toHaveTextContent('Digital Soft MChJ');
+    expect(second).toHaveTextContent('Davomat94%');
+    expect(second).toHaveTextContent('Yakuniy ball91,0');
+    expect(second).toHaveTextContent('Baho: 5');
+    expect(second).not.toHaveTextContent('(joriy)');
+    expect(within(second).queryByText('Joriy hisob')).not.toBeInTheDocument();
+    expect(within(second).queryByRole('progressbar')).not.toBeInTheDocument();
+  });
+
+  it("server tartibidan qat'i nazar: faol davr birinchi, keyin startDate kamayish tartibida", async () => {
+    const spring = {
+      ...mockSummerPractice,
+      period: {
+        id: 'cccccccc-0000-4000-8000-000000000002',
+        name: 'Bahorgi amaliyot 2027',
+        status: 'planned' as const,
+        startDate: '2027-02-01',
+        endDate: '2027-03-15',
+      },
+      company: null,
+      elapsedWorkDays: 0,
+      attendancePct: 0,
+      total: 0,
+      grade: null,
+      finalized: false,
+    };
+    mockProfileResponse({
+      ...mockProfile,
+      practices: [mockSummerPractice, spring, mockAutumnPractice],
+    });
+    renderApp('/profil');
+    await screen.findByRole('heading', { name: 'Aliyev Akmal' });
+
+    const names = periodCards().map((c) => within(c).getByRole('heading').textContent);
+    expect(names).toEqual(['Kuzgi amaliyot 2026', 'Bahorgi amaliyot 2027', 'Yozgi amaliyot 2026']);
+
+    const planned = periodCards()[1]!;
+    expect(planned).toHaveTextContent('Rejada');
+    expect(planned).toHaveTextContent('Korxona biriktirilmagan');
+    expect(planned).toHaveTextContent('Davr hali boshlanmagan.');
+    expect(planned).not.toHaveTextContent('Baho:');
+    expect(within(planned).queryByRole('progressbar')).not.toBeInTheDocument();
+  });
+
+  it('bitta davr ham karta ko\'rinishida; korxonasiz davr → "Korxona biriktirilmagan"', async () => {
+    mockProfileResponse({
+      ...mockProfileSinglePractice,
+      practices: [{ ...mockAutumnPractice, company: null }],
+    });
+    renderApp('/profil');
+    await screen.findByRole('heading', { name: 'Aliyev Akmal' });
+
+    const section = profileSection('Amaliyot xulosasi');
+    expect(section).not.toHaveTextContent('ta davr');
+    const cards = periodCards();
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toHaveAccessibleName('Kuzgi amaliyot 2026');
+    expect(cards[0]).toHaveAttribute('data-active', 'true');
+    expect(cards[0]).toHaveTextContent('Korxona biriktirilmagan');
+    expect(cards[0]).not.toHaveTextContent('Tech Solutions MChJ');
+  });
+
+  it("eski server (practices yo'q) → sukut `practice` yagona davr sifatida", async () => {
+    const legacy: Record<string, unknown> = { ...mockProfile };
+    delete legacy.practices;
+    mockProfileResponse(legacy);
+    renderApp('/profil');
+    await screen.findByRole('heading', { name: 'Aliyev Akmal' });
+
+    const cards = periodCards();
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toHaveAccessibleName('Kuzgi amaliyot 2026');
+    expect(cards[0]).toHaveTextContent('Tech Solutions MChJ');
+  });
+
+  it("eski server: practices yo'q va practice null → bo'sh holat", async () => {
+    const legacy: Record<string, unknown> = { ...mockProfileNoPractice };
+    delete legacy.practices;
+    mockProfileResponse(legacy);
+    renderApp('/profil');
+    await screen.findByRole('heading', { name: 'Karimova Dilnoza' });
+    expect(profileSection('Amaliyot xulosasi')).toHaveTextContent(
+      'Amaliyot davri biriktirilmagan.',
+    );
   });
 
   it("davr yo'q, tyutor yo'q, Telegram bog'lanmagan", async () => {
@@ -84,9 +178,9 @@ describe('ProfilePage (/profil)', () => {
     expect(personal).toHaveTextContent("Ko'rsatilmagan");
     expect(within(personal).queryByRole('link')).not.toBeInTheDocument();
 
-    expect(profileSection('Amaliyot xulosasi')).toHaveTextContent(
-      'Amaliyot davri biriktirilmagan.',
-    );
+    const practice = profileSection('Amaliyot xulosasi');
+    expect(practice).toHaveTextContent('Amaliyot davri biriktirilmagan.');
+    expect(within(practice).queryByRole('article')).not.toBeInTheDocument();
     const account = profileSection('Hisob');
     expect(account).toHaveTextContent("Bog'lanmagan");
     expect(account).toHaveTextContent("Bot tayyor bo'lgach Telegram orqali ham kira olasiz.");

@@ -2,32 +2,14 @@ import { useState, type ReactNode } from 'react';
 import { ChangePasswordForm } from '@/features/auth/components/ChangePasswordForm';
 import { useLogout } from '@/features/auth/hooks';
 import { useProfileQuery } from '@/features/profile/hooks';
-import {
-  PERIOD_STATUS_LABEL,
-  type StudentProfileDto,
-  type StudentProfilePracticeDto,
-} from '@/features/profile/types';
+import { PracticePeriodCard } from '@/features/profile/components/PracticePeriodCard';
+import { profilePractices } from '@/features/profile/lib';
+import type { StudentProfileDto, StudentProfilePracticeDto } from '@/features/profile/types';
 import { errorMessage } from '@/shared/api/client';
-import { formatDecimal, formatPercent, formatPeriod, formatPhone } from '@/shared/lib/format';
-import {
-  Avatar,
-  Badge,
-  Button,
-  Card,
-  ErrorState,
-  FactGrid,
-  LoadingState,
-  ProgressBar,
-  type StatusKind,
-} from '@/shared/ui';
+import { formatPhone } from '@/shared/lib/format';
+import { Avatar, Badge, Button, Card, ErrorState, LoadingState } from '@/shared/ui';
 import pages from './pages.module.css';
 import styles from './ProfilePage.module.css';
-
-const PERIOD_STATUS_KIND: Record<StudentProfilePracticeDto['period']['status'], StatusKind> = {
-  planned: 'info',
-  active: 'ok',
-  closed: 'neu',
-};
 
 function InfoRow({ k, children, mono }: { k: string; children: ReactNode; mono?: boolean }) {
   return (
@@ -40,7 +22,7 @@ function InfoRow({ k, children, mono }: { k: string; children: ReactNode; mono?:
 
 const muted = (text: string) => <span className={styles.vMuted}>{text}</span>;
 
-/** Profil: shaxsiy/o'quv ma'lumotlari · amaliyot xulosasi · hisob (Telegram, parol, chiqish). */
+/** Profil: shaxsiy/o'quv ma'lumotlari · barcha amaliyot davrlari · hisob (Telegram, parol, chiqish). */
 export function ProfilePage() {
   const q = useProfileQuery();
 
@@ -53,7 +35,7 @@ export function ProfilePage() {
   return (
     <div className={pages.stack}>
       <PersonalCard profile={p} />
-      <PracticeCard practice={p.practice} />
+      <PracticesCard practices={profilePractices(p)} />
       <AccountCard profile={p} />
     </div>
   );
@@ -98,102 +80,24 @@ function PersonalCard({ profile: p }: { profile: StudentProfileDto }) {
   );
 }
 
-function PracticeCard({ practice }: { practice: StudentProfilePracticeDto | null }) {
-  if (!practice) {
-    return (
-      <Card padded aria-labelledby="profile-practice">
-        <h2 id="profile-practice" className={pages.sectionTitle}>
-          Amaliyot xulosasi
-        </h2>
-        <p className={styles.empty}>Amaliyot davri biriktirilmagan.</p>
-      </Card>
-    );
-  }
-  const { period, company } = practice;
+function PracticesCard({ practices }: { practices: StudentProfilePracticeDto[] }) {
   return (
     <Card padded aria-labelledby="profile-practice">
       <div className={styles.sectionHead}>
         <h2 id="profile-practice" className={pages.sectionTitle}>
           Amaliyot xulosasi
         </h2>
-        {!practice.finalized && (
-          <Badge
-            status="info"
-            size="sm"
-            title="Davr yakunlanmagan — ko'rsatkichlar o'zgarib boradi"
-          >
-            Joriy hisob
-          </Badge>
-        )}
+        {practices.length > 1 && <span className={styles.count}>{practices.length} ta davr</span>}
       </div>
-
-      <div className={`${styles.block} ${styles.blockFirst}`}>
-        <div className={styles.blockTitle}>Davr</div>
-        <div className={styles.blockMain}>
-          <span>{period.name}</span>
-          <Badge status={PERIOD_STATUS_KIND[period.status]} size="sm">
-            {PERIOD_STATUS_LABEL[period.status]}
-          </Badge>
+      {practices.length === 0 ? (
+        <p className={styles.empty}>Amaliyot davri biriktirilmagan.</p>
+      ) : (
+        <div className={styles.periods}>
+          {practices.map((practice) => (
+            <PracticePeriodCard key={practice.period.id} practice={practice} />
+          ))}
         </div>
-        <div className={`${styles.blockSub} ${styles.mono}`}>
-          {formatPeriod(period.startDate, period.endDate)}
-        </div>
-      </div>
-
-      <div className={styles.block}>
-        <div className={styles.blockTitle}>Korxona</div>
-        {company ? (
-          <>
-            <div className={styles.blockMain}>{company.name}</div>
-            {company.address && <div className={styles.blockSub}>{company.address}</div>}
-          </>
-        ) : (
-          <div className={styles.blockSub}>Korxona hali biriktirilmagan</div>
-        )}
-      </div>
-
-      <div className={styles.block}>
-        <div className={styles.blockTitle}>Davomat</div>
-        <ProgressBar value={practice.attendancePct} label="Davomat" />
-      </div>
-
-      <FactGrid
-        className={styles.facts}
-        columns={3}
-        items={[
-          // Kontrakt v3.8: sababli (ruxsat berilgan) kunlar ham shu songa kiradi.
-          {
-            k: <span title="Sababli kunlar bilan birga">O'tgan ish kunlari</span>,
-            v: String(practice.elapsedWorkDays),
-          },
-          {
-            k: 'Shubhali kunlar',
-            v: String(practice.suspiciousDays),
-            tone: practice.suspiciousDays > 0 ? 'late' : 'default',
-          },
-          {
-            k: practice.finalized ? 'Yakuniy ball' : 'Joriy ball',
-            v: formatDecimal(practice.total),
-          },
-        ]}
-      />
-
-      <div className={styles.gradeLine}>
-        {practice.grade !== null ? (
-          <Badge
-            status={practice.grade >= 4 ? 'ok' : practice.grade === 3 ? 'late' : 'bad'}
-            size="lg"
-          >
-            Baho: {practice.grade}
-            {practice.finalized ? '' : ' (joriy)'}
-          </Badge>
-        ) : (
-          <Badge status="neu" size="lg">
-            Baho hali yo'q
-          </Badge>
-        )}
-        <span className={styles.blockSub}>Davomat {formatPercent(practice.attendancePct)}</span>
-      </div>
+      )}
     </Card>
   );
 }
