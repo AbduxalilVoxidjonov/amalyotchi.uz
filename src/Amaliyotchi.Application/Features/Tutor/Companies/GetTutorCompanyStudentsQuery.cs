@@ -6,8 +6,8 @@ using MediatR;
 
 namespace Amaliyotchi.Application.Features.Tutor.Companies;
 
-/// <summary><c>GET /api/tutor/companies/{id}/students</c> — shu korxonaga ariza bergan, ko'lamdagi talabalar.
-/// Ko'lamda biriktirilgan talabasi yo'q korxona → 404.</summary>
+/// <summary><c>GET /api/tutor/companies/{id}/students</c> — shu korxonada HOZIR aktiv amaliyot o'tayotgan (§4.7)
+/// ko'lamdagi talabalar. Ko'lamda shu korxonaga hech qachon tasdiqlangan arizasi bo'lmagan korxona → 404.</summary>
 public sealed record GetTutorCompanyStudentsQuery(Guid Id) : IRequest<IReadOnlyList<CompanyStudent>>;
 
 internal sealed class GetTutorCompanyStudentsQueryHandler(IApplicationDbContext db, IScopeResolver scopeResolver, IClock clock)

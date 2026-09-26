@@ -97,6 +97,17 @@ describe('CompaniesPage', () => {
     expect(await screen.findByTestId('location')).toHaveTextContent('/admin/companies/c1');
   });
 
+  it('talaba ustuni aktiv amaliyotchilarni bildiradi (sarlavha + tooltip)', async () => {
+    renderWithProviders(<CompaniesPage />);
+    await screen.findByText('Sharq Savdo MChJ');
+    const table = within(screen.getByRole('table', { name: 'Korxonalar' }));
+    const header = table.getByText('Aktiv talaba');
+    expect(header).toHaveAttribute('title', expect.stringMatching(/aktiv amaliyot/));
+    expect(table.queryByText('Talaba')).not.toBeInTheDocument();
+    // Tarixli, lekin aktivsiz korxona — 0.
+    expect(rowFor('Sharq Savdo MChJ').getByText('0')).toBeInTheDocument();
+  });
+
   it("STIR chegarasidan oshgan korxona ogohlantirish bilan ko'rsatiladi", async () => {
     renderWithProviders(<CompaniesPage />);
     await screen.findByText('Mega Servis MChJ');
@@ -119,7 +130,7 @@ describe('CompaniesPage', () => {
     expect(await screen.findByText('Yangi Tex MChJ')).toBeInTheDocument();
     expect(rowFor('Yangi Tex MChJ').getByText('309 112 233')).toBeInTheDocument();
     expect(rowFor('Yangi Tex MChJ').getByText('180 m')).toBeInTheDocument();
-    expect(screen.getByText('1–6 / 6')).toBeInTheDocument();
+    expect(screen.getByText('1–7 / 7')).toBeInTheDocument();
   });
 
   it("yaratish: mijoz validatsiyasi — bo'sh forma yuborilmaydi", async () => {
@@ -254,6 +265,21 @@ describe('CompaniesPage', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
       "Korxonaga 5 ta talaba biriktirilgan — uni o'chirib bo'lmaydi.",
     );
+  });
+
+  it("o'chirish: tarixi bor, aktiv talabasi yo'q korxona uchun 409 xabari", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<CompaniesPage />);
+    await screen.findByText('Sharq Savdo MChJ');
+
+    await user.click(rowFor('Sharq Savdo MChJ').getByRole('button', { name: "O'chirish" }));
+    const dialog = await screen.findByRole('dialog', { name: "Korxonani o'chirish" });
+    await user.click(within(dialog).getByRole('button', { name: "O'chirish" }));
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      "Korxonada amaliyot tarixi (arizalar) bor — uni o'chirib bo'lmaydi, nofaol qiling.",
+    );
+    expect(screen.getByText('Sharq Savdo MChJ')).toBeInTheDocument();
   });
 
   it("o'chirish: faolsizlantirilgan talabasiz korxona ro'yxatdan chiqadi", async () => {

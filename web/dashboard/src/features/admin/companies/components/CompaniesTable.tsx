@@ -6,12 +6,16 @@ import { COMPANY_FLAG_LABEL, studentsOfLimit, type Company } from '../types';
 import styles from './CompaniesTable.module.css';
 
 /** Korxona detail sahifasi — nom havolasi va butun qator bosilishi uchun bitta manba. */
+const ACTIVE_STUDENTS_HINT =
+  "Hozir shu korxonada aktiv amaliyot o'tayotgan talabalar (davom etayotgan davr, tasdiqlangan ariza)";
+
 const companyHref = (r: Company) => `/admin/companies/${r.id}`;
 
 /**
  * SPEC §9.7 ustunlari. STIR — xom 9 raqamdan formatlanadi; korxona nomi detail sahifasiga havola
  * (`RowLink` — klaviatura uchun; sichqoncha bilan qatorning istalgan joyi ham shu sahifani ochadi).
- * `overLimit` qatorda talaba ustuni "21/10" ogohlantirish `Badge`iga aylanadi.
+ * `overLimit` qatorda talaba ustuni "21/10" ogohlantirish `Badge`iga aylanadi. Talaba soni — faqat
+ * AKTIV amaliyotchilar (ochiq, hozir davom etayotgan davrdagi tasdiqlangan ariza).
  */
 const COLUMNS: DataTableColumn<Company>[] = [
   {
@@ -39,12 +43,13 @@ const COLUMNS: DataTableColumn<Company>[] = [
   },
   {
     key: 'students',
-    header: 'Talaba',
+    // Faqat hozir davom etayotgan ochiq davrda tasdiqlangan arizasi bor (aktiv) talabalar.
+    header: <span title={ACTIVE_STUDENTS_HINT}>Aktiv talaba</span>,
     width: 'minmax(110px,.9fr)',
     mono: true,
     render: (r) =>
       r.overLimit ? (
-        <Badge status="bad" title={`STIR chegarasi: ${r.maxStudents} talaba`}>
+        <Badge status="bad" title={`STIR chegarasi: ${r.maxStudents} aktiv talaba`}>
           {studentsOfLimit(r.students, r.maxStudents)}
         </Badge>
       ) : (

@@ -34,7 +34,7 @@ const PERIOD_COLUMNS: DataTableColumn<CompanyPeriod>[] = [
   },
   {
     key: 'students',
-    header: 'Talaba',
+    header: 'Aktiv talaba',
     width: 'minmax(90px,.6fr)',
     mono: true,
     render: (r) => formatCount(r.students),
@@ -58,7 +58,8 @@ function contact(name: string | null, phone: string | null) {
 
 /**
  * Admin · Korxona detali (presentation): ma'lumot kartasi + lokatsiya, STIR nazorati bloki
- * va amaliyot davrlari kesimi. Talabalar jadvali alohida komponent.
+ * va aktiv amaliyot davri (faqat hozir davom etayotgan ochiq davr(lar); bo'sh bo'lishi mumkin).
+ * Talaba sonlari — faqat aktiv amaliyotchilar. Talabalar jadvali alohida komponent.
  */
 export function CompanyDetailView({ company }: { company: CompanyDetail }) {
   const flag = company.flag ? COMPANY_FLAG_LABEL[company.flag] : null;
@@ -99,7 +100,7 @@ export function CompanyDetailView({ company }: { company: CompanyDetail }) {
                 v: <span className={styles.mono}>{formatCoords(company.lat, company.lng)}</span>,
               },
               {
-                k: 'Talabalar',
+                k: 'Aktiv talabalar',
                 v: (
                   <span className={styles.mono}>
                     {studentsOfLimit(company.students, company.maxStudents)}
@@ -120,21 +121,21 @@ export function CompanyDetailView({ company }: { company: CompanyDetail }) {
       <Card aria-label="STIR nazorati">
         <CardHeader
           title="STIR nazorati"
-          subtitle={`Bitta STIR ostida biriktirilgan talabalar soni chegara bilan solishtiriladi (STIR ${formatTin(company.tin)}).`}
+          subtitle={`Bitta STIR ostida aktiv amaliyot o'tayotgan talabalar soni chegara bilan solishtiriladi (STIR ${formatTin(company.tin)}).`}
         />
         <CardBody className={styles.body}>
           {company.overLimit && (
             <Alert title="STIR chegarasi oshgan">
               <AlertRow>
-                {company.name} korxonasiga {formatCount(company.students)} talaba biriktirilgan —
-                ruxsat etilgan chegara {company.maxStudents} ta. Ortiqcha biriktirishlarni
-                tekshiring.
+                {company.name} korxonasida hozir {formatCount(company.students)} talaba aktiv
+                amaliyot o'tamoqda — ruxsat etilgan chegara {company.maxStudents} ta. Ortiqcha
+                biriktirishlarni tekshiring.
               </AlertRow>
             </Alert>
           )}
           <StatGrid min={180}>
             <StatTile
-              label="Biriktirilgan talabalar"
+              label="Aktiv talabalar"
               value={formatCount(company.students)}
               note={company.overLimit ? 'Chegaradan oshgan' : 'Chegara doirasida'}
               {...(company.overLimit ? { noteTone: 'bad' as const, dot: 'bad' as const } : {})}
@@ -156,7 +157,7 @@ export function CompanyDetailView({ company }: { company: CompanyDetail }) {
       </Card>
 
       <DataTable
-        aria-label="Amaliyot davrlari"
+        aria-label="Aktiv amaliyot davri"
         columns={PERIOD_COLUMNS}
         rows={company.periods}
         rowKey={(r) => r.id}
@@ -164,16 +165,18 @@ export function CompanyDetailView({ company }: { company: CompanyDetail }) {
         density="compact"
         toolbar={
           <div>
-            <h2 className={styles.tableTitle}>Amaliyot davrlari</h2>
-            <p className={styles.tableSub}>Qaysi davrda nechta talaba shu korxonada.</p>
+            <h2 className={styles.tableTitle}>Aktiv amaliyot davri</h2>
+            <p className={styles.tableSub}>
+              Hozir davom etayotgan davr va unda shu korxonada amaliyot o'tayotgan talabalar soni.
+            </p>
           </div>
         }
         emptyText={
           <EmptyState
             tone="plain"
             className={styles.empty}
-            title="Amaliyot davrlari yo'q"
-            description="Bu korxonaga hali birorta davrda talaba biriktirilmagan."
+            title="Aktiv davr yo'q"
+            description="Hozirda bu korxonada davom etayotgan amaliyot davri yo'q."
           />
         }
       />

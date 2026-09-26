@@ -12,7 +12,7 @@ const ROOT: BreadcrumbItem[] = [{ label: 'Korxonalar', to: '/admin/companies' }]
 
 /**
  * Admin · Korxona sahifasi (`/admin/companies/:companyId`): korxona kartasi + lokatsiya,
- * STIR nazorati, amaliyot davrlari kesimi, check-in QR kodi va shu korxonadagi talabalar jadvali.
+ * STIR nazorati, aktiv amaliyot davri, check-in QR kodi va shu korxonadagi aktiv amaliyotchilar jadvali.
  * Breadcrumb/404/xato qobig'i — `HierarchyListPage` (tyutor detali bilan bir xil naqsh).
  */
 export function CompanyDetailPage() {

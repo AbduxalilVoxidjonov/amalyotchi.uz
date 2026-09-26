@@ -58,9 +58,9 @@ export interface TutorCompany {
   lat: number;
   lng: number;
   radiusM: number;
-  /** FAQAT tyutor ko'lamidagi talabalar. */
+  /** FAQAT tyutor ko'lamidagi AKTIV amaliyotchilar (hozir davom etayotgan davr, tasdiqlangan ariza). */
   students: number;
-  /** Butun tizim bo'yicha shu korxonada (STIR nazorati uchun). */
+  /** Butun tizim bo'yicha shu korxonadagi aktiv amaliyotchilar (STIR nazorati uchun). */
   totalStudents: number;
   maxStudents: number;
   /** `totalStudents > maxStudents`. */
@@ -71,7 +71,7 @@ export interface TutorCompany {
   flag: CompanyFlag | null;
 }
 
-/** Amaliyot davri kesimi: shu korxonada qaysi davrda nechta talaba. */
+/** Aktiv amaliyot davri: hozir davom etayotgan ochiq davr va undagi aktiv talabalar soni. */
 export interface CompanyPeriod {
   id: string;
   name: string;
@@ -104,10 +104,14 @@ export interface TutorCompanyDetail {
   maxStudents: number;
   overLimit: boolean;
   flag: CompanyFlag | null;
+  /** Faqat hozir davom etayotgan ochiq davr(lar); aktiv davr bo'lmasa — bo'sh massiv. */
   periods: CompanyPeriod[];
 }
 
-/** GET /api/tutor/companies/{id}/students → CompanyStudent[] (faqat ko'lamdagilar, FISH tartibida). */
+/**
+ * GET /api/tutor/companies/{id}/students → CompanyStudent[] (faqat ko'lamdagilar, FISH tartibida).
+ * Faqat hozir shu korxonada aktiv amaliyot o'tayotganlar — `applicationStatus` doim `approved`.
+ */
 export interface CompanyStudent {
   studentId: string;
   name: string;

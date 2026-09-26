@@ -1,5 +1,6 @@
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Scoping;
+using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Domain.Companies;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Domain.Exceptions;
@@ -27,7 +28,7 @@ public sealed record UpdateCompanyCommand(
     string? MentorPhone) : IRequest<CompanyDetail>;
 
 internal sealed class UpdateCompanyCommandHandler(
-    IApplicationDbContext db, IScopeResolver scopeResolver, IAuditWriter audit)
+    IApplicationDbContext db, IScopeResolver scopeResolver, IAuditWriter audit, IClock clock)
     : IRequestHandler<UpdateCompanyCommand, CompanyDetail>
 {
     public async Task<CompanyDetail> Handle(UpdateCompanyCommand request, CancellationToken cancellationToken)
@@ -60,6 +61,6 @@ internal sealed class UpdateCompanyCommandHandler(
         await db.SaveChangesAsync(cancellationToken);
 
         var scope = await scopeResolver.ResolveAsync(cancellationToken);
-        return await CompanyQueries.LoadDetailAsync(db, scope, company.Id, requireScopedStudents: false, cancellationToken);
+        return await CompanyQueries.LoadDetailAsync(db, scope, company.Id, requireScopedStudents: false, clock.LocalToday(), cancellationToken);
     }
 }

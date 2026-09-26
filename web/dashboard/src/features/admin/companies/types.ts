@@ -15,7 +15,10 @@ export interface Company {
   activity: string;
   address: string;
   radiusM: number;
-  /** Arizasi tasdiqlangan talabalar. */
+  /**
+   * AKTIV amaliyotchilar: ochiq, hozir davom etayotgan davrda arizasi tasdiqlangan talabalar
+   * (kutilayotgan / rad etilgan / ko'chirilgan / yopilgan davrdagilar hisoblanmaydi).
+   */
   students: number;
   /** Shu korxonadagi talabalarning shubhali davomat kunlari. */
   suspiciousDays: number;
@@ -69,7 +72,7 @@ export const COMPANY_STUDENT_STATE_LABEL: Record<
   suspicious: { label: 'Shubhali', kind: 'late' },
 };
 
-/** Amaliyot davri kesimi: shu korxonada qaysi davrda nechta talaba. */
+/** Aktiv amaliyot davri: hozir davom etayotgan ochiq davr va undagi aktiv talabalar soni. */
 export interface CompanyPeriod {
   id: string;
   name: string;
@@ -94,11 +97,13 @@ export interface CompanyDetail {
   mentorName: string | null;
   mentorPhone: string | null;
   isActive: boolean;
+  /** Aktiv amaliyotchilar soni (`Company.students` bilan bir xil ma'no). */
   students: number;
   suspiciousDays: number;
   maxStudents: number;
   overLimit: boolean;
   flag: CompanyFlag | null;
+  /** Faqat hozir davom etayotgan ochiq davr(lar); aktiv davr bo'lmasa — bo'sh massiv. */
   periods: CompanyPeriod[];
 }
 
@@ -120,7 +125,10 @@ export interface CompanyInput {
   mentorPhone: string | null;
 }
 
-/** GET /api/admin/companies/{id}/students → CompanyStudent[] (FISH bo'yicha tartib). */
+/**
+ * GET /api/admin/companies/{id}/students → CompanyStudent[] (FISH bo'yicha tartib).
+ * Faqat hozir shu korxonada aktiv amaliyot o'tayotgan talabalar — `applicationStatus` doim `approved`.
+ */
 export interface CompanyStudent {
   studentId: string;
   name: string;

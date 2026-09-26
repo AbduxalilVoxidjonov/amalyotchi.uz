@@ -12,7 +12,13 @@ describe('CompaniesPage (/tutor/companies)', () => {
     expect(table.getByText('Tech Solutions MChJ')).toBeInTheDocument();
     expect(table.getByText('304 512 889')).toBeInTheDocument();
     expect(table.getByText('450 m')).toBeInTheDocument();
-    // Talaba ustuni: ko'lamda / jami.
+    // "Aktiv talaba" ustuni: ko'lamda / jami (faqat aktiv amaliyotchilar).
+    expect(table.getByText('Aktiv talaba')).toHaveAttribute(
+      'title',
+      expect.stringMatching(/aktiv amaliyot/),
+    );
+    // Tarixli, lekin aktivsiz korxona — 0 / 0.
+    expect(table.getByText('0 / 0')).toBeInTheDocument();
     expect(table.getByText('3 / 4')).toBeInTheDocument();
     expect(table.getByText('5 / 21')).toBeInTheDocument();
     expect(table.getByText('Katta radius')).toBeInTheDocument();

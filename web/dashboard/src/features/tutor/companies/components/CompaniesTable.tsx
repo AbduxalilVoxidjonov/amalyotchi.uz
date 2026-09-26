@@ -4,7 +4,8 @@ import { COMPANY_FLAG_LABEL, studentsOfLimit, type TutorCompany } from '../types
 import styles from './CompaniesTable.module.css';
 
 /**
- * Tyutor · Korxonalar jadvali. "Talaba" ustuni ko'lamdagi / jami nisbatini beradi;
+ * Tyutor · Korxonalar jadvali. "Aktiv talaba" ustuni ko'lamdagi / jami AKTIV amaliyotchilar
+ * (hozir davom etayotgan davr, tasdiqlangan ariza) nisbatini beradi;
  * `overLimit` bo'lsa STIR chegarasi ogohlantirishi (jami/chegara) qo'shiladi.
  */
 const COLUMNS: DataTableColumn<TutorCompany>[] = [
@@ -27,7 +28,11 @@ const COLUMNS: DataTableColumn<TutorCompany>[] = [
   },
   {
     key: 'students',
-    header: 'Talaba',
+    header: (
+      <span title="Hozir shu korxonada aktiv amaliyot o'tayotgan talabalar: ko'lamingizda / jami">
+        Aktiv talaba
+      </span>
+    ),
     width: 'minmax(120px,1fr)',
     render: (r) => (
       <div className={styles.students}>
@@ -35,7 +40,7 @@ const COLUMNS: DataTableColumn<TutorCompany>[] = [
           {r.students} / {r.totalStudents}
         </span>
         {r.overLimit ? (
-          <Badge status="bad" size="sm" title={`STIR chegarasi: ${r.maxStudents} talaba`}>
+          <Badge status="bad" size="sm" title={`STIR chegarasi: ${r.maxStudents} aktiv talaba`}>
             {studentsOfLimit(r.totalStudents, r.maxStudents)}
           </Badge>
         ) : (

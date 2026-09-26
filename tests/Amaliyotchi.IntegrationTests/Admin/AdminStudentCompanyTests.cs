@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Amaliyotchi.Application.Common.Models;
+using Amaliyotchi.Application.Features.Admin.Companies;
 using Amaliyotchi.Application.Features.Admin.PracticePeriods;
 using Amaliyotchi.Application.Features.Admin.Students;
 using Amaliyotchi.Application.Features.Student;
@@ -97,9 +98,14 @@ public sealed class AdminStudentCompanyTests(ApiFixture fixture)
         apps.Single(a => a.Id != old.Id).Should().Match<PracticeApplication>(a =>
             a.Status == ApplicationStatus.Approved && a.CompanyId == newCompany.Id && a.PeriodId == period.Id);
 
-        // JSON'da camelCase "transferred" (korxona talabalar tarixi).
-        var companyStudents = await (await admin.GetAsync($"/api/admin/companies/{oldCompany.Id}/students")).Content.ReadAsStringAsync();
-        companyStudents.Should().Contain("\"transferred\"");
+        // Korxona sahifasi — faqat aktiv talabalar (v3.15): eski korxonada yo'q, yangisida bor (approved).
+        var oldStudents = (await (await admin.GetAsync($"/api/admin/companies/{oldCompany.Id}/students"))
+            .Content.ReadAsync<List<CompanyStudent>>())!;
+        oldStudents.Should().NotContain(s => s.StudentId == student.Id);
+        var newStudents = (await (await admin.GetAsync($"/api/admin/companies/{newCompany.Id}/students"))
+            .Content.ReadAsync<List<CompanyStudent>>())!;
+        newStudents.Should().ContainSingle(s => s.StudentId == student.Id)
+            .Which.ApplicationStatus.Should().Be(ApplicationStatus.Approved);
 
         // GET profil ham yangi korxonani qaytaradi.
         var get = (await (await admin.GetAsync($"/api/admin/students/{student.Id}")).Content.ReadAsync<AdminStudentDetail>())!;

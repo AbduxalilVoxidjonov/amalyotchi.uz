@@ -32,7 +32,7 @@ const PERIOD_COLUMNS: DataTableColumn<CompanyPeriod>[] = [
     dim: true,
     render: (r) => fmtDateRange(r.startDate, r.endDate),
   },
-  { key: 'students', header: 'Talaba', width: 'minmax(90px,.6fr)', mono: true },
+  { key: 'students', header: 'Aktiv talaba', width: 'minmax(90px,.6fr)', mono: true },
 ];
 
 /** "41.3111, 69.2797" — haqiqiy xarita hali yo'q, koordinata matn sifatida. */
@@ -52,7 +52,8 @@ function contact(name: string | null, phone: string | null) {
 
 /**
  * Tyutor · Korxona detali (presentation): ma'lumot kartasi + lokatsiya, STIR nazorati
- * va amaliyot davrlari kesimi. Talabalar jadvali — alohida komponent.
+ * va aktiv amaliyot davri (faqat hozir davom etayotgan ochiq davr(lar); bo'sh bo'lishi mumkin).
+ * Talaba sonlari — faqat aktiv amaliyotchilar. Talabalar jadvali — alohida komponent.
  */
 export function CompanyDetailView({ company }: { company: TutorCompanyDetail }) {
   const flag = company.flag ? COMPANY_FLAG_LABEL[company.flag] : null;
@@ -96,7 +97,7 @@ export function CompanyDetailView({ company }: { company: TutorCompanyDetail }) 
                 v: <span className={styles.mono}>{formatCoords(company.lat, company.lng)}</span>,
               },
               {
-                k: 'Mening talabalarim',
+                k: 'Aktiv talabalarim',
                 v: (
                   <span className={styles.mono}>
                     {company.students} / {company.totalStudents}
@@ -117,22 +118,22 @@ export function CompanyDetailView({ company }: { company: TutorCompanyDetail }) 
       <Card aria-label="STIR nazorati">
         <CardHeader
           title="STIR nazorati"
-          subtitle={`Bitta STIR ostidagi talabalar soni chegara bilan solishtiriladi (STIR ${fmtTin(company.tin)}).`}
+          subtitle={`Bitta STIR ostida aktiv amaliyot o'tayotgan talabalar soni chegara bilan solishtiriladi (STIR ${fmtTin(company.tin)}).`}
         />
         <CardBody className={styles.body}>
           {company.overLimit && (
             <Alert title="STIR chegarasi oshgan">
               <AlertRow>
-                {company.name} korxonasiga tizim bo'yicha {company.totalStudents} talaba
-                biriktirilgan — ruxsat etilgan chegara {company.maxStudents} ta. Sizning
+                {company.name} korxonasida tizim bo'yicha {company.totalStudents} talaba aktiv
+                amaliyot o'tamoqda — ruxsat etilgan chegara {company.maxStudents} ta. Sizning
                 ko'lamingizda {company.students} talaba.
               </AlertRow>
             </Alert>
           )}
           <StatGrid min={170}>
-            <StatTile label="Ko'lamdagi talabalar" value={company.students} />
+            <StatTile label="Ko'lamdagi aktiv talabalar" value={company.students} />
             <StatTile
-              label="Jami talabalar"
+              label="Jami aktiv talabalar"
               value={studentsOfLimit(company.totalStudents, company.maxStudents)}
               note={company.overLimit ? 'Chegaradan oshgan' : 'Chegara doirasida'}
               {...(company.overLimit ? { noteTone: 'bad' as const, dot: 'bad' as const } : {})}
@@ -149,7 +150,7 @@ export function CompanyDetailView({ company }: { company: TutorCompanyDetail }) 
       </Card>
 
       <DataTable
-        aria-label="Amaliyot davrlari"
+        aria-label="Aktiv amaliyot davri"
         columns={PERIOD_COLUMNS}
         rows={company.periods}
         rowKey={(r) => r.id}
@@ -157,16 +158,18 @@ export function CompanyDetailView({ company }: { company: TutorCompanyDetail }) 
         density="compact"
         toolbar={
           <div>
-            <h2 className={styles.tableTitle}>Amaliyot davrlari</h2>
-            <p className={styles.tableSub}>Qaysi davrda nechta talaba shu korxonada.</p>
+            <h2 className={styles.tableTitle}>Aktiv amaliyot davri</h2>
+            <p className={styles.tableSub}>
+              Hozir davom etayotgan davr va unda shu korxonada amaliyot o'tayotgan talabalar soni.
+            </p>
           </div>
         }
         emptyText={
           <EmptyState
             tone="plain"
             className={styles.empty}
-            title="Amaliyot davrlari yo'q"
-            description="Bu korxonaga hali birorta davrda talaba biriktirilmagan."
+            title="Aktiv davr yo'q"
+            description="Hozirda bu korxonada davom etayotgan amaliyot davri yo'q."
           />
         }
       />

@@ -12,15 +12,15 @@ namespace Amaliyotchi.Api.Controllers.Tutor;
 [Authorize(Policy = Policies.TutorOnly)]
 public sealed class TutorCompaniesController(ISender sender) : ControllerBase
 {
-    /// <summary>Ko'lamdagi talabalar biriktirilgan korxonalar (nom bo'yicha).
-    /// <c>students</c> — ko'lamdagi talabalar, <c>totalStudents</c> — butun tizim bo'yicha.</summary>
+    /// <summary>Ko'lamdagi talabalar HOZIR aktiv amaliyot o'tayotgan korxonalar (nom bo'yicha).
+    /// <c>students</c> — ko'lamdagi aktiv talabalar, <c>totalStudents</c> — butun tizim bo'yicha aktiv.</summary>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<TutorCompany>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<IReadOnlyList<TutorCompany>>> List(CancellationToken cancellationToken)
         => Ok(await sender.Send(new GetTutorCompaniesQuery(), cancellationToken));
 
-    /// <summary>Korxona tafsiloti (ko'lam kesimida) — davrlar bo'yicha talabalar soni va STIR nazorati bilan.
+    /// <summary>Korxona tafsiloti (ko'lam kesimida) — davom etayotgan davrlar bo'yicha aktiv talabalar soni va STIR nazorati bilan.
     /// Ko'lamda biriktirilgan talabasi yo'q korxona → 404.</summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType<CompanyDetail>(StatusCodes.Status200OK)]
@@ -29,7 +29,7 @@ public sealed class TutorCompaniesController(ISender sender) : ControllerBase
     public async Task<ActionResult<CompanyDetail>> Detail(Guid id, CancellationToken cancellationToken)
         => Ok(await sender.Send(new GetTutorCompanyDetailQuery(id), cancellationToken));
 
-    /// <summary>Shu korxonaga ariza bergan ko'lamdagi talabalar, FISH bo'yicha tartiblangan.
+    /// <summary>Shu korxonada hozir aktiv amaliyot o'tayotgan ko'lamdagi talabalar, FISH bo'yicha tartiblangan.
     /// Ko'lamda biriktirilgan talabasi yo'q korxona → 404.</summary>
     [HttpGet("{id:guid}/students")]
     [ProducesResponseType<IReadOnlyList<CompanyStudent>>(StatusCodes.Status200OK)]

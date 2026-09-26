@@ -1,4 +1,4 @@
-# API-CONTRACT v3.14
+# API-CONTRACT v3.15
 
 Oxirgi yangilanish: 26.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
@@ -16,7 +16,8 @@ v3.10 (ruxsat so'rash moduli olib tashlandi — talaba va tyutor `leave-requests
 v3.11 (talaba bosh ekrani: davrning har bir kuni — `GET /api/student/period-days`) — §6.17,
 v3.12 (admin davr yaratish/tahrirlashda ish kunlari va kunlik ish vaqti) — §6.18,
 v3.13 (talabani bitta-bitta korxonaga biriktirish/o'tkazish, `ApplicationStatus.transferred`) — §6.19,
-v3.14 ("aktiv korxona" qoidasi: ro'yxatlarda `company` faqat aktiv korxona, profilda yangi `activeCompany`) — §6.20.
+v3.14 ("aktiv korxona" qoidasi: ro'yxatlarda `company` faqat aktiv korxona, profilda yangi `activeCompany`) — §6.20,
+v3.15 (korxona sahifalari — faqat hozir aktiv amaliyot o'tayotgan talabalar; o'chirish xabari) — §6.21.
 
 Jami **108 ta endpoint**: Auth 7 · Admin 67 · Reports 1 · Tutor 20 · Student (TWA) 11 · Files 1 · Companies 1.
 
@@ -307,7 +308,7 @@ interface DashboardStatsDto {
   studentsUnlinked: number; // Telegram bog'langan/bog'lanmagan
   faculties: number;
   groups: number;
-  companiesActive: number;
+  companiesActive: number; // isActive korxonalar soni (holat bo'yicha, talabaga bog'liq emas)
   applicationsPending: number; // status = submitted
   applicationsOverdue: number; // submitted va 48 soatdan ko'p javobsiz
   contractsApproved: number; // approved + completed
@@ -842,8 +843,8 @@ Talaba profilidan **bitta** talabani korxonaga biriktirish yoki **boshqa korxona
 - `transferred` ariza hech qayerda "joriy korxona" sifatida olinmaydi: talaba ilovasi, tyutor/admin ro'yxatlari, statistika
   (`withCompanyCount`, `pendingApplicationsCount`), korxona talabalar soni faqat `approved`/`completed` ni hisoblaydi;
   tyutor moderatsiya navbati (`GET /api/tutor/applications` `status`siz) `transferred` ni ko'rsatmaydi.
-  Korxona talabalar ro'yxatida (`GET /api/admin/companies/{id}/students`) o'tkazilgan talaba `applicationStatus: "transferred"`
-  bilan (tarix sifatida) ko'rinishi mumkin.
+  v3.15 dan korxona talabalar ro'yxati (`GET /api/admin/companies/{id}/students`) faqat aktiv talabalarni ko'rsatadi —
+  o'tkazilgan talaba eski korxonada **chiqmaydi**, yangisida chiqadi (§6.21).
 
 #### GET `/api/admin/students/{id}?periodId=` · 200 · 404
 
@@ -908,11 +909,11 @@ interface CompanyRow {
   activity: string;
   address: string;
   radiusM: number;
-  students: number /*arizasi approved*/;
-  suspiciousDays: number;
+  students: number /*v3.15 — HOZIR shu korxonada aktiv amaliyot o'tayotgan talabalar (§4.7)*/;
+  suspiciousDays: number /*v3.15 — shu aktiv talabalarning aktiv davrdagi shubhali kunlari*/;
   isActive: boolean;
   maxStudents: number /*amaldagi `maxStudentsPerCompany` sozlamasi — hamma qatorda bir xil*/;
-  overLimit: boolean /*students > maxStudents*/;
+  overLimit: boolean /*students > maxStudents (aktiv son)*/;
   flag: CompanyFlag | null; /*ustuvorlik: suspicious → tooManyStudents → largeRadius → null*/
 }
 ```
@@ -941,13 +942,14 @@ interface CompanyDetail {
   mentorName: string | null;
   mentorPhone: string | null;
   isActive: boolean;
-  students: number /*so'rovchi ko'lamidagi biriktirilgan (approved) talabalar; admin uchun = totalStudents*/;
-  totalStudents: number /*butun tizim bo'yicha — STIR nazorati shu songa tayanadi*/;
-  suspiciousDays: number;
+  students: number /*v3.15 — so'rovchi ko'lamidagi AKTIV talabalar (§4.7); admin uchun = totalStudents*/;
+  totalStudents: number /*v3.15 — butun tizim bo'yicha AKTIV talabalar — STIR nazorati shu songa tayanadi*/;
+  suspiciousDays: number /*v3.15 — aktiv talabalarning aktiv davrdagi shubhali kunlari (ko'lam kesimida)*/;
   maxStudents: number;
   overLimit: boolean /*totalStudents > maxStudents*/;
   flag: CompanyFlag | null;
-  /** Amaliyot davrlari kesimi: shu korxonada qaysi davrda nechta talaba. startDate desc, keyin nom. */
+  /** v3.15 — faqat HOZIR davom etayotgan ochiq davr(lar): shu davrda shu korxonadagi aktiv talabalar soni (ko'lam kesimida).
+   *  students === 0 bo'lgan davr kirmaydi; yopilgan/tugagan/kelgusi davrlar chiqmaydi (bo'sh massiv — normal). startDate desc, keyin nom. */
   periods: { id: string; name: string; startDate: string; endDate: string; students: number }[];
 }
 ```
@@ -989,8 +991,10 @@ Body — `CompanyInput` (id route'dan). Radius o'zgarsa audit jurnaliga `radiusC
 
 Soft delete (arxivlash), ikki qavat himoya:
 - korxona hali **faol** bo'lsa → 409 `"Avval korxonani faolsizlantiring — keyin o'chirish mumkin."`
-- unga **talaba biriktirilgan** bo'lsa (qoralamadan boshqa arizasi bor) → 409
-  `"Korxonaga N ta talaba biriktirilgan — uni o'chirib bo'lmaydi. …"` (davomat/kundalik tarixi korxonaga bog'liq)
+- unga qoralamadan boshqa **arizasi bor** talaba bo'lsa (tarix, istalgan davr — himoya o'zgarmagan) → 409
+  (davomat/kundalik tarixi korxonaga bog'liq). Xabar (v3.15) UI dagi son bilan mos:
+  - hozir aktiv talabalar bor (N = `students`) → `"Korxonaga N ta talaba biriktirilgan — uni o'chirib bo'lmaydi. …"`;
+  - aktiv talaba yo'q, faqat tarix → `"Korxonada amaliyot tarixi (arizalar) bor — uni o'chirib bo'lmaydi, nofaol qiling."`
 
 #### GET `/api/admin/companies/import/template` · 200 · POST `/api/admin/companies/import` · 200 · 400
 
@@ -1004,10 +1008,10 @@ telefon formati. Yuklangan korxona darhol **faol** bo'ladi va STIR qidiruvida ch
 
 #### GET `/api/admin/companies/{id}/students` · 200 · 404
 
-Sahifalanmagan massiv. Ro'yxatga shu korxonaga **qoralamadan boshqa** (`status !== 'draft'`) arizasi bor talabalar
-kiradi — shuning uchun `CompanyRow.students` (faqat `approved`) ro'yxat uzunligidan kichik bo'lishi mumkin; holatni
-har qatordagi `applicationStatus` ko'rsatadi. Bir talabaning shu korxonaga bir nechta arizasi bo'lsa — `approved`
-ustun, aks holda eng so'nggisi (`submittedAt` desc). Tartib: **FISH**, keyin `hemisId`. 404 — korxona yo'q.
+Sahifalanmagan massiv. **v3.15:** ro'yxatga faqat shu korxonada **hozir aktiv amaliyot o'tayotgan** talabalar kiradi —
+aktiv korxonasi (§4.7) aynan shu korxona. Yopilgan/tugagan/kelgusi davr arizalari, `submitted`/`revisionNeeded`/
+`rejected`/`transferred`/`completed` — **chiqmaydi**. Ro'yxat uzunligi = `CompanyRow.students` = `CompanyDetail.students`.
+Aktiv talaba yo'q → `[]` (200). Tartib: **FISH**, keyin `hemisId`. 404 — korxona yo'q.
 
 ```ts
 interface CompanyStudent {
@@ -1018,8 +1022,8 @@ interface CompanyStudent {
   course: number;
   faculty: string;
   tutorName: string | null /*guruhga biriktirilgan faol tyutor; bir nechta bo'lsa alifbo bo'yicha birinchisi*/;
-  applicationStatus: ApplicationStatus;
-  periodName: string | null /*ariza davri nomi*/;
+  applicationStatus: ApplicationStatus /*v3.15 — amalda doim "approved" (maydon shakli o'zgarmadi)*/;
+  periodName: string | null /*v3.15 — aktiv davr nomi*/;
   attendancePct: number /*1 kasr*/;
   attendedDays: number;
   totalDays: number;
@@ -1029,8 +1033,8 @@ interface CompanyStudent {
 }
 ```
 
-`attendancePct` / `attendedDays` / `totalDays` / `diaryCount` / `suspiciousCount` — talabaning **shu korxonadagi
-arizasi davri** bo'yicha (v3.5; `period` bilan bir xil; `StudentStatsCalculator`; davr o'chirilgan bo'lsa nollar).
+`attendancePct` / `attendedDays` / `totalDays` / `diaryCount` / `suspiciousCount` — talabaning **aktiv davri** bo'yicha
+(v3.15; `periodName` bilan bir xil; `StudentStatsCalculator`).
 `state` — o'sha qoida: `totalDays>0 && pct<70` → `redFlag`; `suspiciousCount≥1` → `suspicious`; aks holda `active`.
 
 #### GET `/api/admin/companies/{id}/checkin-qr` · 200 · 404 — v3.7
@@ -1752,8 +1756,9 @@ Admin'nikidek (`POST /api/admin/students/{id}/password`, §2.3) — ayni buyruq.
 
 #### GET `/api/tutor/companies`
 
-Ko'lamdagi talabalar biriktirilgan korxonalar, **nom** bo'yicha. Ko'lamda bitta ham `approved` arizali talabasi
-bo'lmagan korxona ro'yxatga **kirmaydi** (bo'sh massiv bo'lishi mumkin — xato emas). Sahifalanmagan.
+**v3.15:** ko'lamdagi talabalar **hozir aktiv amaliyot o'tayotgan** korxonalar (§4.7), **nom** bo'yicha. Ko'lamda bitta
+ham aktiv talabasi bo'lmagan korxona ro'yxatga **kirmaydi** (masalan, faqat yopilgan davrdagi `approved` ariza — kirmaydi;
+bo'sh massiv bo'lishi mumkin — xato emas). Sahifalanmagan.
 
 ```ts
 interface TutorCompany {
@@ -1764,12 +1769,12 @@ interface TutorCompany {
   lat: number;
   lng: number;
   radiusM: number;
-  students: number /*FAQAT ko'lamdagi talabalar*/;
-  totalStudents: number /*butun tizim bo'yicha shu korxonada*/;
+  students: number /*FAQAT ko'lamdagi AKTIV talabalar (v3.15)*/;
+  totalStudents: number /*butun tizim bo'yicha shu korxonadagi AKTIV talabalar (v3.15)*/;
   maxStudents: number;
   overLimit: boolean /*totalStudents > maxStudents — ko'lamdagi son EMAS*/;
-  attendancePct: number /*ko'lamdagi talabalar jamlanmasi: ∑kelgan / ∑hisobga olingan kun × 100, 1 kasr*/;
-  suspiciousDays: number /*ko'lamdagi talabalarning shubhali kunlari*/;
+  attendancePct: number /*ko'lamdagi aktiv talabalar jamlanmasi (aktiv davr): ∑kelgan / ∑hisobga olingan kun × 100, 1 kasr*/;
+  suspiciousDays: number /*ko'lamdagi aktiv talabalarning aktiv davrdagi shubhali kunlari*/;
   flag: CompanyFlag | null;
 }
 ```
@@ -1777,13 +1782,14 @@ interface TutorCompany {
 #### GET `/api/tutor/companies/{id}` · 200 · 404
 
 Shakl — `CompanyDetail` (§2.3, admin bilan **bir xil**). Farqi: `students`, `suspiciousDays` va `periods[].students`
-**ko'lam kesimida**; `totalStudents` va `overLimit` esa butun tizim bo'yicha (STIR nazorati).
-Ko'lamda biriktirilgan talabasi yo'q korxona (yoki mavjud bo'lmagan `id`) → **404**.
+**ko'lam kesimida**; `totalStudents` va `overLimit` esa butun tizim bo'yicha (STIR nazorati). Sonlar — faqat aktiv (v3.15).
+Kirish darvozasi (o'zgarmagan): ko'lamda shu korxonaga **tasdiqlangan** (`approved`, istalgan davr) arizasi bor talaba
+bo'lmasa (yoki `id` yo'q) → **404**. Shu bois tarixi bor, hozir aktivi yo'q korxona → **200**, `students: 0`, `periods: []`.
 
 #### GET `/api/tutor/companies/{id}/students` · 200 · 404
 
-Shakl — `CompanyStudent[]` (§2.3 bilan bir xil), faqat **ko'lamdagi** talabalar. FISH bo'yicha tartib.
-Ko'lamda biriktirilgan talabasi yo'q korxona → **404**.
+Shakl — `CompanyStudent[]` (§2.3 bilan bir xil), faqat **ko'lamdagi aktiv** talabalar (v3.15). FISH bo'yicha tartib.
+404 — tafsilotdagi darvoza bilan bir xil; darvozadan o'tib aktiv talabasi yo'q → `[]`.
 
 #### GET `/api/tutor/companies/{id}/checkin-qr` · POST `/api/tutor/companies/{id}/checkin-qr/rotate` · 200 · 404 — v3.7
 
@@ -2489,9 +2495,12 @@ Talabaning **hozir** amaliyot o'tayotgan korxonasi. Ariza quyidagilarning **hamm
 Bir nechta mos kelsa — eng so'nggi `decidedAt`. Mos ariza yo'q → `null`; oldingi (yopilgan/tugagan) yoki kelgusi davr
 korxonasiga **fallback yo'q**. Qayerda: `GET /api/admin/students` (`company`), `GET /api/tutor/students` (`company`),
 `GET /api/tutor/today` (`rows.items[].company`), `GET /api/admin/students/{id}` · `GET /api/tutor/students/{id}` ·
-`POST /api/admin/students/{id}/company` (`activeCompany`). Tarix ko'rinishlari (profildagi davrga bog'liq `company`,
-`GET /api/admin/companies/{id}/students`, davr statistikasi `…/practice-periods/{id}/groups/{groupId}/students`) —
-o'z davri bo'yicha, bu qoidaga bo'ysunmaydi.
+`POST /api/admin/students/{id}/company` (`activeCompany`); v3.15 dan korxona sahifalari ham: `GET /api/admin/companies`
+(`students`, `suspiciousDays`, `overLimit`), `GET /api/admin/companies/{id}` · `GET /api/tutor/companies/{id}` (`students`,
+`totalStudents`, `suspiciousDays`, `periods`), `…/companies/{id}/students` (admin, tyutor), `GET /api/tutor/companies`.
+Korxona bo'yicha sanashda har talaba ko'pi bilan **bitta** korxonada hisoblanadi (o'sha "eng so'nggi `decidedAt`").
+Tarix ko'rinishlari (profildagi davrga bog'liq `company`, davr statistikasi
+`…/practice-periods/{id}/groups/{groupId}/students`) — o'z davri bo'yicha, bu qoidaga bo'ysunmaydi.
 
 ---
 
@@ -2966,4 +2975,28 @@ Foydalanuvchi qarori: talabalar ruxsat (leave) so'ramaydi — funksiya butunlay 
 - Davrga bog'liq `company` / `application` / `period` bloklari **o'zgarmadi** (tanlangan davr tarixi).
 - Sukut davri tanlovi (§4.6) o'zgarmadi: yopilgan davr hech qachon `ongoing` hisoblanmaydi — guruhda ochiq davom etayotgan
   davr bo'lsa, sukut shu davr.
+- Endpoint soni o'zgarmadi, migratsiya yo'q.
+
+### 6.21 v3.14 → v3.15 (26.09.2026): korxona sahifalari — faqat aktiv talabalar
+
+- **Semantika o'zgardi (shakllar o'zgarmadi):** korxonadagi "biriktirilgan talabalar" endi **tarix emas**, faqat hozir shu
+  korxonada aktiv amaliyot o'tayotganlar (aktiv korxonasi = shu korxona, §4.7). Amaliyot davri faqat aktiv biriktirishni
+  aniqlash uchun ishlatiladi.
+  - `GET /api/admin/companies/{id}/students`, `GET /api/tutor/companies/{id}/students` — avval qoralamadan boshqa HAMMA
+    arizalar (submitted, rejected, transferred, yopilgan davrlar) chiqardi; endi faqat aktiv talabalar. `applicationStatus`
+    amalda doim `approved`, `periodName` va ko'rsatkichlar — aktiv davr bo'yicha.
+  - `GET /api/admin/companies` (`students`, `suspiciousDays`, `overLimit`, `flag`), `GET /api/admin/companies/{id}` va
+    `GET /api/tutor/companies/{id}` (`students`, `totalStudents`, `suspiciousDays`, `overLimit`, `flag`),
+    `GET /api/tutor/companies` (`students`, `totalStudents`, `attendancePct`, `suspiciousDays`, `overLimit`, `flag`) — faqat
+    aktiv talabalar va ularning aktiv davri. `tooManyStudents` / `suspicious` bayroqlari ham shu sonlardan.
+    Mutatsiya javoblari (`POST`/`PUT /api/admin/companies[/{id}]`, `PATCH …/status`) — o'sha `CompanyDetail`.
+  - `CompanyDetail.periods` — faqat hozir davom etayotgan **ochiq** davr(lar), `students` > 0; yopilgan/tugagan/kelgusi
+    davrlar chiqmaydi (bo'sh massiv normal holat).
+  - `GET /api/tutor/companies` — ko'lamdagi talabalar **hozir aktiv** bo'lgan korxonalar (avval: istalgan davrda `approved`).
+    Tyutor tafsiloti/talabalar/QR darvozasi o'zgarmagan (ko'lamda `approved` ariza, istalgan davr) — tarixi bor, aktivi yo'q
+    korxona tafsiloti 200 va nollar bilan ochiladi.
+- **`DELETE /api/admin/companies/{id}`**: himoya tarix bo'yicha qoldi (qoralamadan boshqa arizasi bor → 409). Aktiv talaba
+  0 bo'lsa xabar yangi: `"Korxonada amaliyot tarixi (arizalar) bor — uni o'chirib bo'lmaydi, nofaol qiling."`; aktivlar
+  bo'lsa — avvalgi xabar, N = aktiv son.
+- `GET /api/admin/dashboard` `companiesActive` — o'zgarmadi: bu korxona **holati** (`isActive`) bo'yicha son, talabaga bog'liq emas.
 - Endpoint soni o'zgarmadi, migratsiya yo'q.

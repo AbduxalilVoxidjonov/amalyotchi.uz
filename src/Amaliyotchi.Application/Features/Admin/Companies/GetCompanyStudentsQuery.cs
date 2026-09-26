@@ -5,8 +5,9 @@ using MediatR;
 
 namespace Amaliyotchi.Application.Features.Admin.Companies;
 
-/// <summary><c>GET /api/admin/companies/{id}/students</c> — korxonaga ariza bergan talabalar (qoralamadan boshqa),
-/// FISH bo'yicha tartiblangan. Korxona topilmasa → 404.</summary>
+/// <summary><c>GET /api/admin/companies/{id}/students</c> — korxonada HOZIR aktiv amaliyot o'tayotgan talabalar
+/// (aktiv korxonasi = shu korxona, §4.7), FISH bo'yicha. Tarix (yopilgan davr, rad etilgan, o'tkazilgan) chiqmaydi.
+/// Korxona topilmasa → 404.</summary>
 public sealed record GetCompanyStudentsQuery(Guid Id) : IRequest<IReadOnlyList<CompanyStudent>>;
 
 internal sealed class GetCompanyStudentsQueryHandler(IApplicationDbContext db, IScopeResolver scopeResolver, IClock clock)

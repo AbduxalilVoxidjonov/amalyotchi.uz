@@ -1,5 +1,6 @@
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Scoping;
+using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Domain.Companies;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Domain.ValueObjects;
@@ -47,6 +48,6 @@ internal sealed class CreateCompanyCommandHandler(
         await db.SaveChangesAsync(cancellationToken);
 
         var scope = await scopeResolver.ResolveAsync(cancellationToken);
-        return await CompanyQueries.LoadDetailAsync(db, scope, company.Id, requireScopedStudents: false, cancellationToken);
+        return await CompanyQueries.LoadDetailAsync(db, scope, company.Id, requireScopedStudents: false, clock.LocalToday(), cancellationToken);
     }
 }

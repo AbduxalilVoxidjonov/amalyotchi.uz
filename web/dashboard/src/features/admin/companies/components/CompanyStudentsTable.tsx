@@ -9,11 +9,7 @@ import {
 } from '@/shared/ui';
 import { ErrorState, LoadingState } from '../../components/PageStatus';
 import { DASH, formatCount } from '../../shared/format';
-import {
-  APPLICATION_STATUS_LABEL,
-  COMPANY_STUDENT_STATE_LABEL,
-  type CompanyStudent,
-} from '../types';
+import { COMPANY_STUDENT_STATE_LABEL, type CompanyStudent } from '../types';
 import styles from './CompanyStudentsTable.module.css';
 
 /** Talaba profili — ism havolasi va butun qator bosilishi uchun bitta manba. */
@@ -25,13 +21,7 @@ const COLUMNS: DataTableColumn<CompanyStudent>[] = [
     header: 'FISH',
     width: 'minmax(190px,1.6fr)',
     // Ism — talaba profiliga havola (`/admin/students/:studentId`).
-    render: (r) => (
-      <PersonCell
-        name={r.name}
-        sub={`HEMIS ${r.hemisId}`}
-        to={studentHref(r)}
-      />
-    ),
+    render: (r) => <PersonCell name={r.name} sub={`HEMIS ${r.hemisId}`} to={studentHref(r)} />,
   },
   { key: 'group', header: 'Guruh', width: 'minmax(90px,.7fr)', mono: true, dim: true },
   {
@@ -48,15 +38,13 @@ const COLUMNS: DataTableColumn<CompanyStudent>[] = [
     width: 'minmax(140px,1.1fr)',
     render: (r) => r.tutorName ?? DASH,
   },
+  // Ariza ustuni yo'q: endpoint faqat aktiv amaliyotchilarni qaytaradi — ariza doim `approved`.
   {
-    key: 'applicationStatus',
-    header: 'Ariza',
-    width: 'minmax(130px,.9fr)',
-    render: (r) => (
-      <Badge status={APPLICATION_STATUS_LABEL[r.applicationStatus].kind}>
-        {APPLICATION_STATUS_LABEL[r.applicationStatus].label}
-      </Badge>
-    ),
+    key: 'periodName',
+    header: 'Davr',
+    width: 'minmax(150px,1.1fr)',
+    wrap: true,
+    render: (r) => r.periodName ?? DASH,
   },
   {
     key: 'attendance',
@@ -97,7 +85,10 @@ export interface CompanyStudentsTableProps {
   onRetry: () => void;
 }
 
-/** Shu korxonadagi talabalar jadvali (loading / xato / bo'sh holatlari jadval ichida). */
+/**
+ * Shu korxonadagi AKTIV amaliyotchilar jadvali: faqat ochiq, hozir davom etayotgan davrda
+ * tasdiqlangan arizasi bor talabalar (loading / xato / bo'sh holatlari jadval ichida).
+ */
 export function CompanyStudentsTable({
   rows,
   isLoading,
@@ -112,14 +103,14 @@ export function CompanyStudentsTable({
     <EmptyState
       tone="plain"
       className={styles.empty}
-      title="Talabalar yo'q"
-      description="Bu korxonaga hali birorta talaba biriktirilmagan."
+      title="Aktiv amaliyotchilar yo'q"
+      description="Hozirda bu korxonada aktiv amaliyot o'tayotgan talaba yo'q."
     />
   );
 
   return (
     <DataTable
-      aria-label="Korxona talabalari"
+      aria-label="Aktiv amaliyotchilar"
       aria-busy={isLoading || undefined}
       columns={COLUMNS}
       rows={isLoading || error ? [] : rows}
@@ -128,9 +119,11 @@ export function CompanyStudentsTable({
       minWidth="1040px"
       toolbar={
         <div>
-          <h2 className={styles.tableTitle}>Korxonadagi talabalar</h2>
+          <h2 className={styles.tableTitle}>Aktiv amaliyotchilar</h2>
           <p className={styles.tableSub}>
-            {isLoading || error ? 'Yuklanmoqda…' : `${formatCount(rows.length)} ta talaba`}
+            {isLoading || error
+              ? 'Yuklanmoqda…'
+              : `Hozir amaliyot o'tayotganlar: ${formatCount(rows.length)} ta talaba`}
           </p>
         </div>
       }

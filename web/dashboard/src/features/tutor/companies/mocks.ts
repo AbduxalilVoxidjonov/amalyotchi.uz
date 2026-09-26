@@ -29,7 +29,7 @@ const PERIOD_AUTUMN: CompanyPeriod = {
   students: 0,
 };
 
-/** Tyutor ko'lamidagi korxonalar. */
+/** Tyutor ko'lamidagi korxonalar; `students`/`totalStudents` — faqat AKTIV amaliyotchilar. */
 const COMPANIES: TutorCompany[] = [
   {
     id: 'c3',
@@ -96,6 +96,24 @@ const COMPANIES: TutorCompany[] = [
     suspiciousDays: 12,
     flag: 'suspicious',
   },
+  {
+    // Tarixli, lekin aktivsiz: o'tgan davrda ko'lamdagi talabalar bo'lgan, hozir aktiv
+    // amaliyotchi yo'q (students: 0, periods: []).
+    id: 'c2',
+    name: 'Agrobank ATB',
+    tin: '201344712',
+    address: 'Toshkent, Mustaqillik 12',
+    lat: 41.3163,
+    lng: 69.2483,
+    radiusM: 120,
+    students: 0,
+    totalStudents: 0,
+    maxStudents: MOCK_MAX_STUDENTS,
+    overLimit: false,
+    attendancePct: 0,
+    suspiciousDays: 0,
+    flag: null,
+  },
 ];
 
 /** Nom bo'yicha tartib — backend shunday qaytaradi. */
@@ -139,16 +157,7 @@ const EXTRA: Record<string, DetailExtra> = {
     mentorName: 'Qodirova Malika',
     mentorPhone: '+998995556677',
     isActive: true,
-    periods: [
-      { ...PERIOD_AUTUMN, students: 4 },
-      {
-        id: 'p2',
-        name: '2-kurs bahorgi amaliyot',
-        startDate: '2026-02-10',
-        endDate: '2026-04-10',
-        students: 1,
-      },
-    ],
+    periods: [{ ...PERIOD_AUTUMN, students: 5 }],
   },
   c5: {
     activity: 'Logistika',
@@ -158,6 +167,16 @@ const EXTRA: Record<string, DetailExtra> = {
     mentorPhone: null,
     isActive: false,
     periods: [{ ...PERIOD_AUTUMN, students: 2 }],
+  },
+  // Tarixli, lekin aktiv davri yo'q — `periods` bo'sh.
+  c2: {
+    activity: 'Bank xizmatlari',
+    supervisorName: 'Sattorova Dilnoza',
+    supervisorPhone: '+998907771122',
+    mentorName: null,
+    mentorPhone: null,
+    isActive: true,
+    periods: [],
   },
 };
 
@@ -209,11 +228,15 @@ function stateOf(pct: number, suspicious: number): CompanyStudentState {
   return suspicious > 0 ? 'suspicious' : 'active';
 }
 
-/** Deterministik demo talabalar (ko'lamdagilar). */
+/**
+ * Deterministik demo talabalar (ko'lamdagi AKTIV amaliyotchilar: ariza `approved`, davr — aktiv
+ * davr). Ro'yxat uzunligi `students` soni bilan mos; aktiv davr bo'lmasa — bo'sh.
+ */
 export function mockTutorCompanyStudents(companyId: string): CompanyStudent[] {
-  const names = NAMES[companyId] ?? [];
   const detail = mockTutorCompanyDetail(companyId);
   const periods = detail?.periods ?? [];
+  const names =
+    periods.length === 0 ? [] : (NAMES[companyId] ?? []).slice(0, detail?.students ?? 0);
   const totalDays = 36;
   const hemisBase = 341000 + (mockTutorCompanies.findIndex((c) => c.id === companyId) + 1) * 100;
   return names

@@ -28,8 +28,8 @@ public sealed class AdminCompaniesController(ISender sender) : ControllerBase
     public async Task<ActionResult<Paged<CompanyRow>>> List([FromQuery] GetCompaniesQuery query, CancellationToken cancellationToken)
         => Ok(await sender.Send(query, cancellationToken));
 
-    /// <summary>Korxona tafsiloti: rekvizitlar, koordinata, rahbar/mentor, talabalar soni,
-    /// STIR nazorati va amaliyot davrlari kesimi. Korxona topilmasa → 404.</summary>
+    /// <summary>Korxona tafsiloti: rekvizitlar, koordinata, rahbar/mentor, aktiv talabalar soni,
+    /// STIR nazorati va davom etayotgan amaliyot davrlari kesimi. Korxona topilmasa → 404.</summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType<CompanyDetail>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

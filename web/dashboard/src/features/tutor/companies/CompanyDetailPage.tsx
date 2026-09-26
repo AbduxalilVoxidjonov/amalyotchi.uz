@@ -12,7 +12,7 @@ const BACK_TO = '/tutor/companies';
 
 /**
  * Tyutor · Korxona sahifasi (`/tutor/companies/:companyId`): korxona kartasi + lokatsiya,
- * STIR nazorati, amaliyot davrlari, check-in QR kodi va ko'lamdagi talabalar jadvali.
+ * STIR nazorati, aktiv amaliyot davri, check-in QR kodi va ko'lamdagi aktiv amaliyotchilar jadvali.
  * Tyutor bo'limida breadcrumb yo'q — oddiy orqaga qaytish havolasi.
  */
 export function CompanyDetailPage() {
@@ -57,8 +57,8 @@ export function CompanyDetailPage() {
                 isEmpty={(rows) => rows.length === 0}
                 empty={
                   <EmptyState
-                    title="Talabalar yo'q"
-                    description="Ko'lamingizda bu korxonaga biriktirilgan talaba yo'q."
+                    title="Aktiv amaliyotchilar yo'q"
+                    description="Hozirda bu korxonada aktiv amaliyot o'tayotgan talaba yo'q."
                   />
                 }
               >

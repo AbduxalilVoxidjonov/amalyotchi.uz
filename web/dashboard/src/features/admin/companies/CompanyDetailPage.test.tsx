@@ -14,11 +14,11 @@ function renderPage(companyId = 'c1') {
 }
 
 function studentsTable() {
-  return within(screen.getByRole('table', { name: 'Korxona talabalari' }));
+  return within(screen.getByRole('table', { name: 'Aktiv amaliyotchilar' }));
 }
 
 describe('CompanyDetailPage', () => {
-  it("breadcrumb, korxona kartasi, lokatsiya va davrlar kesimi ko'rsatiladi", async () => {
+  it("breadcrumb, korxona kartasi, lokatsiya va aktiv davr ko'rsatiladi", async () => {
     renderPage();
     expect(await screen.findByRole('heading', { name: 'Tech Solutions MChJ' })).toBeInTheDocument();
 
@@ -40,9 +40,35 @@ describe('CompanyDetailPage', () => {
     expect(facts.getAllByText('41.3111, 69.2797').length).toBeGreaterThan(0);
     expect(facts.getByRole('img', { name: 'Korxona lokatsiyasi' })).toBeInTheDocument();
 
-    const periods = within(screen.getByRole('table', { name: 'Amaliyot davrlari' }));
+    expect(facts.getByText('Aktiv talabalar')).toBeInTheDocument();
+
+    const periods = within(screen.getByRole('table', { name: 'Aktiv amaliyot davri' }));
+    expect(screen.getByRole('heading', { name: 'Aktiv amaliyot davri' })).toBeInTheDocument();
     expect(periods.getByText('3-kurs kuzgi amaliyot')).toBeInTheDocument();
     expect(periods.getByText('01.09.2026 — 31.10.2026')).toBeInTheDocument();
+    expect(periods.getByText('Aktiv talaba')).toBeInTheDocument();
+  });
+
+  it("faqat davom etayotgan davr ko'rsatiladi — o'tgan davr qatori yo'q", async () => {
+    renderPage('c4');
+    await screen.findByRole('heading', { name: 'Mega Servis MChJ' });
+    const periods = within(screen.getByRole('table', { name: 'Aktiv amaliyot davri' }));
+    expect(periods.getByText('3-kurs kuzgi amaliyot')).toBeInTheDocument();
+    expect(periods.queryByText('2-kurs bahorgi amaliyot')).not.toBeInTheDocument();
+  });
+
+  it("tarixli, lekin aktivsiz korxona: aktiv davr va aktiv amaliyotchilar bo'sh holati", async () => {
+    renderPage('c6');
+    expect(await screen.findByRole('heading', { name: 'Sharq Savdo MChJ' })).toBeInTheDocument();
+    const periods = within(screen.getByRole('table', { name: 'Aktiv amaliyot davri' }));
+    expect(periods.getByText("Aktiv davr yo'q")).toBeInTheDocument();
+    expect(
+      periods.getByText("Hozirda bu korxonada davom etayotgan amaliyot davri yo'q."),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("Hozirda bu korxonada aktiv amaliyot o'tayotgan talaba yo'q."),
+    ).toBeInTheDocument();
+    expect(studentsTable().queryAllByRole('link')).toHaveLength(0);
   });
 
   it("check-in QR kartasi admin endpoint'idan yuklanadi", async () => {
@@ -69,7 +95,7 @@ describe('CompanyDetailPage', () => {
     const control = within(screen.getByRole('region', { name: 'STIR nazorati' }));
     expect(control.getByText('STIR chegarasi oshgan')).toBeInTheDocument();
     expect(
-      control.getByText(/Mega Servis MChJ korxonasiga 21 talaba biriktirilgan/),
+      control.getByText(/Mega Servis MChJ korxonasida hozir 21 talaba aktiv/),
     ).toBeInTheDocument();
     expect(control.getByText('Chegaradan oshgan')).toBeInTheDocument();
 
@@ -78,7 +104,7 @@ describe('CompanyDetailPage', () => {
     expect(facts.getByText("Talaba ko'p")).toHaveAttribute('data-status', 'bad');
   });
 
-  it("talabalar jadvali FISH, tyutor, davomat va holat bilan to'ladi", async () => {
+  it("aktiv amaliyotchilar jadvali FISH, tyutor, davr, davomat va holat bilan to'ladi", async () => {
     renderPage();
     expect(await screen.findByText('Aliyev Akmal')).toBeInTheDocument();
     const table = studentsTable();
@@ -90,7 +116,9 @@ describe('CompanyDetailPage', () => {
     expect(table.getByText('HEMIS 341100')).toBeInTheDocument();
     expect(table.getAllByText('412-22').length).toBeGreaterThan(0);
     expect(table.getAllByText('Nodira Saidova').length).toBeGreaterThan(0);
-    expect(table.getAllByText('Tasdiqlangan').length).toBeGreaterThan(0);
+    expect(table.getAllByText('3-kurs kuzgi amaliyot')).toHaveLength(4);
+    expect(screen.getByRole('heading', { name: 'Aktiv amaliyotchilar' })).toBeInTheDocument();
+    expect(screen.getByText("Hozir amaliyot o'tayotganlar: 4 ta talaba")).toBeInTheDocument();
     expect(table.getByRole('progressbar', { name: 'Aliyev Akmal davomati' })).toHaveAttribute(
       'aria-valuenow',
       '94',
@@ -130,9 +158,25 @@ describe('CompanyDetailPage', () => {
     expect(screen.getByRole('button', { name: 'Qayta urinish' })).toBeInTheDocument();
   });
 
-  it("talabalar bo'lmasa bo'sh holat ko'rsatiladi", async () => {
+  it("regressiya: ariza holati ustuni va holat filtrlari/tab'lari yo'q", async () => {
+    renderPage();
+    await screen.findByText('Aliyev Akmal');
+    const table = studentsTable();
+    expect(table.queryByText('Ariza')).not.toBeInTheDocument();
+    expect(table.queryByText('Tasdiqlangan')).not.toBeInTheDocument();
+    for (const label of ['Kutilmoqda', 'Rad etilgan', "Ko'chirilgan", 'Yakunlangan', 'Yangi']) {
+      expect(screen.queryByRole('tab', { name: label })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument();
+    }
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+  });
+
+  it("aktiv amaliyotchilar bo'lmasa bo'sh holat ko'rsatiladi", async () => {
     server.use(http.get(`${COMPANIES_ENDPOINT}/:id/students`, () => HttpResponse.json([])));
     renderPage();
-    expect(await screen.findByText("Talabalar yo'q")).toBeInTheDocument();
+    expect(await screen.findByText("Aktiv amaliyotchilar yo'q")).toBeInTheDocument();
+    expect(
+      screen.getByText("Hozirda bu korxonada aktiv amaliyot o'tayotgan talaba yo'q."),
+    ).toBeInTheDocument();
   });
 });

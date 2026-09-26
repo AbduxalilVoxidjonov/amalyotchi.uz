@@ -1,9 +1,5 @@
 import { Badge, DataTable, PersonCell, ProgressBar, type DataTableColumn } from '@/shared/ui';
-import {
-  APPLICATION_STATUS_LABEL,
-  COMPANY_STUDENT_STATE_LABEL,
-  type CompanyStudent,
-} from '../types';
+import { COMPANY_STUDENT_STATE_LABEL, type CompanyStudent } from '../types';
 import styles from './CompanyStudentsTable.module.css';
 
 const COLUMNS: DataTableColumn<CompanyStudent>[] = [
@@ -13,11 +9,7 @@ const COLUMNS: DataTableColumn<CompanyStudent>[] = [
     width: 'minmax(180px,1.6fr)',
     // Ism — talaba profiliga havola (`/tutor/students/:studentId`).
     render: (r) => (
-      <PersonCell
-        name={r.name}
-        sub={`HEMIS ${r.hemisId}`}
-        to={`/tutor/students/${r.studentId}`}
-      />
+      <PersonCell name={r.name} sub={`HEMIS ${r.hemisId}`} to={`/tutor/students/${r.studentId}`} />
     ),
   },
   { key: 'group', header: 'Guruh', width: 'minmax(90px,.6fr)', mono: true, dim: true },
@@ -35,16 +27,7 @@ const COLUMNS: DataTableColumn<CompanyStudent>[] = [
     wrap: true,
     render: (r) => r.periodName ?? '—',
   },
-  {
-    key: 'applicationStatus',
-    header: 'Ariza',
-    width: 'minmax(120px,.9fr)',
-    render: (r) => (
-      <Badge status={APPLICATION_STATUS_LABEL[r.applicationStatus].kind}>
-        {APPLICATION_STATUS_LABEL[r.applicationStatus].label}
-      </Badge>
-    ),
-  },
+  // Ariza ustuni yo'q: endpoint faqat aktiv amaliyotchilarni qaytaradi — ariza doim `approved`.
   {
     key: 'attendance',
     header: 'Davomat',
@@ -80,22 +63,27 @@ const COLUMNS: DataTableColumn<CompanyStudent>[] = [
   },
 ];
 
-/** Shu korxonadagi (ko'lamdagi) talabalar jadvali. */
+/**
+ * Shu korxonadagi (ko'lamdagi) AKTIV amaliyotchilar jadvali: faqat ochiq, hozir davom etayotgan
+ * davrda tasdiqlangan arizasi bor talabalar.
+ */
 export function CompanyStudentsTable({ rows }: { rows: readonly CompanyStudent[] }) {
   return (
     <DataTable
-      aria-label="Korxona talabalari"
+      aria-label="Aktiv amaliyotchilar"
       columns={COLUMNS}
       rows={rows}
       rowKey={(r) => r.studentId}
-      minWidth="940px"
+      minWidth="840px"
       toolbar={
         <div>
-          <h2 className={styles.tableTitle}>Korxonadagi talabalarim</h2>
-          <p className={styles.tableSub}>{rows.length} ta talaba</p>
+          <h2 className={styles.tableTitle}>Aktiv amaliyotchilar</h2>
+          <p className={styles.tableSub}>
+            Ko'lamingizda hozir amaliyot o'tayotganlar: {rows.length} ta talaba
+          </p>
         </div>
       }
-      emptyText="Talabalar yo'q"
+      emptyText="Hozirda bu korxonada aktiv amaliyot o'tayotgan talaba yo'q."
     />
   );
 }

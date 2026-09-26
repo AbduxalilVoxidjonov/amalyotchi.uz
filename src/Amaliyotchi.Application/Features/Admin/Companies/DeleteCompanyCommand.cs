@@ -1,4 +1,5 @@
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Domain.Companies;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Domain.Exceptions;
@@ -9,8 +10,9 @@ namespace Amaliyotchi.Application.Features.Admin.Companies;
 
 /// <summary><c>DELETE /api/admin/companies/{id}</c> → 204 (soft delete — arxivlash).
 /// Ikki qavat himoya: korxona hali FAOL bo'lsa → 409 (avval faolsizlantirish kerak),
-/// unga talaba biriktirilgan bo'lsa (qoralamadan boshqa arizasi bor) → 409 — davomat va
-/// kundalik tarixi korxonaga bog'liq, uni yo'qotib bo'lmaydi. Topilmasa → 404.</summary>
+/// unga qoralamadan boshqa arizasi bor talaba bo'lsa (tarix, istalgan davr) → 409 — davomat va
+/// kundalik tarixi korxonaga bog'liq, uni yo'qotib bo'lmaydi. Xabar: hozir aktiv talabalar bo'lsa —
+/// <see cref="HasStudentsMessage"/> (aktiv son bilan), aks holda <see cref="HasHistoryMessage"/>. Topilmasa → 404.</summary>
 public sealed record DeleteCompanyCommand(Guid Id) : IRequest;
 
 internal sealed class DeleteCompanyCommandHandler(IApplicationDbContext db, IAuditWriter audit, IClock clock)
@@ -23,6 +25,10 @@ internal sealed class DeleteCompanyCommandHandler(IApplicationDbContext db, IAud
         $"Korxonaga {students} ta talaba biriktirilgan — uni o'chirib bo'lmaydi. " +
         "Talabalarni boshqa korxonaga ko'chiring yoki korxonani faqat faolsizlantiring.";
 
+    /// <summary>Hozir aktiv talaba yo'q, lekin arizalar tarixi bor — UI dagi "0 talaba" bilan zid kelmasligi uchun.</summary>
+    public const string HasHistoryMessage =
+        "Korxonada amaliyot tarixi (arizalar) bor — uni o'chirib bo'lmaydi, nofaol qiling.";
+
     public async Task Handle(DeleteCompanyCommand request, CancellationToken cancellationToken)
     {
         var company = await db.Companies.FirstOrDefaultAsync(c => c.Id == request.Id, cancellationToken)
@@ -31,9 +37,15 @@ internal sealed class DeleteCompanyCommandHandler(IApplicationDbContext db, IAud
         if (company.IsActive)
             throw new ConflictException(StillActiveMessage);
 
-        var students = await CompanyWrite.CountAttachedStudentsAsync(db, company.Id, cancellationToken);
-        if (students > 0)
-            throw new ConflictException(HasStudentsMessage(students));
+        // Himoya — TARIX bo'yicha (qoralamadan boshqa istalgan ariza); xabar esa UI dagi aktiv son bilan mos.
+        var attached = await CompanyWrite.CountAttachedStudentsAsync(db, company.Id, cancellationToken);
+        if (attached > 0)
+        {
+            Guid[] companyIds = [company.Id];
+            var active = (await CompanyQueries.LoadActivePlacementsAsync(
+                db, scope: null, companyIds, clock.LocalToday(), cancellationToken)).Count;
+            throw new ConflictException(active > 0 ? HasStudentsMessage(active) : HasHistoryMessage);
+        }
 
         company.Delete(clock.UtcNow);
 

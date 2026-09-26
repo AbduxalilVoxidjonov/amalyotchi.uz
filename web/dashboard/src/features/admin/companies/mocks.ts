@@ -90,7 +90,33 @@ export const mockCompanies: Company[] = [
     isActive: false,
     flag: 'suspicious',
   },
+  {
+    // Tarixli, lekin aktivsiz: o'tgan davrlarda arizalar bo'lgan, hozir aktiv amaliyotchi yo'q
+    // (students: 0, periods: []). O'chirib bo'lmaydi — faqat nofaol qilish mumkin (409).
+    id: 'c6',
+    name: 'Sharq Savdo MChJ',
+    tin: '306228417',
+    activity: 'Savdo',
+    address: 'Toshkent, Yunusobod 19',
+    radiusM: 180,
+    students: 0,
+    suspiciousDays: 0,
+    maxStudents: MOCK_MAX_STUDENTS,
+    overLimit: false,
+    isActive: false,
+    flag: null,
+  },
 ];
+
+/**
+ * Amaliyot tarixi (arizalari) bor korxonalar — backend ularni o'chirishga ruxsat bermaydi.
+ * Mock'da yangi yaratilgan korxonalarda tarix yo'q.
+ */
+const WITH_HISTORY: ReadonlySet<string> = new Set(['c1', 'c2', 'c3', 'c4', 'c5', 'c6']);
+
+/** Backend 409 matni (tarixi bor, aktiv talabasi yo'q korxonani o'chirish). */
+export const COMPANY_HISTORY_DELETE_MESSAGE =
+  "Korxonada amaliyot tarixi (arizalar) bor — uni o'chirib bo'lmaydi, nofaol qiling.";
 
 interface CompanyExtra {
   lat: number;
@@ -167,14 +193,7 @@ const EXTRA: Record<string, CompanyExtra> = {
         name: '3-kurs kuzgi amaliyot',
         startDate: '2026-09-01',
         endDate: '2026-10-31',
-        students: 14,
-      },
-      {
-        id: 'p2',
-        name: '2-kurs bahorgi amaliyot',
-        startDate: '2026-02-10',
-        endDate: '2026-04-10',
-        students: 7,
+        students: 21,
       },
     ],
   },
@@ -194,6 +213,16 @@ const EXTRA: Record<string, CompanyExtra> = {
         students: 5,
       },
     ],
+  },
+  // Tarixli, lekin aktiv davri yo'q — `periods` bo'sh.
+  c6: {
+    lat: 41.3652,
+    lng: 69.2871,
+    supervisorName: 'Qodirov Botir',
+    supervisorPhone: '+998909998877',
+    mentorName: null,
+    mentorPhone: null,
+    periods: [],
   },
 };
 
@@ -307,11 +336,16 @@ function stateOf(pct: number, suspicious: number): CompanyStudentState {
   return suspicious > 0 ? 'suspicious' : 'active';
 }
 
-/** Deterministik demo talabalar: davomat 58–100%, ba'zilarida shubhali kunlar. */
+/**
+ * Deterministik demo talabalar: faqat AKTIV amaliyotchilar (ariza `approved`, davr — korxonaning
+ * aktiv davri); soni `Company.students` bilan mos. Davomat 58–100%, ba'zilarida shubhali kunlar.
+ */
 function buildStudents(companyId: string): CompanyStudent[] {
-  const names = NAMES[companyId] ?? [];
   const detail = mockCompanyDetail(companyId);
   const periods = detail?.periods ?? [];
+  // Aktiv davr bo'lmasa — aktiv amaliyotchi ham yo'q; ro'yxat uzunligi = `students` soni.
+  const names =
+    periods.length === 0 ? [] : (NAMES[companyId] ?? []).slice(0, detail?.students ?? 0);
   const totalDays = 36;
   // HEMIS ID: har korxona uchun alohida yuzlik (c1 → 341100, c2 → 341200, ...).
   const hemisBase = 341000 + (state.findIndex((c) => c.id === companyId) + 1) * 100;
@@ -535,6 +569,9 @@ export const companiesHandlers: HttpHandler[] = [
         `Korxonaga ${existing.students} ta talaba biriktirilgan — uni o'chirib bo'lmaydi. ` +
           "Talabalarni boshqa korxonaga ko'chiring yoki korxonani faqat faolsizlantiring.",
       );
+    }
+    if (WITH_HISTORY.has(id)) {
+      return problemResponse(409, 'Ziddiyat', COMPANY_HISTORY_DELETE_MESSAGE);
     }
     state = state.filter((c) => c.id !== id);
     delete extraState[id];
