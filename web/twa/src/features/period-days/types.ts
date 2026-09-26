@@ -1,4 +1,4 @@
-import type { CalendarDayStatus } from '@/features/calendar/types';
+import type { CalendarDayStatus } from '@/features/day-status/types';
 import type { DiaryStatus } from '@/features/diary/types';
 import type { StudentPeriodOption, StudentPeriodStatus } from '@/features/period/types';
 import { WEEKDAYS_UZ, parseDateOnly } from '@/shared/lib/format';

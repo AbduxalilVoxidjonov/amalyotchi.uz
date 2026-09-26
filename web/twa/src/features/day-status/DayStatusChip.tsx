@@ -1,5 +1,5 @@
 import { cn } from '@/shared/ui';
-import { DAY_STATUS, type CalendarDayStatus } from '../types';
+import { DAY_STATUS, type CalendarDayStatus } from './types';
 import styles from './DayStatus.module.css';
 
 export interface DayStatusChipProps {
@@ -7,7 +7,7 @@ export interface DayStatusChipProps {
   className?: string;
 }
 
-/** Kun holati chip'i — yorliq/glyph `DAY_STATUS`, rang oy gridi katagi bilan bir xil. */
+/** Kun holati chip'i — yorliq/glyph `DAY_STATUS`, rang `DayStatus.module.css` dan. */
 export function DayStatusChip({ status, className }: DayStatusChipProps) {
   const meta = DAY_STATUS[status];
   return (

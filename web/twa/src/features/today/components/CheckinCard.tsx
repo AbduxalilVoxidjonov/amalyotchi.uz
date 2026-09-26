@@ -1,90 +1,48 @@
 import { useRef } from 'react';
-import { Badge, Button, Card, Eyebrow, FactGrid, type FactItem } from '@/shared/ui';
+import { Button, Card, Eyebrow, FactGrid, type FactItem } from '@/shared/ui';
 import { formatDate, formatMeters, formatTime } from '@/shared/lib/format';
-import type { CheckinFlow } from '../hooks';
+import type { CheckinFlow, CheckinMode } from '../hooks';
 import { PHOTO_ACCEPT } from '../photo';
 import { isQrRequired } from '../qr';
-import { ATTENDANCE_STATUS, isCheckedIn, isFinished, type TodayDto } from '../types';
+import type { TodayDto } from '../types';
 import { CameraQrScanner } from './CameraQrScanner';
 import { CheckinSteps } from './CheckinSteps';
+import { LocationStep } from './LocationStep';
 import { QrConfirmed, QrScanPanel } from './QrScan';
 import { SelfieCapture } from './SelfieCapture';
 import styles from './CheckinCard.module.css';
 
 export interface CheckinCardProps {
   today: TodayDto;
-  /** Selfie oqimi (`useCheckinFlow`) — xato/yuklanish holatlari shu yerda. */
+  /** `checkin` — "Kelganini belgilash" · `checkout` — "Ketganini belgilash". */
+  mode: CheckinMode;
+  /** Davomat oqimi (`useCheckinFlow`) — xato/yuklanish holatlari shu yerda. */
   flow: CheckinFlow;
 }
 
-/** Sarlavha + izoh — holat (v2 enum) va oynadan hisoblanadi; server `note` bo'lsa u ustun. */
-function describe(today: TodayDto): { title: string; note: string } {
-  const { checkin, window: win } = today;
-  if (isFinished(checkin)) {
-    return checkin.checkOutAt
-      ? {
-          title: `Kun yakunlandi · ${formatTime(checkin.checkOutAt)}`,
-          note: 'Check-out qayd etildi. Kundalik yuborilgan bo‘lsa, kun to‘liq hisoblanadi.',
-        }
-      : {
-          title: 'Kun avtomatik yakunlandi',
-          note: 'Check-out qilinmagan — server kunni avtomatik yopdi. Bu tyutorga ko‘rinadi.',
-        };
-  }
-  if (isCheckedIn(checkin)) {
-    return {
-      title: `Belgilandingiz · ${formatTime(checkin.checkInAt)}`,
-      note:
-        checkin.note ??
-        `Korxonadan ${formatMeters(checkin.distanceM)} masofada qayd etildi. Kun yakunlanishi uchun kundalik va check-out (${win.checkoutAt} dan) kerak.`,
-    };
-  }
-  switch (checkin.status) {
-    case 'absent':
-      return {
-        title: 'Bugun belgilanmadingiz',
-        note: checkin.note ?? `Belgilanish oynasi (${win.start}–${win.closesAt}) yopilgan.`,
-      };
-    case 'excused':
-      return { title: 'Bugun sababli', note: checkin.note ?? 'Tasdiqlangan ruxsat kuni.' };
-    case 'dayOff':
-      return {
-        title: 'Bugun dam olish kuni',
-        note: checkin.note ?? 'Belgilanish talab qilinmaydi.',
-      };
-    default:
-      return win.isOpen
-        ? {
-            title: 'Belgilanish oynasi ochiq',
-            note: `Oyna ${win.start}–${win.closesAt}. ${win.end} dan keyingi belgilanish "Kech keldi" bo'ladi.`,
-          }
-        : {
-            title: 'Belgilanish oynasi yopiq',
-            note:
-              checkin.note ??
-              `Oyna ${win.start}–${win.closesAt}. Belgilanish faqat oyna ochiq paytda qabul qilinadi.`,
-          };
-  }
-}
+const COPY: Record<CheckinMode, { title: string; button: string }> = {
+  checkin: { title: 'Kelganini belgilash', button: 'Kelganini belgilash' },
+  checkout: { title: 'Ketganini belgilash', button: 'Ketganini belgilash' },
+};
 
-/** SPEC-SCREENS §8 chap section — check-in: QR → joylashuv → selfie (presentation). */
-export function CheckinCard({ today, flow }: CheckinCardProps) {
+/**
+ * QR sahifasi — belgilanish kartasi (presentation): boshlash tugmasi va qadamlar
+ * **1) QR → 2) selfi → 3) joylashuv**. Sozlamada QR talab qilinmasa 1-qadam o'tkazib yuboriladi.
+ */
+export function CheckinCard({ today, mode, flow }: CheckinCardProps) {
   const { checkin, window: win } = today;
   const cameraRef = useRef<HTMLInputElement>(null);
-  const checkedIn = isCheckedIn(checkin);
-  const finished = isFinished(checkin);
-  const canAct = checkedIn || checkin.status === 'pending';
-  const { title, note } = describe(today);
-  const status = ATTENDANCE_STATUS[checkin.status];
   // Sozlamalar (TodayDto `checkin`): flag yo'q bo'lsa — ikkalasi ham majburiy (backend sukuti `true`).
   const qrRequired = isQrRequired(checkin.qrRequired);
   const photoRequired = checkin.photoRequired !== false;
-  const inFlow = canAct && flow.phase !== 'idle';
+  const inFlow = flow.phase !== 'idle' && flow.phase !== 'done';
+  const selfieStep = flow.phase === 'capture' || flow.phase === 'preview';
+  const copy = COPY[mode];
 
   /**
    * Kamera SHU foydalanuvchi harakatida ochiladi (`input.click()`) — `await` dan keyin
-   * chaqirilsa iOS/Telegram WebView bloklaydi. Joylashuv so'rovi `flow.start` da parallel boshlanadi.
-   * QR talab qilinsa KELDIM QR skanerini ochadi; kamera keyin "Rasmga olish" tugmasi bilan ochiladi.
+   * chaqirilsa iOS/Telegram WebView bloklaydi. QR talab qilinsa boshlash tugmasi QR skanerini ochadi;
+   * kamera keyin "Rasmga olish" tugmasi bilan ochiladi.
    */
   function openCamera() {
     const el = cameraRef.current;
@@ -93,12 +51,21 @@ export function CheckinCard({ today, flow }: CheckinCardProps) {
     el.click();
   }
 
-  const facts: FactItem[] = [
-    { k: 'Holat', v: status.label, tone: status.tone },
-    { k: 'Masofa', v: `${formatMeters(checkin.distanceM)} / ${formatMeters(checkin.radiusM)}` },
-    { k: 'GPS aniqligi', v: formatMeters(checkin.gpsAccuracyM) },
-    { k: 'Check-out oynasi', v: win.checkoutAt },
-  ];
+  const note =
+    mode === 'checkin'
+      ? `Oyna ${win.start}–${win.closesAt}. ${win.end} dan keyingi belgilanish "Kech keldi" bo'ladi.`
+      : `Kelgan vaqtingiz: ${formatTime(checkin.checkInAt)}. Ish kuni oxirida ketganingizni belgilang.`;
+
+  const facts: FactItem[] =
+    mode === 'checkin'
+      ? [
+          { k: 'Oyna', v: `${win.start}–${win.closesAt}` },
+          { k: 'Korxona radiusi', v: formatMeters(checkin.radiusM ?? today.place?.radiusM) },
+        ]
+      : [
+          { k: 'Kelgan vaqt', v: formatTime(checkin.checkInAt) || '—' },
+          { k: 'Check-out oynasi', v: `${win.checkoutAt} dan` },
+        ];
 
   return (
     <Card padded="lg" aria-labelledby="checkin-title">
@@ -106,7 +73,7 @@ export function CheckinCard({ today, flow }: CheckinCardProps) {
         Bugun · {formatDate(today.date)}
       </Eyebrow>
       <h2 id="checkin-title" className={styles.title}>
-        {title}
+        {copy.title}
       </h2>
       <p className={styles.note}>{note}</p>
 
@@ -120,44 +87,40 @@ export function CheckinCard({ today, flow }: CheckinCardProps) {
         onChange={(e) => flow.selectPhoto(e.target.files?.[0])}
       />
 
-      {finished ? (
-        <div className={styles.done}>
-          <Badge status={checkin.autoClosed && !checkin.checkOutAt ? 'late' : 'ok'} size="lg">
-            {checkin.autoClosed && !checkin.checkOutAt ? 'Avtomatik yopildi' : 'Yakunlandi'}
-          </Badge>
-        </div>
-      ) : canAct && flow.phase === 'idle' ? (
-        <Button
-          variant="checkin"
-          tone={checkedIn ? 'dark' : 'accent'}
-          className={styles.button}
-          onClick={() => {
-            flow.start(checkedIn ? 'checkout' : 'checkin', { qrRequired, photoRequired });
-            if (!qrRequired) openCamera();
-          }}
-          disabled={!win.isOpen}
-        >
-          {checkedIn ? 'KETDIM' : 'KELDIM'}
-        </Button>
-      ) : null}
+      {flow.phase === 'idle' && (
+        <>
+          {flow.error && (
+            <p className={styles.error} role="alert">
+              {flow.error}
+            </p>
+          )}
+          <Button
+            variant="checkin"
+            tone={mode === 'checkout' ? 'dark' : 'accent'}
+            className={styles.button}
+            onClick={() => {
+              flow.start(mode, { qrRequired, photoRequired });
+              if (!qrRequired) openCamera();
+            }}
+          >
+            {copy.button}
+          </Button>
+          <p className={styles.hint}>
+            {qrRequired
+              ? 'Qadamlar: 1) korxonadagi QR kodni skanerlash · 2) selfi · 3) joylashuv.'
+              : 'Qadamlar: 1) selfi · 2) joylashuv.'}
+          </p>
+        </>
+      )}
 
       {inFlow && <CheckinSteps flow={flow} />}
       {inFlow && flow.phase === 'qr' && <QrScanPanel flow={flow} />}
-      {inFlow && flow.phase !== 'qr' && (
-        <>
-          {flow.requirements.qrRequired && flow.qr && <QrConfirmed flow={flow} />}
-          <SelfieCapture flow={flow} onOpenCamera={openCamera} />
-        </>
-      )}
+      {selfieStep && flow.requirements.qrRequired && flow.qr && <QrConfirmed flow={flow} />}
+      {selfieStep && <SelfieCapture flow={flow} onOpenCamera={openCamera} />}
+      {flow.phase === 'location' && <LocationStep flow={flow} />}
       {inFlow && flow.cameraOpen && <CameraQrScanner onDone={flow.finishCameraScan} />}
 
       <FactGrid items={facts} columns={2} className={styles.facts} />
-
-      {checkin.suspicious && (
-        <p className={styles.error} role="status">
-          Belgilanish shubhali deb belgilandi — tyutor tekshiradi.
-        </p>
-      )}
 
       <p className={styles.hint}>
         Belgilanish faqat korxona radiusi ichidan qabul qilinadi. Har bir urinish — muvaffaqiyatsizi

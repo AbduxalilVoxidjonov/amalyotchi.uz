@@ -1,22 +1,20 @@
 import { AppLink, Button, ErrorState, LoadingState } from '@/shared/ui';
 import { errorMessage } from '@/shared/api/client';
-import { CheckinCard } from '@/features/today/components/CheckinCard';
-import { useCheckinFlow, useTodayQuery } from '@/features/today/hooks';
+import { TodaySummary } from '@/features/today/components/TodaySummary';
+import { useTodayQuery } from '@/features/today/hooks';
 import type { PeriodDay, PeriodDayDiary } from '../types';
 import { DiaryLine } from './DayDetails';
 import styles from './DayList.module.css';
 
 /**
- * Bugungi kun paneli: check-in oqimi (KELDIM/KETDIM, QR → GPS → selfi — `CheckinCard` + `useCheckinFlow`,
- * o'zgarishsiz) va bugungi kundalik holati. Kundalik yozish — `/kundalik` (faqat `AppLink` orqali:
- * Telegram-Android `<a href>` ni tashqi havola deb ushlaydi).
- * Panel yopilsa komponent unmount bo'ladi — boshlangan oqim bekor qilinadi (QR popup yopiladi).
+ * Bugungi kun paneli: bugungi davomatning qisqa holati (`TodaySummary`; belgilash oqimi — QR sahifasida,
+ * "QR orqali belgilash" → `/qr`) va bugungi kundalik holati. Kundalik yozish — `/kundalik` (faqat `AppLink`
+ * orqali: Telegram-Android `<a href>` ni tashqi havola deb ushlaydi).
  */
 export function TodayPanel({ day }: { day: PeriodDay }) {
   const today = useTodayQuery();
-  const flow = useCheckinFlow();
 
-  if (today.isPending) return <LoadingState height={320} />;
+  if (today.isPending) return <LoadingState height={160} />;
   if (today.isError) {
     return (
       <ErrorState description={errorMessage(today.error)} onRetry={() => void today.refetch()} />
@@ -31,7 +29,7 @@ export function TodayPanel({ day }: { day: PeriodDay }) {
 
   return (
     <div className={styles.today}>
-      <CheckinCard today={data} flow={flow} />
+      <TodaySummary today={data} />
       <div className={styles.todayDiary}>
         <DiaryLine diary={diary} />
         {canWrite && (

@@ -16,34 +16,37 @@ const STATE_LABEL: Record<StepState, string> = {
   error: 'xato',
 };
 
-/** Qadamlar holati `useCheckinFlow` dan hisoblanadi. */
+/** Qadamlar holati `useCheckinFlow` dan hisoblanadi: 1 QR → 2 Selfi → 3 Joylashuv. */
 function buildSteps(flow: CheckinFlow): Step[] {
   const { phase, requirements, qr, location, photo } = flow;
   const steps: Step[] = [];
   if (requirements.qrRequired) {
     steps.push({ key: 'qr', label: 'QR', state: qr ? 'done' : 'current' });
   }
-  const afterQr = !requirements.qrRequired || qr !== null;
-  const locationState: StepState =
-    location === 'ok'
-      ? 'done'
-      : location === 'error'
-        ? 'error'
-        : afterQr && phase !== 'qr'
-          ? 'current'
-          : 'todo';
-  steps.push({ key: 'location', label: 'Joylashuv', state: locationState });
+  const afterQr = (!requirements.qrRequired || qr !== null) && phase !== 'qr';
   const selfieState: StepState =
-    phase === 'preview' && photo
+    phase === 'location' || phase === 'done' || (phase === 'preview' && photo)
       ? 'done'
-      : afterQr && phase !== 'qr' && location !== 'pending'
+      : afterQr
         ? 'current'
         : 'todo';
   steps.push({ key: 'selfie', label: 'Selfi', state: selfieState });
+  // Joylashuv fonda olinishi mumkin, lekin qadam sifatida faqat selfidan keyin ko'rsatiladi.
+  const locationState: StepState =
+    phase === 'done'
+      ? 'done'
+      : phase !== 'location'
+        ? 'todo'
+        : location === 'error'
+          ? 'error'
+          : location === 'ok'
+            ? 'done'
+            : 'current';
+  steps.push({ key: 'location', label: 'Joylashuv', state: locationState });
   return steps;
 }
 
-/** Check-in qadamlari: 1 QR · 2 Joylashuv · 3 Selfi (QR talab qilinmasa — 2 qadam). */
+/** Belgilanish qadamlari: 1 QR · 2 Selfi · 3 Joylashuv (QR talab qilinmasa — 2 qadam). */
 export function CheckinSteps({ flow }: { flow: CheckinFlow }) {
   const steps = buildSteps(flow);
   return (

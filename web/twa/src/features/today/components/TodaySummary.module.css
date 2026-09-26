@@ -1,0 +1,31 @@
+/* Bosh ekrandagi bugungi davomat holati (qisqa). */
+.box {
+  padding: 14px;
+  border-radius: var(--radius-xl);
+  background: var(--color-surface-2);
+  border: var(--border-inner);
+}
+.title {
+  margin: 6px 0 0;
+  font-size: var(--fs-base2);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-snug);
+}
+.note {
+  margin: 6px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+  line-height: var(--lh-note);
+}
+.warn {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md2);
+  background: var(--color-late-bg);
+  color: var(--color-late-fg);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-note);
+}
+.action {
+  margin-top: 12px;
+}

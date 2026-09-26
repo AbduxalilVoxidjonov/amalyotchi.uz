@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useState, type Ref } from 'react';
 import { Badge } from '@/shared/ui';
-import { DayStatusChip } from '@/features/calendar/components/DayStatusChip';
-import { DAY_STATUS } from '@/features/calendar/types';
+import { DayStatusChip } from '@/features/day-status/DayStatusChip';
+import { DAY_STATUS } from '@/features/day-status/types';
 import { formatDayMonth, weekdayName, type PeriodDay } from '../types';
 import { DayOffDetails, FutureDayDetails, PastDayDetails } from './DayDetails';
 import { TodayPanel } from './TodayPanel';

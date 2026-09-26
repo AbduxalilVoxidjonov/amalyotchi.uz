@@ -23,7 +23,7 @@ import styles from './router.module.css';
 const HomePage = lazy(importWithReload(() => import('@/pages/HomePage')));
 const PlacePage = lazy(importWithReload(() => import('@/pages/PlacePage')));
 const DiaryPage = lazy(importWithReload(() => import('@/pages/DiaryPage')));
-const CalendarPage = lazy(importWithReload(() => import('@/pages/CalendarPage')));
+const QrPage = lazy(importWithReload(() => import('@/pages/QrPage')));
 const ProfilePage = lazy(importWithReload(() => import('@/pages/ProfilePage')));
 
 const TELEGRAM_LINK_KEY = ['auth', 'telegram-link'] as const;
@@ -107,8 +107,10 @@ export const routes: RouteObject[] = [
           { path: '/', element: <HomePage /> },
           { path: '/joyim', element: <PlacePage /> },
           { path: '/kundalik', element: <DiaryPage /> },
-          { path: '/kalendar', element: <CalendarPage /> },
-          // Eski havolalar: portfolio bo'limi yo'q (bosh ekranga); "Ruxsat so'rash" olib tashlangan.
+          { path: '/qr', element: <QrPage /> },
+          // Eski havolalar: portfolio bo'limi yo'q (bosh ekranga); "Ruxsat so'rash" olib tashlangan;
+          // "Kalendarim" o'rniga "QR" bo'limi (davomat shu yerda belgilanadi).
+          { path: '/kalendar', element: <Navigate to="/qr" replace /> },
           { path: '/portfolio', element: <Navigate to="/" replace /> },
           { path: '/ruxsat', element: <Navigate to="/" replace /> },
           { path: '/profil', element: <ProfilePage /> },

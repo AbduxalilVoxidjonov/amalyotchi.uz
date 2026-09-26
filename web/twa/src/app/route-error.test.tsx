@@ -6,12 +6,12 @@ import {
 } from '@/shared/lib/chunk-reload';
 import { renderApp } from '@/test/render-app';
 
-// Kalendar sahifasi testda boshqariladigan xato bilan yiqiladi.
+// QR sahifasi testda boshqariladigan xato bilan yiqiladi.
 const crash = vi.hoisted(() => ({ error: null as Error | null }));
-vi.mock('@/pages/CalendarPage', () => ({
-  default: function CrashingCalendar() {
+vi.mock('@/pages/QrPage', () => ({
+  default: function CrashingQr() {
     if (crash.error) throw crash.error;
-    return <p>Kalendar ishlayapti</p>;
+    return <p>QR ishlayapti</p>;
   },
 }));
 
@@ -42,7 +42,7 @@ describe('Route errorElement', () => {
     renderApp('/');
     await screen.findByRole('heading', { name: 'Bosh ekran', level: 1 });
 
-    await act(async () => clickTab('Kalendarim'));
+    await act(async () => clickTab('QR orqali belgilash'));
     expect(
       await screen.findByRole('heading', { name: "Sahifani ochib bo'lmadi" }),
     ).toBeInTheDocument();
@@ -53,7 +53,9 @@ describe('Route errorElement', () => {
     expect(within(details).getByText(/reading 'days'/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Qayta yuklash' })).toBeInTheDocument();
     // Shell saqlanadi: header sarlavhasi va tab-bar.
-    expect(screen.getByRole('heading', { name: 'Kalendarim', level: 1 })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'QR orqali belgilash', level: 1 }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: "Bo'limlar" })).toBeInTheDocument();
     expect(reload).not.toHaveBeenCalled();
 
@@ -64,7 +66,7 @@ describe('Route errorElement', () => {
 
   it('"Bosh ekranga" tugmasi bosh ekranni ochadi', async () => {
     crash.error = new Error('boom');
-    const router = renderApp('/kalendar');
+    const router = renderApp('/qr');
     await screen.findByRole('heading', { name: "Sahifani ochib bo'lmadi" });
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Bosh ekranga' })));
     expect(
@@ -75,9 +77,9 @@ describe('Route errorElement', () => {
 
   it('chunk yuklash xatosi → sahifa bir marta avtomatik qayta yuklanadi', async () => {
     crash.error = new TypeError(
-      'Failed to fetch dynamically imported module: https://app.example/assets/CalendarPage-old.js',
+      'Failed to fetch dynamically imported module: https://app.example/assets/QrPage-old.js',
     );
-    renderApp('/kalendar');
+    renderApp('/qr');
     expect(await screen.findByRole('status', { name: 'Ilova yangilanmoqda…' })).toBeInTheDocument();
     expect(reload).toHaveBeenCalledTimes(1);
     expect(window.sessionStorage.getItem(CHUNK_RELOAD_KEY)).not.toBeNull();
@@ -86,7 +88,7 @@ describe('Route errorElement', () => {
   it("chunk xatosi, lekin yaqinda reload bo'lgan → loop yo'q, xato ekrani ko'rsatiladi", async () => {
     window.sessionStorage.setItem(CHUNK_RELOAD_KEY, String(Date.now()));
     crash.error = new TypeError('Importing a module script failed.');
-    renderApp('/kalendar');
+    renderApp('/qr');
     expect(
       await screen.findByRole('heading', { name: "Sahifani ochib bo'lmadi" }),
     ).toBeInTheDocument();

@@ -38,8 +38,6 @@ export const STUDENT_ENDPOINTS = {
   place: '/api/student/place',
   /** GET → DiaryEntryDto[] · POST multipart(text, learned?, files[]) → DiaryEntryDto (201) | 400 | 409 (bugungisi bor) */
   diary: '/api/student/diary',
-  /** GET ?month=YYYY-MM → CalendarMonthDto */
-  calendar: '/api/student/calendar',
   /**
    * GET ?periodId=<guid?> → StudentPeriodDays (bosh ekran: davr + har bir kun holati, kundalik holati).
    * `periodId` berilmasa — sukut davr; davr biriktirilmagan → `period: null`, `days: []`.

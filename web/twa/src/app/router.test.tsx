@@ -35,7 +35,7 @@ describe('TWA router', () => {
     ).toBeInTheDocument();
     for (const [path, title] of [
       ['/joyim', 'Korxonam'],
-      ['/kalendar', 'Kalendarim'],
+      ['/qr', 'QR orqali belgilash'],
       ['/profil', 'Profil'],
       ['/', 'Bosh ekran'],
     ] as const) {
@@ -46,6 +46,14 @@ describe('TWA router', () => {
     }
     await act(() => router.navigate('/yoq'));
     expect(await screen.findByText('404 — Sahifa topilmadi')).toBeInTheDocument();
+  });
+
+  it('eski havola /kalendar ("Kalendarim" olib tashlangan) → /qr ga redirect', async () => {
+    const router = renderApp('/kalendar');
+    expect(
+      await screen.findByRole('heading', { name: 'QR orqali belgilash', level: 1 }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/qr');
   });
 
   it.each(['/portfolio', '/ruxsat'])('eski havola %s → bosh ekranga redirect', async (path) => {
@@ -67,13 +75,16 @@ describe('TWA router', () => {
     ).toEqual([
       ['Bosh ekran', 'BUTTON', null],
       ['Kundaligim', 'BUTTON', null],
-      ['Kalendarim', 'BUTTON', null],
+      ['QR orqali belgilash', 'BUTTON', null],
       ['Korxonam', 'BUTTON', null],
       ['Profil', 'BUTTON', null],
     ]);
     expect(within(nav).queryByRole('button')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Yana' })).not.toBeInTheDocument();
     expect(screen.queryByText(/Ruxsat so'rash/)).not.toBeInTheDocument();
+    // "Kalendarim" yo'q; markazda (3-o'rin) qisqa "QR" yorlig'i.
+    expect(within(nav).queryByRole('link', { name: /Kalendar/ })).not.toBeInTheDocument();
+    expect(within(tabs[2]!).getByText('QR')).toBeInTheDocument();
     expect(screen.getByText('Talaba · 3-kurs ishlab chiqarish amaliyoti')).toBeInTheDocument();
   });
 

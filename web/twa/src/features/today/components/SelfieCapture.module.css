@@ -23,12 +23,12 @@
 }
 .previewImg {
   display: block;
-  width: 100%;
-  max-width: 260px;
-  max-height: 240px;
+  width: 180px;
+  height: 230px;
   margin: 0 auto;
   object-fit: cover;
-  border-radius: var(--radius-lg);
+  /* Oval — yo'naltiruvchi bilan bir xil shakl. */
+  border-radius: 50%;
   border: var(--border-inner);
   background: var(--color-surface-3);
 }
@@ -48,6 +48,31 @@
 }
 .placeholder[data-busy] {
   color: var(--color-text-muted);
+}
+/* Yuz uchun oval yo'naltiruvchi (kamera ochilishidan oldin). */
+.guide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 14px 12px 12px;
+  border-radius: var(--radius-lg);
+  border: var(--border-dashed);
+  background: var(--color-map-ph);
+  color: var(--color-text-faint);
+}
+.guideSvg {
+  width: 110px;
+  height: 138px;
+  color: var(--color-accent);
+}
+.guide[data-busy] .guideSvg {
+  opacity: 0.5;
+}
+.guideText {
+  font-size: var(--fs-sm);
+  text-align: center;
 }
 .meta {
   margin-top: 8px;

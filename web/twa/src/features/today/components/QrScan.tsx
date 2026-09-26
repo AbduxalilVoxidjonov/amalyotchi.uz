@@ -22,7 +22,7 @@ export function QrScanPanel({ flow }: { flow: CheckinFlow }) {
     >
       <h3 className={styles.title}>Amaliyot joyidagi QR kodni skanerlang</h3>
       <p className={styles.note}>
-        QR kod amaliyot joyida osilgan. Skanerlangach joylashuv aniqlanadi va selfi olinadi.
+        QR kod amaliyot joyida osilgan. Skanerlangach selfi olinadi, so‘ng joylashuv aniqlanadi.
       </p>
 
       {qrError && (

@@ -41,10 +41,12 @@ const PATHS: Record<NavIcon, ReactNode> = {
       <path d="M11 8h4M11 12h4" />
     </>
   ),
-  calendar: (
+  qr: (
     <>
-      <rect x="3.5" y="5" width="17" height="15" rx="2" />
-      <path d="M3.5 10h17M8 3v4M16 3v4" />
+      <rect x="4" y="4" width="6" height="6" rx="1" />
+      <rect x="14" y="4" width="6" height="6" rx="1" />
+      <rect x="4" y="14" width="6" height="6" rx="1" />
+      <path d="M14 14h2.5v2.5H14zM17.5 17.5H20V20h-2.5zM20 14v1.5M14 20h1.5" />
     </>
   ),
   profile: (

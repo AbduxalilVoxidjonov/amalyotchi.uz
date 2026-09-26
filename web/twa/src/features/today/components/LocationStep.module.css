@@ -1,0 +1,53 @@
+/* 3-qadam: joylashuv paneli (SelfieCapture paneli bilan bir xil ko'rinish). */
+.panel {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: var(--radius-xl);
+  background: var(--color-surface-2);
+  border: var(--border-inner);
+}
+.title {
+  margin: 0;
+  font-size: var(--fs-base2);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-snug);
+}
+.note {
+  margin: 6px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+  line-height: var(--lh-note);
+}
+.error {
+  margin-top: 10px;
+  padding: 9px 11px;
+  border-radius: var(--radius-md2);
+  background: var(--color-bad-bg);
+  border: 1px solid var(--color-bad-border);
+  color: var(--color-bad-fg);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-note);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.action {
+  flex: 1 1 140px;
+  justify-content: center;
+}
+.cancel {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-faint);
+  font-size: var(--fs-sm);
+}
+.cancel:disabled {
+  color: var(--color-text-disabled);
+}

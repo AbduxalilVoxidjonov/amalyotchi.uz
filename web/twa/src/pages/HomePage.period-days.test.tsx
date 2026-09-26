@@ -52,7 +52,9 @@ describe('Bosh ekran — kunlar accordion', () => {
       // 45 kun — faqat bugungi panel mazmuni render qilingan.
       expect(screen.getAllByRole('button', { expanded: false })).toHaveLength(44);
       expect(screen.getAllByRole('region', { name: /^\d\d\.\d\d · / })).toHaveLength(1);
-      expect(await panelOf(TODAY).findByRole('button', { name: 'KELDIM' })).toBeInTheDocument();
+      expect(
+        await panelOf(TODAY).findByRole('link', { name: 'QR orqali belgilash' }),
+      ).toBeInTheDocument();
 
       expect(scroll).toHaveBeenCalledTimes(1);
       expect(scroll).toHaveBeenCalledWith({ block: 'start' });
@@ -144,25 +146,30 @@ describe('Bosh ekran — kunlar accordion', () => {
     expect(panelOf(/^06\.09/).getByText('Dam olish kuni')).toBeInTheDocument();
   });
 
-  it('bugungi panelda check-in → bugungi qator holati yangilanadi (period-days invalidate)', async () => {
+  it('QR sahifasida belgilangach → bosh ekranda bugungi qator va qisqa holat yangilanadi', async () => {
     stubGeolocation();
     setCheckinQrRequired(false);
     await renderHome();
-    const panel = panelOf(TODAY);
-    fireEvent.click(await panel.findByRole('button', { name: 'KELDIM' }));
-    fireEvent.click(await panel.findByRole('button', { name: 'Rasmsiz davom etish' }));
-    expect(await panel.findByText('Belgilandingiz · 09:02')).toBeInTheDocument();
+    fireEvent.click(await panelOf(TODAY).findByRole('link', { name: 'QR orqali belgilash' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Kelganini belgilash' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Rasmsiz davom etish' }));
+    expect(await screen.findByText('Kelganingiz belgilandi · 09:02')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Bosh ekranga' }));
+    await screen.findByRole('list', { name: 'Amaliyot kunlari' });
     expect(await within(row(TODAY)).findByText('Keldi')).toBeInTheDocument();
-    expect(panel.getByRole('button', { name: 'KETDIM' })).toBeInTheDocument();
+    expect(await panelOf(TODAY).findByText('Belgilandingiz · 09:02')).toBeInTheDocument();
+    // Ketishni belgilash ham QR sahifasida.
+    expect(panelOf(TODAY).getByRole('link', { name: 'QR orqali belgilash' })).toBeInTheDocument();
   });
 
-  it('bugungi panelni yopib-ochish — check-in kartasi qayta chiziladi', async () => {
+  it('bugungi panelni yopib-ochish — qisqa holat qayta chiziladi', async () => {
     await renderHome();
-    await panelOf(TODAY).findByRole('button', { name: 'KELDIM' });
+    await panelOf(TODAY).findByText('Belgilanish oynasi ochiq');
     fireEvent.click(row(TODAY));
-    expect(screen.queryByRole('button', { name: 'KELDIM' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Belgilanish oynasi ochiq')).not.toBeInTheDocument();
     fireEvent.click(row(TODAY));
-    expect(await panelOf(TODAY).findByRole('button', { name: 'KELDIM' })).toBeInTheDocument();
+    expect(await panelOf(TODAY).findByText('Belgilanish oynasi ochiq')).toBeInTheDocument();
   });
 });
 
@@ -191,7 +198,9 @@ describe('Bosh ekran — tugagan davr yig‘indisi', () => {
       expect(screen.queryByText(/Ish kunlari:/)).not.toBeInTheDocument();
       expect(screen.queryByRole('list', { name: 'Amaliyot kunlari' })).not.toBeInTheDocument();
       expect(screen.queryByRole('heading', { name: 'Kunlar' })).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /KELDIM|KETDIM/ })).not.toBeInTheDocument();
+      expect(
+        within(screen.getByRole('main')).queryByRole('link', { name: 'QR orqali belgilash' }),
+      ).not.toBeInTheDocument();
 
       // Mock: 01.06–11.07.2026, 36 ish kuni — 3 kech, 1 kelmadi, 1 sababli, qolgani vaqtida.
       expect(stat('Keldi')).toBe('34');

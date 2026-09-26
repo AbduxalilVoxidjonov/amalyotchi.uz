@@ -1,5 +1,5 @@
 import { Badge, FactGrid, type FactItem } from '@/shared/ui';
-import { DAY_STATUS } from '@/features/calendar/types';
+import { DAY_STATUS } from '@/features/day-status/types';
 import { DIARY_STATUS } from '@/features/diary/types';
 import type { PeriodDay, PeriodDayDiary } from '../types';
 import styles from './DayList.module.css';

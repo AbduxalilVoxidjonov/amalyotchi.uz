@@ -64,7 +64,7 @@ describe('Telegram rejimi: memory router (URL hech qachon o\'zgarmaydi)', () => 
     expect(await heading('Bosh ekran')).toBeInTheDocument();
     for (const [name, path] of [
       ['Kundaligim', '/kundalik'],
-      ['Kalendarim', '/kalendar'],
+      ['QR orqali belgilash', '/qr'],
       ['Korxonam', '/joyim'],
       ['Profil', '/profil'],
       ['Bosh ekran', '/'],
@@ -73,11 +73,19 @@ describe('Telegram rejimi: memory router (URL hech qachon o\'zgarmaydi)', () => 
       expect(await heading(name)).toBeInTheDocument();
       expect(router.state.location.pathname).toBe(path);
     }
-    // Kalendar: search param o'zgarishi ham URL'ga tegmaydi.
-    fireEvent.click(tab('Kalendarim'));
-    await heading('Kalendarim');
-    await act(() => router.navigate('/kalendar?month=2026-11'));
-    expect(router.state.location.search).toBe('?month=2026-11');
+    // Search param o'zgarishi ham URL'ga tegmaydi.
+    await act(() => router.navigate('/kundalik?tab=2'));
+    await heading('Kundaligim');
+    expect(router.state.location.search).toBe('?tab=2');
+    expectUrlUntouched();
+  });
+
+  it('eski /kalendar → /qr redirect (URL o\'zgarmaydi)', async () => {
+    const router = start();
+    await heading('Bosh ekran');
+    await act(() => router.navigate('/kalendar'));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/qr'));
+    expect(await heading('QR orqali belgilash')).toBeInTheDocument();
     expectUrlUntouched();
   });
 
@@ -136,10 +144,10 @@ describe('Telegram rejimi: memory router (URL hech qachon o\'zgarmaydi)', () => 
     setInitData('valid');
     const router = createAppRouter();
     // Tarixsiz holatni simulyatsiya: joriy yozuvni almashtiramiz (key 'default' emas, lekin orqada hech narsa yo'q).
-    await router.navigate('/kalendar', { replace: true });
+    await router.navigate('/qr', { replace: true });
     unbind = bindTelegramBackButton(router);
     renderWith(router);
-    await heading('Kalendarim');
+    await heading('QR orqali belgilash');
     expect(webAppStub.BackButton.isVisible).toBe(true);
     act(() => pressTelegramBack());
     // navigate(-1) memory'da chegarada qoladi → baribir foydalanuvchi bosh ekranga qaytishi kerak.
@@ -176,10 +184,10 @@ describe('Web rejimi: browser router (o\'zgarishsiz)', () => {
   });
 
   it("createAppRouter('web') — browser, createAppRouter('telegram') — memory `/` dan", () => {
-    window.history.replaceState(null, '', '/kalendar');
+    window.history.replaceState(null, '', '/qr');
     const web = createAppRouter('web');
     const tg = createAppRouter('telegram');
-    expect(web.state.location.pathname).toBe('/kalendar');
+    expect(web.state.location.pathname).toBe('/qr');
     expect(tg.state.location.pathname).toBe('/');
     web.dispose();
     tg.dispose();

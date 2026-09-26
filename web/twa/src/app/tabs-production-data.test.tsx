@@ -4,7 +4,6 @@ import { server } from '@/mocks/server';
 import { initTelegram } from '@/shared/auth/telegram';
 import { renderApp } from '@/test/render-app';
 import {
-  prodCalendar,
   prodDiary,
   prodPeriodDays,
   prodPlace,
@@ -21,7 +20,6 @@ function useProductionData() {
   server.use(
     http.get('/api/student/today', () => HttpResponse.json(prodToday)),
     http.get('/api/student/diary', () => HttpResponse.json(prodDiary)),
-    http.get('/api/student/calendar', () => HttpResponse.json(prodCalendar)),
     http.get('/api/student/place', () => HttpResponse.json(prodPlace)),
     http.get('/api/student/profile', () => HttpResponse.json(prodProfile)),
     http.get('/api/student/period-days', () => HttpResponse.json(prodPeriodDays)),
@@ -30,7 +28,8 @@ function useProductionData() {
 
 const TABS = [
   ['Kundaligim', /Qayta yozish kerak/],
-  ['Kalendarim', /Sentabr 2026/],
+  // Davr tugagan (production: `closed`) — QR sahifasida belgilash o'rniga davr holati.
+  ['QR orqali belgilash', /Amaliyot davri tugagan/],
   ['Korxonam', /Demo Korxona MChJ/],
   ['Profil', /Demo Tyutor/],
   ['Bosh ekran', /Amaliyot davri tugagan/],
@@ -62,7 +61,7 @@ describe('Production javob shakli bilan tablar', () => {
     await walkTabs();
   });
 
-  it.each(['/kundalik', '/kalendar', '/joyim', '/profil'])(
+  it.each(['/kundalik', '/qr', '/joyim', '/profil'])(
     "to'g'ridan-to'g'ri %s ochiladi (xato ekrani yo'q)",
     async (path) => {
       useProductionData();

@@ -74,7 +74,7 @@ export function PeriodGapCard({ today, period, phase }: PeriodGapCardProps) {
           </Badge>
         </div>
         <p className={styles.note}>
-          Davr {formatPeriod(period.startDate, period.endDate)}. Belgilanish (KELDIM) davr
+          Davr {formatPeriod(period.startDate, period.endDate)}. Belgilanish (QR bo‘limida) davr
           boshlangan kundan ochiladi.
         </p>
         <UpcomingPlaceAction />

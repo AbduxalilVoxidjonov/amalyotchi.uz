@@ -22,7 +22,7 @@ describe("Telegram rejimi: ichki havolalarda href yo'q", () => {
   it.each([
     ['/', 'Bosh ekran'],
     ['/kundalik', 'Kundaligim'],
-    ['/kalendar', 'Kalendarim'],
+    ['/qr', 'QR orqali belgilash'],
     ['/joyim', 'Korxonam'],
     ['/profil', 'Profil'],
   ])('%s — a[href^="/"] 0 ta', async (path, title) => {
@@ -68,6 +68,20 @@ describe("Telegram rejimi: ichki havolalarda href yo'q", () => {
         .getAllByRole('link')
         .filter((t) => t.hasAttribute('aria-current')),
     ).toHaveLength(1);
+    expect(internalAnchors()).toHaveLength(0);
+  });
+
+  it('bosh ekran, bugungi panel: "QR orqali belgilash" → /qr (tugma, href yo\'q)', async () => {
+    const router = renderApp('/');
+    // Tab-bar'dagi "QR orqali belgilash" tabidan farqli — bugungi panel ichidagi tugma.
+    const panel = within(await screen.findByRole('region', { name: /^12\.10 · Dushanba/ }));
+    const link = await panel.findByRole('link', { name: 'QR orqali belgilash' });
+    expect(link.tagName).toBe('BUTTON');
+    expect(internalAnchors()).toHaveLength(0);
+    fireEvent.click(link);
+    expect(await heading('QR orqali belgilash')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/qr');
+    expect(await screen.findByRole('button', { name: 'Kelganini belgilash' })).toBeInTheDocument();
     expect(internalAnchors()).toHaveLength(0);
   });
 
@@ -139,7 +153,7 @@ describe('Web rejimi: oddiy <a href> saqlanadi', () => {
     expect(tabs.map((t) => [t.tagName, t.getAttribute('href')])).toEqual([
       ['A', '/'],
       ['A', '/kundalik'],
-      ['A', '/kalendar'],
+      ['A', '/qr'],
       ['A', '/joyim'],
       ['A', '/profil'],
     ]);

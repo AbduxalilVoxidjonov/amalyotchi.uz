@@ -1,6 +1,6 @@
 /*
- * SPEC-TOKENS 1.5 — kun holati ranglari (CalendarDayStatus enum). Yagona manba: oy gridi katagi,
- * legend swatch'i va bosh ekrandagi kun chip'i (`DayStatusChip`) shu `--cal-bg/--cal-fg` ni o'qiydi.
+ * SPEC-TOKENS 1.5 — kun holati ranglari (CalendarDayStatus enum). Yagona manba: bosh ekrandagi kun
+ * chip'i (`DayStatusChip`) va davr yakuni (`PeriodResultCard`) shu `--cal-bg/--cal-fg` ni o'qiydi.
  */
 .tone[data-status='present'] {
   --cal-bg: var(--color-ok-cal);

@@ -3,8 +3,10 @@
  * ❓ Dizaynda 250px sidebar; TWA (360–430px) uchun pastki tab-bar.
  * Bosh ekran — amaliyot davri va uning kunlari (portfolio ko'rsatilmaydi). "Ruxsat so'rash" olib tashlangan.
  * "Korxonam" — amaliyot joyi (marshrut `/joyim` saqlangan).
+ * "QR" (markazda) — davomat: korxonadagi QR → selfi → joylashuv. "Kalendarim" olib tashlangan
+ * (eski `/kalendar` havolasi `/qr` ga yo'naltiriladi).
  */
-export type NavIcon = 'home' | 'place' | 'diary' | 'calendar' | 'profile';
+export type NavIcon = 'home' | 'place' | 'diary' | 'qr' | 'profile';
 
 export interface StudentNavItem {
   /** Sarlavha (header h1). */
@@ -18,7 +20,7 @@ export interface StudentNavItem {
 export const STUDENT_NAV: readonly StudentNavItem[] = [
   { label: 'Bosh ekran', short: 'Bosh ekran', to: '/', icon: 'home' },
   { label: 'Kundaligim', short: 'Kundaligim', to: '/kundalik', icon: 'diary' },
-  { label: 'Kalendarim', short: 'Kalendarim', to: '/kalendar', icon: 'calendar' },
+  { label: 'QR orqali belgilash', short: 'QR', to: '/qr', icon: 'qr' },
   { label: 'Korxonam', short: 'Korxonam', to: '/joyim', icon: 'place' },
   { label: 'Profil', short: 'Profil', to: '/profil', icon: 'profile' },
 ];

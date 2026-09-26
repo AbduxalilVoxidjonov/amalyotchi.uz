@@ -1,6 +1,6 @@
 import { Card, ProgressBar, cn } from '@/shared/ui';
-import tone from '@/features/calendar/components/DayStatus.module.css';
-import { DAY_STATUS, type CalendarDayStatus } from '@/features/calendar/types';
+import tone from '@/features/day-status/DayStatus.module.css';
+import { DAY_STATUS, type CalendarDayStatus } from '@/features/day-status/types';
 import { formatPercent } from '@/shared/lib/format';
 import type { PeriodDay, PeriodSummary } from '../types';
 import { summarizePeriodDays } from '../summary';

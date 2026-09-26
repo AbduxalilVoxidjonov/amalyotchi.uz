@@ -22,8 +22,12 @@ function capturePhoto() {
   fireEvent.change(screen.getByLabelText('Selfie olish'), { target: { files: [photoFile()] } });
 }
 
+const KELDIM = 'Kelganini belgilash';
+const SUCCESS = 'Kelganingiz belgilandi · 09:02';
+
+/** QR sahifasida "Kelganini belgilash" → Telegram QR popup ochiladi (1-qadam). */
 async function pressKeldim() {
-  fireEvent.click(await screen.findByRole('button', { name: 'KELDIM' }));
+  fireEvent.click(await screen.findByRole('button', { name: KELDIM }));
   await waitFor(() => expect(qrPopup.isOpen).toBe(true));
 }
 
@@ -41,10 +45,10 @@ describe('parseCheckinQr', () => {
   });
 });
 
-describe('Check-in: QR → joylashuv → selfi → yuborish', () => {
-  it("to'liq oqim: QR skaner → joylashuv (QR'dan keyin) → selfi → FormData'da qr", async () => {
+describe('Check-in (QR sahifasi): QR → selfi → joylashuv → yuborish', () => {
+  it("to'liq oqim: QR skaner → selfi (joylashuv fonda) → joylashuv → FormData'da qr", async () => {
     const geo = stubGeolocation();
-    renderApp('/');
+    renderApp('/qr');
     await pressKeldim();
 
     expect(webAppStub.showScanQrPopup).toHaveBeenCalledWith(
@@ -53,8 +57,15 @@ describe('Check-in: QR → joylashuv → selfi → yuborish', () => {
     );
     expect(screen.getByText('Amaliyot joyidagi QR kodni skanerlang')).toBeInTheDocument();
     expect(steps().getByText('QR').closest('li')).toHaveAttribute('aria-current', 'step');
-    expect(steps().getByText('Joylashuv')).toBeInTheDocument();
-    expect(steps().getByText('Selfi')).toBeInTheDocument();
+    expect(
+      steps()
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual([
+      expect.stringContaining('QR'),
+      expect.stringContaining('Selfi'),
+      expect.stringContaining('Joylashuv'),
+    ]);
     // Joylashuv QR'dan OLDIN so'ralmaydi.
     expect(geo).not.toHaveBeenCalled();
 
@@ -63,14 +74,14 @@ describe('Check-in: QR → joylashuv → selfi → yuborish', () => {
     expect(qrPopup.isOpen).toBe(false);
     expect(geo).toHaveBeenCalledTimes(1);
     expect(await screen.findByText('Selfie bilan tasdiqlang')).toBeInTheDocument();
-    await waitFor(() =>
-      expect(steps().getByText('Joylashuv').closest('li')).toHaveAttribute('data-state', 'done'),
-    );
     expect(steps().getByText('QR').closest('li')).toHaveAttribute('data-state', 'done');
+    expect(steps().getByText('Selfi').closest('li')).toHaveAttribute('aria-current', 'step');
+    // Joylashuv fonda olingan bo'lsa ham qadam sifatida selfidan KEYIN.
+    expect(steps().getByText('Joylashuv').closest('li')).toHaveAttribute('data-state', 'todo');
 
     capturePhoto();
     fireEvent.click(await screen.findByRole('button', { name: 'Tasdiqlash va yuborish' }));
-    expect(await screen.findByText('Belgilandingiz · 09:02')).toBeInTheDocument();
+    expect(await screen.findByText(SUCCESS)).toBeInTheDocument();
     expect(todayMocks.lastCheckinQr).toBe(MOCK_TEST_QR);
     expect(todayMocks.lastCheckinPhoto).toMatchObject({ type: 'image/jpeg', size: 64 });
     expect(geo).toHaveBeenCalledTimes(1);
@@ -78,7 +89,7 @@ describe('Check-in: QR → joylashuv → selfi → yuborish', () => {
 
   it("begona QR (prefiks yo'q) rad etiladi — serverga yuborilmaydi, qayta skanerlash mumkin", async () => {
     const geo = stubGeolocation();
-    renderApp('/');
+    renderApp('/qr');
     await pressKeldim();
 
     act(() => qrPopup.scan('https://example.com/menu'));
@@ -95,9 +106,9 @@ describe('Check-in: QR → joylashuv → selfi → yuborish', () => {
     expect(await screen.findByText('QR tasdiqlandi')).toBeInTheDocument();
   });
 
-  it('skaner bekor qilinsa — xabar, oqim QR qadamida qoladi; "Bekor qilish" → KELDIM', async () => {
+  it('skaner bekor qilinsa — xabar, oqim QR qadamida qoladi; "Bekor qilish" → boshlash tugmasi', async () => {
     const geo = stubGeolocation();
-    renderApp('/');
+    renderApp('/qr');
     await pressKeldim();
 
     act(() => qrPopup.close());
@@ -106,15 +117,15 @@ describe('Check-in: QR → joylashuv → selfi → yuborish', () => {
     expect(geo).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Bekor qilish' }));
-    expect(await screen.findByRole('button', { name: 'KELDIM' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: KELDIM })).toBeInTheDocument();
     expect(screen.queryByRole('list', { name: 'Belgilanish qadamlari' })).not.toBeInTheDocument();
   });
 
   it('eski Telegram (6.4 dan past) → "Telegram ilovasini yangilang", skaner ochilmaydi', async () => {
     stubGeolocation();
     webAppStub.version = '6.2';
-    renderApp('/');
-    fireEvent.click(await screen.findByRole('button', { name: 'KELDIM' }));
+    renderApp('/qr');
+    fireEvent.click(await screen.findByRole('button', { name: KELDIM }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'QR skanerlash uchun Telegram ilovasini yangilang',
@@ -125,7 +136,7 @@ describe('Check-in: QR → joylashuv → selfi → yuborish', () => {
 
   it("server 409 (begona korxona QR'i) → detail ko'rsatiladi, rasm saqlanadi, qayta skanerlab yuboriladi", async () => {
     stubGeolocation();
-    renderApp('/');
+    renderApp('/qr');
     await pressKeldim();
     act(() => qrPopup.scan(WRONG_TOKEN_QR));
     expect(await screen.findByText('QR tasdiqlandi')).toBeInTheDocument();
@@ -137,10 +148,6 @@ describe('Check-in: QR → joylashuv → selfi → yuborish', () => {
       'QR kod bu amaliyot joyiga tegishli emas.',
     );
     expect(screen.getByText('Amaliyot joyidagi QR kodni skanerlang')).toBeInTheDocument();
-    // Bosh ekran: "Kutilmoqda" bugungi qator chip'ida ham bor — check-in kartasi (bugungi panel) ichida.
-    expect(
-      within(screen.getByRole('region', { name: /^12\.10 · Dushanba/ })).getByText('Kutilmoqda'),
-    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'QR kodni skanerlash' }));
     await waitFor(() => expect(qrPopup.isOpen).toBe(true));
@@ -148,7 +155,7 @@ describe('Check-in: QR → joylashuv → selfi → yuborish', () => {
     // Rasm avval olingan — to'g'ridan-to'g'ri preview'ga qaytiladi.
     expect(await screen.findByAltText('Olingan selfie')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Tasdiqlash va yuborish' }));
-    expect(await screen.findByText('Belgilandingiz · 09:02')).toBeInTheDocument();
+    expect(await screen.findByText(SUCCESS)).toBeInTheDocument();
     expect(todayMocks.lastCheckinQr).toBe(MOCK_TEST_QR);
   });
 
@@ -161,7 +168,7 @@ describe('Check-in: QR → joylashuv → selfi → yuborish', () => {
         }),
       ),
     );
-    renderApp('/');
+    renderApp('/qr');
     await pressKeldim();
     act(() => qrPopup.scan(MOCK_TEST_QR));
     capturePhoto();
@@ -173,40 +180,49 @@ describe('Check-in: QR → joylashuv → selfi → yuborish', () => {
     expect(screen.queryByText('QR tasdiqlandi')).not.toBeInTheDocument();
   });
 
-  it('qrRequired=false → QR qadamisiz: KELDIM → selfi → yuborish, qr yuborilmaydi', async () => {
+  it('qrRequired=false → QR qadamisiz: boshlash → selfi → joylashuv → yuborish, qr yuborilmaydi', async () => {
     const geo = stubGeolocation();
     setCheckinQrRequired(false);
-    renderApp('/');
-    fireEvent.click(await screen.findByRole('button', { name: 'KELDIM' }));
+    renderApp('/qr');
+    fireEvent.click(await screen.findByRole('button', { name: KELDIM }));
 
     expect(await screen.findByText('Selfie bilan tasdiqlang')).toBeInTheDocument();
     expect(webAppStub.showScanQrPopup).not.toHaveBeenCalled();
     expect(steps().queryByText('QR')).not.toBeInTheDocument();
     expect(steps().getAllByRole('listitem')).toHaveLength(2);
+    expect(steps().getByText('Selfi').closest('li')).toHaveAttribute('aria-current', 'step');
     expect(screen.queryByText('QR tasdiqlandi')).not.toBeInTheDocument();
     expect(geo).toHaveBeenCalledTimes(1);
 
     capturePhoto();
     fireEvent.click(await screen.findByRole('button', { name: 'Tasdiqlash va yuborish' }));
-    expect(await screen.findByText('Belgilandingiz · 09:02')).toBeInTheDocument();
+    expect(await screen.findByText(SUCCESS)).toBeInTheDocument();
     expect(todayMocks.lastCheckinQr).toBeNull();
   });
 
-  it("KETDIM ham QR bilan (FormData'da qr)", async () => {
+  it("ketganini belgilash ham QR bilan (FormData'da qr)", async () => {
     stubGeolocation();
-    renderApp('/');
+    renderApp('/qr');
     await pressKeldim();
     act(() => qrPopup.scan(MOCK_TEST_QR));
     capturePhoto();
     fireEvent.click(await screen.findByRole('button', { name: 'Tasdiqlash va yuborish' }));
-    expect(await screen.findByText('Belgilandingiz · 09:02')).toBeInTheDocument();
+    expect(await screen.findByText(SUCCESS)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'KETDIM' }));
+    // Muvaffaqiyat ekrani → bosh ekran → yana QR bo'limi: endi "Ketganini belgilash".
+    fireEvent.click(screen.getByRole('link', { name: 'Bosh ekranga' }));
+    await screen.findByRole('heading', { name: 'Bosh ekran', level: 1 });
+    fireEvent.click(
+      within(screen.getByRole('navigation', { name: "Bo'limlar" })).getByRole('link', {
+        name: 'QR orqali belgilash',
+      }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Ketganini belgilash' }));
     await waitFor(() => expect(qrPopup.isOpen).toBe(true));
     act(() => qrPopup.scan(MOCK_TEST_QR));
     capturePhoto();
     fireEvent.click(await screen.findByRole('button', { name: 'Tasdiqlash va yuborish' }));
-    expect(await screen.findByText('Kun yakunlandi · 09:02')).toBeInTheDocument();
+    expect(await screen.findByText('Ketganingiz belgilandi · 09:02')).toBeInTheDocument();
     expect(todayMocks.lastCheckinQr).toBe(MOCK_TEST_QR);
   });
 });
