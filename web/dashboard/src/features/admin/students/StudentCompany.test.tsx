@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http } from 'msw';
+import { buildDetail } from '@/features/tutor/students/mocks';
 import {
   detailWithPeriods,
   ENDED_OPTIONS,
@@ -14,7 +15,8 @@ import { renderWithProviders } from '../shared/renderWithProviders';
 import { studentCompanyEndpoint, STUDENTS_ENDPOINT } from './api';
 import { AssignCompanyModal } from './components/AssignCompanyModal';
 import { TRANSFER_WARNING } from './components/StudentCompanyModal';
-import { resetStudentCompanyMock } from './mocks';
+import { mockStudents, resetStudentCompanyMock } from './mocks';
+import type { AdminStudentDetail, Student } from './types';
 import { StudentDetailPage } from './StudentDetailPage';
 
 afterEach(() => resetStudentCompanyMock());
@@ -122,6 +124,12 @@ describe("Admin talaba profili — korxonaga biriktirish / o'tkazish", () => {
     expect(
       metaCard().getByRole('button', { name: "Boshqa korxonaga o'tkazish" }),
     ).toBeInTheDocument();
+    // Tashkiliy blokdagi "Korxona" — yangi aktiv korxona (javobdagi `activeCompany`).
+    expect(metaCard().getByRole('link', { name: 'Agrobank ATB' })).toHaveAttribute(
+      'href',
+      '/admin/companies/c2',
+    );
+    expect(metaCard().queryByText('Tech Solutions MChJ')).not.toBeInTheDocument();
   });
 
   it("birinchi biriktirish: ogohlantirish yo'q, izohsiz POST, tugma matni o'zgaradi", async () => {
@@ -189,6 +197,68 @@ describe("Admin talaba profili — korxonaga biriktirish / o'tkazish", () => {
     expect(((await empty.json()) as { errors: Record<string, string[]> }).errors).toHaveProperty(
       'CompanyId',
     );
+  });
+});
+
+describe('Admin talaba profili — faqat aktiv korxona (`activeCompany`)', () => {
+  it('"Korxona" qatori aktiv korxonadan: havola + davr nomi izohi', async () => {
+    renderProfile('s1');
+    expect(await screen.findByRole('heading', { name: 'Aliyev Akmal' })).toBeInTheDocument();
+    expect(metaCard().getByRole('link', { name: 'Tech Solutions MChJ' })).toHaveAttribute(
+      'href',
+      '/admin/companies/c1',
+    );
+    expect(metaCard().getByText('· 3-kurs ishlab chiqarish amaliyoti')).toBeInTheDocument();
+  });
+
+  it("yopilgan davrda korxonasi bo'lsa ham aktivi yo'q → \"Aktiv korxona yo'q\" va biriktirish", async () => {
+    renderProfile('s2');
+    expect(await screen.findByRole('heading', { name: 'Sobirov Diyor' })).toBeInTheDocument();
+    expect(metaCard().getByText("Aktiv korxona yo'q")).toBeInTheDocument();
+    expect(metaCard().getByRole('button', { name: 'Korxonaga biriktirish' })).toBeInTheDocument();
+    // Joriy (ochiq) davr korxona bloki — oddiy sarlavha.
+    expect(
+      within(screen.getByRole('region', { name: 'Korxona' })).getByText('Korxona'),
+    ).toBeInTheDocument();
+  });
+
+  it("yopilgan davr tanlansa: korxona bloki tarix deb belgilanadi, tashkiliy blok o'zgarmaydi", async () => {
+    renderProfile('s2', '?period=per-2026-yoz');
+    const region = within(await screen.findByRole('region', { name: 'Korxona' }));
+    expect(await region.findByText('Korxona (tanlangan davr)')).toBeInTheDocument();
+    expect(region.getByText('Uzinfocom · Yozgi amaliyot 2026')).toBeInTheDocument();
+    expect(region.getAllByText('Uzinfocom').length).toBeGreaterThan(0);
+
+    expect(metaCard().getByText("Aktiv korxona yo'q")).toBeInTheDocument();
+    expect(metaCard().queryByText('Uzinfocom')).not.toBeInTheDocument();
+    // Yopilgan davr ko'rinishida tugma umuman yo'q (o'zgarmagan qoida).
+    expect(metaCard().queryByRole('button', { name: COMPANY_BUTTONS })).not.toBeInTheDocument();
+  });
+
+  it('tanlangan davrda `company` bor, lekin `activeCompany` null → tugma "Korxonaga biriktirish"', async () => {
+    const base = buildDetail('s-341030');
+    if (!base || base === 'periodNotFound') throw new Error('mock profil topilmadi');
+    mockProfilePeriods('admin', { ...base, activeCompany: null }, ADMIN_EXTRA);
+    renderProfile('s1');
+    expect(await screen.findByRole('heading', { name: 'Aliyev Akmal' })).toBeInTheDocument();
+    expect(metaCard().getByText("Aktiv korxona yo'q")).toBeInTheDocument();
+    expect(metaCard().getByRole('button', { name: 'Korxonaga biriktirish' })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: 'Korxona' })).getAllByText('Tech Solutions MChJ')
+        .length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("mock: ro'yxatdagi `company` profildagi `activeCompany.name` bilan mos", async () => {
+    const get = async <T,>(path: string) =>
+      (await (await fetch(new URL(path, window.location.origin))).json()) as T;
+    const list = await get<{ items: Student[] }>(`${STUDENTS_ENDPOINT}?pageSize=50`);
+    expect(list.items).toHaveLength(mockStudents.length);
+    for (const row of list.items) {
+      const detail = await get<AdminStudentDetail>(`${STUDENTS_ENDPOINT}/${row.id}`);
+      expect(detail.activeCompany?.name ?? null).toBe(row.company);
+    }
+    expect(list.items.find((r) => r.id === 's2')?.company).toBeNull();
   });
 });
 

@@ -12,7 +12,12 @@ import { mockCompanies } from '../companies/mocks';
 import { problemResponse } from '../shared/mockProblem';
 import { paginateMock } from '../shared/paginate';
 import type { ImportResult } from '../shared/types';
-import type { StudentApplication, StudentCompany } from '@/features/tutor/students/types';
+import type {
+  ActiveCompanyRef,
+  StudentApplication,
+  StudentCompany,
+  StudentPeriodOption,
+} from '@/features/tutor/students/types';
 import type { Company } from '../companies/types';
 import {
   STUDENTS_ASSIGN_COMPANY_ENDPOINT,
@@ -31,7 +36,10 @@ import type {
 } from './types';
 import { STUDENT_COMPANY_COMMENT_MAX } from './types';
 
-/** Backend `StudentRow` shaklida (SPEC-SCREENS §9.6 raqamlari). */
+/**
+ * Backend `StudentRow` shaklida (SPEC-SCREENS §9.6 raqamlari). `company` — faqat aktiv korxona va
+ * profildagi `activeCompany.name` bilan bir xil (manba tyutor profili bo'yicha).
+ */
 export const mockStudents: Student[] = [
   {
     id: 's1',
@@ -55,7 +63,8 @@ export const mockStudents: Student[] = [
     group: '413-22',
     course: 3,
     faculty: 'Axborot texnologiyalari',
-    company: 'Uzinfocom',
+    // Yopilgan yozgi davrda «Uzinfocom» da bo'lgan, hozir aktiv korxonasi yo'q → null.
+    company: null,
     attendancePct: 64,
     suspiciousDays: 3,
     telegramLinked: true,
@@ -69,7 +78,7 @@ export const mockStudents: Student[] = [
     group: '221-23',
     course: 2,
     faculty: 'Iqtisodiyot va moliya',
-    company: 'Ipak Yuli Bank',
+    company: 'Agrobank ATB',
     attendancePct: 87,
     suspiciousDays: 0,
     telegramLinked: true,
@@ -175,13 +184,46 @@ function toStudentCompany(c: Company): StudentCompany {
   };
 }
 
-/** Profildagi korxona: override → admin korxonalari (id nom bo'yicha moslanadi) → manba profil. */
-function resolveCompany(row: Student, base: StudentCompany | null): StudentCompany | null {
+/** Tyutor mock korxonasi id'si → admin korxonalari id'si (nom bo'yicha moslanadi). */
+function adminCompanyId(name: string, fallback: string): string {
+  return mockCompanies.find((c) => c.name === name)?.id ?? fallback;
+}
+
+/**
+ * Tanlangan davrdagi korxona (tarix): override faqat ochiq (sukut) davrga tegadi; admin qatorida
+ * aktiv korxona yo'q bo'lsa, manba profilning joriy davr korxonasi ham ko'rsatilmaydi (yopilgan
+ * davrlardagi tarix saqlanadi).
+ */
+function resolveCompany(
+  row: Student,
+  base: StudentCompany | null,
+  baseActive: ActiveCompanyRef | null,
+  isDefaultPeriod: boolean,
+): StudentCompany | null {
   const override = companyOverrides.get(row.id);
-  if (override) return toStudentCompany(override.company);
-  if (row.company === null || !base) return null;
-  const admin = mockCompanies.find((c) => c.name === base.name);
-  return admin ? { ...base, id: admin.id } : base;
+  if (override && isDefaultPeriod) return toStudentCompany(override.company);
+  if (!base) return null;
+  if (row.company === null && base.id === baseActive?.id) return null;
+  return { ...base, id: adminCompanyId(base.name, base.id) };
+}
+
+/** Aktiv korxona (davrdan mustaqil): override → admin qatori (`company`) bilan mos manba profil. */
+function resolveActiveCompany(
+  row: Student,
+  baseActive: ActiveCompanyRef | null,
+  defaultPeriod: StudentPeriodOption | null,
+): ActiveCompanyRef | null {
+  const override = companyOverrides.get(row.id);
+  if (override) {
+    return {
+      id: override.company.id,
+      name: override.company.name,
+      periodId: defaultPeriod?.id ?? baseActive?.periodId ?? '',
+      periodName: defaultPeriod?.name ?? baseActive?.periodName ?? '',
+    };
+  }
+  if (row.company === null || !baseActive) return null;
+  return { ...baseActive, id: adminCompanyId(row.company, baseActive.id), name: row.company };
 }
 
 function buildAdminDetail(
@@ -195,10 +237,13 @@ function buildAdminDetail(
   if (base === 'periodNotFound') return base;
 
   const override = companyOverrides.get(row.id);
+  const defaultPeriod = base.periods.find((p) => p.isDefault) ?? null;
+  const isDefaultPeriod = base.selectedPeriodId === defaultPeriod?.id;
   return {
     ...base,
-    company: resolveCompany(row, base.company),
-    application: override ? override.application : base.application,
+    company: resolveCompany(row, base.company, base.activeCompany, isDefaultPeriod),
+    activeCompany: resolveActiveCompany(row, base.activeCompany, defaultPeriod),
+    application: override && isDefaultPeriod ? override.application : base.application,
     id: row.id,
     name: row.fullName,
     hemisId: row.hemisId,
@@ -324,7 +369,7 @@ export const studentsHandlers: HttpHandler[] = [
     }
 
     const current = buildAdminDetail(id, null);
-    if (current && current !== 'periodNotFound' && current.company?.id === company.id) {
+    if (current && current !== 'periodNotFound' && current.activeCompany?.id === company.id) {
       return problemResponse(
         409,
         'Amal bajarilmadi',

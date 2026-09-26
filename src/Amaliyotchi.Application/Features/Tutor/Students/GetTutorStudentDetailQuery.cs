@@ -97,6 +97,9 @@ internal sealed class GetTutorStudentDetailQueryHandler(IApplicationDbContext db
                 contract = new ApplicationContract(file.FileName, file.Pages, file.SizeBytes, FileUrls.For(fileId));
         }
 
+        // Aktiv korxona — tanlangan davrdan mustaqil (bugun davom etayotgan ochiq davrdagi tasdiqlangan ariza).
+        var activeCompany = await db.LoadActiveCompanyAsync(profile.UserId, today, cancellationToken);
+
         var stats = StudentStatsCalculator.ComputeAttendance(period, attendance, leaves, today, localNow);
         var diary = StudentStatsCalculator.ComputeDiary(diaryScores);
 
@@ -143,7 +146,8 @@ internal sealed class GetTutorStudentDetailQueryHandler(IApplicationDbContext db
             grade,
             periodSet.Options(today, defaultPeriod?.Id),
             periodId,
-            profile.User.PasswordHash != null);
+            profile.User.PasswordHash != null,
+            activeCompany);
     }
 
     private static StudentPeriod ToPeriod(PracticePeriod period)

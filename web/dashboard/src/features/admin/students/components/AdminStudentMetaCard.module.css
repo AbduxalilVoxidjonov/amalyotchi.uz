@@ -1,0 +1,14 @@
+.company {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 6px;
+  min-width: 0;
+}
+.companyPeriod {
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}
+.none {
+  color: var(--color-text-faint);
+}

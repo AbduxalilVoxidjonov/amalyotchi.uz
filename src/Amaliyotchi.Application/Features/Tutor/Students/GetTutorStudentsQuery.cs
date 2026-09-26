@@ -1,4 +1,5 @@
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Common.Scoping;
 using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Application.Features.Tutor.Common;
@@ -33,6 +34,7 @@ public static class StudentStateRule
                 : StudentState.Active;
 }
 
+/// <param name="Company">Talabaning HOZIRDA aktiv korxonasi nomi (<see cref="ActiveCompanyQueries"/>) yoki <c>null</c>.</param>
 public sealed record TutorStudent(
     Guid Id,
     string Name,
@@ -85,12 +87,9 @@ internal sealed class GetTutorStudentsQueryHandler(IApplicationDbContext db, ISc
                 .ToListAsync(cancellationToken))
             .ToLookup(d => (d.StudentUserId, d.PeriodId), d => d.Score);
 
-        var companies = (await db.PracticeApplications.AsNoTracking().InScope(scope)
-                .Where(a => a.Status == ApplicationStatus.Approved && periodIds.Contains(a.PeriodId))
-                .Select(a => new { a.StudentUserId, a.PeriodId, a.Company.Name })
-                .ToListAsync(cancellationToken))
-            .GroupBy(a => (a.StudentUserId, a.PeriodId))
-            .ToDictionary(g => g.Key, g => g.First().Name);
+        // Korxona — faqat aktiv (hozir davom etayotgan davrdagi tasdiqlangan) arizadan; statistika davridan mustaqil.
+        var companies = await db.LoadActiveCompaniesAsync(
+            students.Select(s => s.UserId).ToList(), today, cancellationToken);
 
         var result = new List<TutorStudent>(students.Count);
         foreach (var student in students)
@@ -105,7 +104,7 @@ internal sealed class GetTutorStudentsQueryHandler(IApplicationDbContext db, ISc
 
             result.Add(new TutorStudent(
                 student.UserId, student.FullName, student.HemisId, student.GroupName,
-                companies.GetValueOrDefault(key),
+                companies.GetValueOrDefault(student.UserId)?.Name,
                 stats.AttendancePct, stats.AttendedDays, stats.TotalDays,
                 diary.Count, diary.Avg, state, stats.SuspiciousCount));
         }

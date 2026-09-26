@@ -13,7 +13,10 @@ export const TRANSFER_WARNING =
 export interface StudentCompanyModalProps {
   studentId: string;
   studentName: string;
-  /** Talabaning joriy korxonasi — bor bo'lsa "o'tkazish" rejimi, yo'q bo'lsa birinchi biriktirish. */
+  /**
+   * Talabaning HOZIRGI aktiv korxonasi (`activeCompany`, tanlangan davrdan mustaqil) — bor bo'lsa
+   * "o'tkazish" rejimi, yo'q bo'lsa birinchi biriktirish.
+   */
   currentCompany: { id: string; name: string } | null;
   onClose: () => void;
   /** Muvaffaqiyat: yangilangan profil (modal yopiladi, sahifa xabar ko'rsatadi). */

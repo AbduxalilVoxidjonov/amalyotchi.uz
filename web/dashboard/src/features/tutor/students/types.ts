@@ -12,7 +12,7 @@ export interface TutorStudent {
   name: string;
   hemisId: string;
   group: string;
-  /** Tasdiqlangan ariza bo'lmasa null → "—". */
+  /** Faqat HOZIR aktiv amaliyot o'tayotgan korxona; yo'q bo'lsa (yopilgan davr ham) null → "—". */
   company: string | null;
   /** 0–100 (kasrli bo'lishi mumkin: 84.6). */
   attendancePct: number;
@@ -62,6 +62,17 @@ export interface StudentCompany {
   lng: number;
   /** Geofence radiusi (m). */
   radiusM: number;
+}
+
+/**
+ * Talaba HOZIR aktiv amaliyot o'tayotgan korxona — tanlangan davrdan mustaqil (ochiq davrdagi
+ * tasdiqlangan ariza bo'yicha). Yopilgan/tugagan davrdagi eski korxona bu yerga kirmaydi.
+ */
+export interface ActiveCompanyRef {
+  id: string;
+  name: string;
+  periodId: string;
+  periodName: string;
 }
 
 export interface StudentApplicationContract {
@@ -139,8 +150,13 @@ export interface TutorStudentDetail {
   phone: string | null;
   state: StudentState;
   suspiciousCount: number;
-  /** Faqat tasdiqlangan (approved/completed) arizadan keladi; aks holda null. */
+  /**
+   * TANLANGAN davrdagi korxona (tarix) — faqat tasdiqlangan (approved/completed) arizadan keladi;
+   * aks holda null. "Joriy korxona" uchun `activeCompany` ishlatiladi.
+   */
   company: StudentCompany | null;
+  /** Hozirda aktiv amaliyot o'tayotgan korxona (davrdan mustaqil); yo'q bo'lsa null. */
+  activeCompany: ActiveCompanyRef | null;
   application: StudentApplication | null;
   period: StudentPeriod | null;
   attendance: AttendanceSummary;

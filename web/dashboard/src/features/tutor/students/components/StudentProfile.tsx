@@ -18,6 +18,11 @@ export interface StudentProfileProps {
   children?: ReactNode;
   /** Sarlavha kartasidagi amallar (parol o'rnatish). */
   headerActions?: ReactNode;
+  /**
+   * Korxona blokini yopilgan/tugagan davrda (aktiv korxonadan farq qilsa) "tanlangan davr" deb
+   * belgilash — admin profilida "joriy korxona" alohida ko'rsatilgani uchun. Sukut: false.
+   */
+  labelPeriodCompany?: boolean;
 }
 
 /**
@@ -32,6 +37,7 @@ export function StudentProfile({
   area,
   children,
   headerActions,
+  labelPeriodCompany = false,
 }: StudentProfileProps) {
   const today = todayInTashkent();
   const selectedId = requestedPeriodId ?? detail.selectedPeriodId;
@@ -57,6 +63,7 @@ export function StudentProfile({
           selectedPeriod={shownPeriod}
           today={today}
           actions={headerActions}
+          labelPeriodCompany={labelPeriodCompany}
         />
         {children}
         <StudentAttendanceSection detail={detail} period={shownPeriod} area={area} />

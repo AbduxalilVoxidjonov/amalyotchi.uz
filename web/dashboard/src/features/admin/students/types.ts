@@ -1,5 +1,7 @@
 import type { TutorStudentDetail } from '@/features/tutor/students/types';
 
+export type { ActiveCompanyRef } from '@/features/tutor/students/types';
+
 /** Kontrakt v2 `Student` (backend `StudentRow`). Holat: Faol (ok) · Qizil bayroq (bad) · Ulanmagan (neu). */
 export type StudentStatus = 'active' | 'flagged' | 'unlinked';
 
@@ -13,7 +15,10 @@ export interface Student {
   group: string;
   course: number;
   faculty: string;
-  /** Tasdiqlangan arizadagi korxona, yo'q bo'lsa null ("—"). */
+  /**
+   * Faqat HOZIR aktiv amaliyot o'tayotgan korxona (profildagi `activeCompany.name` bilan bir xil);
+   * yopilgan/tugagan davrdagi eski korxona kirmaydi — yo'q bo'lsa null ("—").
+   */
   company: string | null;
   attendancePct: number;
   suspiciousDays: number;
@@ -85,7 +90,8 @@ export interface AssignCompanyResult {
 /* ────────────────────────────────────────────────────────────────────────────
  * Talaba profilidan biriktirish / o'tkazish — `POST /api/admin/students/{id}/company`.
  * Ochiq ariza bo'lsa u `transferred` holatiga o'tadi va yangi korxonaga `approved` ariza
- * yaratiladi; ariza bo'lmasa — birinchi biriktirish. Javob: yangilangan `AdminStudentDetail`.
+ * yaratiladi; ariza bo'lmasa — birinchi biriktirish. Javob: yangilangan `AdminStudentDetail`
+ * (yangi `activeCompany` bilan).
  * ──────────────────────────────────────────────────────────────────────────── */
 
 /** Izoh uzunligi chegarasi (backend validatori bilan bir xil). */

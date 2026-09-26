@@ -1,4 +1,5 @@
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Common.Models;
 using Amaliyotchi.Application.Common.Scoping;
 using Amaliyotchi.Application.Common.Time;
@@ -51,6 +52,11 @@ internal sealed class GetTutorTodayQueryHandler(IApplicationDbContext db, IScope
             .GroupBy(p => (p.StudentUserId, p.PeriodId))
             .ToDictionary(g => g.Key, g => g.First());
 
+        // Ko'rsatiladigan korxona — faqat aktiv (bugun davom etayotgan ochiq davrdagi tasdiqlangan ariza); radius
+        // tekshiruvi esa davomat davrining arizasidan (davom etayotgan davr bo'lsa — ikkalasi bir xil).
+        var activeCompanies = await db.LoadActiveCompaniesAsync(
+            students.Select(s => s.UserId).ToList(), today, cancellationToken);
+
         var diariesToday = await db.DiaryEntries.AsNoTracking().InScope(scope)
             .Where(d => d.Date == today)
             .Select(d => d.StudentUserId)
@@ -90,7 +96,7 @@ internal sealed class GetTutorTodayQueryHandler(IApplicationDbContext db, IScope
                 student.UserId,
                 student.FullName,
                 student.GroupName,
-                placement?.Company,
+                activeCompanies.GetValueOrDefault(student.UserId)?.Name,
                 row?.CheckInAt is { } checkIn ? PracticeTime.Hm(checkIn) : null,
                 row?.CheckOutAt is { } checkOut ? PracticeTime.Hm(checkOut) : null,
                 diary,

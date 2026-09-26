@@ -62,7 +62,9 @@ public sealed record StudentGrade(double Total, int? Grade);
 /// davrga bog'liq bloklar <c>selectedPeriodId</c> davri bo'yicha. <c>company</c> — faqat shu davrdagi
 /// tasdiqlangan (yoki yakunlangan) arizada; <c>period</c>/<c>grade</c> — davr bo'lmasa null (<c>grade</c> —
 /// davr hali boshlanmagan bo'lsa ham null). <c>periods</c> — davr tanlagichi (<c>startDate</c> kamayish tartibida).
-/// <c>hasPassword</c> — talabaga brauzer orqali kirish uchun parol o'rnatilganmi.</summary>
+/// <c>hasPassword</c> — talabaga brauzer orqali kirish uchun parol o'rnatilganmi.
+/// <c>activeCompany</c> — tanlangan davrdan MUSTAQIL: talabaning hozir amaliyot o'tayotgan korxonasi
+/// (<see cref="ActiveCompanyQueries"/>), bo'lmasa null.</summary>
 public sealed record TutorStudentDetail(
     Guid Id,
     string Name,
@@ -83,7 +85,8 @@ public sealed record TutorStudentDetail(
     StudentGrade? Grade,
     IReadOnlyList<StudentPeriodOption> Periods,
     Guid? SelectedPeriodId,
-    bool HasPassword);
+    bool HasPassword,
+    ActiveCompanyRef? ActiveCompany);
 
 internal static class WorkDayNumbers
 {

@@ -1,4 +1,4 @@
-# API-CONTRACT v3.12
+# API-CONTRACT v3.14
 
 Oxirgi yangilanish: 26.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
@@ -15,7 +15,8 @@ v3.9 (talaba Telegram'ni HEMIS ID + parol bilan bog'laydi — `POST /api/auth/te
 v3.10 (ruxsat so'rash moduli olib tashlandi — talaba va tyutor `leave-requests` endpoint'lari) — §6.16,
 v3.11 (talaba bosh ekrani: davrning har bir kuni — `GET /api/student/period-days`) — §6.17,
 v3.12 (admin davr yaratish/tahrirlashda ish kunlari va kunlik ish vaqti) — §6.18,
-v3.13 (talabani bitta-bitta korxonaga biriktirish/o'tkazish, `ApplicationStatus.transferred`) — §6.19.
+v3.13 (talabani bitta-bitta korxonaga biriktirish/o'tkazish, `ApplicationStatus.transferred`) — §6.19,
+v3.14 ("aktiv korxona" qoidasi: ro'yxatlarda `company` faqat aktiv korxona, profilda yangi `activeCompany`) — §6.20.
 
 Jami **108 ta endpoint**: Auth 7 · Admin 67 · Reports 1 · Tutor 20 · Student (TWA) 11 · Files 1 · Companies 1.
 
@@ -720,7 +721,7 @@ interface StudentRow {
   group: string;
   course: number;
   faculty: string;
-  company: string | null /*eng so'nggi tasdiqlangan ariza*/;
+  company: string | null /*v3.14 — faqat AKTIV korxona nomi (§4.7); aktivi bo'lmasa null, oldingi korxonaga fallback yo'q*/;
   attendancePct: number /*int*/;
   suspiciousDays: number;
   telegramLinked: boolean;
@@ -1425,7 +1426,7 @@ interface AttendanceRow {
   studentId: string;
   name: string;
   group: string;
-  company: string | null;
+  company: string | null /*v3.14 — aktiv korxona (§4.7)*/;
   checkIn: string | null /*"09:02"*/;
   checkOut: string | null;
   diary: 'written' | 'pending' | null;
@@ -1522,7 +1523,8 @@ interface TutorStudent {
 ```
 
 `state`: `totalDays>0 && pct<70` → `redFlag`; `suspiciousCount≥1` → `suspicious`; aks holda `active`. FISH bo'yicha tartib.
-Ko'rsatkichlar (`company` ham) — har talaba guruhining **sukut bo'yicha davri** bo'yicha (§4.6).
+Ko'rsatkichlar — har talaba guruhining **sukut bo'yicha davri** bo'yicha (§4.6). `company` (v3.14) — davrdan mustaqil,
+faqat talabaning **aktiv korxonasi** nomi (§4.7), aktivi bo'lmasa `null`.
 
 #### GET `/api/tutor/students/{id}?periodId=`
 
@@ -1552,6 +1554,14 @@ interface TutorStudentDetail {
   periods: StudentPeriodOption[] /*davr tanlagichi, startDate kamayish tartibida*/;
   selectedPeriodId: string | null /*javobdagi davrga bog'liq bloklar shu davr bo'yicha; davr yo'q → null*/;
   hasPassword: boolean /*v3.8 — talabaga brauzer login'i uchun parol o'rnatilgan (AdminStudentDetail'da ham)*/;
+  activeCompany: ActiveCompanyRef | null /*v3.14 — tanlangan davrdan MUSTAQIL, §4.7 (AdminStudentDetail'da ham)*/;
+}
+
+interface ActiveCompanyRef {
+  id: string /*korxona id*/;
+  name: string;
+  periodId: string /*aktiv arizaning davri*/;
+  periodName: string;
 }
 
 interface StudentPeriodOption {
@@ -1633,6 +1643,9 @@ Qoidalar:
 - `application` — tanlangan davrdagi ariza: `approved`/`completed` ustun, bo'lmasa eng so'nggisi (`submittedAt` desc).
   Davrda ariza yo'q → `null` (boshqa davr arizasi ko'rsatilmaydi).
 - `company` — faqat tanlangan davrdagi `approved` yoki `completed` arizadagi korxona; aks holda `null`.
+- `activeCompany` (v3.14) — `periodId` dan **mustaqil**: talabaning hozir amaliyot o'tayotgan korxonasi (§4.7), aks holda
+  `null`. Ro'yxatlardagi `company` bilan bir qoida — "hozir qayerda" savoliga shu maydon javob beradi; `company` esa
+  tanlangan davr tarixi (masalan yopilgan davr tanlansa — o'sha davr korxonasi, `activeCompany` esa `null` bo'lishi mumkin).
 - `grade` — davr boshlangan bo'lsa (`startDate ≤ bugun`); aks holda `null`.
 - `attendance` / `diary` — `StudentStatsCalculator` (ro'yxat va baholash bilan bir xil manba).
 - `grade` — `GradeCalculator.Compute(…)` (§4.4).
@@ -2464,6 +2477,22 @@ Natija: ikki davr oralig'ida statistika/profil tugagan kuzgi davr bo'yicha qolad
 ketmaydi), check-in rad etiladi ("hali boshlanmagan: <nom>, <sana>"), ariza esa bahorgi davrga beriladi.
 Kalendarlar (tyutor/TWA) har kunni o'zini o'z ichiga olgan davr bilan chizadi.
 
+### 4.7 Aktiv korxona (v3.14, `ActiveCompanyQueries` — Application/Common/Practice)
+
+Talabaning **hozir** amaliyot o'tayotgan korxonasi. Ariza quyidagilarning **hammasiga** mos bo'lishi kerak:
+
+- `status == approved` (`submitted`/`revisionNeeded`/`rejected`/`transferred`/`completed` emas);
+- davr o'chirilmagan va yopilmagan (`status != closed`);
+- bugun (Toshkent) `startDate ≤ bugun ≤ endDate`;
+- talabaning joriy guruhi hali shu davrga biriktirilgan.
+
+Bir nechta mos kelsa — eng so'nggi `decidedAt`. Mos ariza yo'q → `null`; oldingi (yopilgan/tugagan) yoki kelgusi davr
+korxonasiga **fallback yo'q**. Qayerda: `GET /api/admin/students` (`company`), `GET /api/tutor/students` (`company`),
+`GET /api/tutor/today` (`rows.items[].company`), `GET /api/admin/students/{id}` · `GET /api/tutor/students/{id}` ·
+`POST /api/admin/students/{id}/company` (`activeCompany`). Tarix ko'rinishlari (profildagi davrga bog'liq `company`,
+`GET /api/admin/companies/{id}/students`, davr statistikasi `…/practice-periods/{id}/groups/{groupId}/students`) —
+o'z davri bo'yicha, bu qoidaga bo'ysunmaydi.
+
 ---
 
 ## 5. v1 → v2 farqlar (frontend agentlari uchun)
@@ -2923,3 +2952,18 @@ Foydalanuvchi qarori: talabalar ruxsat (leave) so'ramaydi — funksiya butunlay 
   `counts` o'zgarmadi. Bir davrda bitta `transferred` + bitta `approved` ariza bo'lishi mumkin (unikal indeks filtri
   `submitted/revisionNeeded/approved` — o'zgarmadi), **migratsiya yo'q**.
 - `assign-company` xatti-harakati o'zgarmadi (`transferred` ariza "joriy" hisoblanmaydi).
+
+### 6.20 v3.13 → v3.14 (26.09.2026): aktiv korxona
+
+- **Semantika o'zgardi:** `GET /api/admin/students` va `GET /api/tutor/students` dagi `company: string | null` — endi faqat
+  talabaning **aktiv korxonasi** nomi (§4.7). Avval admin ro'yxati istalgan davrdagi eng so'nggi `approved` arizaga
+  (yopilgan davr ham) fallback qilardi, tyutor ro'yxati esa sukut davri (oxirgi tugagan/yopilgan ham) bo'yicha olardi —
+  natijada ro'yxatda eski korxona chiqib, profilda chiqmasdi. Endi aktivi bo'lmasa `null`. `GET /api/tutor/today`
+  dagi `rows.items[].company` ham shu qoidaga o'tdi (davom etayotgan davr bo'lsa natija avvalgidek).
+- **Yangi maydon:** `activeCompany: { id, name, periodId, periodName } | null` — `GET /api/admin/students/{id}`,
+  `GET /api/tutor/students/{id}` va `POST /api/admin/students/{id}/company` javoblarida (`AdminStudentDetail` /
+  `TutorStudentDetail`). `periodId` dan mustaqil.
+- Davrga bog'liq `company` / `application` / `period` bloklari **o'zgarmadi** (tanlangan davr tarixi).
+- Sukut davri tanlovi (§4.6) o'zgarmadi: yopilgan davr hech qachon `ongoing` hisoblanmaydi — guruhda ochiq davom etayotgan
+  davr bo'lsa, sukut shu davr.
+- Endpoint soni o'zgarmadi, migratsiya yo'q.

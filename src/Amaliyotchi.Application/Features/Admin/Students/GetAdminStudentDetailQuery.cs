@@ -13,7 +13,8 @@ public sealed record AdminStudentTutor(Guid Id, string FullName, string? Phone);
 
 /// <summary><c>GET /api/admin/students/{id}</c> javobi — tyutor profili bilan bir xil bloklar
 /// (<see cref="TutorStudentDetail"/>) + adminga xos maydonlar: kafedra, tyutor, Telegram bog'lanishi,
-/// ro'yxatdagi holat va guruh identifikatori.</summary>
+/// ro'yxatdagi holat va guruh identifikatori. <c>activeCompany</c> — tanlangan davrdan mustaqil aktiv korxona
+/// (ro'yxatdagi <c>company</c> bilan bir xil qoida), <c>company</c> esa tanlangan davr bo'yicha.</summary>
 public sealed record AdminStudentDetail(
     Guid Id,
     string Name,
@@ -39,7 +40,8 @@ public sealed record AdminStudentDetail(
     StudentGrade? Grade,
     IReadOnlyList<StudentPeriodOption> Periods,
     Guid? SelectedPeriodId,
-    bool HasPassword);
+    bool HasPassword,
+    ActiveCompanyRef? ActiveCompany);
 
 /// <summary><c>GET /api/admin/students/{id}?periodId=</c> — talaba profili (davrga bog'liq bloklar tanlangan davr bo'yicha).
 /// Talaba topilmasa yoki <c>periodId</c> talabaga tegishli bo'lmasa → 404.</summary>
@@ -103,6 +105,7 @@ internal sealed class GetAdminStudentDetailQueryHandler(IApplicationDbContext db
             profile.Grade,
             profile.Periods,
             profile.SelectedPeriodId,
-            profile.HasPassword);
+            profile.HasPassword,
+            profile.ActiveCompany);
     }
 }

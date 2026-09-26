@@ -98,6 +98,7 @@ export function StudentDetailPage() {
             onSelectPeriod={setPeriodId}
             isPlaceholderData={query.isPlaceholderData}
             area="admin"
+            labelPeriodCompany
             headerActions={<StudentPasswordAction area="admin" student={detail} />}
           >
             <AdminStudentMetaCard
@@ -113,13 +114,13 @@ export function StudentDetailPage() {
             <StudentCompanyModal
               studentId={detail.id}
               studentName={detail.name}
-              currentCompany={detail.company}
+              currentCompany={detail.activeCompany ?? null}
               onClose={() => setCompanyModalOpen(false)}
               onDone={(updated) => {
-                const name = updated.company?.name;
+                const name = updated.activeCompany?.name ?? updated.company?.name;
                 setCompanyModalOpen(false);
                 setFlash(
-                  detail.company
+                  detail.activeCompany
                     ? `Talaba ${name ? `«${name}» korxonasiga ` : 'boshqa korxonaga '}o'tkazildi.`
                     : `Talaba ${name ? `«${name}» korxonasiga ` : 'korxonaga '}biriktirildi.`,
                 );

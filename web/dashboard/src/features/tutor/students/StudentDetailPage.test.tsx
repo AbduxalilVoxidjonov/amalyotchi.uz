@@ -294,6 +294,14 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
     expect(within(application).getByText(/qayta yuklang/)).toBeInTheDocument();
   });
 
+  it("yopilgan davr korxonasi tyutor profilida o'zgarmagan sarlavha bilan ko'rsatiladi", async () => {
+    renderStudentDetail('/tutor/students/s-341032?period=per-2026-yoz');
+
+    const company = within(await screen.findByRole('region', { name: 'Korxona' }));
+    expect((await company.findAllByText('Uzinfocom')).length).toBeGreaterThan(0);
+    expect(company.queryByText('Korxona (tanlangan davr)')).not.toBeInTheDocument();
+  });
+
   it("rad etilgan urinish va radius tashqarisi belgilari alohida ko'rsatiladi", async () => {
     renderStudentDetail('/tutor/students/s-341034');
 

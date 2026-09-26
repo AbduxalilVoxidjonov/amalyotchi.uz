@@ -51,12 +51,18 @@ export function StudentDetailView({
   selectedPeriod,
   today,
   actions,
+  labelPeriodCompany = false,
 }: {
   detail: TutorStudentDetail;
   selectedPeriod: StudentPeriodOption | null;
   today: string;
   /** Sarlavha kartasidagi amallar (masalan "Parol o'rnatish") — belgilar yonida. */
   actions?: ReactNode;
+  /**
+   * true — yopilgan/tugagan davrda korxona bloki aktiv korxonadan farq qilsa, sarlavha
+   * "Korxona (tanlangan davr)" bo'ladi (joriy deb o'ylanmasligi uchun). Tyutor profilida o'chiq.
+   */
+  labelPeriodCompany?: boolean;
 }) {
   const planned = selectedPeriod !== null && periodPhase(selectedPeriod, today) === 'planned';
   const plannedText = planned && selectedPeriod ? plannedPeriodText(selectedPeriod) : null;
@@ -67,6 +73,17 @@ export function StudentDetailView({
   const company = detail.company;
   const application = detail.application;
   const period = detail.period;
+  const phase = selectedPeriod ? periodPhase(selectedPeriod, today) : null;
+  const historicalCompany =
+    labelPeriodCompany &&
+    selectedPeriod !== null &&
+    (phase === 'closed' || phase === 'ended') &&
+    (company?.id ?? null) !== (detail.activeCompany?.id ?? null);
+  const companySubtitle = historicalCompany
+    ? [company?.name, selectedPeriod.name].filter(Boolean).join(' · ')
+    : company
+      ? company.name
+      : undefined;
 
   const profileFacts: FactItem[] = [
     { k: 'HEMIS ID', v: detail.hemisId },
@@ -155,7 +172,10 @@ export function StudentDetailView({
       </Card>
 
       <Card as="section" aria-label="Korxona">
-        <CardHeader title="Korxona" subtitle={company ? company.name : undefined} />
+        <CardHeader
+          title={historicalCompany ? 'Korxona (tanlangan davr)' : 'Korxona'}
+          subtitle={companySubtitle}
+        />
         <CardBody>
           {company ? (
             <div className={styles.columns}>

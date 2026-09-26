@@ -1,8 +1,8 @@
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Models;
+using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Features.Admin.Common;
 using Amaliyotchi.Domain.Attendance;
-using Amaliyotchi.Domain.Practice;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,7 +10,9 @@ namespace Amaliyotchi.Application.Features.Admin.Students;
 
 /// <summary>Kontrakt <c>Student</c> + <c>hemisId</c>, <c>groupId</c>, <c>course</c>, <c>telegramLinked</c>, <c>suspiciousDays</c>.
 /// <paramref name="Id"/> — talabaning <c>User.Id</c> (tyutor endpoint'laridagi <c>studentId</c> bilan bir xil).
-/// <paramref name="Company"/> — tasdiqlangan arizadagi korxona (eng so'nggisi), yo'q bo'lsa <c>null</c>.</summary>
+/// <paramref name="Company"/> — talabaning HOZIRDA aktiv korxonasi nomi (<see cref="ActiveCompanyQueries"/>: tasdiqlangan
+/// ariza, yopilmagan va bugun davom etayotgan davr, guruh hali davrga biriktirilgan); aktivi bo'lmasa <c>null</c> —
+/// oldingi (yopilgan/tugagan davrdagi) korxonaga fallback yo'q.</summary>
 public sealed record StudentRow(
     Guid Id,
     string FullName,
@@ -61,12 +63,7 @@ internal sealed class GetAdminStudentsQueryHandler(IApplicationDbContext db, ICl
                 Group = x.Group.Name,
                 x.Group.Course,
                 Faculty = x.Faculty.Name,
-                TelegramLinked = x.User.TelegramUserId != null,
-                Company = db.PracticeApplications
-                    .Where(a => a.StudentUserId == x.User.Id && a.Status == ApplicationStatus.Approved)
-                    .OrderByDescending(a => a.DecidedAt)
-                    .Select(a => a.Company.Name)
-                    .FirstOrDefault()
+                TelegramLinked = x.User.TelegramUserId != null
             })
             .ToPagedAsync(request, cancellationToken);
 
@@ -94,14 +91,8 @@ internal sealed class GetAdminStudentsQueryHandler(IApplicationDbContext db, ICl
             })
             .ToDictionaryAsync(x => (x.StudentUserId, x.PeriodId), cancellationToken);
 
-        // Korxona — davrdagi tasdiqlangan arizadan; davrda bo'lmasa oxirgi tasdiqlangani (ro'yxat so'rovidagi).
-        var companies = (await db.PracticeApplications
-                .AsNoTracking()
-                .Where(a => ids.Contains(a.StudentUserId) && periodIds.Contains(a.PeriodId) && a.Status == ApplicationStatus.Approved)
-                .Select(a => new { a.StudentUserId, a.PeriodId, a.DecidedAt, Company = a.Company.Name })
-                .ToListAsync(cancellationToken))
-            .GroupBy(a => (a.StudentUserId, a.PeriodId))
-            .ToDictionary(g => g.Key, g => g.OrderByDescending(a => a.DecidedAt).First().Company);
+        // Korxona — faqat aktiv (hozir davom etayotgan davrdagi tasdiqlangan) arizadan; davomat davridan mustaqil.
+        var companies = await db.LoadActiveCompaniesAsync(ids, today, cancellationToken);
 
         var rows = page.Items.Select(s =>
         {
@@ -115,7 +106,7 @@ internal sealed class GetAdminStudentsQueryHandler(IApplicationDbContext db, ICl
 
             return new StudentRow(
                 s.Id, s.FullName, s.HemisId, s.GroupId, s.Group, s.Course, s.Faculty,
-                companies.GetValueOrDefault((s.Id, periodId)) ?? s.Company,
+                companies.GetValueOrDefault(s.Id)?.Name,
                 pct, suspicious, s.TelegramLinked, status);
         }).ToList();
 

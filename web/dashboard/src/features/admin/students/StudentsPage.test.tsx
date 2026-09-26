@@ -20,7 +20,10 @@ describe('StudentsPage', () => {
     expect(await screen.findByText('Aliyev Akmal')).toBeInTheDocument();
     expect(screen.getByText('Qizil bayroq')).toBeInTheDocument();
     expect(screen.getByText('Ulanmagan')).toBeInTheDocument();
-    expect(screen.getByText('—')).toBeInTheDocument();
+    // Aktiv korxonasi yo'q talabalar (s2 — faqat yopilgan davrda korxonasi bor, s5) → "—".
+    expect(screen.getAllByText('—')).toHaveLength(2);
+    expect(screen.queryByText('Uzinfocom')).not.toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Korxona' })).toBeInTheDocument();
     expect(screen.getByText('1–5 / 5')).toBeInTheDocument();
   });
 
@@ -91,7 +94,11 @@ describe('StudentsPage', () => {
   it('Excel import: server xatosi modal ichida ko‘rinadi', async () => {
     server.use(
       http.post(STUDENTS_IMPORT_ENDPOINT, () =>
-        problemResponse(400, "Noto'g'ri amal", "Faylni o'qib bo'lmadi — u haqiqiy .xlsx (Excel) fayli bo'lishi kerak."),
+        problemResponse(
+          400,
+          "Noto'g'ri amal",
+          "Faylni o'qib bo'lmadi — u haqiqiy .xlsx (Excel) fayli bo'lishi kerak.",
+        ),
       ),
     );
     const user = userEvent.setup();
@@ -113,9 +120,7 @@ describe('StudentsPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Shablon' }));
 
     // Xato bo'lmasa toolbar'da alert chiqmaydi (jsdom'da blob saqlash bosqichi o'tkazib yuboriladi).
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Shablon' })).not.toBeDisabled(),
-    );
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Shablon' })).not.toBeDisabled());
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
@@ -129,7 +134,7 @@ describe('StudentsPage', () => {
     }
   });
 
-  it("ikkita qator belgilansa tanlov paneli chiqadi", async () => {
+  it('ikkita qator belgilansa tanlov paneli chiqadi', async () => {
     const user = userEvent.setup();
     renderWithProviders(<StudentsPage />);
 
@@ -140,7 +145,7 @@ describe('StudentsPage', () => {
     expect(screen.getByRole('button', { name: 'Korxonaga biriktirish' })).toBeInTheDocument();
   });
 
-  it("hammasini belgilash tugmasi sahifadagi barcha qatorlarni tanlaydi", async () => {
+  it('hammasini belgilash tugmasi sahifadagi barcha qatorlarni tanlaydi', async () => {
     const user = userEvent.setup();
     renderWithProviders(<StudentsPage />);
 
@@ -167,9 +172,7 @@ describe('StudentsPage', () => {
       'Biriktirildi: 1 · Biriktirilmadi: 1 · Jami: 2',
     );
     expect(within(report).getByText('Sobirov Diyor')).toBeInTheDocument();
-    expect(
-      within(report).getByText('Allaqachon shu korxonaga biriktirilgan.'),
-    ).toBeInTheDocument();
+    expect(within(report).getByText('Allaqachon shu korxonaga biriktirilgan.')).toBeInTheDocument();
     // Muvaffaqiyatdan keyin tanlov tozalanadi.
     expect(screen.queryByText('2 ta tanlandi')).not.toBeInTheDocument();
   });

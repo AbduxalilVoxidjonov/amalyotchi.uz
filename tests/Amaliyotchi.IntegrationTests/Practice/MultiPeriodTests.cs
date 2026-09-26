@@ -104,13 +104,15 @@ public sealed class MultiPeriodTests(ApiFixture fixture)
         admin.Periods.Single(p => p.Id == s.Spring.Id).Status.Should().Be(PracticePeriodStatus.Planned);
         admin.Attendance.AttendedDays.Should().Be(AttendedDays);
         admin.Diary.Count.Should().Be(1);
-        admin.Company!.Id.Should().Be(s.Company.Id);
+        admin.Company!.Id.Should().Be(s.Company.Id); // davrga bog'liq (tanlangan kuzgi davr tarixi)
+        admin.ActiveCompany.Should().BeNull("davrlar oralig'ida hozir amaliyot o'tayotgan korxona yo'q");
         admin.Application.Should().NotBeNull();
         admin.Grade.Should().NotBeNull();
 
         var tutor = await GetOkAsync<TutorStudentDetail>(s.TutorClient, $"/api/tutor/students/{s.Student.Id}");
         tutor.SelectedPeriodId.Should().Be(s.Autumn.Id);
         tutor.Periods.Should().HaveCount(2);
+        tutor.ActiveCompany.Should().BeNull();
         tutor.Attendance.AttendedDays.Should().Be(AttendedDays);
 
         // Alohida endpoint'lar ham sukut bo'yicha kuzgi davr.
@@ -121,10 +123,11 @@ public sealed class MultiPeriodTests(ApiFixture fixture)
         var diaries = await GetOkAsync<List<TutorDiaryEntry>>(s.Admin, $"/api/admin/students/{s.Student.Id}/diaries");
         diaries.Should().HaveCount(1);
 
-        // Tyutor ro'yxati ham kuzgi davr bo'yicha (kelgusi bo'sh davrga o'tib ketmaydi).
+        // Tyutor ro'yxati statistikasi kuzgi davr bo'yicha (kelgusi bo'sh davrga o'tib ketmaydi); korxona ustuni esa
+        // faqat aktiv korxona — kuzgi davr yopilgan, bahorgi boshlanmagan → null (oldingi korxonaga fallback yo'q).
         var list = await GetOkAsync<List<TutorStudent>>(s.TutorClient, "/api/tutor/students");
         list.Single(r => r.Id == s.Student.Id).AttendedDays.Should().Be(AttendedDays);
-        list.Single(r => r.Id == s.Student.Id).Company.Should().Be(s.Company.Name);
+        list.Single(r => r.Id == s.Student.Id).Company.Should().BeNull();
     }
 
     [Fact]

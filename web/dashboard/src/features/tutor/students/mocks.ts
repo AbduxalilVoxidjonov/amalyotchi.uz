@@ -144,14 +144,37 @@ export const SPRING_PERIOD: StudentPeriod = {
   requiredDays: 60,
 };
 
+/**
+ * Yopilgan yozgi davr: Sobirov Diyor (s-341032 · admin s2) unda «Uzinfocom» da amaliyot o'tagan,
+ * joriy davrda esa arizasi tuzatishda — ya'ni yopilgan davrda korxonasi bor, AKTIV korxonasi yo'q
+ * (ro'yxatda `company: null`, profilda `activeCompany: null`).
+ */
+export const CLOSED_PERIOD: StudentPeriod = {
+  id: 'per-2026-yoz',
+  name: 'Yozgi amaliyot 2026',
+  startDate: '2026-06-01',
+  endDate: '2026-07-31',
+  dailyStart: '09:00',
+  dailyEnd: '18:00',
+  workDays: [1, 2, 3, 4, 5],
+  requiredDays: 40,
+};
+
 const PERIOD_STATUS: Record<string, StudentPeriodOption['status']> = {
   [PERIOD.id]: 'active',
   [SPRING_PERIOD.id]: 'planned',
+  [CLOSED_PERIOD.id]: 'closed',
 };
 
 /** Talaba → uning davrlari (startDate kamayish tartibida). */
 const STUDENT_PERIODS: Record<string, StudentPeriod[]> = {
   's-341030': [SPRING_PERIOD, PERIOD],
+  's-341032': [PERIOD, CLOSED_PERIOD],
+};
+
+/** Yopilgan davrlardagi korxona tarixi: talaba → davr → korxona nomi (`COMPANIES` kaliti). */
+const PERIOD_COMPANY_HISTORY: Record<string, Record<string, string>> = {
+  's-341032': { [CLOSED_PERIOD.id]: 'Uzinfocom' },
 };
 
 function periodsOf(studentId: string): StudentPeriod[] {
@@ -734,6 +757,48 @@ export function buildDetail(
   const period = resolveMockPeriod(studentId, periodId);
   if (!period) return 'periodNotFound';
   const periods = mockPeriodOptions(studentId);
+  const company = student.company ? (COMPANIES[student.company] ?? null) : null;
+  const companyBound = isCompanyBoundApplication(seed.applicationStatus);
+  // Aktiv korxona — tanlangan davrdan mustaqil: faqat ochiq davrdagi tasdiqlangan ariza bo'yicha.
+  const activeCompany =
+    companyBound && company
+      ? { id: company.id, name: company.name, periodId: PERIOD.id, periodName: PERIOD.name }
+      : null;
+
+  const historyName = PERIOD_COMPANY_HISTORY[studentId]?.[period.id];
+  if (historyName) {
+    // Yopilgan davr: korxona — o'sha davrdagi (tarix), ariza yakunlangan; aktiv korxona boshqacha.
+    return {
+      id: student.id,
+      name: student.name,
+      hemisId: student.hemisId,
+      group: student.group,
+      course: seed.course,
+      faculty: seed.faculty,
+      direction: seed.direction,
+      status: seed.status,
+      phone: seed.phone,
+      state: 'active',
+      suspiciousCount: 0,
+      company: COMPANIES[historyName] ?? null,
+      activeCompany,
+      application: {
+        id: `app-${studentId}-${period.id}`,
+        status: 'completed',
+        submittedAt: '2026-05-20T10:00:00+05:00',
+        decidedAt: '2026-05-22T12:00:00+05:00',
+        comment: null,
+        contract: null,
+      },
+      period,
+      attendance: summarize([]),
+      diary: { count: 0, scoredCount: 0, avg: 0 },
+      grade: null,
+      periods,
+      selectedPeriodId: period.id,
+      hasPassword: hasMockStudentPassword(student.id),
+    };
+  }
 
   if (period.id !== PERIOD.id) {
     // Rejadagi davr: davrga bog'liq bloklar bo'sh (application/company/grade = null, nollar).
@@ -750,6 +815,7 @@ export function buildDetail(
       state: 'active',
       suspiciousCount: 0,
       company: null,
+      activeCompany,
       application: null,
       period,
       attendance: summarize([]),
@@ -764,8 +830,6 @@ export function buildDetail(
   const days = buildAttendance(studentId);
   const diaries = buildDiaries(studentId);
   const scored = diaries.filter((d) => d.score !== null);
-  const company = student.company ? (COMPANIES[student.company] ?? null) : null;
-  const companyBound = isCompanyBoundApplication(seed.applicationStatus);
 
   return {
     id: student.id,
@@ -780,6 +844,7 @@ export function buildDetail(
     state: student.state,
     suspiciousCount: student.suspiciousCount,
     company: companyBound ? company : null,
+    activeCompany,
     application: {
       id: `app-${studentId}`,
       status: seed.applicationStatus,
