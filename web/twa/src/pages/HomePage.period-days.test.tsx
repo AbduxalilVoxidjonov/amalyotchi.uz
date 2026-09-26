@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { MOCK_SPRING_PERIOD } from '@/features/period/mocks';
-import { setPeriodDaysVariant } from '@/features/period-days/mocks';
+import { mockPeriodDays, setPeriodDaysVariant } from '@/features/period-days/mocks';
 import { setCheckinQrRequired } from '@/features/today/mocks';
 import { server } from '@/mocks/server';
 import { removeGeolocation, renderApp, stubGeolocation } from '@/test/render-app';
@@ -166,6 +166,87 @@ describe('Bosh ekran — kunlar accordion', () => {
   });
 });
 
+describe('Bosh ekran — tugagan davr yig‘indisi', () => {
+  const stat = (label: string) =>
+    within(screen.getByRole('region', { name: 'Davr yakuni' })).getByText(label, {
+      selector: 'dt',
+    }).nextElementSibling?.textContent;
+
+  it('faol (sukut) davr — kunlar ro‘yxati bor, yig‘indi yo‘q (regressiya)', async () => {
+    await renderHome();
+    expect(screen.getByRole('heading', { name: 'Kunlar' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Davr yakuni' })).not.toBeInTheDocument();
+  });
+
+  it('yopilgan davr tanlansa — kunlar o‘rniga keldi/kech qoldi/kelmadi; qaytsa — kunlar', async () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    try {
+      await renderHome();
+      expect(scroll).toHaveBeenCalledTimes(1);
+      fireEvent.click(screen.getByRole('button', { name: /Yozgi amaliyot 2026/ }));
+      expect(await screen.findByRole('region', { name: 'Davr yakuni' })).toBeInTheDocument();
+      expect(screen.getByText('Tugagan')).toBeInTheDocument();
+      // Davr kartasida "Ish kunlari: X / Y o'tdi" yo'q — yig'indi yetarli.
+      expect(screen.queryByText(/Ish kunlari:/)).not.toBeInTheDocument();
+      expect(screen.queryByRole('list', { name: 'Amaliyot kunlari' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Kunlar' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /KELDIM|KETDIM/ })).not.toBeInTheDocument();
+
+      // Mock: 01.06–11.07.2026, 36 ish kuni — 3 kech, 1 kelmadi, 1 sababli, qolgani vaqtida.
+      expect(stat('Keldi')).toBe('34');
+      expect(stat('Kech qoldi')).toBe('3');
+      expect(stat('Kelmadi')).toBe('1');
+      expect(screen.getByText(/Sababli:/)).toHaveTextContent('Sababli: 1 kun');
+      expect(screen.getByText(/ish kunidan/)).toHaveTextContent('36 ish kunidan 34 kun keldi');
+      expect(screen.getByRole('progressbar', { name: 'Davomat 97%' })).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /Kuzgi amaliyot 2026/ }));
+      expect(await screen.findByRole('list', { name: 'Amaliyot kunlari' })).toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: 'Davr yakuni' })).not.toBeInTheDocument();
+      expect(screen.getByText(/Ish kunlari:/)).toHaveTextContent("Ish kunlari: 34 / 38 o'tdi");
+      await waitFor(() => expect(row(TODAY)).toHaveAttribute('aria-expanded', 'true'));
+      expect(scroll).toHaveBeenCalledTimes(1);
+    } finally {
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
+    }
+  });
+
+  it('yopilgan, lekin sanasi hali tugamagan davr (production) — yig‘indi, kunlar va scroll yo‘q', async () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    const base = mockPeriodDays(null)!;
+    server.use(
+      http.get('/api/student/period-days', () =>
+        HttpResponse.json({ ...base, period: { ...base.period!, status: 'closed' } }),
+      ),
+    );
+    try {
+      renderApp('/');
+      expect(await screen.findByRole('region', { name: 'Davr yakuni' })).toBeInTheDocument();
+      expect(screen.queryByRole('list', { name: 'Amaliyot kunlari' })).not.toBeInTheDocument();
+      expect(screen.queryByText(/Ish kunlari:/)).not.toBeInTheDocument();
+      // Bugun (pending) va kelgusi kunlar hisobga kirmaydi.
+      expect(stat('Keldi')).toBe('33');
+      expect(scroll).not.toHaveBeenCalled();
+    } finally {
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
+    }
+  });
+
+  it('faol, lekin endDate o‘tgan davr — yig‘indi', async () => {
+    const base = mockPeriodDays(null)!;
+    server.use(
+      http.get('/api/student/period-days', () =>
+        HttpResponse.json({ ...base, today: '2026-10-20' }),
+      ),
+    );
+    renderApp('/');
+    expect(await screen.findByRole('region', { name: 'Davr yakuni' })).toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Amaliyot kunlari' })).not.toBeInTheDocument();
+  });
+});
+
 describe('Bosh ekran — davr tanlagichi va bo‘sh holat', () => {
   it('ikki davr: tanlagich; bahorgi tanlansa ?periodId= bilan, bugun davrdan tashqarida — hech biri ochiq emas', async () => {
     const urls: URL[] = [];
@@ -175,7 +256,7 @@ describe('Bosh ekran — davr tanlagichi va bo‘sh holat', () => {
     });
     await renderHome();
     const picker = within(screen.getByRole('group', { name: 'Amaliyot davri' }));
-    expect(picker.getAllByRole('button')).toHaveLength(2);
+    expect(picker.getAllByRole('button')).toHaveLength(3);
     expect(picker.getByRole('button', { name: /Kuzgi amaliyot 2026/ })).toHaveAttribute(
       'aria-pressed',
       'true',

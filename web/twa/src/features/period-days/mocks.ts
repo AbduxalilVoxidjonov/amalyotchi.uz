@@ -20,19 +20,32 @@ export const MOCK_PD_AUTUMN_PERIOD: StudentPeriodOption = {
   endDate: '2026-10-14',
 };
 
+/** Tugagan (yopilgan) davr — bosh ekranda kunlar o'rniga yig'indi (`PeriodResultCard`) ko'rinadi. */
+export const MOCK_PD_SUMMER_PERIOD: StudentPeriodOption = {
+  id: 'cccccccc-0000-4000-8000-000000000003',
+  name: 'Yozgi amaliyot 2026',
+  startDate: '2026-06-01',
+  endDate: '2026-07-11',
+  status: 'closed',
+  isDefault: false,
+};
+
 const HOLIDAYS: Record<string, string> = { '2026-09-01': 'Mustaqillik kuni' };
 
-/** `two` — kuzgi (sukut) + bahorgi (rejalashtirilgan) · `single` — faqat kuzgi · `none` — davr yo'q. */
-export type PeriodDaysVariant = 'two' | 'single' | 'none';
+/**
+ * `multi` — bahorgi (rejalashtirilgan) + kuzgi (faol, sukut) + yozgi (yopilgan) · `single` — faqat kuzgi ·
+ * `none` — davr yo'q.
+ */
+export type PeriodDaysVariant = 'multi' | 'single' | 'none';
 
-let variant: PeriodDaysVariant = 'two';
+let variant: PeriodDaysVariant = 'multi';
 
 export function setPeriodDaysVariant(next: PeriodDaysVariant) {
   variant = next;
 }
 
 export function resetPeriodDaysMocks() {
-  variant = 'two';
+  variant = 'multi';
 }
 
 function mockPeriods(): StudentPeriodOption[] {
@@ -42,7 +55,11 @@ function mockPeriods(): StudentPeriodOption[] {
   const autumn = { ...MOCK_PD_AUTUMN_PERIOD, isDefault: !springDefault };
   if (variant === 'single') return [autumn];
   // startDate kamayish tartibida.
-  return [{ ...MOCK_SPRING_PERIOD, isDefault: springDefault }, autumn];
+  return [
+    { ...MOCK_SPRING_PERIOD, isDefault: springDefault },
+    autumn,
+    { ...MOCK_PD_SUMMER_PERIOD, isDefault: false },
+  ];
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0');

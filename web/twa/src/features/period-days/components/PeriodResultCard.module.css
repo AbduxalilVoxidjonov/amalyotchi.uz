@@ -1,0 +1,87 @@
+/* Tugagan davr yig'indisi — mobil (bitta ustun), 3 ta katta raqamli plitka. */
+.title {
+  margin: 0;
+  font-size: var(--fs-md2);
+  font-weight: var(--fw-semibold);
+}
+.lead {
+  margin: 6px 0 0;
+  font-size: var(--fs-md2);
+  color: var(--color-text-muted);
+}
+.count {
+  font-family: var(--font-mono);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 14px 0 0;
+}
+.stat {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px 6px 10px;
+  border-radius: var(--radius-lg);
+  background: var(--cal-bg);
+  color: var(--cal-fg);
+  text-align: center;
+}
+.value {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-stat);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-tight);
+  line-height: 1.1;
+}
+.label {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.hint {
+  margin: 8px 0 0;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}
+.extra {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--cal-bg);
+  box-shadow: inset 0 0 0 1px var(--cal-fg);
+}
+.pct {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: var(--border-inner);
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+.pctLabel {
+  flex-shrink: 0;
+}
+.bar {
+  flex: 1;
+  min-width: 0;
+}

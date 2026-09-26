@@ -2,6 +2,7 @@ import { Badge, Card, Eyebrow, type StatusKind } from '@/shared/ui';
 import { formatDate } from '@/shared/lib/format';
 import { periodPhase, type PeriodPhase } from '@/features/period/types';
 import type { PeriodSummary } from '../types';
+import { isPeriodEnded } from '../summary';
 import styles from './PeriodOverviewCard.module.css';
 
 const PHASE_BADGE: Record<PeriodPhase, { label: string; kind: StatusKind }> = {
@@ -19,6 +20,8 @@ export interface PeriodOverviewCardProps {
 /** Bosh ekran tepasi: davr nomi, sanalari, holati va o'tgan ish kunlari. */
 export function PeriodOverviewCard({ period, today }: PeriodOverviewCardProps) {
   const phase = PHASE_BADGE[periodPhase(period, today)];
+  // Tugagan davrda o'tgan ish kunlari o'rniga yig'indi kartasi (`PeriodResultCard`) bor.
+  const ended = isPeriodEnded(period, today);
   return (
     <Card padded="lg" aria-labelledby="period-overview-title">
       <Eyebrow as="div" spacing="wide" margin="none">
@@ -35,13 +38,15 @@ export function PeriodOverviewCard({ period, today }: PeriodOverviewCardProps) {
       <p className={styles.dates}>
         {formatDate(period.startDate)} – {formatDate(period.endDate)}
       </p>
-      <p className={styles.progress}>
-        Ish kunlari:{' '}
-        <span className={styles.count}>
-          {period.elapsedWorkDays} / {period.requiredDays}
-        </span>{' '}
-        o'tdi
-      </p>
+      {!ended && (
+        <p className={styles.progress}>
+          Ish kunlari:{' '}
+          <span className={styles.count}>
+            {period.elapsedWorkDays} / {period.requiredDays}
+          </span>{' '}
+          o'tdi
+        </p>
+      )}
     </Card>
   );
 }
