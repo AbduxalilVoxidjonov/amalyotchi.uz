@@ -2,7 +2,14 @@ import type { StatusKind } from '@amaliyotchi/shared/ui';
 
 /** Domain `ApplicationStatus` (Practice) — JSON'da camelCase string. */
 export type ApplicationStatus =
-  'draft' | 'submitted' | 'revisionNeeded' | 'approved' | 'rejected' | 'completed';
+  | 'draft'
+  | 'submitted'
+  | 'revisionNeeded'
+  | 'approved'
+  | 'rejected'
+  | 'completed'
+  /** Admin talabani boshqa korxonaga o'tkazgan — eski ariza yopiladi. */
+  | 'transferred';
 
 /** Shartnoma fayli (`PracticeContractDto`). */
 export interface PracticeContractDto {
@@ -50,6 +57,7 @@ export const APPLICATION_STATUS: Record<ApplicationStatus, { label: string; kind
   approved: { label: 'Tasdiqlangan', kind: 'ok' },
   rejected: { label: 'Rad etilgan', kind: 'bad' },
   completed: { label: 'Yakunlangan', kind: 'neu' },
+  transferred: { label: "Ko'chirilgan", kind: 'neu' },
 };
 
 /**

@@ -5,7 +5,7 @@ import { adminKeys } from '../shared/keys';
 import type { ListParams } from '../shared/types';
 import { useTemplateDownload, type TemplateDownload } from '../shared/useTemplateDownload';
 import { STUDENTS_TEMPLATE_ENDPOINT, STUDENTS_TEMPLATE_FILE_NAME, studentsApi } from './api';
-import type { AssignCompanyInput } from './types';
+import type { AssignCompanyInput, SetStudentCompanyInput } from './types';
 
 export function useStudentsQuery(params: ListParams) {
   return useQuery({
@@ -71,6 +71,31 @@ export function useAssignCompany() {
       void queryClient.invalidateQueries({ queryKey: adminKeys.studentsAll() });
       void queryClient.invalidateQueries({ queryKey: adminKeys.dashboard() });
       void queryClient.invalidateQueries({ queryKey: ['admin', 'companies'] });
+    },
+  });
+}
+
+/**
+ * Profildan bitta talabani korxonaga biriktirish / boshqa korxonaga o'tkazish.
+ * Javob — sukut davri bo'yicha yangilangan profil: u `student(id, null)` keshiga yoziladi,
+ * boshqa davr kalitlari (va davomat — korxona radiusi o'zgaradi) qayta so'raladi;
+ * talabalar ro'yxati, dashboard va korxonalar (talaba soni) ham yangilanadi.
+ */
+export function useSetStudentCompany(studentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ['admin', 'students', studentId, 'company'],
+    mutationFn: (input: SetStudentCompanyInput) => studentsApi.setCompany(studentId, input),
+    onSuccess: (detail) => {
+      queryClient.setQueryData(adminKeys.student(studentId, null), detail);
+      void queryClient.invalidateQueries({
+        queryKey: ['admin', 'student', studentId],
+        predicate: (q) => q.queryKey[3] !== null,
+      });
+      void queryClient.invalidateQueries({ queryKey: adminKeys.studentsAll() });
+      void queryClient.invalidateQueries({ queryKey: adminKeys.dashboard() });
+      void queryClient.invalidateQueries({ queryKey: adminKeys.companiesAll() });
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'company'] });
     },
   });
 }

@@ -14,13 +14,14 @@ v3.8 (talaba brauzerda HEMIS ID + parol bilan kiradi, parol almashtirish, talaba
 v3.9 (talaba Telegram'ni HEMIS ID + parol bilan bog'laydi — `POST /api/auth/telegram/link`) — §6.15,
 v3.10 (ruxsat so'rash moduli olib tashlandi — talaba va tyutor `leave-requests` endpoint'lari) — §6.16,
 v3.11 (talaba bosh ekrani: davrning har bir kuni — `GET /api/student/period-days`) — §6.17,
-v3.12 (admin davr yaratish/tahrirlashda ish kunlari va kunlik ish vaqti) — §6.18.
+v3.12 (admin davr yaratish/tahrirlashda ish kunlari va kunlik ish vaqti) — §6.18,
+v3.13 (talabani bitta-bitta korxonaga biriktirish/o'tkazish, `ApplicationStatus.transferred`) — §6.19.
 
-Jami **107 ta endpoint**: Auth 7 · Admin 66 · Reports 1 · Tutor 20 · Student (TWA) 11 · Files 1 · Companies 1.
+Jami **108 ta endpoint**: Auth 7 · Admin 67 · Reports 1 · Tutor 20 · Student (TWA) 11 · Files 1 · Companies 1.
 
-> Kontrollerlarda `[Http*]` atributlari **109 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
+> Kontrollerlarda `[Http*]` atributlari **110 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
 > har birida ikkitadan action bor (`multipart/form-data` va `application/json` — `[Consumes]` bilan ajratiladi,
-> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **107**.
+> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **108**.
 
 ---
 
@@ -809,6 +810,39 @@ Alohida talaba sabab bilan tashlab yuboriladi (qisman bajarilish): `"Allaqachon 
 `"Boshqa korxonaga biriktirilgan: <nom>."` · `"Guruhiga faol amaliyot davri biriktirilmagan."` ·
 `"Ko'rib chiqilmagan arizasi bor — avval tyutor qaror qabul qilsin."` · `"Talaba hisobi faol emas."` ·
 `"Talaba topilmadi."`
+
+#### POST `/api/admin/students/{id}/company` · 200 · 400 · 404 · 409
+
+Talaba profilidan **bitta** talabani korxonaga biriktirish yoki **boshqa korxonaga o'tkazish**.
+
+```ts
+// so'rov
+{ companyId: string; comment?: string | null /*≤ 500*/ }
+// javob 200 — AdminStudentDetail (GET /api/admin/students/{id} — periodId'siz, sukut davri — bilan aynan bir xil)
+```
+
+- Biriktirish davri — talaba guruhining **ariza davri** (`enrollment`: davom etayotgan → eng yaqin kelgusi), `assign-company`
+  bilan bir xil. Javob esa **sukut davri** (`default`: davom etayotgan → oxirgi tugagan → kelgusi) bo'yicha — odatda ular
+  bir xil; faqat davom etayotgan davr yo'q va tugagan + kelgusi davr bo'lsa, javobda tugagan davr ko'rinadi (yangi korxona
+  kelgusi davr uchun — `?periodId=` bilan GET orqali ko'rinadi).
+- Talabaning shu davrdagi ochiq arizasi (`submitted` / `revisionNeeded` / `approved`) bo'lsa — u **`transferred`**
+  holatiga o'tadi (qaror maydonlari: kim/qachon + izoh, izoh berilmasa `"Boshqa korxonaga o'tkazildi: <nom>."`),
+  keyin yangi korxonaga **tasdiqlangan** ariza yaratiladi (izoh — `comment` yoki `"Admin tomonidan biriktirildi."`).
+  Ochiq ariza yo'q bo'lsa — shunchaki tasdiqlangan ariza (birinchi biriktirish).
+- Tarix (davomat, kundalik, check-in hodisalari) eski ariza/korxonaga bog'langan holda qoladi; check-in (QR va geofence)
+  darhol yangi korxona bo'yicha ishlaydi — eski korxona QR'i `qrInvalid` bilan rad etiladi.
+- Xatolar: **404** — talaba yoki korxona yo'q; **409** — `"Korxona faol emas — avval uni faollashtiring."` ·
+  `"Talaba hisobi faol emas."` · `"Talaba guruhiga faol amaliyot davri biriktirilmagan."` ·
+  `"Talaba allaqachon shu korxonaga biriktirilgan."` · (davrdagi ariza `completed` bo'lsa) `"Talabaning bu davrdagi
+  amaliyoti yakunlangan — korxonani o'zgartirib bo'lmaydi."`; **400** — `companyId` bo'sh (`errors.CompanyId`),
+  `comment` 500 belgidan uzun (`errors.Comment`).
+- Audit: `studentCompanyReassigned` (`entityName: "User"`, `entityId` — talaba; `changes`: `fromCompanyId`, `fromCompany`,
+  `fromStatus`, `toCompanyId`, `toCompany`, `periodId`; `reason` — izoh).
+- `transferred` ariza hech qayerda "joriy korxona" sifatida olinmaydi: talaba ilovasi, tyutor/admin ro'yxatlari, statistika
+  (`withCompanyCount`, `pendingApplicationsCount`), korxona talabalar soni faqat `approved`/`completed` ni hisoblaydi;
+  tyutor moderatsiya navbati (`GET /api/tutor/applications` `status`siz) `transferred` ni ko'rsatmaydi.
+  Korxona talabalar ro'yxatida (`GET /api/admin/companies/{id}/students`) o'tkazilgan talaba `applicationStatus: "transferred"`
+  bilan (tarix sifatida) ko'rinishi mumkin.
 
 #### GET `/api/admin/students/{id}?periodId=` · 200 · 404
 
@@ -2292,7 +2326,7 @@ interface StudentProfileDto {
 | `DiaryReviewAction` (request)      | `approve` · `score` · `rewrite`                                                                                                                                                                                                                                                                                                           | tutor review                                                                           |
 | `DiaryState`                       | `written` · `pending` (+ `null`)                                                                                                                                                                                                                                                                                                          | tutor today `rows[].diary`                                                             |
 | `LeaveRequestStatus`               | `pending` · `approved` · `rejected`                                                                                                                                                                                                                                                                                                       | ichki (tarix, v3.10 dan API javoblarida yo'q)                                          |
-| `ApplicationStatus`                | `draft` · `submitted` · `revisionNeeded` · `approved` · `rejected` · `completed`                                                                                                                                                                                                                                                          | applications, TWA place                                                                |
+| `ApplicationStatus`                | `draft` · `submitted` · `revisionNeeded` · `approved` · `rejected` · `completed` · `transferred` (admin boshqa korxonaga o'tkazgan — "Ko'chirilgan")                                                                                                                                                                                      | applications, TWA place                                                                |
 | `ApplicationDecision` (request)    | `approve` · `return` · `reject`                                                                                                                                                                                                                                                                                                           | tutor decision                                                                         |
 | `PracticePeriodStatus`             | `planned` · `active` · `closed` — admin API'da hisoblanadi (§2.3.4)                                                                                                                                                                                                                                                                       | admin groups `period.status`, admin practice-periods                                   |
 | `WorkDays`                         | bitmask; sozlamada `"1,2,3,4,5,6"` (1=Du … 7=Ya)                                                                                                                                                                                                                                                                                          | settings `workDays`                                                                    |
@@ -2306,7 +2340,7 @@ interface StudentProfileDto {
 | `TutorScopeLevel`                  | `faculty` · `department` · `direction` · `group`                                                                                                                                                                                                                                                                                          | admin tutors `scopes[].level`, `PUT .../scopes` body                                   |
 | `AdminStudentStatus`               | `active` · `flagged` · `unlinked`                                                                                                                                                                                                                                                                                                         | admin students                                                                         |
 | `CompanyFlag`                      | `suspicious` · `tooManyStudents` · `largeRadius` · `null` — ustuvorlik aynan shu tartibda                                                                                                                                                                                                                                                 | admin companies, tutor companies                                                       |
-| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorScopesChanged` · `studentsImported` · `company*` (§6.9) · `studentsAssignedToCompany` · `practicePeriodCreated` · `practicePeriodUpdated` · `practicePeriodGroupsChanged` · `practicePeriodClosed` · `practicePeriodDeleted` · `companyQrRotated` (v3.7) · `studentPasswordSet` · `passwordChanged` (v3.8) · `telegramLinked` (v3.9) | admin audit `action`, `?action=`                                                       |
+| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorScopesChanged` · `studentsImported` · `company*` (§6.9) · `studentsAssignedToCompany` · `practicePeriodCreated` · `practicePeriodUpdated` · `practicePeriodGroupsChanged` · `practicePeriodClosed` · `practicePeriodDeleted` · `companyQrRotated` (v3.7) · `studentPasswordSet` · `passwordChanged` (v3.8) · `telegramLinked` (v3.9) · `studentCompanyReassigned` | admin audit `action`, `?action=`                                                       |
 | `SettingType`                      | `int` · `bool` · `weekdays`                                                                                                                                                                                                                                                                                                               | settings `type`                                                                        |
 | `SettingKey` (string const)        | `geofenceRadius` · `lateTolerance` · `minGpsAccuracy` · `autoCheckout` · `workDays` · `dailyReportRequired` · `minReportLength` · `diaryPdfRequired` · `checkInWindow` · `checkinPhotoRequired` · `checkinQrRequired` · `maxStudentsPerCompany`                                                                                                                                    | settings                                                                               |
 | `DocumentTemplateKind`             | `contract` · `referral` · `reference`                                                                                                                                                                                                                                                                                                     | settings templates                                                                     |
@@ -2687,6 +2721,7 @@ Ikkinchi yo'l: admin talabalar ro'yxatidan bir nechtasini belgilab, to'g'ridan-t
 | N19 | `GET /api/admin/companies/import/template`           | `AdminOnly`     | `.xlsx`                      | §2.3   |
 | N20 | `POST /api/admin/companies/import` (multipart)       | `AdminOnly`     | `ImportResult` · 400         | §2.3   |
 | N21 | `POST /api/admin/students/assign-company`            | `AdminOnly`     | `AssignCompanyResult` · 409  | §2.3   |
+| N21a | `POST /api/admin/students/{id}/company`             | `AdminOnly`     | `AdminStudentDetail` · 400 · 404 · 409 | §2.3 |
 | N22 | `GET /api/companies/lookup?tin=`                     | `Authenticated` | `CompanyLookupDto` · 404     | §2.7   |
 | N23 | `POST /api/student/place`                            | `StudentOnly`   | `PracticePlaceDto` · 409     | §2.6   |
 
@@ -2877,3 +2912,14 @@ Foydalanuvchi qarori: talabalar ruxsat (leave) so'ramaydi — funksiya butunlay 
 - Xatolar: 400 `errors.DailyStart` / `errors.DailyEnd` / `errors.WorkDays` (PascalCase, §1.4/§1.7 konvensiyasi; `web/shared` `ApiError.field()` camelCase kalitni ham topadi);
   check-in oynasi sig'masa → 400 `errors.DailyEnd`. Yopilgan davr → 409 (o'zgarmadi).
 - Response (`PracticePeriodDetail`) o'zgarmadi. Endpoint soni o'zgarmadi, migratsiya yo'q.
+
+### 6.19 v3.12 → v3.13 (26.09.2026): talabani bitta-bitta korxonaga biriktirish / o'tkazish
+
+- **Yangi endpoint:** `POST /api/admin/students/{id}/company` (§2.3) — `{ companyId, comment? }` → 200 `AdminStudentDetail`.
+  Jami endpoint: **107 → 108** (Admin 66 → 67; `[Http*]` atributlari 109 → 110).
+- **Enum'lar:** `ApplicationStatus` + `transferred` (7) — admin boshqa korxonaga o'tkazgan, yopilgan ariza (UI: "Ko'chirilgan");
+  `AuditAction` + `studentCompanyReassigned` (65).
+- `transferred` joriy korxona sifatida hech qayerda tanlanmaydi; tyutor moderatsiya navbati (`status`siz) uni ko'rsatmaydi;
+  `counts` o'zgarmadi. Bir davrda bitta `transferred` + bitta `approved` ariza bo'lishi mumkin (unikal indeks filtri
+  `submitted/revisionNeeded/approved` — o'zgarmadi), **migratsiya yo'q**.
+- `assign-company` xatti-harakati o'zgarmadi (`transferred` ariza "joriy" hisoblanmaydi).

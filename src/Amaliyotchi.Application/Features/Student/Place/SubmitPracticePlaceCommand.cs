@@ -64,7 +64,7 @@ internal sealed class SubmitPracticePlaceCommandHandler(
             .ToListAsync(cancellationToken);
 
         var current = applications.FirstOrDefault(a => a.Status is ApplicationStatus.Approved or ApplicationStatus.Completed)
-                      ?? applications.FirstOrDefault();
+                      ?? applications.FirstOrDefault(a => a.Status != ApplicationStatus.Transferred);
 
         switch (current?.Status)
         {

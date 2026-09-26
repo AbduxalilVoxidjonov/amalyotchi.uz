@@ -132,6 +132,7 @@ internal static class PeriodStatsCalculator
 
             var studentApps = applications[student.UserId].ToList();
             var latest = studentApps
+                .Where(a => a.Status != ApplicationStatus.Transferred)
                 .OrderByDescending(a => a.CreatedAt)
                 .ThenByDescending(a => a.SubmittedAt)
                 .FirstOrDefault();

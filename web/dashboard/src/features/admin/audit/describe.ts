@@ -22,6 +22,7 @@ export const AUDIT_ACTION_LABEL: Record<AuditAction, { label: string; kind: Stat
   gradeReverted: { label: 'Baho bekor qilindi', kind: 'bad' },
   settingsChanged: { label: "Sozlama o'zgardi", kind: 'info' },
   attendanceMarkedSuspicious: { label: 'Shubhali davomat', kind: 'bad' },
+  studentCompanyReassigned: { label: "Talaba korxonasi o'zgartirildi", kind: 'neu' },
 };
 
 export const USER_ROLE_LABEL: Record<AuditUserRole, string> = {

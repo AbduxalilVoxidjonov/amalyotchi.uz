@@ -1,0 +1,11 @@
+/* Talaba profilidan korxonaga biriktirish / o'tkazish modali */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.warning {
+  margin: 6px 0 0;
+  font-size: var(--fs-sm2);
+  line-height: var(--lh-note);
+}

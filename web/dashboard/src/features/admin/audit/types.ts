@@ -21,6 +21,7 @@ export const AUDIT_ACTIONS = [
   'gradeReverted',
   'settingsChanged',
   'attendanceMarkedSuspicious',
+  'studentCompanyReassigned',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

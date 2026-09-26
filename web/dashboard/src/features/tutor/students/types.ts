@@ -74,7 +74,8 @@ export interface StudentApplicationContract {
 
 /**
  * Talabaning OXIRGI arizasi holati — tyutor arizalar ro'yxatidagi to'rtta holatdan tashqari
- * domen enum'ida `draft` va `completed` ham bor (`ApplicationStatus.cs`).
+ * domen enum'ida `draft`, `completed` va `transferred` (admin boshqa korxonaga o'tkazgan) ham bor
+ * (`ApplicationStatus.cs`).
  */
 export type StudentApplicationStatus = ApplicationStatus | 'draft' | 'completed';
 
@@ -312,7 +313,7 @@ export const STUDENT_STATUS_LABEL: Record<StudentStatus, { label: string; kind: 
   graduated: { label: 'Bitirgan', kind: 'info' },
 };
 
-/** Ariza holati yorliqlari — tyutor ro'yxatidagilar + `draft`/`completed`. */
+/** Ariza holati yorliqlari — tyutor ro'yxatidagilar (`transferred` ham) + `draft`/`completed`. */
 export const STUDENT_APPLICATION_STATUS_LABEL: Record<
   StudentApplicationStatus,
   { label: string; kind: StatusKind }

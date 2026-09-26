@@ -1,9 +1,14 @@
 import type { StatusKind } from '@/shared/ui';
 import { daysSince, fmtDate, fmtRelative } from '../format';
 
-/** Backend `ApplicationStatus` (tyutor ko'ladigan qismi; JSON camelCase). Tab'lar ham shu qiymatlar (`?tab=`). */
-export type ApplicationStatus = 'submitted' | 'revisionNeeded' | 'approved' | 'rejected';
-export type ApplicationTab = ApplicationStatus;
+/**
+ * Backend `ApplicationStatus` (tyutor ko'radigan qismi; JSON camelCase). `transferred` — admin talabani
+ * boshqa korxonaga o'tkazgan (yakuniy holat, faqat ko'rish); u alohida tab emas.
+ */
+export type ApplicationStatus =
+  'submitted' | 'revisionNeeded' | 'approved' | 'rejected' | 'transferred';
+/** Ro'yxat tab'lari (`?tab=`) — `transferred` dan tashqari holatlar. */
+export type ApplicationTab = Exclude<ApplicationStatus, 'transferred'>;
 
 export interface ApplicationSummary {
   id: string;
@@ -58,7 +63,7 @@ export interface ApplicationDetail extends ApplicationSummary {
   revisionCount: number;
 }
 
-export type ApplicationCounts = Record<ApplicationStatus, number>;
+export type ApplicationCounts = Record<ApplicationTab, number>;
 
 /** GET /api/tutor/applications?status= */
 export interface ApplicationListResponse {
@@ -100,6 +105,7 @@ export const APPLICATION_STATUS_LABEL: Record<
   revisionNeeded: { label: 'Tuzatishda', kind: 'late' },
   approved: { label: 'Tasdiqlangan', kind: 'ok' },
   rejected: { label: 'Rad etilgan', kind: 'bad' },
+  transferred: { label: "Ko'chirilgan", kind: 'neu' },
 };
 
 export const DECISION_TO_STATUS: Record<ApplicationDecision, ApplicationStatus> = {
@@ -140,5 +146,7 @@ export function applicationWaited(app: ApplicationSummary, now: number = Date.no
       return app.decidedAt ? `${fmtDate(app.decidedAt).slice(0, 5)} da tasdiqlandi` : 'tasdiqlandi';
     case 'rejected':
       return app.decidedAt ? `${fmtDate(app.decidedAt).slice(0, 5)} da rad etildi` : 'rad etildi';
+    case 'transferred':
+      return app.decidedAt ? `${fmtDate(app.decidedAt).slice(0, 5)} da ko'chirildi` : "ko'chirildi";
   }
 }

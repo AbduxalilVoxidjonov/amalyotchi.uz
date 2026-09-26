@@ -81,3 +81,18 @@ export interface AssignCompanyResult {
   companyName: string;
   errors: AssignCompanyError[];
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Talaba profilidan biriktirish / o'tkazish — `POST /api/admin/students/{id}/company`.
+ * Ochiq ariza bo'lsa u `transferred` holatiga o'tadi va yangi korxonaga `approved` ariza
+ * yaratiladi; ariza bo'lmasa — birinchi biriktirish. Javob: yangilangan `AdminStudentDetail`.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** Izoh uzunligi chegarasi (backend validatori bilan bir xil). */
+export const STUDENT_COMPANY_COMMENT_MAX = 500;
+
+export interface SetStudentCompanyInput {
+  companyId: string;
+  /** Ixtiyoriy izoh (≤ 500) — bo'sh bo'lsa yuborilmaydi. */
+  comment?: string;
+}

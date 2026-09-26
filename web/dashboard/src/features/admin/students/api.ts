@@ -1,7 +1,13 @@
 import { api } from '@/shared/api';
 import { toQuery, type ListParams, type Paged } from '../shared/types';
 import type { ImportResult } from '../shared/types';
-import type { AdminStudentDetail, AssignCompanyInput, AssignCompanyResult, Student } from './types';
+import type {
+  AdminStudentDetail,
+  AssignCompanyInput,
+  AssignCompanyResult,
+  SetStudentCompanyInput,
+  Student,
+} from './types';
 
 /**
  * Backend: `AdminStudentsController`.
@@ -10,6 +16,8 @@ import type { AdminStudentDetail, AssignCompanyInput, AssignCompanyResult, Stude
  * GET  /api/admin/students/import/template    → .xlsx shablon (Bearer talab qiladi — `downloadAuthFile`)
  * POST /api/admin/students/import             → StudentImportResult (multipart `file`) · 400
  * POST /api/admin/students/assign-company     → AssignCompanyResult · 400 · 404 · 409
+ * POST /api/admin/students/{id}/company       → AdminStudentDetail · 400 · 404 · 409
+ *   (profildan bitta talabani biriktirish yoki boshqa korxonaga o'tkazish)
  * Davomat va kundaliklar (`{id}/attendance`, `{id}/diaries`) — tyutor profilidagi bilan bir xil
  * shakl; ular `features/tutor/students/api.ts` dagi `studentsApi` orqali `area: 'admin'` bilan so'raladi.
  */
@@ -21,6 +29,10 @@ export const STUDENTS_IMPORT_ENDPOINT = `${STUDENTS_ENDPOINT}/import`;
 
 /** Belgilangan talabalarni bitta korxonaga biriktirish (ommaviy amal). */
 export const STUDENTS_ASSIGN_COMPANY_ENDPOINT = `${STUDENTS_ENDPOINT}/assign-company`;
+
+/** Profildan bitta talabani korxonaga biriktirish / o'tkazish. */
+export const studentCompanyEndpoint = (id: string) =>
+  `${STUDENTS_ENDPOINT}/${encodeURIComponent(id)}/company`;
 
 /** Yuklab olinadigan shablon nomi (server `Content-Disposition` bermasa — zaxira). */
 export const STUDENTS_TEMPLATE_FILE_NAME = 'talabalar-import-shablon.xlsx';
@@ -37,4 +49,6 @@ export const studentsApi = {
   },
   assignCompany: (input: AssignCompanyInput) =>
     api.post<AssignCompanyResult>(STUDENTS_ASSIGN_COMPANY_ENDPOINT, input),
+  setCompany: (id: string, input: SetStudentCompanyInput) =>
+    api.post<AdminStudentDetail>(studentCompanyEndpoint(id), input),
 };

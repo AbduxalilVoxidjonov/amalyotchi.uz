@@ -14,7 +14,14 @@ export const COMPANY_FLAG_LABEL: Record<CompanyFlag, { label: string; kind: Stat
 
 /** Backend `ApplicationStatus` (JSON camelCase). */
 export type ApplicationStatus =
-  'draft' | 'submitted' | 'revisionNeeded' | 'approved' | 'rejected' | 'completed';
+  | 'draft'
+  | 'submitted'
+  | 'revisionNeeded'
+  | 'approved'
+  | 'rejected'
+  | 'completed'
+  /** Admin talabani boshqa korxonaga o'tkazgan — eski ariza yopiladi (tarix saqlanadi). */
+  | 'transferred';
 
 export const APPLICATION_STATUS_LABEL: Record<
   ApplicationStatus,
@@ -26,6 +33,7 @@ export const APPLICATION_STATUS_LABEL: Record<
   approved: { label: 'Tasdiqlangan', kind: 'ok' },
   rejected: { label: 'Rad etilgan', kind: 'bad' },
   completed: { label: 'Yakunlangan', kind: 'neu' },
+  transferred: { label: "Ko'chirilgan", kind: 'neu' },
 };
 
 /** Backend `StudentState`: davomat < 70% → redFlag; shubhali kun bor → suspicious; aks holda active. */

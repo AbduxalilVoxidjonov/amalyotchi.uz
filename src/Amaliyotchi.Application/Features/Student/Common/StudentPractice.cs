@@ -114,8 +114,9 @@ internal static class StudentPracticeLoader
                 .ToListAsync(cancellationToken);
 
             // Tasdiqlangan ariza ustun; bo'lmasa eng so'nggi (rad etilgan/qaytarilgan holatini ko'rsatish uchun).
+            // O'tkazilgan (Transferred) ariza — faqat tarix: joriy ariza sifatida tanlanmaydi.
             application = applications.FirstOrDefault(a => a.Status == ApplicationStatus.Approved)
-                ?? applications.FirstOrDefault();
+                ?? applications.FirstOrDefault(a => a.Status != ApplicationStatus.Transferred);
         }
 
         var holidays = await db.Holidays.AsNoTracking().ToListAsync(cancellationToken);

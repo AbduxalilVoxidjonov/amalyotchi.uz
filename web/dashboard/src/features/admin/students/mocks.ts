@@ -12,6 +12,8 @@ import { mockCompanies } from '../companies/mocks';
 import { problemResponse } from '../shared/mockProblem';
 import { paginateMock } from '../shared/paginate';
 import type { ImportResult } from '../shared/types';
+import type { StudentApplication, StudentCompany } from '@/features/tutor/students/types';
+import type { Company } from '../companies/types';
 import {
   STUDENTS_ASSIGN_COMPANY_ENDPOINT,
   STUDENTS_ENDPOINT,
@@ -24,8 +26,10 @@ import type {
   AdminStudentTutor,
   AssignCompanyError,
   AssignCompanyInput,
+  SetStudentCompanyInput,
   Student,
 } from './types';
+import { STUDENT_COMPANY_COMMENT_MAX } from './types';
 
 /** Backend `StudentRow` shaklida (SPEC-SCREENS §9.6 raqamlari). */
 export const mockStudents: Student[] = [
@@ -137,6 +141,49 @@ function sourceId(adminId: string): string | null {
   return SOURCE_PROFILE_ID[adminId] ?? tutorMockStudents[0]!.id;
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * Profildan biriktirish / o'tkazish (`POST /students/{id}/company`) — mock holati.
+ * Talaba → yangi korxona + yaratilgan ariza. Testlar orasida `resetStudentCompanyMock()`.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+interface CompanyOverride {
+  company: Company;
+  application: StudentApplication;
+}
+
+const companyOverrides = new Map<string, CompanyOverride>();
+
+export function resetStudentCompanyMock() {
+  companyOverrides.clear();
+}
+
+/** Admin korxona qatori → profil `StudentCompany` shakli (rahbar/lokatsiya — mock qiymatlar). */
+function toStudentCompany(c: Company): StudentCompany {
+  return {
+    id: c.id,
+    name: c.name,
+    tin: c.tin,
+    activity: c.activity,
+    address: c.address,
+    supervisorName: "Mas'ul xodim",
+    supervisorPhone: '+998900000000',
+    mentorName: null,
+    mentorPhone: null,
+    lat: 41.3111,
+    lng: 69.2797,
+    radiusM: c.radiusM,
+  };
+}
+
+/** Profildagi korxona: override → admin korxonalari (id nom bo'yicha moslanadi) → manba profil. */
+function resolveCompany(row: Student, base: StudentCompany | null): StudentCompany | null {
+  const override = companyOverrides.get(row.id);
+  if (override) return toStudentCompany(override.company);
+  if (row.company === null || !base) return null;
+  const admin = mockCompanies.find((c) => c.name === base.name);
+  return admin ? { ...base, id: admin.id } : base;
+}
+
 function buildAdminDetail(
   adminId: string,
   periodId: string | null,
@@ -147,8 +194,11 @@ function buildAdminDetail(
   if (!row || !base) return null;
   if (base === 'periodNotFound') return base;
 
+  const override = companyOverrides.get(row.id);
   return {
     ...base,
+    company: resolveCompany(row, base.company),
+    application: override ? override.application : base.application,
     id: row.id,
     name: row.fullName,
     hemisId: row.hemisId,
@@ -248,6 +298,56 @@ export const studentsHandlers: HttpHandler[] = [
     });
   }),
 
+  // Profildan bitta talabani biriktirish / o'tkazish. Xatolar: noma'lum talaba/korxona → 404,
+  // faol bo'lmagan korxona yoki joriy korxona → 409, korxona tanlanmagan / uzun izoh → 400.
+  http.post(`${STUDENTS_ENDPOINT}/:id/company`, async ({ params, request }) => {
+    const id = String(params['id']);
+    const row = mockStudents.find((s) => s.id === id);
+    if (!row) return notFound();
+
+    const body = (await request.json().catch(() => null)) as SetStudentCompanyInput | null;
+    if (!body?.companyId) {
+      return problemResponse(400, "Ma'lumotlar noto'g'ri", 'Korxonani tanlang.', {
+        errors: { CompanyId: ['Korxonani tanlang.'] },
+      });
+    }
+    if ((body.comment ?? '').length > STUDENT_COMPANY_COMMENT_MAX) {
+      return problemResponse(400, "Ma'lumotlar noto'g'ri", 'Izoh juda uzun.', {
+        errors: { Comment: [`Izoh ${STUDENT_COMPANY_COMMENT_MAX} belgidan oshmasligi kerak.`] },
+      });
+    }
+
+    const company = mockCompanies.find((c) => c.id === body.companyId);
+    if (!company) return problemResponse(404, 'Topilmadi', 'Korxona topilmadi.');
+    if (!company.isActive) {
+      return problemResponse(409, 'Amal bajarilmadi', 'Korxona faol emas.');
+    }
+
+    const current = buildAdminDetail(id, null);
+    if (current && current !== 'periodNotFound' && current.company?.id === company.id) {
+      return problemResponse(
+        409,
+        'Amal bajarilmadi',
+        'Talaba allaqachon shu korxonaga biriktirilgan.',
+      );
+    }
+
+    const now = new Date().toISOString();
+    companyOverrides.set(id, {
+      company,
+      application: {
+        id: `app-${id}-${company.id}`,
+        status: 'approved',
+        submittedAt: now,
+        decidedAt: now,
+        comment: body.comment?.trim() || null,
+        contract: null,
+      },
+    });
+    const detail = buildAdminDetail(id, null);
+    return detail && detail !== 'periodNotFound' ? HttpResponse.json(detail) : notFound();
+  }),
+
   http.get(`${STUDENTS_ENDPOINT}/:id/attendance`, ({ params, request }) => {
     const source = sourceId(String(params['id']));
     if (!source) return notFound();
@@ -270,7 +370,14 @@ export const studentsHandlers: HttpHandler[] = [
 
   http.get(STUDENTS_ENDPOINT, ({ request }) =>
     HttpResponse.json(
-      paginateMock(request.url, mockStudents, (s) => [s.fullName, s.hemisId, s.group, s.faculty]),
+      paginateMock(
+        request.url,
+        mockStudents.map((s) => {
+          const override = companyOverrides.get(s.id);
+          return override ? { ...s, company: override.company.name } : s;
+        }),
+        (s) => [s.fullName, s.hemisId, s.group, s.faculty],
+      ),
     ),
   ),
 ];

@@ -1,16 +1,10 @@
-import { useId, useState } from 'react';
+import { useState } from 'react';
 import { errorMessage } from '@/shared/api';
-import { Button, EmptyState, Input, Modal } from '@/shared/ui';
-import type { Company } from '../../companies/types';
-import { ErrorState, LoadingState } from '../../components/PageStatus';
-import { formatTin } from '../../shared/format';
-import { useDebouncedValue } from '../../shared/useDebouncedValue';
-import { useAssignCompany, useCompanyPickerQuery } from '../hooks';
+import { Button, Modal } from '@/shared/ui';
+import { useAssignCompany } from '../hooks';
 import type { AssignCompanyResult } from '../types';
+import { CompanyPicker } from './CompanyPicker';
 import styles from './AssignCompanyModal.module.css';
-
-/** Modalda ko'rsatiladigan korxonalar soni (qidiruv bilan toraytiriladi). */
-const PICKER_PAGE_SIZE = 20;
 
 export interface AssignCompanyModalProps {
   /** Belgilangan talabalarning id'lari (kamida bitta). */
@@ -27,16 +21,10 @@ export interface AssignCompanyModalProps {
  * Modal faqat ochilganda mount qilinadi — holat har safar toza bo'ladi.
  */
 export function AssignCompanyModal({ studentIds, onClose, onAssigned }: AssignCompanyModalProps) {
-  const uid = useId();
-  const [search, setSearch] = useState('');
-  const q = useDebouncedValue(search.trim(), 300);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [result, setResult] = useState<AssignCompanyResult | null>(null);
 
-  const query = useCompanyPickerQuery({ q, page: 1, pageSize: PICKER_PAGE_SIZE }, true);
   const mutation = useAssignCompany();
-
-  const companies: readonly Company[] = query.data?.items ?? [];
 
   function handleClose() {
     if (mutation.isPending) return;
@@ -53,49 +41,6 @@ export function AssignCompanyModal({ studentIds, onClose, onAssigned }: AssignCo
           if (assigned.assigned > 0) onAssigned();
         },
       },
-    );
-  }
-
-  let list = null;
-  if (query.isPending) {
-    list = <LoadingState />;
-  } else if (query.isError) {
-    list = <ErrorState inline error={query.error} onRetry={() => void query.refetch()} />;
-  } else if (companies.length === 0) {
-    list = (
-      <EmptyState
-        tone="plain"
-        title="Korxona topilmadi"
-        description="Nom yoki STIR bo'yicha boshqacha qidirib ko'ring."
-      />
-    );
-  } else {
-    list = (
-      <ul className={styles.list}>
-        {companies.map((c) => (
-          <li key={c.id}>
-            <label className={styles.option} data-disabled={!c.isActive || undefined}>
-              <input
-                className={styles.radio}
-                type="radio"
-                name={`${uid}-company`}
-                value={c.id}
-                checked={companyId === c.id}
-                disabled={!c.isActive || mutation.isPending}
-                aria-label={c.name}
-                onChange={() => setCompanyId(c.id)}
-              />
-              <span className={styles.optionText}>
-                <span className={styles.name}>{c.name}</span>
-                <span className={styles.meta}>
-                  <span className={styles.tin}>{formatTin(c.tin)}</span> · {c.address}
-                  {!c.isActive && ' · faol emas'}
-                </span>
-              </span>
-            </label>
-          </li>
-        ))}
-      </ul>
     );
   }
 
@@ -126,15 +71,7 @@ export function AssignCompanyModal({ studentIds, onClose, onAssigned }: AssignCo
       }
     >
       <div className={styles.body}>
-        <Input
-          variant="search"
-          type="search"
-          placeholder="Korxona nomi yoki STIR…"
-          aria-label="Korxona qidirish"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <div className={styles.scroll}>{list}</div>
+        <CompanyPicker value={companyId} onChange={setCompanyId} disabled={mutation.isPending} />
 
         {mutation.isError && (
           <p role="alert" className={styles.error}>

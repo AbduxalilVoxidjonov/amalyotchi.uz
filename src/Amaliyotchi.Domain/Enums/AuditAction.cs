@@ -97,5 +97,9 @@ public enum AuditAction
     PasswordChanged = 63,
 
     /// <summary>Talaba Telegram hisobini o'z hisobiga bog'ladi (<c>POST /api/auth/telegram/link</c>).</summary>
-    TelegramLinked = 64
+    TelegramLinked = 64,
+
+    /// <summary>Admin talaba profilidan uni korxonaga biriktirdi yoki boshqa korxonaga o'tkazdi
+    /// (eski ariza <c>Transferred</c>, yangi korxonaga tasdiqlangan ariza).</summary>
+    StudentCompanyReassigned = 65
 }

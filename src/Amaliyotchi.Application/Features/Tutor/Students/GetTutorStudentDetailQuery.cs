@@ -83,7 +83,8 @@ internal sealed class GetTutorStudentDetailQueryHandler(IApplicationDbContext db
         // Tanlangan davrdagi ariza: tasdiqlangani (yoki yakunlangani) ustun, bo'lmasa eng oxirgisi.
         // Korxona faqat tasdiqlangan arizadan ko'rsatiladi.
         var placement = applications.FirstOrDefault(a => a.Status is ApplicationStatus.Approved or ApplicationStatus.Completed);
-        var current = placement ?? applications.FirstOrDefault();
+        // O'tkazilgan (Transferred) ariza joriy sifatida ko'rsatilmaydi — u faqat tarix.
+        var current = placement ?? applications.FirstOrDefault(a => a.Status != ApplicationStatus.Transferred);
 
         ApplicationContract? contract = null;
         if (current?.ContractFileId is { } fileId)

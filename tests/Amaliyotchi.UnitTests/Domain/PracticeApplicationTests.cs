@@ -116,4 +116,62 @@ public sealed class PracticeApplicationTests
 
         app.Status.Should().Be(ApplicationStatus.Completed);
     }
+
+    [Fact]
+    public void Transfer_TasdiqlanganAriza_TransferredBoladi()
+    {
+        var app = Submitted();
+        app.Approve(Tutor, 150, [0], "OK", Now);
+        var admin = Guid.CreateVersion7();
+        var at = Now.AddDays(1);
+
+        app.Transfer(admin, "  Boshqa korxonaga  ", at);
+
+        app.Status.Should().Be(ApplicationStatus.Transferred);
+        app.IsOpen.Should().BeFalse();
+        app.DecidedByUserId.Should().Be(admin);
+        app.DecidedAt.Should().Be(at);
+        app.DecisionComment.Should().Be("Boshqa korxonaga");
+        app.ProposedRadiusM.Should().Be(150);
+    }
+
+    [Fact]
+    public void Transfer_YuborilganVaQaytarilgan_Mumkin_IzohIxtiyoriy()
+    {
+        var submitted = Submitted();
+        submitted.Transfer(Tutor, null, Now);
+        submitted.Status.Should().Be(ApplicationStatus.Transferred);
+        submitted.DecisionComment.Should().BeNull();
+
+        var revision = Submitted();
+        revision.ReturnForRevision(Tutor, "Tuzating", Now);
+        revision.Transfer(Tutor, null, Now);
+        revision.Status.Should().Be(ApplicationStatus.Transferred);
+    }
+
+    [Fact]
+    public void Transfer_YopilganAriza_409()
+    {
+        var rejected = Submitted();
+        rejected.Reject(Tutor, "Yo'q", Now);
+        rejected.Invoking(a => a.Transfer(Tutor, null, Now)).Should().Throw<ConflictException>();
+
+        var completed = Submitted();
+        completed.Approve(Tutor, 150, [], null, Now);
+        completed.Complete();
+        completed.Invoking(a => a.Transfer(Tutor, null, Now)).Should().Throw<ConflictException>();
+
+        var transferred = Submitted();
+        transferred.Transfer(Tutor, null, Now);
+        transferred.Invoking(a => a.Transfer(Tutor, null, Now)).Should().Throw<ConflictException>();
+        // O'tkazilgan arizani tyutor tasdiqlay olmaydi.
+        transferred.Invoking(a => a.Approve(Tutor, 150, [], null, Now)).Should().Throw<ConflictException>();
+    }
+
+    [Fact]
+    public void Transfer_BoshAdmin_DomainException()
+    {
+        var app = Submitted();
+        app.Invoking(a => a.Transfer(Guid.Empty, null, Now)).Should().Throw<DomainException>();
+    }
 }

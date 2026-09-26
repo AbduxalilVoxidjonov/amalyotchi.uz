@@ -81,6 +81,20 @@ public sealed class AdminStudentsController(ISender sender) : ControllerBase
     public async Task<ActionResult<AdminStudentDetail>> Detail(Guid id, [FromQuery] Guid? periodId, CancellationToken cancellationToken)
         => Ok(await sender.Send(new GetAdminStudentDetailQuery(id, periodId), cancellationToken));
 
+    /// <summary>Talaba profilidan korxonaga biriktirish yoki boshqa korxonaga o'tkazish: <c>{ companyId, comment? }</c> →
+    /// 200 yangilangan profil (sukut davri bo'yicha, <c>GET {id}</c> bilan bir xil). Davrdagi ochiq ariza <c>transferred</c> holatiga o'tadi
+    /// (tarix saqlanadi), yangi korxonaga tasdiqlangan ariza yaratiladi. Talaba/korxona topilmasa → 404; korxona yoki
+    /// talaba faol emas, guruhida ochiq davr yo'q, allaqachon shu korxonada → 409; <c>companyId</c> bo'sh → 400.</summary>
+    [HttpPost("{id:guid}/company")]
+    [ProducesResponseType<AdminStudentDetail>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<AdminStudentDetail>> ReassignCompany(
+        Guid id, ReassignStudentCompanyCommand command, CancellationToken cancellationToken)
+        => Ok(await sender.Send(command with { Id = id }, cancellationToken));
+
     /// <summary>Talabaning kun-bakun davomati (tyutor profilidagi bilan bir xil shakl):
     /// holat, check-in/out vaqti, masofa, koordinata, selfi va urinishlar soni.
     /// <c>?from=&amp;to=</c> — ixtiyoriy (berilmasa davr boshidan bugungacha); teskari yoki

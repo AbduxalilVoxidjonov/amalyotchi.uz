@@ -28,9 +28,10 @@ internal sealed class GetApplicationsQueryHandler(IApplicationDbContext db, ISco
             countsByStatus.GetValueOrDefault(ApplicationStatus.Approved),
             countsByStatus.GetValueOrDefault(ApplicationStatus.Rejected));
 
-        var query = scoped;
-        if (request.Status is { } status)
-            query = query.Where(a => a.Status == status);
+        // O'tkazilgan (transferred) arizalar moderatsiya navbatiga kirmaydi — ular admin qarori bilan yopilgan tarix.
+        var query = request.Status is { } status
+            ? scoped.Where(a => a.Status == status)
+            : scoped.Where(a => a.Status != ApplicationStatus.Transferred);
 
         var items = await query
             .Join(db.StudentProfiles, a => a.StudentUserId, p => p.UserId, (a, p) => new { a, p })

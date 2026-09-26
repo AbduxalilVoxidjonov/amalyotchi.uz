@@ -1,0 +1,49 @@
+/* Korxona qidirish/tanlash ro'yxati (radio) — ommaviy va profil modallarida umumiy */
+.scroll {
+  max-height: 46vh;
+  overflow-y: auto;
+  border: var(--border-inner);
+  border-radius: var(--radius-lg);
+  padding: 4px 0;
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.option:hover {
+  background: var(--color-surface-hover);
+}
+.option[data-disabled='true'] {
+  cursor: not-allowed;
+  color: var(--color-text-disabled);
+}
+.radio {
+  flex: 0 0 auto;
+  accent-color: var(--color-accent, currentColor);
+}
+.optionText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.name {
+  font-size: var(--fs-sm2);
+  color: var(--color-text);
+  font-weight: var(--fw-semibold);
+}
+.meta {
+  font-size: var(--fs-sm);
+  color: var(--color-text-dim);
+}
+.tin {
+  font-family: var(--font-mono);
+}

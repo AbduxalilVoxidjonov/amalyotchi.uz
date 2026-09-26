@@ -4,3 +4,28 @@
   flex-direction: column;
   gap: 14px;
 }
+/* Biriktirish / o'tkazishdan keyingi qisqa xabar (amaliyot davri sahifasidagi uslub) */
+.flash {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--color-ok-bg);
+  color: var(--color-ok-fg);
+  font-size: var(--fs-sm2);
+}
+.flashClose {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: var(--fs-md);
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.flashClose:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

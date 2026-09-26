@@ -110,6 +110,20 @@ public sealed class PracticeApplication : AuditableEntity
         Status = ApplicationStatus.Submitted;
     }
 
+    /// <summary>Admin talabani boshqa korxonaga o'tkazganda joriy "tirik" ariza (yuborilgan / qaytarilgan / tasdiqlangan)
+    /// yopiladi — <see cref="ApplicationStatus.Transferred"/>. Qaror maydonlari (kim, qachon, izoh) o'tkazish haqidagi
+    /// ma'lumot bilan yangilanadi. Tarix (davomat, kundalik) shu arizaga/korxonaga bog'liq holda qoladi.</summary>
+    public void Transfer(Guid byUserId, string? comment, DateTimeOffset at)
+    {
+        if (!IsOpen)
+            throw new ConflictException($"Faqat faol arizani boshqa korxonaga o'tkazish mumkin (holat: {Status}).");
+
+        Decide(ApplicationStatus.Transferred, byUserId, comment, at);
+    }
+
+    /// <summary>"Tirik" ariza: yuborilgan, qayta ishlashga qaytarilgan yoki tasdiqlangan (unikal indeks filtri bilan bir xil).</summary>
+    public bool IsOpen => Status is ApplicationStatus.Submitted or ApplicationStatus.RevisionNeeded or ApplicationStatus.Approved;
+
     /// <summary>Amaliyot yakunlangach (davr yopilib, baho qo'yilgach).</summary>
     public void Complete()
     {

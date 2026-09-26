@@ -45,7 +45,7 @@ internal sealed class AssignStudentsToCompanyCommandHandler(
     : IRequestHandler<AssignStudentsToCompanyCommand, AssignCompanyResult>
 {
     /// <summary>Tyutor qarorining izohi — talaba profilida shu matn ko'rinadi.</summary>
-    public const string DecisionComment = "Admin tomonidan biriktirildi.";
+    public const string DecisionComment = StudentPlacement.DefaultComment;
 
     public async Task<AssignCompanyResult> Handle(
         AssignStudentsToCompanyCommand request, CancellationToken cancellationToken)
@@ -116,11 +116,8 @@ internal sealed class AssignStudentsToCompanyCommandHandler(
             }
 
             var periodId = period.Period.Id;
-            var current = existing
-                .Where(a => a.StudentUserId == studentId && a.PeriodId == periodId)
-                .OrderBy(a => a.Status == ApplicationStatus.Approved ? 0 : 1)
-                .ThenByDescending(a => a.SubmittedAt)
-                .FirstOrDefault();
+            var current = StudentPlacement.Current(
+                existing.Where(a => a.StudentUserId == studentId && a.PeriodId == periodId));
 
             if (current is { Status: ApplicationStatus.Approved or ApplicationStatus.Completed })
             {
@@ -138,10 +135,8 @@ internal sealed class AssignStudentsToCompanyCommandHandler(
                 continue;
             }
 
-            var application = PracticeApplication.Create(
-                studentId, periodId, company.Id, company.RadiusM, contractFileId: null, submittedAt: now);
-            application.Approve(adminId, company.RadiusM, [], DecisionComment, now);
-            db.PracticeApplications.Add(application);
+            db.PracticeApplications.Add(
+                StudentPlacement.CreateApproved(studentId, periodId, company, adminId, DecisionComment, now));
             assigned++;
         }
 

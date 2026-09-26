@@ -35,17 +35,115 @@ interface Seed {
 
 /** SPEC-SCREENS §4 mock: 4 ta ariza + `detailCommon`; dizayndagi 7 yangi arizaga qo'shimchalar. */
 const SEEDS: Seed[] = [
-  { id: 'app-1', name: 'Aliyev Akmal', group: '412-22', company: 'Tech Solutions MChJ', status: 'submitted', hemisId: '341030', submittedAgo: 2 * HOUR },
-  { id: 'app-2', name: 'Mirzayev Jasur', group: '412-22', company: 'Uzbekinvest AJ', status: 'submitted', hemisId: '341031', submittedAgo: DAY },
-  { id: 'app-3', name: 'Qodirova Oysha', group: '413-22', company: 'Buxoro Tekstil MChJ', status: 'revisionNeeded', hemisId: '341032', submittedAgo: 4 * DAY, decidedAgo: 3 * DAY, comment: "Shartnomada imzo yo'q", revisionCount: 1 },
-  { id: 'app-4', name: 'Nazarov Firdavs', group: '413-22', company: 'Qurilish Trest 12', status: 'approved', hemisId: '341033', submittedAgo: 6 * DAY, decidedAgo: 4 * DAY, comment: "Hujjatlar to'liq" },
-  { id: 'app-5', name: 'Saidov Alisher', group: '412-22', company: 'Artel Electronics', status: 'submitted', hemisId: '341036', submittedAgo: DAY + HOUR },
-  { id: 'app-6', name: 'Tursunova Malika', group: '413-22', company: 'Beeline Uzbekistan', status: 'submitted', hemisId: '341037', submittedAgo: 2 * DAY },
-  { id: 'app-7', name: 'Umarov Farrux', group: '412-22', company: 'Uztelecom', status: 'submitted', hemisId: '341038', submittedAgo: 2 * DAY + HOUR },
-  { id: 'app-8', name: 'Valiyeva Zulfiya', group: '413-22', company: 'Kapitalbank', status: 'submitted', hemisId: '341039', submittedAgo: 3 * DAY },
-  { id: 'app-9', name: 'Xolmatov Sanjar', group: '412-22', company: 'UzAuto Motors', status: 'submitted', hemisId: '341040', submittedAgo: 4 * DAY },
-  { id: 'app-10', name: 'Ergashev Sherzod', group: '413-22', company: 'Payme', status: 'revisionNeeded', hemisId: '341041', submittedAgo: 6 * DAY, decidedAgo: 5 * DAY, comment: 'STIR xato', revisionCount: 1 },
-  { id: 'app-11', name: 'Boboyeva Madina', group: '412-22', company: 'Click', status: 'rejected', hemisId: '341042', submittedAgo: 12 * DAY, decidedAgo: 10 * DAY, comment: "Korxona yo'nalishga mos emas" },
+  {
+    id: 'app-1',
+    name: 'Aliyev Akmal',
+    group: '412-22',
+    company: 'Tech Solutions MChJ',
+    status: 'submitted',
+    hemisId: '341030',
+    submittedAgo: 2 * HOUR,
+  },
+  {
+    id: 'app-2',
+    name: 'Mirzayev Jasur',
+    group: '412-22',
+    company: 'Uzbekinvest AJ',
+    status: 'submitted',
+    hemisId: '341031',
+    submittedAgo: DAY,
+  },
+  {
+    id: 'app-3',
+    name: 'Qodirova Oysha',
+    group: '413-22',
+    company: 'Buxoro Tekstil MChJ',
+    status: 'revisionNeeded',
+    hemisId: '341032',
+    submittedAgo: 4 * DAY,
+    decidedAgo: 3 * DAY,
+    comment: "Shartnomada imzo yo'q",
+    revisionCount: 1,
+  },
+  {
+    id: 'app-4',
+    name: 'Nazarov Firdavs',
+    group: '413-22',
+    company: 'Qurilish Trest 12',
+    status: 'approved',
+    hemisId: '341033',
+    submittedAgo: 6 * DAY,
+    decidedAgo: 4 * DAY,
+    comment: "Hujjatlar to'liq",
+  },
+  {
+    id: 'app-5',
+    name: 'Saidov Alisher',
+    group: '412-22',
+    company: 'Artel Electronics',
+    status: 'submitted',
+    hemisId: '341036',
+    submittedAgo: DAY + HOUR,
+  },
+  {
+    id: 'app-6',
+    name: 'Tursunova Malika',
+    group: '413-22',
+    company: 'Beeline Uzbekistan',
+    status: 'submitted',
+    hemisId: '341037',
+    submittedAgo: 2 * DAY,
+  },
+  {
+    id: 'app-7',
+    name: 'Umarov Farrux',
+    group: '412-22',
+    company: 'Uztelecom',
+    status: 'submitted',
+    hemisId: '341038',
+    submittedAgo: 2 * DAY + HOUR,
+  },
+  {
+    id: 'app-8',
+    name: 'Valiyeva Zulfiya',
+    group: '413-22',
+    company: 'Kapitalbank',
+    status: 'submitted',
+    hemisId: '341039',
+    submittedAgo: 3 * DAY,
+  },
+  {
+    id: 'app-9',
+    name: 'Xolmatov Sanjar',
+    group: '412-22',
+    company: 'UzAuto Motors',
+    status: 'submitted',
+    hemisId: '341040',
+    submittedAgo: 4 * DAY,
+  },
+  {
+    id: 'app-10',
+    name: 'Ergashev Sherzod',
+    group: '413-22',
+    company: 'Payme',
+    status: 'revisionNeeded',
+    hemisId: '341041',
+    submittedAgo: 6 * DAY,
+    decidedAgo: 5 * DAY,
+    comment: 'STIR xato',
+    revisionCount: 1,
+  },
+  {
+    id: 'app-11',
+    name: 'Boboyeva Madina',
+    group: '412-22',
+    company: 'Click',
+    status: 'rejected',
+    hemisId: '341042',
+    submittedAgo: 12 * DAY,
+    decidedAgo: 10 * DAY,
+    comment: "Korxona yo'nalishga mos emas",
+  },
 ];
 
 type MockApplication = ApplicationDetail;
@@ -112,7 +210,7 @@ const summaryOf = (a: MockApplication): ApplicationSummary => ({
 
 function counts(): ApplicationCounts {
   const c: ApplicationCounts = { submitted: 0, revisionNeeded: 0, approved: 0, rejected: 0 };
-  for (const a of mockApplications) c[a.status] += 1;
+  for (const a of mockApplications) if (a.status !== 'transferred') c[a.status] += 1;
   // Dizayndagi "Tasdiqlangan 24" — mock ro'yxatda bittasi; qolganlari boshqa davrda deb hisoblaymiz ❓.
   c.approved += 23;
   return c;
@@ -153,9 +251,12 @@ export const applicationsHandlers: HttpHandler[] = [
       return validation({ Decision: ['Qaror: approve, return yoki reject.'] });
     if (body.decision === 'approve') {
       const r = body.radiusM;
-      if (r === undefined || r === null) return validation({ RadiusM: ['Tasdiqlashda radius majburiy.'] });
+      if (r === undefined || r === null)
+        return validation({ RadiusM: ['Tasdiqlashda radius majburiy.'] });
       if (r < RADIUS_MIN_M || r > RADIUS_MAX_M || r % RADIUS_STEP_M !== 0)
-        return validation({ RadiusM: [`Radius ${RADIUS_MIN_M}–${RADIUS_MAX_M} m, ${RADIUS_STEP_M} m qadam.`] });
+        return validation({
+          RadiusM: [`Radius ${RADIUS_MIN_M}–${RADIUS_MAX_M} m, ${RADIUS_STEP_M} m qadam.`],
+        });
     } else if (!body.comment?.trim()) {
       return validation({ Comment: ['Qaytarish/rad etish sababi (izoh) majburiy.'] });
     }
