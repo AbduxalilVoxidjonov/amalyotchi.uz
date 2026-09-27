@@ -44,14 +44,19 @@ internal sealed class GetGroupsQueryHandler(IApplicationDbContext db, IClock clo
 /// bir xil qator shaklini (<see cref="GroupRow"/>) qaytaradi — hisoblash mantig'i shu yerda, ikkalasida takrorlanmasin.</summary>
 internal static class GroupRowQueries
 {
+    /// <summary>Ro'yxatning sukut (filtrsiz) to'plami — to'liq tashkiliy zanjiri (yo'nalish → kafedra → fakultet) o'chirilmagan
+    /// guruhlar. Admin dashboard'dagi guruhlar soni ham shu manbadan sanaladi.</summary>
+    internal static IQueryable<GroupSource> Source(IApplicationDbContext db)
+        => from g in db.StudentGroups.AsNoTracking()
+           join d in db.Directions on g.DirectionId equals d.Id
+           join dept in db.Departments on d.DepartmentId equals dept.Id
+           join f in db.Faculties on dept.FacultyId equals f.Id
+           select new GroupSource { Group = g, Direction = d, Faculty = f };
+
     public static async Task<Paged<GroupRow>> LoadPagedAsync(
         IApplicationDbContext db, IClock clock, Guid? directionId, PagedQuery request, CancellationToken cancellationToken)
     {
-        var groups = from g in db.StudentGroups.AsNoTracking()
-                     join d in db.Directions on g.DirectionId equals d.Id
-                     join dept in db.Departments on d.DepartmentId equals dept.Id
-                     join f in db.Faculties on dept.FacultyId equals f.Id
-                     select new { Group = g, Direction = d, Faculty = f };
+        var groups = Source(db);
 
         if (directionId is { } id)
             groups = groups.Where(x => x.Direction.Id == id);
@@ -164,4 +169,11 @@ internal static class GroupRowQueries
 
         return new Paged<GroupRow>(rows, page.Page, page.PageSize, page.Total);
     }
+}
+
+internal sealed class GroupSource
+{
+    public required Domain.Organization.StudentGroup Group { get; init; }
+    public required Domain.Organization.Direction Direction { get; init; }
+    public required Domain.Organization.Faculty Faculty { get; init; }
 }

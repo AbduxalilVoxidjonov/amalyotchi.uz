@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Amaliyotchi.Application.Features.Admin.Dashboard;
+using Amaliyotchi.Domain.Common;
 using Amaliyotchi.IntegrationTests.Infrastructure;
 using FluentAssertions;
 
@@ -11,8 +12,26 @@ public sealed class AdminDashboardTests(ApiFixture fixture)
 {
     private ApiFactory Factory => fixture.Factory;
 
+    /// <summary>Barqaror ish kuni (chorshanba, bayram emas) — "bugun" ko'rsatkichlari real hafta kuniga bog'liq bo'lmasin.</summary>
+    private static readonly DateOnly Day = new(2026, 11, 18);
+
     [Fact]
     public async Task Dashboard_MalumotBilan_200_ShaklVaAgregatlar()
+    {
+        // Token soat muzlatilishidan OLDIN olinadi (JwtBearer o'z soatini ishlatadi).
+        var client = await Factory.LoginAsAdminAsync();
+        Factory.Clock.Set(PracticeTime.At(Day, new TimeOnly(10, 0)));
+        try
+        {
+            await AssertShapeAndAggregatesAsync(client);
+        }
+        finally
+        {
+            Factory.Clock.Reset();
+        }
+    }
+
+    private async Task AssertShapeAndAggregatesAsync(HttpClient client)
     {
         var group = await Factory.CreateGroupAsync();
         var tutor = await Factory.CreateTutorAsync(group, "Dashboard Tyutor");
@@ -29,7 +48,6 @@ public sealed class AdminDashboardTests(ApiFixture fixture)
         await Factory.CheckInAsync(present, period, today);
         await Factory.CheckInAsync(late, period, today, late: true);
 
-        var client = await Factory.LoginAsAdminAsync();
         var response = await client.GetAsync("/api/admin/dashboard");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -54,6 +72,9 @@ public sealed class AdminDashboardTests(ApiFixture fixture)
 
         var faculty = dto.Faculties.Should().ContainSingle(f => f.Id == group.FacultyId).Subject;
         faculty.StudentCount.Should().Be(3);
+        faculty.ExpectedToday.Should().Be(3);
+        faculty.AttendedToday.Should().Be(2);
+        faculty.AttendancePct.Should().Be(67);
 
         var tutorRow = dto.Tutors.Should().ContainSingle(t => t.Id == tutor.Id).Subject;
         tutorRow.Groups.Should().Equal(group.GroupName);

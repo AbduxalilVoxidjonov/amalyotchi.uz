@@ -1,7 +1,11 @@
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Features.Admin.Common;
+using Amaliyotchi.Application.Features.Admin.Companies;
+using Amaliyotchi.Application.Features.Admin.Faculties;
+using Amaliyotchi.Application.Features.Admin.Groups;
+using Amaliyotchi.Application.Features.Admin.Students;
 using Amaliyotchi.Application.Features.Admin.Tutors;
-using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Domain.Practice;
 using MediatR;
@@ -10,7 +14,21 @@ using Microsoft.EntityFrameworkCore;
 namespace Amaliyotchi.Application.Features.Admin.Dashboard;
 
 /// <summary>Kontrakt v2 <c>AdminDashboard.stats</c> — faqat xom raqamlar (matn va foiz formati frontend'da).
-/// "Bugun" — Toshkent kuni; kutilgan talabalar — bugun ish kuni bo'lgan faol davrlarga biriktirilgan guruhlardagi talabalar.</summary>
+/// Har ko'rsatkich loyiha qoidalari bilan bir manbadan:
+/// <list type="bullet">
+/// <item><b>Talabalar/fakultetlar/guruhlar</b> — ro'yxat sahifalari (va sidebar nav) manbalari: <c>StudentsTotal</c> ==
+/// nav <c>students</c>, <c>Faculties</c> == nav <c>faculties</c>. <c>StudentsLinked</c> — shu talabalardan Telegram
+/// hisobi bog'langanlar, <c>StudentsUnlinked</c> = jami − bog'langan.</item>
+/// <item><b>Korxonalar</b> — <c>CompaniesActive</c>: katalogda faol (<c>isActive</c>) korxonalar (talabaga bog'liq emas);
+/// <c>CompaniesWithInterns</c>: "aktiv korxona" qoidasi (<c>ActiveCompanyQueries</c>) bo'yicha bugun kamida bitta
+/// amaliyotchisi bor korxonalar.</item>
+/// <item><b>Arizalar va shartnomalar</b> — faqat ochiq (yopilmagan, tugamagan: davom etayotgan yoki kelgusi) davrlar
+/// (<c>OpenPeriodQueries</c>). <c>Transferred</c> hech qayerda sanalmaydi.</item>
+/// <item><b>Bugun/kecha davomati</b> — faqat shu kuni davom etayotgan (yopilmagan, sanalar ichida) davr ish kuni bo'lgan
+/// guruhlar talabalari (<c>DailyAttendanceTally</c>); yopilgan davr talabalari "kelmadi" bo'lib sanalmaydi. Foiz =
+/// keldi / (kutilgan − sababli). <c>OngoingPeriods</c> — bugun davom etayotgan davrlar soni (0 bo'lsa frontend
+/// "davom etayotgan amaliyot yo'q" holatini ko'rsatadi).</item>
+/// </list></summary>
 public sealed record DashboardStatsDto(
     int StudentsTotal,
     int StudentsLinked,
@@ -18,12 +36,14 @@ public sealed record DashboardStatsDto(
     int Faculties,
     int Groups,
     int CompaniesActive,
+    int CompaniesWithInterns,
     int ApplicationsPending,
     int ApplicationsOverdue,
     int ContractsApproved,
     int ContractsRevision,
     int ContractsRejected,
     int ContractsMissing,
+    int OngoingPeriods,
     int ExpectedToday,
     int PresentToday,
     int LateToday,
@@ -31,8 +51,13 @@ public sealed record DashboardStatsDto(
     int ExcusedToday,
     int NoDiaryToday,
     int AttendanceTodayPct,
+    int ExpectedYesterday,
     int AttendanceYesterdayPct);
 
+/// <summary>Fakultet kesimida bugungi davomat — fakultetlar ro'yxati bilan bir hisob (<c>DailyAttendanceTally</c>).
+/// <paramref name="StudentCount"/> — fakultetdagi barcha talabalar; <paramref name="ExpectedToday"/> — bugun kutilganlar
+/// (0 bo'lsa bugun bu fakultetda davom etayotgan amaliyot ish kuni yo'q); <paramref name="AttendancePct"/> =
+/// keldi / (kutilgan − sababli).</summary>
 public sealed record FacultyAttendanceDto(
     Guid Id,
     string Name,
@@ -73,8 +98,12 @@ internal sealed class GetAdminDashboardQueryHandler(IApplicationDbContext db, IC
         var calendar = await PracticeCalendar.LoadAsync(db, clock, cancellationToken);
         var today = calendar.Today;
 
-        var stats = await LoadStatsAsync(calendar, now, cancellationToken);
-        var faculties = await LoadFacultiesAsync(calendar, cancellationToken);
+        // Bugungi davomat bir marta hisoblanadi — umumiy statistika ham, fakultet kesimi ham shundan (yig'indi mos keladi).
+        var todayByFaculty = await DailyAttendanceTally.LoadByFacultyAsync(
+            db, calendar, today, calendar.GroupsExpectedToday, facultyIds: null, withDiary: true, cancellationToken);
+
+        var stats = await LoadStatsAsync(calendar, todayByFaculty, now, cancellationToken);
+        var faculties = await LoadFacultiesAsync(todayByFaculty, cancellationToken);
         var tutors = await LoadTutorsAsync(now, cancellationToken);
 
         var audit = await db.AuditLogs
@@ -87,27 +116,35 @@ internal sealed class GetAdminDashboardQueryHandler(IApplicationDbContext db, IC
         return new AdminDashboardDto(today, stats, faculties, tutors, audit);
     }
 
-    private async Task<DashboardStatsDto> LoadStatsAsync(PracticeCalendar calendar, DateTimeOffset now, CancellationToken cancellationToken)
+    private async Task<DashboardStatsDto> LoadStatsAsync(
+        PracticeCalendar calendar,
+        IReadOnlyDictionary<Guid, DayTally> todayByFaculty,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
     {
         var today = calendar.Today;
-        var yesterday = today.AddDays(-1);
 
-        var students = await db.StudentProfiles
-            .AsNoTracking()
+        // Ro'yxat sahifalari (va sidebar nav) bilan bir manba — sonlar farq qilmaydi.
+        var students = await GetAdminStudentsQueryHandler.Source(db)
             .GroupBy(_ => 1)
             .Select(g => new
             {
                 Total = g.Count(),
-                Linked = g.Count(p => p.User.TelegramUserId != null)
+                Linked = g.Count(x => x.User.TelegramUserId != null)
             })
             .FirstOrDefaultAsync(cancellationToken);
 
-        var facultyCount = await db.Faculties.CountAsync(cancellationToken);
-        var groupCount = await db.StudentGroups.CountAsync(cancellationToken);
-        var companiesActive = await db.Companies.CountAsync(c => c.IsActive, cancellationToken);
+        var facultyCount = await GetFacultiesQueryHandler.Source(db).CountAsync(cancellationToken);
+        var groupCount = await GroupRowQueries.Source(db).CountAsync(cancellationToken);
+        var companiesActive = await GetCompaniesQueryHandler.Source(db).CountAsync(c => c.IsActive, cancellationToken);
+        var companiesWithInterns = (await CompanyQueries.LoadActivePlacementsAsync(db, scope: null, companyIds: null, today, cancellationToken))
+            .Select(p => p.CompanyId)
+            .Distinct()
+            .Count();
 
+        // Arizalar/shartnomalar — faqat ochiq davrlar; Transferred (tarix) hech bir guruhga kirmaydi.
         var overdueBefore = now - AdminThresholds.PendingApplicationLateAfter;
-        var applications = await db.PracticeApplications
+        var applications = await db.OpenPeriodApplications(today)
             .AsNoTracking()
             .GroupBy(_ => 1)
             .Select(g => new
@@ -120,82 +157,59 @@ internal sealed class GetAdminDashboardQueryHandler(IApplicationDbContext db, IC
             })
             .FirstOrDefaultAsync(cancellationToken);
 
-        // Arizasi yo'q talabalar — har guruh o'zining sukut bo'yicha davri kesimida (davrlar soni kichik — davr bo'yicha so'rov).
-        var contractsMissing = 0;
-        foreach (var byPeriod in calendar.ByGroup.GroupBy(kv => kv.Value.PeriodId))
-        {
-            var periodId = byPeriod.Key;
-            var groupIds = byPeriod.Select(kv => kv.Key).ToList();
-            contractsMissing += await db.StudentProfiles
-                .AsNoTracking()
-                .CountAsync(p => groupIds.Contains(p.StudentGroupId)
-                                 && !db.PracticeApplications.Any(a => a.StudentUserId == p.UserId && a.PeriodId == periodId),
-                    cancellationToken);
-        }
+        // Shartnomasi yo'q: ochiq davrga biriktirilgan guruhdagi talaba, shu davrda ko'rib chiqiladigan arizasi
+        // (Submitted/RevisionNeeded/Approved/Rejected/Completed) yo'q — (talaba, davr) juftligi bo'yicha.
+        var openPeriods = db.OpenPeriods(today);
+        var contractsMissing = await (from s in GetAdminStudentsQueryHandler.Source(db)
+                                      from p in openPeriods
+                                      where p.Groups.Any(g => g.StudentGroupId == s.Profile.StudentGroupId)
+                                            && !db.PracticeApplications.Any(a =>
+                                                a.StudentUserId == s.Profile.UserId && a.PeriodId == p.Id
+                                                && a.Status != ApplicationStatus.Transferred && a.Status != ApplicationStatus.Draft)
+                                      select s.Profile.UserId)
+            .CountAsync(cancellationToken);
 
-        var expectedGroups = calendar.GroupsExpectedToday.ToList();
-        var expectedToday = expectedGroups.Count == 0
-            ? 0
-            : await db.StudentProfiles.AsNoTracking().CountAsync(p => expectedGroups.Contains(p.StudentGroupId), cancellationToken);
+        var ongoingPeriods = await openPeriods.CountAsync(p => p.StartDate <= today, cancellationToken);
 
-        var todayAttendance = await db.DailyAttendances
-            .AsNoTracking()
-            .Where(a => a.Date == today)
-            .GroupBy(_ => 1)
-            .Select(g => new
-            {
-                Present = g.Count(a => a.Status == AttendanceStatus.Present),
-                Late = g.Count(a => a.Status == AttendanceStatus.Late),
-                Excused = g.Count(a => a.Status == AttendanceStatus.Excused),
-                Absent = g.Count(a => a.Status == AttendanceStatus.Absent)
-            })
-            .FirstOrDefaultAsync(cancellationToken);
+        var todayTally = todayByFaculty.Values.Aggregate(DayTally.Empty, (acc, t) => acc.Add(t));
+        var yesterdayTally = (await DailyAttendanceTally.LoadByFacultyAsync(
+                db, calendar, today.AddDays(-1), calendar.GroupsExpectedYesterday, facultyIds: null, withDiary: false,
+                cancellationToken))
+            .Values.Aggregate(DayTally.Empty, (acc, t) => acc.Add(t));
 
-        var diariesToday = await db.DiaryEntries.AsNoTracking().CountAsync(d => d.Date == today, cancellationToken);
-
-        var yesterdayGroups = calendar.GroupsExpectedYesterday.ToList();
-        var expectedYesterday = yesterdayGroups.Count == 0
-            ? 0
-            : await db.StudentProfiles.AsNoTracking().CountAsync(p => yesterdayGroups.Contains(p.StudentGroupId), cancellationToken);
-        var attendedYesterday = expectedYesterday == 0
-            ? 0
-            : await db.DailyAttendances.AsNoTracking().CountAsync(
-                a => a.Date == yesterday && (a.Status == AttendanceStatus.Present || a.Status == AttendanceStatus.Late),
-                cancellationToken);
-
-        var present = todayAttendance?.Present ?? 0;
-        var late = todayAttendance?.Late ?? 0;
-        var excused = todayAttendance?.Excused ?? 0;
-        var attended = present + late;
-        var absent = Math.Max(todayAttendance?.Absent ?? 0, expectedToday - attended - excused);
+        var total = students?.Total ?? 0;
+        var linked = students?.Linked ?? 0;
 
         return new DashboardStatsDto(
-            StudentsTotal: students?.Total ?? 0,
-            StudentsLinked: students?.Linked ?? 0,
-            StudentsUnlinked: (students?.Total ?? 0) - (students?.Linked ?? 0),
+            StudentsTotal: total,
+            StudentsLinked: linked,
+            StudentsUnlinked: total - linked,
             Faculties: facultyCount,
             Groups: groupCount,
             CompaniesActive: companiesActive,
+            CompaniesWithInterns: companiesWithInterns,
             ApplicationsPending: applications?.Pending ?? 0,
             ApplicationsOverdue: applications?.Overdue ?? 0,
             ContractsApproved: applications?.Approved ?? 0,
             ContractsRevision: applications?.Revision ?? 0,
             ContractsRejected: applications?.Rejected ?? 0,
             ContractsMissing: contractsMissing,
-            ExpectedToday: expectedToday,
-            PresentToday: present,
-            LateToday: late,
-            AbsentToday: Math.Max(0, absent),
-            ExcusedToday: excused,
-            NoDiaryToday: Math.Max(0, attended - diariesToday),
-            AttendanceTodayPct: PracticeCalendar.AttendancePct(attended, expectedToday, 0),
-            AttendanceYesterdayPct: PracticeCalendar.AttendancePct(attendedYesterday, expectedYesterday, 0));
+            OngoingPeriods: ongoingPeriods,
+            ExpectedToday: todayTally.Expected,
+            PresentToday: todayTally.Present,
+            LateToday: todayTally.Late,
+            AbsentToday: todayTally.Absent,
+            ExcusedToday: todayTally.Excused,
+            NoDiaryToday: todayTally.NoDiary,
+            AttendanceTodayPct: todayTally.Pct,
+            ExpectedYesterday: yesterdayTally.Expected,
+            AttendanceYesterdayPct: yesterdayTally.Pct);
     }
 
-    private async Task<List<FacultyAttendanceDto>> LoadFacultiesAsync(PracticeCalendar calendar, CancellationToken cancellationToken)
+    private async Task<List<FacultyAttendanceDto>> LoadFacultiesAsync(
+        IReadOnlyDictionary<Guid, DayTally> todayByFaculty, CancellationToken cancellationToken)
     {
-        var faculties = await db.Faculties
-            .AsNoTracking()
+        var faculties = await GetFacultiesQueryHandler.Source(db)
             .OrderBy(f => f.Name)
             .Select(f => new { f.Id, f.Name, f.Code })
             .ToListAsync(cancellationToken);
@@ -203,50 +217,17 @@ internal sealed class GetAdminDashboardQueryHandler(IApplicationDbContext db, IC
         if (faculties.Count == 0)
             return [];
 
-        var studentsByFaculty = await (from p in db.StudentProfiles.AsNoTracking()
-                                       join g in db.StudentGroups on p.StudentGroupId equals g.Id
-                                       join d in db.Directions on g.DirectionId equals d.Id
-                                       join dept in db.Departments on d.DepartmentId equals dept.Id
-                                       group p by dept.FacultyId into grp
-                                       select new { FacultyId = grp.Key, Count = grp.Count() })
+        var studentsByFaculty = await GetAdminStudentsQueryHandler.Source(db)
+            .GroupBy(x => x.Faculty.Id)
+            .Select(g => new { FacultyId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.FacultyId, x => x.Count, cancellationToken);
-
-        var expectedGroups = calendar.GroupsExpectedToday.ToList();
-        var today = calendar.Today;
-        var expectedByFaculty = new Dictionary<Guid, int>();
-        var attendedByFaculty = new Dictionary<Guid, int>();
-
-        if (expectedGroups.Count > 0)
-        {
-            expectedByFaculty = await (from p in db.StudentProfiles.AsNoTracking()
-                                       join g in db.StudentGroups on p.StudentGroupId equals g.Id
-                                       join d in db.Directions on g.DirectionId equals d.Id
-                                       join dept in db.Departments on d.DepartmentId equals dept.Id
-                                       where expectedGroups.Contains(p.StudentGroupId)
-                                       group p by dept.FacultyId into grp
-                                       select new { FacultyId = grp.Key, Count = grp.Count() })
-                .ToDictionaryAsync(x => x.FacultyId, x => x.Count, cancellationToken);
-
-            attendedByFaculty = await (from a in db.DailyAttendances.AsNoTracking()
-                                       join p in db.StudentProfiles on a.StudentUserId equals p.UserId
-                                       join g in db.StudentGroups on p.StudentGroupId equals g.Id
-                                       join d in db.Directions on g.DirectionId equals d.Id
-                                       join dept in db.Departments on d.DepartmentId equals dept.Id
-                                       where a.Date == today
-                                             && (a.Status == AttendanceStatus.Present || a.Status == AttendanceStatus.Late)
-                                             && expectedGroups.Contains(p.StudentGroupId)
-                                       group a by dept.FacultyId into grp
-                                       select new { FacultyId = grp.Key, Count = grp.Count() })
-                .ToDictionaryAsync(x => x.FacultyId, x => x.Count, cancellationToken);
-        }
 
         return faculties.Select(f =>
         {
-            var expected = expectedByFaculty.GetValueOrDefault(f.Id);
-            var attended = attendedByFaculty.GetValueOrDefault(f.Id);
+            var tally = todayByFaculty.GetValueOrDefault(f.Id) ?? DayTally.Empty;
             return new FacultyAttendanceDto(
                 f.Id, f.Name, f.Code, studentsByFaculty.GetValueOrDefault(f.Id),
-                expected, attended, PracticeCalendar.AttendancePct(attended, expected, 0));
+                tally.Expected, tally.Attended, tally.Pct);
         }).ToList();
     }
 

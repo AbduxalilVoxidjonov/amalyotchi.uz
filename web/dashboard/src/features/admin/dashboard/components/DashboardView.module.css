@@ -126,3 +126,11 @@
     text-align: left;
   }
 }
+/* Bugun davom etayotgan amaliyot yo'q / ish kuni emas — fakultet foizlari o'rniga izoh */
+.cardNote {
+  margin: 0;
+  padding: 10px 18px;
+  font-size: var(--fs-md);
+  color: var(--color-text-faint);
+  border-bottom: var(--border-row);
+}

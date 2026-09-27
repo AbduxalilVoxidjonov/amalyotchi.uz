@@ -1,7 +1,6 @@
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Models;
 using Amaliyotchi.Application.Features.Admin.Common;
-using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Organization;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -80,41 +79,17 @@ internal sealed class GetFacultiesQueryHandler(IApplicationDbContext db, IClock 
                                      select new { FacultyId = grp.Key, Count = grp.Select(a => a.TutorUserId).Distinct().Count() })
             .ToDictionaryAsync(x => x.FacultyId, x => x.Count, cancellationToken);
 
+        // Bugungi davomat — dashboard bilan bitta hisob (DailyAttendanceTally): faqat bugun davom etayotgan davr guruhlari,
+        // foiz = keldi / (kutilgan − sababli).
         var calendar = await PracticeCalendar.LoadAsync(db, clock, cancellationToken);
-        var expectedGroups = calendar.GroupsExpectedToday.ToList();
-        var today = calendar.Today;
-
-        var expectedByFaculty = new Dictionary<Guid, int>();
-        var attendedByFaculty = new Dictionary<Guid, int>();
-        if (expectedGroups.Count > 0)
-        {
-            expectedByFaculty = await (from p in db.StudentProfiles.AsNoTracking()
-                                       join g in db.StudentGroups on p.StudentGroupId equals g.Id
-                                       join d in db.Directions on g.DirectionId equals d.Id
-                                       join dept in db.Departments on d.DepartmentId equals dept.Id
-                                       where expectedGroups.Contains(p.StudentGroupId) && ids.Contains(dept.FacultyId)
-                                       group p by dept.FacultyId into grp
-                                       select new { FacultyId = grp.Key, Count = grp.Count() })
-                .ToDictionaryAsync(x => x.FacultyId, x => x.Count, cancellationToken);
-
-            attendedByFaculty = await (from a in db.DailyAttendances.AsNoTracking()
-                                       join p in db.StudentProfiles on a.StudentUserId equals p.UserId
-                                       join g in db.StudentGroups on p.StudentGroupId equals g.Id
-                                       join d in db.Directions on g.DirectionId equals d.Id
-                                       join dept in db.Departments on d.DepartmentId equals dept.Id
-                                       where a.Date == today
-                                             && (a.Status == AttendanceStatus.Present || a.Status == AttendanceStatus.Late)
-                                             && expectedGroups.Contains(p.StudentGroupId) && ids.Contains(dept.FacultyId)
-                                       group a by dept.FacultyId into grp
-                                       select new { FacultyId = grp.Key, Count = grp.Count() })
-                .ToDictionaryAsync(x => x.FacultyId, x => x.Count, cancellationToken);
-        }
+        var todayByFaculty = await DailyAttendanceTally.LoadByFacultyAsync(
+            db, calendar, calendar.Today, calendar.GroupsExpectedToday, ids, withDiary: false, cancellationToken);
 
         var rows = page.Items.Select(f =>
         {
-            var expected = expectedByFaculty.GetValueOrDefault(f.Id);
-            var pct = PracticeCalendar.AttendancePct(attendedByFaculty.GetValueOrDefault(f.Id), expected, 0);
-            var status = expected > 0 && pct < AdminThresholds.AttentionAttendancePct
+            var today = todayByFaculty.GetValueOrDefault(f.Id) ?? DayTally.Empty;
+            var pct = today.Pct;
+            var status = today.Expected > 0 && pct < AdminThresholds.AttentionAttendancePct
                 ? FacultyStatus.Attention
                 : FacultyStatus.Active;
 

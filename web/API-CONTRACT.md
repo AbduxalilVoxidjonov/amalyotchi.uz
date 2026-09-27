@@ -24,7 +24,8 @@ v3.18 (`GET /api/student/place` — `periodId`, `periodName`, `isPast`) — §6.
 v3.19 (kundalik faqat davom etayotgan davrda — `TodayDto.canWriteDiary`, `diaryBlockedReason`) — §6.25,
 v3.20 (admin talabalar ro'yxati filtrlari — `facultyId`/`directionId`/`course`, `GET /api/admin/students/filters`) — §6.26,
 v3.21 (admin talabalar ro'yxatida `pageSize` 500 gacha) — §6.27,
-v3.22 (admin o'z loginini almashtiradi — `GET /api/auth/login-available`, `POST /api/auth/change-login`) — §6.28.
+v3.22 (admin o'z loginini almashtiradi — `GET /api/auth/login-available`, `POST /api/auth/change-login`) — §6.28,
+v3.23 (admin dashboard ko'rsatkichlari loyiha qoidalariga moslandi — ochiq davrlar, davom etayotgan davr davomati) — §6.29.
 
 Jami **113 ta endpoint**: Auth 9 · Admin 69 · Reports 1 · Tutor 21 · Student (TWA) 11 · Files 1 · Companies 1.
 
@@ -378,35 +379,42 @@ interface AdminDashboardDto {
   audit: AuditEntryDto[]; // so'nggi 8 ta
 }
 interface DashboardStatsDto {
-  studentsTotal: number;
+  studentsTotal: number; // == GET /api/admin/nav counts.students == /api/admin/students total
   studentsLinked: number;
-  studentsUnlinked: number; // Telegram bog'langan/bog'lanmagan
-  faculties: number;
-  groups: number;
-  companiesActive: number; // isActive korxonalar soni (holat bo'yicha, talabaga bog'liq emas)
+  studentsUnlinked: number; // shu talabalardan Telegram bog'langan / bog'lanmagan
+  faculties: number; // == nav counts.faculties
+  groups: number; // == GET /api/admin/groups total
+  companiesActive: number; // katalogda isActive korxonalar (talabaga bog'liq emas)
+  companiesWithInterns: number; // v3.23: "aktiv korxona" qoidasi (§6.20) bo'yicha bugun amaliyotchisi bor korxonalar
+  // Arizalar/shartnomalar — faqat OCHIQ davrlar: o'chirilmagan, status != closed, endDate >= bugun
+  // (davom etayotgan yoki kelgusi). Yopilgan/tugagan davr — tarix. `transferred` hech qayerda sanalmaydi.
   applicationsPending: number; // status = submitted
   applicationsOverdue: number; // submitted va 48 soatdan ko'p javobsiz
   contractsApproved: number; // approved + completed
   contractsRevision: number;
   contractsRejected: number;
-  contractsMissing: number; // davri bor guruhdagi talaba, guruhning sukut bo'yicha davrida (§4.6) arizasi yo'q
-  expectedToday: number; // bugun ish kuni bo'lgan (davom etayotgan, yopilmagan) davr guruhlaridagi talabalar
+  contractsMissing: number; // (talaba, ochiq davr) juftligi: guruhi davrga biriktirilgan, davrda transferred/draft'dan boshqa arizasi yo'q
+  ongoingPeriods: number; // v3.23: bugun davom etayotgan (yopilmagan, sanalar ichida) davrlar soni; 0 → "bugun amaliyot yo'q"
+  // Bugun: faqat bugun davom etayotgan davr ish kuni (bayram emas) bo'lgan guruhlar talabalari.
+  // Yopilgan davr talabalari umuman kirmaydi (kelmadi bo'lib sanalmaydi). Yozuvlar faqat shu davrniki.
+  expectedToday: number;
   presentToday: number;
   lateToday: number;
-  absentToday: number;
-  excusedToday: number;
-  noDiaryToday: number; // max(0, (present+late) − bugungi kundaliklar)
-  attendanceTodayPct: number; // int 0..100 = (present+late)/expectedToday
-  attendanceYesterdayPct: number;
+  absentToday: number; // expected − (present+late) − excused (hali belgilanmaganlar ham)
+  excusedToday: number; // excused yozuvi yoki yozuv yo'q + tasdiqlangan ruxsat
+  noDiaryToday: number; // kelgan (present/late) talabalardan bugun kundalik yozmaganlar
+  attendanceTodayPct: number; // int 0..100 = (present+late) / (expectedToday − excusedToday)
+  expectedYesterday: number; // v3.23: kecha uchun xuddi shu qoida; 0 → kecha davomat kutilmagan
+  attendanceYesterdayPct: number; // xuddi shu formula, kecha bo'yicha
 }
 interface FacultyAttendanceDto {
   id: string;
   name: string;
   code: string;
-  studentCount: number;
-  expectedToday: number;
-  attendedToday: number;
-  attendancePct: number;
+  studentCount: number; // fakultetdagi barcha talabalar
+  expectedToday: number; // yuqoridagi "bugun" qoidasi; 0 → frontend foiz o'rniga "—"
+  attendedToday: number; // present + late
+  attendancePct: number; // (present+late)/(expected − excused) — GET /api/admin/faculties attendancePct bilan bir hisob
 }
 interface TutorActivityDto {
   id: string;
@@ -3227,3 +3235,18 @@ Foydalanuvchi qarori: talabalar ruxsat (leave) so'ramaydi — funksiya butunlay 
 - **`GET /api/auth/me`** — admin/tyutorda `hemisId` endi `null` emas (`User.HemisId`), login javobi bilan bir xil.
 - **Enum:** `AuditAction` + `loginChanged` (66).
 - Endpoint soni **111 → 113** (Auth 7 → 9; `[Http*]` atributlari 113 → 115), migratsiya yo'q.
+
+### 6.29 v3.22 → v3.23 (27.09.2026): admin dashboard ko'rsatkichlari loyiha qoidalariga moslandi
+
+- **`DashboardStatsDto` yangi maydonlar (qo'shimcha, buzilmaydigan):** `companiesWithInterns`, `ongoingPeriods`,
+  `expectedYesterday` (§ `GET /api/admin/dashboard`).
+- **Arizalar va shartnomalar** (`applicationsPending/Overdue`, `contracts*`) endi faqat ochiq davrlar bo'yicha
+  (yopilgan yoki `endDate < bugun` davr arizalari sanalmaydi); `contractsMissing` — ochiq davr kesimida.
+- **Bugun/kecha davomati** — faqat shu kuni davom etayotgan (yopilmagan) davr guruhlari va shu davr yozuvlari;
+  foiz formulasi `keldi / (kutilgan − sababli)`, sababli — `excused` yozuvi yoki tasdiqlangan ruxsat.
+  `noDiaryToday` — kelgan talabalardan kundaligi yo'qlar (avval: kelganlar − barcha bugungi kundaliklar).
+- **Talabalar/fakultetlar/guruhlar soni** ro'yxat manbalaridan (nav bilan teng).
+- **Tyutor faolligi** (`tutors[].pendingCount`, `oldestPendingAt`, `status`; `GET /api/admin/tutors` ham) — faqat ochiq
+  davrlardagi `submitted` arizalar.
+- **`GET /api/admin/faculties` `attendancePct`** — dashboard bilan bir hisob (sababli maxrajdan chiqadi).
+- Endpoint soni o'zgarmadi, migratsiya yo'q.

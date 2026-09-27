@@ -1,4 +1,6 @@
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Common.Practice;
+using Amaliyotchi.Domain.Common;
 using Amaliyotchi.Domain.Practice;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,7 +25,8 @@ public sealed record TutorStats(
 }
 
 /// <summary>Berilgan tyutorlar (bir sahifa) uchun 5 ta guruhlangan so'rov bilan statistika — N+1 emas:
-/// faol biriktiruvlar → guruhlardagi talabalar soni → kutilayotgan arizalar (guruh bo'yicha) →
+/// faol biriktiruvlar → guruhlardagi talabalar soni → kutilayotgan arizalar (guruh bo'yicha; faqat ochiq davrlardagi
+/// <c>Submitted</c> — <see cref="OpenPeriodQueries"/>: yopilgan/tugagan davr arizasi tyutor navbatida emas) →
 /// so'nggi qarorlar tezligi → so'nggi audit vaqti.</summary>
 public static class TutorStatsLoader
 {
@@ -56,7 +59,7 @@ public static class TutorStatsLoader
 
         var pendingByGroup = groupIds.Count == 0
             ? new Dictionary<Guid, (int Count, DateTimeOffset Oldest)>()
-            : await (from app in db.PracticeApplications.AsNoTracking()
+            : await (from app in db.OpenPeriodApplications(PracticeTime.LocalDate(now)).AsNoTracking()
                      join p in db.StudentProfiles on app.StudentUserId equals p.UserId
                      where app.Status == ApplicationStatus.Submitted && groupIds.Contains(p.StudentGroupId)
                      group app by p.StudentGroupId into g
