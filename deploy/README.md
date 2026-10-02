@@ -1,5 +1,73 @@
 # Amaliyotchi — Docker bilan deploy
 
+## Serverga chiqarish — 5 qadam
+
+Barcha buyruqlar repo ildizidan (masalan `/opt/amaliyotchi`). Skriptlar idempotent — qayta ishga tushirish xavfsiz.
+
+**(a) Yangi server**
+
+```bash
+curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker "$USER" && newgrp docker   # 1. Docker
+git clone https://github.com/AbduxalilVoxidjonov/amalyotchi.uz.git /opt/amaliyotchi             # 2. kod
+cd /opt/amaliyotchi
+deploy/scripts/init-env.sh      # 3. deploy/.env: sirlar generatsiya, HEMIS ID / bot / tunnel tokeni so'raladi
+deploy/scripts/deploy.sh        # 4. preflight → build → up → healthy kutish
+```
+
+`init-env.sh` admin parolini **bir marta** ekranga chiqaradi — darhol parol menejeriga saqlang. Non-interaktiv:
+`ADMIN_HEMIS_ID=... TELEGRAM_BOT_TOKEN=... CLOUDFLARE_TUNNEL_TOKEN=... deploy/scripts/init-env.sh --non-interactive`.
+
+**(b) Eski versiya (demo) ishlab turgan server**
+
+```bash
+cd /opt/amaliyotchi
+git pull --ff-only
+deploy/scripts/init-env.sh      # eski .env → .env.bak-<sana>; faqat bo'sh/demo/zaif qiymatlar almashadi
+                                # (POSTGRES_PASSWORD=amaliyotchi, ADMIN_PASSWORD=admin12345, SEED_DEMO=true ...)
+deploy/scripts/deploy.sh        # zaxira → bazadagi postgres parolini .env ga moslaydi (ALTER USER) →
+                                # up --remove-orphans (eski redis/minio konteynerlari o'chadi)
+```
+
+Keyin demo ma'lumotni olib tashlang (`deploy.sh` oxirida bazada demo hisoblar bor-yo'qligini aytadi) — bittasini tanlang:
+
+- **To'liq toza boshlash** (demo-only server uchun eng toza yo'l): `deploy/scripts/reset-data.sh` — zaxira oladi,
+  `postgres-data` va `api-data` ni o'chiradi, birinchi admin `.env` dagi `ADMIN_HEMIS_ID`/`ADMIN_PASSWORD` bilan
+  yaratiladi. Tasdiq: `HAMMASINI O'CHIR` yozish (yoki `--yes-delete-all-data`); Seq loglari ham: `--include-seq`.
+- **Faqat demo'ni olib tashlash** (haqiqiy ma'lumot ham bo'lsa): `deploy/scripts/purge-demo.sh` (dry-run — nima
+  o'chishini ko'rsatadi), so'ng `deploy/scripts/purge-demo.sh --apply`.
+
+> Muhim: birinchi admin **faqat bazada admin bo'lmasa** yaratiladi. Eski demo baza saqlansa, `.env` dagi yangi
+> `ADMIN_*` qo'llanmaydi — eski demo admin (`100000000001`) amal qiladi. Shuning uchun yuqoridagi qadam majburiy.
+
+Eski stack'dan qolgan volume'lar (`amaliyotchi_minio-data` va h.k.) avtomatik o'chirilmaydi — `deploy.sh` oxirida
+`docker volume rm ...` buyrug'ini ko'rsatadi.
+
+**(c) DIQQAT: bir xil tokenlar bilan ikkinchi stack ishlamasin**
+
+Shu `CLOUDFLARE_TUNNEL_TOKEN` va `TELEGRAM_BOT_TOKEN` bilan boshqa mashinada (masalan lokal Mac'da) stack ishlab
+tursa: Cloudflare trafikni ikkala connector'ga **bo'lib** yuboradi (so'rovlarning bir qismi eski/lokal versiyaga
+tushadi), Telegram bot esa `409 Conflict` oladi. Serverda ko'tarishdan **oldin** o'sha mashinada to'xtating:
+
+```bash
+docker compose -f deploy/docker-compose.yml down          # (lokal Mac'da) — volume'lar saqlanadi
+```
+
+Cloudflare Zero Trust → Tunnels → tunnel → **Connectors** ro'yxatida faqat server qolganini tekshiring.
+
+**(d) Tekshirish**
+
+```bash
+docker compose -f deploy/docker-compose.yml ps            # hammasi "running (healthy)" (backup "starting" — normal)
+```
+
+1. <https://amalyotchi.uz> → `ADMIN_HEMIS_ID` / admin paroli bilan kiring.
+2. @BotFather → bot → **Bot Settings → Menu Button** URL = `https://app.amalyotchi.uz`; botga `/start` yuboring.
+
+Yangilash keyinchalik: `deploy/scripts/deploy.sh --pull`. Batafsil (talablar, firewall, tunnel sozlash, zaxira,
+loglar) — quyida.
+
+---
+
 Stack (`deploy/docker-compose.yml`, production rejimi):
 
 | Servis      | Image                                   | Vazifa                                                           |
@@ -19,7 +87,7 @@ chegarasi, `no-new-privileges` va `restart: unless-stopped`.
 
 ---
 
-## Serverga chiqarish
+## Serverga chiqarish — batafsil
 
 ### 1. Server talablari
 
@@ -67,7 +135,7 @@ sudo systemctl enable --now docker  # server qayta yuklanganda stack o'zi ko'tar
 
 ```bash
 sudo mkdir -p /opt/amaliyotchi && sudo chown "$USER": /opt/amaliyotchi
-git clone <repo-url> /opt/amaliyotchi
+git clone https://github.com/AbduxalilVoxidjonov/amalyotchi.uz.git /opt/amaliyotchi
 cd /opt/amaliyotchi
 ```
 
@@ -97,53 +165,36 @@ alias dc='docker compose -f /opt/amaliyotchi/deploy/docker-compose.yml'
 ### 6. `.env` ni to'ldirish
 
 ```bash
-cp deploy/.env.example deploy/.env
-chmod 600 deploy/.env
+deploy/scripts/init-env.sh
 ```
 
-Har bir sirni generatsiya qiling va `deploy/.env` ga yozing (qo'shtirnoqsiz):
+Skript `deploy/.env` ni `.env.example` dan yaratadi (mavjud bo'lsa — `.env.bak-<sana>` zaxirasi va faqat bo'sh/demo/zaif
+qiymatlarni almashtiradi), `chmod 600` qiladi va oxirida `preflight.sh` ni chaqiradi:
 
-| O'zgaruvchi               | Qanday olinadi                                                  |
+| O'zgaruvchi               | init-env.sh                                                     |
 |---------------------------|-----------------------------------------------------------------|
-| `JWT_SIGNING_KEY`         | `openssl rand -base64 48`                                       |
-| `POSTGRES_PASSWORD`       | `openssl rand -hex 24`  (`$` va `;` bo'lmasin — hex xavfsiz)    |
-| `ADMIN_HEMIS_ID`          | birinchi admin login'i (faqat raqamlar, masalan o'z HEMIS ID'ingiz) |
-| `ADMIN_PASSWORD`          | `openssl rand -base64 18`                                       |
-| `SEQ_ADMIN_PASSWORD`      | `openssl rand -hex 16`                                          |
-| `CLOUDFLARE_TUNNEL_TOKEN` | 5-qadam, 2-band                                                 |
-| `TELEGRAM_BOT_TOKEN`      | @BotFather → `/newbot` yoki `/token`                            |
-| `DASHBOARD_PUBLIC_URL`    | `https://amalyotchi.uz`                                         |
-| `TWA_PUBLIC_URL`          | `https://app.amalyotchi.uz`                                     |
+| `JWT_SIGNING_KEY`         | generatsiya (`openssl rand -base64 48`)                         |
+| `POSTGRES_PASSWORD`       | generatsiya (hex 48, `$`/`;` yo'q)                              |
+| `ADMIN_PASSWORD`          | generatsiya (24 belgi) — ekranga **bir marta** chiqadi          |
+| `SEQ_ADMIN_PASSWORD`      | generatsiya (hex 32)                                            |
+| `ADMIN_HEMIS_ID`          | so'raladi — o'z HEMIS ID'ingiz (faqat raqamlar; demo `100000000001` rad etiladi) |
+| `TELEGRAM_BOT_TOKEN`      | so'raladi — @BotFather → `/newbot` yoki `/token`                |
+| `CLOUDFLARE_TUNNEL_TOKEN` | so'raladi — 5-qadam, 2-band                                     |
+| `DASHBOARD_PUBLIC_URL`, `TWA_PUBLIC_URL`, `API_ALLOWED_HOSTS` | default: `https://amalyotchi.uz`, `https://app.amalyotchi.uz`, `amalyotchi.uz;app.amalyotchi.uz;localhost` |
+| `SEED_DEMO`               | har doim `false`                                                |
 
-Bir buyruqda (bo'sh qatorlarni to'ldiradi, mavjud qiymatlarga tegmaydi):
-
-```bash
-f=deploy/.env
-fill() { grep -q "^$1=." "$f" || sed -i "s|^$1=.*|$1=$2|" "$f"; }
-fill JWT_SIGNING_KEY    "$(openssl rand -base64 48 | tr -d '\n')"
-fill POSTGRES_PASSWORD  "$(openssl rand -hex 24)"
-fill ADMIN_PASSWORD     "$(openssl rand -base64 18)"
-fill SEQ_ADMIN_PASSWORD "$(openssl rand -hex 16)"
-nano "$f"   # ADMIN_HEMIS_ID, CLOUDFLARE_TUNNEL_TOKEN, TELEGRAM_BOT_TOKEN ni qo'lda
-grep -E '^(ADMIN_PASSWORD|SEQ_ADMIN_PASSWORD)=' "$f"   # parollarni parol menejeriga saqlang
-```
-
-Barcha o'zgaruvchilar va default'lari — `deploy/.env.example` izohlarida (xotira chegaralari, PG tuning, zaxira jadvali).
-
-Tekshiruv (majburiy qiymatlar, JWT ≥ 32, demo parollar yo'qligi, HTTPS URL'lar, `compose config`):
-
-```bash
-deploy/scripts/preflight.sh
-```
+Qolgan o'zgaruvchilar va default'lari — `deploy/.env.example` izohlarida (xotira chegaralari, PG tuning, zaxira
+jadvali). Qo'lda tahrirlagandan keyin tekshiruv: `deploy/scripts/preflight.sh`.
 
 ### 7. Birinchi ishga tushirish
 
 ```bash
-docker compose -f deploy/docker-compose.yml up -d --build
-docker compose -f deploy/docker-compose.yml ps
+deploy/scripts/deploy.sh
 ```
 
-Birinchi build 5–10 daqiqa. Ishga tushish tartibi: `postgres` (healthy) → `api` (migratsiya + seed, `start_period` 90 s)
+`deploy.sh`: preflight → (stack ishlasa) zaxira → `build` → postgres + parol sinxronizatsiyasi →
+`up -d --build --remove-orphans` → barcha servislar healthy bo'lishini kutadi (`HEALTH_TIMEOUT`, default 300 s);
+bo'lmasa qaysi servis ekanini va oxirgi 50 qator log'ini chiqarib, xato bilan to'xtaydi. Birinchi build 5–10 daqiqa. Ishga tushish tartibi: `postgres` (healthy) → `api` (migratsiya + seed, `start_period` 90 s)
 → `dashboard`/`twa` (healthy) → `cloudflared`. `backup` API healthy bo'lgach (migratsiya tugagan — bo'sh sxemasiz
 baza zaxiralanmaydi) darhol birinchi zaxirani oladi. `seq` ham healthcheck'ga ega (`/health`).
 
@@ -175,11 +226,7 @@ Keyin:
 
 ```bash
 cd /opt/amaliyotchi
-dc exec backup /scripts/backup.sh once        # yangilashdan oldin qo'shimcha zaxira
-git pull --ff-only
-deploy/scripts/preflight.sh                   # .env.example'da yangi majburiy o'zgaruvchi bo'lsa ushlaydi
-dc up -d --build --remove-orphans
-dc ps
+deploy/scripts/deploy.sh --pull               # git pull --ff-only + zaxira + build + up + healthy kutish
 docker image prune -f                         # eski (dangling) image'lar
 docker builder prune -f --filter until=168h   # 7 kundan eski build kesh
 ```
@@ -271,9 +318,8 @@ dc down                                               # to'xtatish (volume'lar s
 docker stats --no-stream                              # xotira/CPU (chegaralar .env: *_MEM_LIMIT)
 ```
 
-- **Postgres parolini almashtirish** (`POSTGRES_PASSWORD` faqat birinchi init'da qo'llanadi):
-  `dc exec postgres psql -U amaliyotchi -d postgres -c "ALTER USER amaliyotchi PASSWORD '<yangi>'"`,
-  keyin `.env` da yangilang va `dc up -d`.
+- **Postgres parolini almashtirish** (`POSTGRES_PASSWORD` faqat birinchi init'da qo'llanadi): `.env` da yangilang
+  (faqat hex/base64 belgilar) va `deploy/scripts/deploy.sh` — u bazadagi parolni `.env` ga moslaydi (`ALTER USER`).
 - **JWT kalitini almashtirish** — barcha foydalanuvchilar qayta kirishi kerak bo'ladi.
 - **Telegram bot** — long polling, bir vaqtda faqat **bitta** instansiya. Lokal dev'da shu token bilan bot
   yoqilsa ikkalasi `409 Conflict` oladi (`TELEGRAM_BOT_ENABLED=false` bilan o'chiring).
@@ -324,14 +370,8 @@ ildizdan `docker compose up -d --build` ham ishlaydi; dev override bilan:
 
 ### Eski stack'dan o'tish (MinIO/Redis olib tashlandi)
 
-Kod MinIO/Redis ishlatmaydi (fayllar — `LocalFileStorage`, `api-data` volume), ular stack'dan olib tashlandi.
-Eski konteyner va volume'larni tozalash:
-
-```bash
-docker compose -f deploy/docker-compose.yml up -d --remove-orphans   # amaliyotchi-minio/redis o'chiriladi
-docker volume rm amaliyotchi_minio-data                              # bo'sh MinIO ma'lumoti
-```
-
-Mavjud bazada `POSTGRES_PASSWORD` o'zgarmaydi — `.env` ga eski parolni (`amaliyotchi`, agar oldin default bo'lgan bo'lsa)
-yozing yoki yuqoridagi `ALTER USER` bilan almashtiring. Seq volume avval autentifikatsiyasiz yaratilgan bo'lsa,
-`SEQ_ADMIN_PASSWORD` qo'llanmaydi — Seq UI → Settings → Users'da autentifikatsiyani yoqing (yoki `seq-data` ni o'chiring).
+Kod MinIO/Redis ishlatmaydi (fayllar — `LocalFileStorage`, `api-data` volume). `deploy.sh` eski konteynerlarni
+`--remove-orphans` bilan o'chiradi va bazadagi eski postgres parolini (`amaliyotchi`) `.env` dagisiga moslaydi.
+Volume'lar qo'lda: `docker volume rm amaliyotchi_minio-data`. Seq volume avval autentifikatsiyasiz yaratilgan
+bo'lsa, `SEQ_ADMIN_PASSWORD` qo'llanmaydi — Seq UI → Settings → Users'da autentifikatsiyani yoqing (yoki
+`reset-data.sh --include-seq`).

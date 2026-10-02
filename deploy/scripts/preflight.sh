@@ -103,7 +103,7 @@ else
   done
 fi
 
-if grep -q '\$' "$ENV_FILE"; then
+if grep -Ev '^[[:space:]]*#' "$ENV_FILE" | grep -q '\$'; then
   warn ".env da '\$' belgisi bor — compose uni o'zgaruvchi sifatida almashtiradi (qiymatni tekshiring)"
 fi
 
