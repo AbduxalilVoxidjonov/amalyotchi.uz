@@ -32,7 +32,9 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options, IClock clock) 
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
             new(JwtRegisteredClaimNames.Name, user.FullName),
-            new(RoleClaim, user.Role.ToString())
+            new(RoleClaim, user.Role.ToString()),
+            // Parol/login/faollik o'zgarsa eski access tokenlar rad etiladi (AuthorizationSetup → OnTokenValidated).
+            new(UserSessionValidator.StampClaim, UserSessionValidator.ComputeStamp(user))
         };
 
         if (user.FacultyId is { } facultyId)

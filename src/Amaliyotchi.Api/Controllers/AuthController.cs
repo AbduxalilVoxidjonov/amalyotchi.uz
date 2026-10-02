@@ -97,7 +97,8 @@ public sealed class AuthController(ISender sender) : ControllerBase
 
     /// <summary>Admin o'z loginini (HEMIS ID) almashtiradi. 400 <c>errors.NewLogin</c> (format / joriy login bilan bir xil)
     /// yoki <c>errors.CurrentPassword</c> ("Joriy parol noto'g'ri."); 409 "Bu login allaqachon band.". Muvaffaqiyatda
-    /// 200 <see cref="UserSummaryDto"/> (yangi <c>hemisId</c> bilan); joriy access token ishlashda davom etadi.</summary>
+    /// 200 <see cref="UserSummaryDto"/> (yangi <c>hemisId</c> bilan). Eski access tokenlar (security stamp) rad etiladi —
+    /// joriy sessiya refresh token bilan davom etadi.</summary>
     [HttpPost("change-login")]
     [Authorize(Policy = Policies.AdminOnly)]
     [EnableRateLimiting(RateLimitPolicies.Auth)]

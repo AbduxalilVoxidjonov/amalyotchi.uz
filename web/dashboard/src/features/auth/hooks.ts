@@ -115,7 +115,9 @@ export const loginAvailabilityKeys = {
 
 /**
  * O'z parolini almashtirish. Joriy refresh token yuboriladi — backend boshqa sessiyalarni bekor
- * qiladi, joriysini saqlaydi (access token o'zgarmaydi → store yangilanishi shart emas).
+ * qiladi, joriysini saqlaydi. Parol almashgach security stamp o'zgaradi: eski access token keyingi
+ * so'rovda 401 oladi va API klient saqlangan refresh token bilan avtomatik yangilaydi
+ * (shared `createApiClient` → `refreshSession`), shuning uchun bu yerda store'ni qo'lda yangilash shart emas.
  */
 export function useChangePassword() {
   return useMutation({

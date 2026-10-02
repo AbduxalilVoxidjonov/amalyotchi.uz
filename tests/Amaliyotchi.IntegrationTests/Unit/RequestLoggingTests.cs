@@ -25,6 +25,14 @@ public sealed class RequestLoggingTests
     public void Daraja_StatusBoyicha(int status, LogEventLevel expected) =>
         Level(status).Should().Be(expected);
 
+    [Theory]
+    [InlineData(200, LogEventLevel.Verbose)]
+    [InlineData(503, LogEventLevel.Error)]
+    public void Health_MuvaffaqiyatliJavobShovqinEmas(int status, LogEventLevel expected) =>
+        RequestLogging.GetLevel(
+                new DefaultHttpContext { Request = { Path = "/health" }, Response = { StatusCode = status } }, 1, null)
+            .Should().Be(expected);
+
     [Fact]
     public void IshlovBerilmaganException_Error() =>
         Level(200, new InvalidOperationException()).Should().Be(LogEventLevel.Error);

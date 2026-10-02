@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using Amaliyotchi.Application.Common.Security;
 using Amaliyotchi.Domain.Enums;
@@ -33,6 +34,26 @@ public static class AuthorizationSetup
                     // shuning uchun User.Identity.Name to'ldirilishi uchun aniq ko'rsatiladi.
                     // RoleClaimType qo'yilmaydi: "role" ni inbound map o'zi ClaimTypes.Role ga xaritalaydi.
                     NameClaimType = JwtRegisteredClaimNames.Name
+                };
+
+                // Imzo va muddat to'g'ri bo'lsa ham: hisob faolsizlantirilgan/o'chirilgan yoki parol, login, rol,
+                // fakultet o'zgargan bo'lsa token rad etiladi (401). Tekshiruv keshlangan — har so'rovda DB emas.
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = async context =>
+                    {
+                        var principal = context.Principal;
+                        var subject = principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                            ?? principal?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+                        var stamp = principal?.FindFirst(UserSessionValidator.StampClaim)?.Value;
+
+                        var sessions = context.HttpContext.RequestServices.GetRequiredService<UserSessionValidator>();
+                        if (!Guid.TryParse(subject, out var userId)
+                            || !await sessions.IsCurrentAsync(userId, stamp, context.HttpContext.RequestAborted))
+                        {
+                            context.Fail("Sessiya eskirgan: hisob holati yoki parol/login o'zgargan.");
+                        }
+                    }
                 };
             });
 

@@ -1,4 +1,5 @@
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Common.Security;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Domain.Exceptions;
 using Amaliyotchi.Domain.Identity;
@@ -19,6 +20,11 @@ internal sealed class AuthSessionService(
 {
     public const string InvalidCredentials = "HEMIS ID yoki parol noto'g'ri.";
     public const string TelegramSignatureRejected = "Telegram imzosi tasdiqlanmadi. Ilovani qaytadan oching.";
+
+    /// <summary>Lockout hisoblash migratsiyasiz — audit jurnalidagi <c>LoginFailed</c> yozuvlaridan
+    /// (<c>audit_logs.user_id</c> indeksi). Qiymatlar — <see cref="AuthSecurity"/>.</summary>
+    public const string WrongPasswordReason = "Parol noto'g'ri";
+    public const string LockedOutReason = "Hisob vaqtincha bloklangan (ko'p noto'g'ri parol)";
 
     /// <summary>HEMIS ID + parolni tekshiradi va foydalanuvchini (kuzatiladigan, <see cref="UserQueries.WithSummary"/>
     /// + muddati o'tgan refresh tokenlar bilan) qaytaradi. Avval xodim (<c>User.HemisId</c>), topilmasa — talaba
@@ -56,8 +62,14 @@ internal sealed class AuthSessionService(
 
         // Parol faollikdan OLDIN tekshiriladi: aks holda "hisob faol emas" xabari
         // parolni bilmagan odamga ham raqam ro'yxatda borligini oshkor qiladi.
+        // Lockout parol tekshiruvidan OLDIN: bloklangan paytda to'g'ri parol ham qabul qilinmaydi (aks holda
+        // bu shunchaki "sekinlatish" bo'lardi). Javob odatdagi "noto'g'ri" xabari bilan bir xil — hisob borligini
+        // va bloklanganini oshkor qilmaydi. Bloklangan urinishlar hisobga qo'shilmaydi (blok cheksiz cho'zilmaydi).
+        if (await IsLockedOutAsync(user, now, cancellationToken))
+            throw await LoginFailedAsync(user, LockedOutReason, InvalidCredentials, cancellationToken);
+
         if (!passwordHasher.Verify(password, user.PasswordHash, out var needsRehash))
-            throw await LoginFailedAsync(user, "Parol noto'g'ri", InvalidCredentials, cancellationToken);
+            throw await LoginFailedAsync(user, WrongPasswordReason, InvalidCredentials, cancellationToken);
 
         if (!user.IsActive)
         {
@@ -75,6 +87,24 @@ internal sealed class AuthSessionService(
         return user;
     }
 
+    private async Task<bool> IsLockedOutAsync(User user, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        // Muvaffaqiyatli kirishdan oldingi xatolar hisobga olinmaydi.
+        var since = now - AuthSecurity.LockoutWindow;
+        if (user.LastLoginAt is { } lastLogin && lastLogin > since)
+            since = lastLogin;
+
+        var failures = await db.AuditLogs
+            .AsNoTracking()
+            .CountAsync(a => a.UserId == user.Id
+                             && a.Action == AuditAction.LoginFailed
+                             && a.Reason == WrongPasswordReason
+                             && a.OccurredAt >= since,
+                cancellationToken);
+
+        return failures >= AuthSecurity.LockoutThreshold;
+    }
+
     /// <summary>Sessiya beradi: <c>LastLoginAt</c>, eski tokenlarni tozalash, access + refresh token, audit
     /// <c>LoggedIn</c> (<paramref name="auditReason"/> bilan) va <c>SaveChanges</c>.</summary>
     public async Task<AuthResultDto> IssueSessionAsync(
@@ -84,8 +114,10 @@ internal sealed class AuthSessionService(
         user.PruneRefreshTokens(now);
 
         var accessToken = tokenService.CreateAccessToken(user);
-        var refreshToken = user.IssueRefreshToken(
-            tokenService.CreateRefreshToken(),
+        // Bazaga faqat xesh yoziladi; mijozga xom token qaytariladi.
+        var rawRefreshToken = tokenService.CreateRefreshToken();
+        user.IssueRefreshToken(
+            RefreshTokenHash.Of(rawRefreshToken),
             now.Add(tokenService.RefreshTokenLifetime),
             currentUser.IpAddress);
 
@@ -100,7 +132,7 @@ internal sealed class AuthSessionService(
         return new AuthResultDto(
             accessToken.Value,
             accessToken.ExpiresAt,
-            refreshToken.Token,
+            rawRefreshToken,
             UserSummaryDto.From(user),
             user.MustChangePassword);
     }

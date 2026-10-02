@@ -8,8 +8,9 @@ public sealed class TelegramOptions
     /// yoki user-secrets orqali beriladi.</summary>
     public string BotToken { get; init; } = string.Empty;
 
-    /// <summary><c>auth_date</c> shundan eski bo'lsa initData rad etiladi. Standart — 24 soat.</summary>
-    public int MaxAgeSeconds { get; init; } = 24 * 60 * 60;
+    /// <summary><c>auth_date</c> shundan eski bo'lsa initData rad etiladi. Standart — 1 soat (initData Mini App
+    /// ochilganda yangilanadi; sizib chiqqan initData uzoq vaqt qayta ishlatilmasin). Production chegarasi — 7 kun.</summary>
+    public int MaxAgeSeconds { get; init; } = 60 * 60;
 
     /// <summary>Bot xizmati (long polling: /start, /help, Menu Button). Sukut — o'chiq: bir vaqtda faqat
     /// bitta instansiya polling qilishi mumkin (aks holda Telegram 409 Conflict qaytaradi), shuning uchun

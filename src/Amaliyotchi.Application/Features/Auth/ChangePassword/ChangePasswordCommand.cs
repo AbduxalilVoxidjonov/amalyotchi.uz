@@ -1,5 +1,6 @@
 using Amaliyotchi.Application.Common.Exceptions;
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Common.Security;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Domain.Exceptions;
 using Amaliyotchi.Domain.Identity;
@@ -11,7 +12,8 @@ namespace Amaliyotchi.Application.Features.Auth.ChangePassword;
 /// <summary><c>POST /api/auth/change-password</c>: <c>{ currentPassword, newPassword, refreshToken? }</c> → 204.
 /// Joriy foydalanuvchi (har qanday rol, paroli bor) o'z parolini almashtiradi: <c>MustChangePassword=false</c>,
 /// boshqa sessiyalarning refresh tokenlari bekor qilinadi. <see cref="RefreshToken"/> — joriy sessiyaniki
-/// (ixtiyoriy): berilsa u saqlanadi, berilmasa BARCHA refresh tokenlar bekor (access token muddati tugagach qayta kirish).
+/// (ixtiyoriy): berilsa u saqlanadi, berilmasa BARCHA refresh tokenlar bekor (qayta kirish). Parol almashgach security
+/// stamp o'zgaradi — eski access token darhol 401 oladi; klient saqlangan refresh token bilan yangilaydi.
 /// Joriy parol noto'g'ri yoki hisobda parol yo'q → 400 <c>errors.CurrentPassword</c>.</summary>
 public sealed record ChangePasswordCommand(string CurrentPassword, string NewPassword, string? RefreshToken = null) : IRequest;
 
@@ -22,7 +24,7 @@ internal sealed class ChangePasswordCommandHandler(
     public async Task Handle(ChangePasswordCommand request, CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId ?? throw new ForbiddenException("Avtorizatsiya talab qilinadi.");
-        var keep = string.IsNullOrWhiteSpace(request.RefreshToken) ? null : request.RefreshToken;
+        var keep = RefreshTokenHash.OfOptional(request.RefreshToken);
 
         // Joriy sessiya tokeni (berilgan bo'lsa) yuklanmaydi — shuning uchun bekor ham qilinmaydi.
         var user = await db.Users

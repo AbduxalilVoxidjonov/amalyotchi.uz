@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Amaliyotchi.Application.Common.Exceptions;
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Common.Security;
 using Amaliyotchi.Application.Features.Student.Common;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Domain.Exceptions;
@@ -52,7 +53,7 @@ internal sealed class ChangeLoginCommandHandler(
     private async Task<UserSummaryDto> ChangeAsync(
         ChangeLoginCommand request, Guid userId, string newLogin, CancellationToken cancellationToken)
     {
-        var keep = string.IsNullOrWhiteSpace(request.RefreshToken) ? null : request.RefreshToken;
+        var keep = RefreshTokenHash.OfOptional(request.RefreshToken);
         var revokeOthers = keep is not null;
 
         // Refresh tokenlar faqat joriy sessiya tokeni berilganda yuklanadi (u o'zi yuklanmaydi — bekor ham qilinmaydi).

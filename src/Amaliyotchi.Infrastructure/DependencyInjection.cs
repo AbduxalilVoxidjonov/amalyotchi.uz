@@ -29,11 +29,16 @@ public static class DependencyInjection
         services.AddSingleton<IClock, SystemClock>();
         services.AddScoped<ICurrentUser, CurrentUser>();
         services.AddScoped<AuditSaveChangesInterceptor>();
+        services.AddScoped<UserSessionCacheInterceptor>();
+        // Access token stamp keshi (UserSessionValidator) — har so'rovda DB'ga bormaslik uchun.
+        services.AddMemoryCache();
 
         services.AddDbContext<AppDbContext>((sp, options) =>
         {
             ConfigureNpgsql(options, connectionString);
-            options.AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>());
+            options.AddInterceptors(
+                sp.GetRequiredService<AuditSaveChangesInterceptor>(),
+                sp.GetRequiredService<UserSessionCacheInterceptor>());
         });
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<AppDbContext>());
@@ -48,6 +53,7 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         services.AddScoped<ITokenService, JwtTokenService>();
+        services.AddScoped<UserSessionValidator>();
 
         // Telegram Mini App: bot token bo'sh bo'lsa ilova ishga tushadi, lekin /auth/telegram 403 qaytaradi
         // (validator "sozlanmagan" deb rad etadi) — admin/tyutor oqimi tokensiz ham ishlashi kerak.

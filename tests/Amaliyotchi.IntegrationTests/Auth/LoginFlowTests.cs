@@ -1,9 +1,11 @@
 using System.Net;
 using System.Net.Http.Headers;
+using Amaliyotchi.Application.Common.Security;
 using Amaliyotchi.Application.Features.Auth;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.IntegrationTests.Infrastructure;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.IntegrationTests.Auth;
 
@@ -53,6 +55,24 @@ public sealed class LoginFlowTests(ApiFixture fixture)
         // 5. Bekor qilingan token bilan refresh — 403
         var afterLogout = await anonymous.PostJsonAsync("/api/auth/refresh", new { second.RefreshToken });
         afterLogout.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task RefreshToken_BazadaOchiqEmas_FaqatXeshSaqlanadi()
+    {
+        var tutor = await Factory.CreateTutorAsync();
+        var (_, auth) = await Factory.LoginWithResultAsync(tutor);
+
+        var stored = await Factory.WithDbAsync(db =>
+            db.RefreshTokens.Where(t => t.UserId == tutor.Id).Select(t => t.Token).ToListAsync());
+
+        stored.Should().NotContain(auth.RefreshToken, "baza sizib chiqsa ham xom token bilan sessiya olib bo'lmasin");
+        stored.Should().Contain(RefreshTokenHash.Of(auth.RefreshToken));
+
+        // Xeshning o'zi refresh token sifatida qabul qilinmaydi.
+        var anonymous = Factory.CreateClient();
+        (await anonymous.PostJsonAsync("/api/auth/refresh", new { refreshToken = RefreshTokenHash.Of(auth.RefreshToken) }))
+            .StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]

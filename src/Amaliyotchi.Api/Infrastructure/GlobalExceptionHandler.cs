@@ -42,6 +42,11 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
             ForbiddenException forbidden => Problem(StatusCodes.Status403Forbidden, "Ruxsat yo'q", forbidden.Message),
             DomainException domain => Problem(StatusCodes.Status400BadRequest, "Noto'g'ri amal", domain.Message),
             OperationCanceledException => Problem(StatusClientClosedRequest, "So'rov bekor qilindi", "So'rov bekor qilindi."),
+            // Kestrel/ASP.NET so'rov xatolari (tana hajmi chegaradan oshdi — 413, buzuq so'rov — 400 ...): 500 emas,
+            // o'z status kodi bilan. Fayl yuklashda limitdan oshsa mijoz aniq 413 oladi.
+            BadHttpRequestException badRequest => BadRequest(badRequest.StatusCode),
+            // MVC forma o'qishdagi xatoni ValueProviderException ichiga o'raydi.
+            { InnerException: BadHttpRequestException inner } => BadRequest(inner.StatusCode),
             DbUpdateConcurrencyException => Problem(StatusCodes.Status409Conflict, "Ziddiyat", "Ma'lumot boshqa foydalanuvchi tomonidan o'zgartirilgan. Sahifani yangilab, qayta urinib ko'ring."),
             DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } } =>
                 Problem(StatusCodes.Status409Conflict, "Ziddiyat", "Bunday yozuv allaqachon mavjud."),
@@ -68,6 +73,10 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
 
         return true;
     }
+
+    private static ProblemDetails BadRequest(int status) => status == StatusCodes.Status413PayloadTooLarge
+        ? Problem(status, "So'rov juda katta", "Yuborilgan ma'lumot (fayl) hajmi ruxsat etilgan chegaradan oshdi.")
+        : Problem(status, "Noto'g'ri so'rov", "So'rovni qayta ishlab bo'lmadi.");
 
     private static ProblemDetails Problem(int status, string title, string detail) =>
         new() { Status = status, Title = title, Detail = detail };

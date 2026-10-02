@@ -137,6 +137,8 @@ export function useChangePassword() {
   return useMutation({
     mutationKey: ['auth', 'change-password'],
     // Joriy refresh token yuboriladi — aks holda backend barcha sessiyalarni (shu jumladan joriysini) bekor qiladi.
+    // Eski access token (security stamp o'zgargani uchun) keyingi so'rovda 401 oladi — API klient shu refresh
+    // token bilan avtomatik yangilaydi.
     mutationFn: (body: Omit<ChangePasswordRequest, 'refreshToken'>) => {
       const { refreshToken } = useAuthStore.getState();
       return authApi.changePassword(refreshToken ? { ...body, refreshToken } : body);

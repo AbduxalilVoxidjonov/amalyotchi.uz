@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using Amaliyotchi.Application.Features.Auth;
 using Amaliyotchi.Application.Features.Auth.ChangeLogin;
@@ -96,7 +97,7 @@ public sealed class ChangeLoginTests(ApiFixture fixture)
     // ---------- change-login ----------
 
     [Fact]
-    public async Task ChangeLogin_200_YangiLoginIshlaydi_EskisiYoq_JoriySessiyaDavom_Audit()
+    public async Task ChangeLogin_200_YangiLoginIshlaydi_EskisiYoq_EskiAccess401_JoriySessiyaRefreshBilan_Audit()
     {
         var admin = await Factory.CreateAdminAsync();
         var (client, auth) = await Factory.LoginWithResultAsync(admin);
@@ -110,14 +111,17 @@ public sealed class ChangeLoginTests(ApiFixture fixture)
         summary.Role.Should().Be(UserRole.Admin);
         summary.HemisId.Should().Be(newLogin);
 
-        // Joriy access token ishlashda davom etadi, /me yangi loginni qaytaradi.
+        // Login o'zgardi → eski access token (security stamp) rad etiladi; joriy sessiya refresh bilan davom etadi
+        // (mijoz 401 da avtomatik refresh qiladi). refreshToken yuborilmadi — refresh tokenlarga tegilmaydi.
+        (await client.GetAsync("/api/auth/me")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var refreshed = await Factory.CreateClient().PostJsonAsync("/api/auth/refresh", new { auth.RefreshToken });
+        refreshed.StatusCode.Should().Be(HttpStatusCode.OK);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", (await refreshed.Content.ReadAsync<AuthResultDto>())!.AccessToken);
+
         var me = await client.GetAsync("/api/auth/me");
         me.StatusCode.Should().Be(HttpStatusCode.OK);
         (await me.Content.ReadAsync<UserSummaryDto>())!.HemisId.Should().Be(newLogin);
-
-        // refreshToken yuborilmadi — sessiyalarga tegilmaydi.
-        (await Factory.CreateClient().PostJsonAsync("/api/auth/refresh", new { auth.RefreshToken }))
-            .StatusCode.Should().Be(HttpStatusCode.OK);
 
         var anonymous = Factory.CreateClient();
         (await anonymous.PostJsonAsync("/api/auth/login", new { hemisId = newLogin, password = admin.Password }))
@@ -245,6 +249,13 @@ public sealed class ChangeLoginTests(ApiFixture fixture)
             .StatusCode.Should().Be(HttpStatusCode.OK);
         (await anonymous.PostJsonAsync("/api/auth/login", new { admin.HemisId, admin.Password }))
             .StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        // Parol o'zgardi → eski access token rad; joriy sessiya saqlangan refresh token bilan yangilanadi.
+        (await client.GetAsync("/api/auth/me")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var refreshed = await anonymous.PostJsonAsync("/api/auth/refresh", new { current.RefreshToken });
+        refreshed.StatusCode.Should().Be(HttpStatusCode.OK);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", (await refreshed.Content.ReadAsync<AuthResultDto>())!.AccessToken);
 
         var wrong = await client.PostJsonAsync("/api/auth/change-password",
             new { currentPassword = "Notogri-Parol", newPassword = "Boshqa-Parol-1" });

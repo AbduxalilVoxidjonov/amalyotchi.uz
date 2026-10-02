@@ -51,8 +51,10 @@ public sealed class CalendarTests(ApiFixture fixture)
         if (yesterday.Month == day.Month)
             byDate[yesterday].Should().Be(CalendarDayStatus.Late);
         calendar.Days.Where(d => d.Date > day).Should().OnlyContain(d => d.Status == CalendarDayStatus.Future);
+        // Oyning 1–2-kunlarida bu to'plam bo'sh bo'lishi mumkin (OnlyContain bo'sh to'plamda yiqiladi) — All bilan.
         calendar.Days.Where(d => d.Date < day && d.Date >= scene.Period.StartDate && d.Date != yesterday)
-            .Should().OnlyContain(d => d.Status == CalendarDayStatus.Absent || d.Status == CalendarDayStatus.DayOff, "har kuni ish kuni (bayramdan tashqari), yozuv yo'q");
+            .All(d => d.Status == CalendarDayStatus.Absent || d.Status == CalendarDayStatus.DayOff)
+            .Should().BeTrue("har kuni ish kuni (bayramdan tashqari), yozuv yo'q");
         calendar.Days.Where(d => d.Date < scene.Period.StartDate).All(d => d.Status == CalendarDayStatus.DayOff)
             .Should().BeTrue("davr boshlanmasidan oldingi kunlar — dam olish");
 

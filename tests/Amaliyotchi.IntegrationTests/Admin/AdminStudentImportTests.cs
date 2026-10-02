@@ -164,6 +164,20 @@ public sealed class AdminStudentImportTests(ApiFixture fixture)
     }
 
     [Fact]
+    public async Task Import_HajmChegaradanKatta_400_ProblemDetails_500Emas()
+    {
+        var client = await Factory.LoginAsAdminAsync();
+        var tooLarge = new byte[(int)ExcelImport.MaxFileBytes + 256 * 1024];
+
+        var response = await client.PostAsync(ImportUrl, ImportForm(tooLarge));
+
+        // Forma limiti (RequestFormLimits) — MVC 400 ValidationProblem qaytaradi; muhimi: 500 emas va stack trace yo'q.
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
+        (await response.Content.ReadAsStringAsync()).Should().NotContain("   at ");
+    }
+
+    [Fact]
     public async Task Import_BuzuqFayl_400()
     {
         var client = await Factory.LoginAsAdminAsync();

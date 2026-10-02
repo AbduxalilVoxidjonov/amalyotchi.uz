@@ -537,8 +537,9 @@ public sealed class AdminTutorsTests(ApiFixture fixture)
         (await anonymous.PostJsonAsync("/api/auth/refresh", new { auth.RefreshToken })).StatusCode
             .Should().Be(HttpStatusCode.Forbidden, "eski sessiya refresh tokeni bekor qilindi");
 
+        var tokenHash = Amaliyotchi.Application.Common.Security.RefreshTokenHash.Of(auth.RefreshToken);
         var revoked = await Factory.WithDbAsync(db =>
-            db.RefreshTokens.Where(t => t.UserId == tutor.Id && t.Token == auth.RefreshToken).Select(t => t.RevokedReason).SingleAsync());
+            db.RefreshTokens.Where(t => t.UserId == tutor.Id && t.Token == tokenHash).Select(t => t.RevokedReason).SingleAsync());
         revoked.Should().Contain("tiklandi");
     }
 

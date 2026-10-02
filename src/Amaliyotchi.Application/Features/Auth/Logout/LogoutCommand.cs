@@ -1,4 +1,5 @@
 using Amaliyotchi.Application.Common.Interfaces;
+using Amaliyotchi.Application.Common.Security;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,9 +13,10 @@ internal sealed class LogoutCommandHandler(IApplicationDbContext db, ICurrentUse
     public async Task Handle(LogoutCommand request, CancellationToken cancellationToken)
     {
         // Faqat o'zining tokenini bekor qila oladi — begona token bilan boshqa sessiyani o'chirib bo'lmaydi.
+        var tokenHash = RefreshTokenHash.Of(request.RefreshToken ?? string.Empty);
         var stored = await db.RefreshTokens
             .FirstOrDefaultAsync(
-                t => t.Token == request.RefreshToken && t.UserId == currentUser.UserId,
+                t => t.Token == tokenHash && t.UserId == currentUser.UserId,
                 cancellationToken);
 
         // Token topilmasa ham xato qaytarilmaydi: chiqish har doim muvaffaqiyatli tugaydi.
