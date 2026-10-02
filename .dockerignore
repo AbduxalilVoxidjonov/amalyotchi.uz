@@ -16,7 +16,14 @@ tests/
 docs/
 deploy/
 scratchpad/
+graphify-out/
+.claude/
+compose.yaml
 *.md
 *.zip
 **/appsettings.*.local.json
 **/.env
+**/.env.*
+**/*.pfx
+**/*.pem
+**/*.key

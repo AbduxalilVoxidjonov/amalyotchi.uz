@@ -9,7 +9,8 @@
 #   VITE_USE_MOCKS — berilmaydi (MSW faqat dev).
 
 # ---------- 1) build ----------
-FROM node:22-alpine AS build
+# Aniq versiya — takrorlanuvchan build; yangilash: Docker Hub `node` teglari (22 LTS).
+FROM node:22.23.3-alpine3.24 AS build
 WORKDIR /app
 # NODE_ENV=development faqat npm ci (devDependencies) uchun; vite build quyida NODE_ENV=production bilan.
 ENV CI=true \
@@ -40,9 +41,17 @@ RUN NODE_ENV=production npm run build -w dashboard \
     && rm -f dashboard/dist/mockServiceWorker.js
 
 # ---------- 2) runtime ----------
-FROM nginx:1.27-alpine AS runtime
+# nginx stable (1.30.x) — aniq patch; yangilash: Docker Hub `nginx` `stable-alpine` tegi qaysi versiyaga ishora qilsa.
+FROM nginx:1.30.5-alpine3.24 AS runtime
 RUN rm -f /etc/nginx/conf.d/default.conf
-COPY dashboard/nginx.conf /etc/nginx/conf.d/dashboard.conf
+# Konfiguratsiya shablon sifatida: image entrypoint'i (20-envsubst-on-templates.sh) start'da
+# /etc/nginx/templates/*.template → /etc/nginx/conf.d/ ga render qiladi. Filtr — faqat NGINX_REAL_IP_FROM
+# almashtiriladi ($host, $remote_addr kabi nginx o'zgaruvchilari tegilmaydi).
+#   NGINX_REAL_IP_FROM — CF-Connecting-IP / X-Forwarded-Proto ga ishoniladigan manba (cloudflared turgan
+#   compose tarmog'i subnet'i). compose'da DOCKER_SUBNET bilan bir xil berilishi kerak.
+ENV NGINX_ENVSUBST_FILTER="^NGINX_REAL_IP_FROM" \
+    NGINX_REAL_IP_FROM=172.30.0.0/16
+COPY dashboard/nginx.conf /etc/nginx/templates/dashboard.conf.template
 COPY --from=build /app/dashboard/dist /usr/share/nginx/html
 
 EXPOSE 80

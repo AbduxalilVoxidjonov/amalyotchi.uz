@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -34,14 +36,33 @@ public static class RateLimitPolicies
         });
     }
 
-    // RemoteIpAddress to'g'ri bo'lishi uchun Program.cs da UseForwardedHeaders limiter dan oldin turadi.
+    // RemoteIpAddress to'g'ri bo'lishi uchun Program.cs da UseForwardedHeaders limiter dan oldin turadi
+    // (production: nginx CF-Connecting-IP → X-Forwarded-For; aks holda hamma cloudflared IP'si bilan bitta chelakda).
     private static RateLimitPartition<string> PerIp(HttpContext context, int permitLimit) =>
         RateLimitPartition.GetFixedWindowLimiter(
-            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            PartitionKey(context.Connection.RemoteIpAddress),
             _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = permitLimit,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             });
+
+    /// <summary>Chelak kaliti: IPv4 (IPv4-mapped IPv6 ham — <c>::ffff:1.2.3.4</c> → <c>1.2.3.4</c>) — to'liq manzil;
+    /// IPv6 — /64 prefiks (bitta abonent odatda butun /64 oladi — har so'rovda manzil almashtirib limitni
+    /// chetlab o'tolmasin).</summary>
+    public static string PartitionKey(IPAddress? address)
+    {
+        if (address is null)
+            return "unknown";
+        if (address.IsIPv4MappedToIPv6)
+            address = address.MapToIPv4();
+        if (address.AddressFamily != AddressFamily.InterNetworkV6)
+            return address.ToString();
+
+        Span<byte> bytes = stackalloc byte[16];
+        address.TryWriteBytes(bytes, out _);
+        bytes[8..].Clear();
+        return new IPAddress(bytes).ToString() + "/64";
+    }
 }
