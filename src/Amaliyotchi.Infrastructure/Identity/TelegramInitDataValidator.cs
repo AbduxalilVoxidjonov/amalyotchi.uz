@@ -98,7 +98,8 @@ public sealed class TelegramInitDataValidator(IOptions<TelegramOptions> options)
             if (payload is null || payload.Id <= 0)
                 return false;
 
-            user = new TelegramInitUser(payload.Id, payload.FirstName, payload.LastName, payload.Username, authDate);
+            user = new TelegramInitUser(
+                payload.Id, payload.FirstName, payload.LastName, payload.Username, authDate, payload.AllowsWriteToPm == true);
             return true;
         }
         catch (JsonException)
@@ -134,5 +135,6 @@ public sealed class TelegramInitDataValidator(IOptions<TelegramOptions> options)
         [JsonPropertyName("first_name")] public string? FirstName { get; init; }
         [JsonPropertyName("last_name")] public string? LastName { get; init; }
         [JsonPropertyName("username")] public string? Username { get; init; }
+        [JsonPropertyName("allows_write_to_pm")] public bool? AllowsWriteToPm { get; init; }
     }
 }

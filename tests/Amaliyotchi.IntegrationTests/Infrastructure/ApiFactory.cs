@@ -29,10 +29,17 @@ public sealed class ApiFactory(string connectionString) : WebApplicationFactory<
     /// <summary>API'dagi <c>IClock</c> — vaqtga bog'liq testlar uchun (<c>Set</c> → <c>finally { Reset(); }</c>).</summary>
     public MutableClock Clock { get; } = new();
 
+    /// <summary>Telegram o'rniga (<c>ITelegramMessenger</c>) — "Xabarlar" testlari natijalarni shu yerda skriptlaydi.</summary>
+    public FakeTelegramMessenger Messenger { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
-        builder.ConfigureServices(services => services.Replace(ServiceDescriptor.Singleton<IClock>(Clock)));
+        builder.ConfigureServices(services =>
+        {
+            services.Replace(ServiceDescriptor.Singleton<IClock>(Clock));
+            services.Replace(ServiceDescriptor.Singleton<ITelegramMessenger>(Messenger));
+        });
 
         builder.UseSetting("ConnectionStrings:Postgres", connectionString);
         builder.UseSetting("Jwt:SigningKey", JwtSigningKey);
@@ -41,6 +48,10 @@ public sealed class ApiFactory(string connectionString) : WebApplicationFactory<
         builder.UseSetting("Telegram:MaxAgeSeconds", "86400");
         // Bot polling testlarda hech qachon ishga tushmasin (tarmoq yo'q, soxta token).
         builder.UseSetting("Telegram:BotEnabled", "false");
+        // "Xabarlar" fon tsikli o'chiq — testlar BroadcastDispatcher.RunOnceAsync ni o'zi chaqiradi (deterministik).
+        builder.UseSetting("Messaging:DispatcherEnabled", "false");
+        builder.UseSetting("Messaging:MessagesPerSecond", "1000");
+        builder.UseSetting("Messaging:BatchSize", "200");
         builder.UseSetting("Storage:RootPath", StorageRoot);
         builder.UseSetting("Seed:Enabled", "false");
         builder.UseSetting("Seed:Demo", "false");

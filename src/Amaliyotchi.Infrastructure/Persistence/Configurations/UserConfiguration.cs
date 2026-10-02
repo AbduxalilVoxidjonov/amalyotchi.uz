@@ -19,6 +19,8 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.PasswordHash).HasMaxLength(500);
         builder.Property(u => u.Role).HasConversion<int>().IsRequired();
         builder.Property(u => u.MustChangePassword).IsRequired();
+        builder.Property(u => u.TelegramLinkedAt);
+        builder.Property(u => u.TelegramBotBlockedAt);
 
         // Bir xil telefon ikki marta ro'yxatdan o'tmasin (o'chirilganlar hisobga olinmaydi).
         builder.HasIndex(u => u.PhoneNumber)

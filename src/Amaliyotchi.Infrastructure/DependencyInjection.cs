@@ -4,6 +4,7 @@ using Amaliyotchi.Application.Features.Admin.Students;
 using Amaliyotchi.Infrastructure.Bot;
 using Amaliyotchi.Infrastructure.Excel;
 using Amaliyotchi.Infrastructure.Identity;
+using Amaliyotchi.Infrastructure.Messaging;
 using Amaliyotchi.Infrastructure.Persistence;
 using Amaliyotchi.Infrastructure.Persistence.Interceptors;
 using Amaliyotchi.Infrastructure.Persistence.Seeding;
@@ -63,6 +64,16 @@ public static class DependencyInjection
             .ValidateOnStart();
         services.AddSingleton<ITelegramInitDataValidator, TelegramInitDataValidator>();
 
+        // "Xabarlar": bot nomidan yuborish (faqat BotToken'ga bog'liq, polling'ga emas) va DB-navbat dispetcheri.
+        // Fon tsikli alohida — AddBroadcastDispatcher (faqat API host'ida).
+        services.AddOptions<MessagingOptions>()
+            .Bind(configuration.GetSection(MessagingOptions.SectionName))
+            .Validate(o => o.MessagesPerSecond is >= 1 and <= 1000, "Messaging:MessagesPerSecond 1..1000 oralig'ida bo'lishi kerak (Telegram: ~30/s).")
+            .Validate(o => o.BatchSize is >= 1 and <= 500, "Messaging:BatchSize 1..500 oralig'ida bo'lishi kerak.")
+            .ValidateOnStart();
+        services.AddSingleton<ITelegramMessenger, TelegramMessenger>();
+        services.AddSingleton<BroadcastDispatcher>();
+
         services.AddOptions<StorageOptions>()
             .Bind(configuration.GetSection(StorageOptions.SectionName))
             .Validate(o => !string.IsNullOrWhiteSpace(o.RootPath), "Storage:RootPath bo'sh bo'lishi mumkin emas.")
@@ -87,6 +98,14 @@ public static class DependencyInjection
     public static IServiceCollection AddTelegramBot(this IServiceCollection services)
     {
         services.AddHostedService<TelegramBotService>();
+        return services;
+    }
+
+    /// <summary>"Xabarlar" fon dispetcheri (<see cref="BroadcastDispatcherService"/>) — faqat API host'ida, bot polling kabi
+    /// bitta instansiya. <c>Messaging:DispatcherEnabled=false</c> bo'lsa darhol chiqadi (xabarlar navbatda qoladi).</summary>
+    public static IServiceCollection AddBroadcastDispatcher(this IServiceCollection services)
+    {
+        services.AddHostedService<BroadcastDispatcherService>();
         return services;
     }
 

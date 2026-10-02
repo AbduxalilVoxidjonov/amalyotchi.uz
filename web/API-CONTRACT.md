@@ -1,6 +1,6 @@
-# API-CONTRACT v3.22
+# API-CONTRACT v3.24
 
-Oxirgi yangilanish: 26.09.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
+Oxirgi yangilanish: 02.10.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
 esa haqiqiy controller/DTO/validator/handler kodidan olingan — har bir maydon, chegara va status kod kodda bor.
 Frontend (`web/dashboard`, `web/twa`, `web/shared`) shu shaklga moslanishi kerak; v1 bilan farqlar §5 da,
@@ -25,13 +25,14 @@ v3.19 (kundalik faqat davom etayotgan davrda — `TodayDto.canWriteDiary`, `diar
 v3.20 (admin talabalar ro'yxati filtrlari — `facultyId`/`directionId`/`course`, `GET /api/admin/students/filters`) — §6.26,
 v3.21 (admin talabalar ro'yxatida `pageSize` 500 gacha) — §6.27,
 v3.22 (admin o'z loginini almashtiradi — `GET /api/auth/login-available`, `POST /api/auth/change-login`) — §6.28,
-v3.23 (admin dashboard ko'rsatkichlari loyiha qoidalariga moslandi — ochiq davrlar, davom etayotgan davr davomati) — §6.29.
+v3.23 (admin dashboard ko'rsatkichlari loyiha qoidalariga moslandi — ochiq davrlar, davom etayotgan davr davomati) — §6.29,
+v3.24 ("Xabarlar": admin Telegram orqali talabalarga xabar yuboradi — `/api/admin/messages`) — §6.30.
 
-Jami **113 ta endpoint**: Auth 9 · Admin 69 · Reports 1 · Tutor 21 · Student (TWA) 11 · Files 1 · Companies 1.
+Jami **120 ta endpoint**: Auth 9 · Admin 76 · Reports 1 · Tutor 21 · Student (TWA) 11 · Files 1 · Companies 1.
 
-> Kontrollerlarda `[Http*]` atributlari **115 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
+> Kontrollerlarda `[Http*]` atributlari **122 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
 > har birida ikkitadan action bor (`multipart/form-data` va `application/json` — `[Consumes]` bilan ajratiladi,
-> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **113**.
+> §2.6), lekin yo'l bitta. Shuning uchun endpoint (yo'l + metod) soni — **120**.
 
 ---
 
@@ -1478,6 +1479,136 @@ mumkin (kuzgi + bahorgi); kesishadigan ochiq davrga → 409.
 
 ---
 
+### 2.3.5 Xabarlar — `AdminMessagesController` (`/api/admin/messages`) — v3.24
+
+Admin Telegram'ni HEMIS ID bilan bog'lagan talabalarga bot nomidan xabar yuboradi: bittasiga, tanlanganlarga yoki
+filtr bo'yicha ommaviy. Hammasi `AdminOnly` (tyutor/talaba → **403**). Yuborishni fon dispetcheri bajaradi
+(DB-navbat, ≤ 25 xabar/s) — `POST` faqat navbatga qo'yadi va darhol **201** qaytaradi; holat `GET` bilan kuzatiladi
+(polling, masalan 2–3 s).
+
+**Qabul qiluvchi** — rol `student`, `User.TelegramUserId != null`, faol (`isActive`), o'chirilmagan. Ro'yxat va
+auditoriyani resolve qilish **bir xil** manba va filtrdan foydalanadi. Profil → guruh → yo'nalish → kafedra → fakultet
+zanjiri to'liq bo'lmagan talaba ro'yxatda bor (akademik maydonlari `null`), lekin fakultet/yo'nalish/guruh/kurs
+filtriga tushmaydi.
+
+```ts
+interface MessageRecipientRow {
+  userId: string;                 // User.Id
+  fullName: string;
+  hemisId: string | null;         // StudentProfile.HemisId
+  telegramUserId: number;         // int64 (JS'da xavfsiz oraliqda)
+  telegramLinkedAt: string | null;// ISO; v3.24 dan oldin bog'langan va audit yozuvi yo'q bo'lsa null
+  botBlocked: boolean;            // bot unga oxirgi marta yoza olmagan (403 / chat not found); yuborishga to'sqinlik qilmaydi
+  facultyName: string | null;
+  directionName: string | null;
+  groupName: string | null;
+  course: number | null;
+}
+
+type MessageAudience =
+  | { kind: 'selected'; userIds: string[] }                       // 1..5000, takrorlar olib tashlanadi
+  | { kind: 'filter'; q?: string; facultyId?: string; directionId?: string; groupId?: string; course?: number }
+  | { kind: 'all' };
+
+type MessageStatus = 'queued' | 'sending' | 'completed';
+type DeliveryStatus = 'pending' | 'sent' | 'failed' | 'blocked';
+
+interface MessageSummary {
+  id: string;
+  text: string;
+  createdAt: string;              // ISO
+  createdByName: string;          // yuborgan admin FISH (topilmasa "Noma'lum")
+  audienceLabel: string;          // server yasaydi, pastda
+  attachAppButton: boolean;
+  status: MessageStatus;
+  total: number;                  // = sent + failed + blocked + pending
+  sent: number;
+  failed: number;
+  blocked: number;
+  pending: number;
+}
+
+interface MessageDeliveryRow {
+  userId: string;
+  fullName: string;
+  hemisId: string | null;
+  status: DeliveryStatus;
+  error: string | null;           // o'zbekcha qisqa sabab (failed/blocked; pending'da — oxirgi vaqtinchalik xato)
+  sentAt: string | null;          // ISO
+}
+```
+
+**`status` qoidasi**: `pending == total` (hech biri yakunlanmagan) → `queued`; `pending > 0` → `sending`; aks holda
+`completed`.
+
+**`audienceLabel`**: `all` → `"Barcha ulanganlar"`; `selected` → `"Tanlangan: 3 ta talaba"` (haqiqiy qabul qiluvchilar
+soni, tashlab yuborilganlarsiz); `filter` → berilgan qismlar `" · "` bilan shu tartibda: fakultet **nomi** · yo'nalish nomi ·
+`"3-kurs"` · guruh nomi · `«q»` (masalan `"Axborot texnologiyalari · 3-kurs · 412-22"`); hech biri berilmasa —
+`"Barcha ulanganlar"`.
+
+**Yetkazish holatlari** (dispetcher): `sent` — Telegram qabul qildi; `blocked` — 403 (botni bloklagan, hisob o'chirilgan,
+botni ishga tushirmagan) yoki 400 chat not found, `error: "Talaba botni bloklagan yoki botni ishga tushirmagan"`, talabada
+`botBlocked = true` bo'ladi (keyingi muvaffaqiyatli yuborish yoki `allows_write_to_pm=true` bilan Telegram kirishi
+tozalaydi); 429 — `retry_after` dan keyin qayta (urinish hisoblanmaydi, `pending` qoladi); tarmoq/5xx — eksponensial
+backoff (5 s, 10 s, 20 s, 40 s), **5 urinishdan keyin `failed`**; boshqa 400/401 yoki bot tokeni sozlanmagan →
+darhol `failed` (`"Bot tokeni sozlanmagan"`). Matn oddiy (formatlashsiz, `parse_mode` yo'q), havola preview'i o'chiq.
+
+#### GET `/api/admin/messages/recipients?q&facultyId&directionId&groupId&course&page&pageSize` · 200 · 400 · 403
+
+→ `Paged<MessageRecipientRow>`, FISH bo'yicha. `pageSize` **1..500** (§1.6: oraliqdan tashqari → 20). `q` (≤ 100):
+FISH yoki HEMIS ID (qism, case-insensitive) **yoki** Telegram ID (aniq son). Filtrlar ixtiyoriy, **AND**;
+`course` 1..6, aks holda **400** `errors.Course`. Fakultet/yo'nalish/kurs variantlari — mavjud
+`GET /api/admin/students/filters` (§2.3), guruhlar — quyidagi endpoint.
+
+#### GET `/api/admin/messages/recipients/groups?facultyId&directionId&course` · 200 · 400 · 403
+
+→ `{ id: string; name: string }[]` — faqat Telegram ulangan faol talabasi bor guruhlar, nom bo'yicha. Filtrlar
+ixtiyoriy (AND).
+
+#### POST `/api/admin/messages` · 201 (+ `Location: /api/admin/messages/{id}`) · 400 · 403
+
+```jsonc
+// so'rov
+{ "text": "Ertaga 9:00 da yig'ilish", "attachAppButton": true,
+  "audience": { "kind": "filter", "facultyId": "…", "course": 3 } }
+// 201 → MessageSummary
+{ "id": "…", "text": "Ertaga 9:00 da yig'ilish", "createdAt": "2026-10-02T09:00:00+00:00",
+  "createdByName": "Bosh Admin", "audienceLabel": "Axborot texnologiyalari · 3-kurs", "attachAppButton": true,
+  "status": "queued", "total": 54, "sent": 0, "failed": 0, "blocked": 0, "pending": 54 }
+```
+
+- `text` — trim qilinadi, **1..4000** belgi (Telegram chegarasi 4096). Bo'sh/faqat bo'shliq → 400 `errors.Text`
+  ("Xabar matnini kiriting."), > 4000 → 400.
+- `audience` majburiy (yo'q → 400 `errors.Audience`); noma'lum `kind` → 400 (JSON). `selected`: `userIds` **1..5000**
+  (bo'sh → 400 "Kamida bitta talabani tanlang."), takrorlar olib tashlanadi; Telegram ulanmagan / faol emas / mavjud
+  bo'lmagan id'lar **jim** tashlanadi. `filter`: `q` ≤ 100, `course` 1..6.
+- Auditoriya server tomonda, yuborish paytidagi holat bo'yicha resolve qilinadi (snapshot — keyin talaba ulansa/uzilsa
+  ham qabul qiluvchilar o'zgarmaydi). Natija **0** → **400**
+  `detail: "Tanlangan auditoriyada Telegram ulangan talaba yo'q."` (`errors.Audience` ham shu matn).
+- `attachAppButton: true` → xabar ostida **"Ilovani ochish"** inline web_app tugmasi (`Telegram:WebAppUrl` HTTPS
+  bo'lsa; aks holda tugmasiz yuboriladi).
+- Audit: `broadcastMessageCreated` (`changes`: auditoriya, qabul qiluvchilar soni, matnning dastlabki 200 belgisi).
+
+#### GET `/api/admin/messages?page&pageSize` · 200 · 403
+
+→ `Paged<MessageSummary>`, yangi birinchi. `pageSize` 1..100.
+
+#### GET `/api/admin/messages/{id}` · 200 · 403 · 404
+
+→ `MessageSummary`. Topilmasa **404** "Xabar topilmadi.".
+
+#### GET `/api/admin/messages/{id}/deliveries?status&q&page&pageSize` · 200 · 400 · 403 · 404
+
+→ `Paged<MessageDeliveryRow>`, FISH bo'yicha. `status` ixtiyoriy (`pending|sent|failed|blocked`, noto'g'ri qiymat → 400);
+`q` — FISH yoki HEMIS ID; `pageSize` 1..500. Talaba keyin o'chirilgan/faolsizlantirilgan bo'lsa ham qator ko'rinadi.
+
+#### POST `/api/admin/messages/{id}/retry` · 200 · 403 · 404
+
+`failed` yetkazishlarni `pending` ga qaytaradi (urinishlar nollanadi; `blocked` larga **tegmaydi**) → 200 yangilangan
+`MessageSummary`. `failed` yo'q bo'lsa ham 200 (o'zgarishsiz). Audit: `broadcastMessageRetried`.
+
+---
+
 ### 2.4 Reports — `ReportsController` · `TutorOrAdmin`
 
 #### GET `/api/reports`
@@ -2529,7 +2660,10 @@ Tartib: davom etayotgan ochiq davr(lar) birinchi, keyin `startDate` kamayish (te
 | `TutorScopeLevel`                  | `faculty` · `department` · `direction` · `group`                                                                                                                                                                                                                                                                                          | admin tutors `scopes[].level`, `PUT .../scopes` body                                   |
 | `AdminStudentStatus`               | `active` · `flagged` · `unlinked`                                                                                                                                                                                                                                                                                                         | admin students                                                                         |
 | `CompanyFlag`                      | `suspicious` · `tooManyStudents` · `largeRadius` · `null` — ustuvorlik aynan shu tartibda                                                                                                                                                                                                                                                 | admin companies, tutor companies                                                       |
-| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorScopesChanged` · `studentsImported` · `company*` (§6.9) · `studentsAssignedToCompany` · `practicePeriodCreated` · `practicePeriodUpdated` · `practicePeriodGroupsChanged` · `practicePeriodClosed` · `practicePeriodDeleted` · `companyQrRotated` (v3.7) · `studentPasswordSet` · `passwordChanged` (v3.8) · `telegramLinked` (v3.9) · `studentCompanyReassigned` · `loginChanged` (v3.22) | admin audit `action`, `?action=`                                                       |
+| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorScopesChanged` · `studentsImported` · `company*` (§6.9) · `studentsAssignedToCompany` · `practicePeriodCreated` · `practicePeriodUpdated` · `practicePeriodGroupsChanged` · `practicePeriodClosed` · `practicePeriodDeleted` · `companyQrRotated` (v3.7) · `studentPasswordSet` · `passwordChanged` (v3.8) · `telegramLinked` (v3.9) · `studentCompanyReassigned` · `loginChanged` (v3.22) · `broadcastMessageCreated` · `broadcastMessageRetried` (v3.24) | admin audit `action`, `?action=`                                                       |
+| `BroadcastAudienceKind` (request)  | `selected` · `filter` · `all`                                                                                                                                                                                                                                                                                                             | `POST /api/admin/messages` `audience.kind` (v3.24)                                     |
+| `BroadcastMessageStatus`           | `queued` · `sending` · `completed` — yetkazishlardan hisoblanadi (§2.3.5)                                                                                                                                                                                                                                                                 | `MessageSummary.status`                                                                |
+| `BroadcastDeliveryStatus`          | `pending` · `sent` · `failed` · `blocked`                                                                                                                                                                                                                                                                                                 | `MessageDeliveryRow.status`, `?status=`                                                |
 | `SettingType`                      | `int` · `bool` · `weekdays`                                                                                                                                                                                                                                                                                                               | settings `type`                                                                        |
 | `SettingKey` (string const)        | `geofenceRadius` · `lateTolerance` · `minGpsAccuracy` · `autoCheckout` · `workDays` · `dailyReportRequired` · `minReportLength` · `diaryPdfRequired` · `checkInWindow` · `checkinPhotoRequired` · `checkinQrRequired` · `maxStudentsPerCompany`                                                                                                                                    | settings                                                                               |
 | `DocumentTemplateKind`             | `contract` · `referral` · `reference`                                                                                                                                                                                                                                                                                                     | settings templates                                                                     |
@@ -3250,3 +3384,19 @@ Foydalanuvchi qarori: talabalar ruxsat (leave) so'ramaydi — funksiya butunlay 
   davrlardagi `submitted` arizalar.
 - **`GET /api/admin/faculties` `attendancePct`** — dashboard bilan bir hisob (sababli maxrajdan chiqadi).
 - Endpoint soni o'zgarmadi, migratsiya yo'q.
+
+### 6.30 v3.23 → v3.24 (02.10.2026): "Xabarlar" — admin Telegram orqali xabar yuboradi
+
+- **Yangi endpoint'lar (7 ta, AdminOnly)** — §2.3.5: `GET /api/admin/messages/recipients`,
+  `GET /api/admin/messages/recipients/groups`, `POST /api/admin/messages` (201 + Location), `GET /api/admin/messages`,
+  `GET /api/admin/messages/{id}`, `GET /api/admin/messages/{id}/deliveries`, `POST /api/admin/messages/{id}/retry`.
+- **Yetkazish** — fon dispetcheri (API host'ida, DB-navbat `broadcast_deliveries`, ≤ 25 xabar/s): `POST` darhol 201
+  qaytaradi, holat `GET /api/admin/messages/{id}` bilan kuzatiladi (`queued` → `sending` → `completed`).
+  Yuborish faqat `Telegram:BotToken` ga bog'liq (`Telegram:BotEnabled` — polling — o'chiq bo'lsa ham ishlaydi).
+- **Enum'lar:** `BroadcastAudienceKind`, `BroadcastMessageStatus`, `BroadcastDeliveryStatus` (§3.1);
+  `AuditAction` + `broadcastMessageCreated` (67), `broadcastMessageRetried` (68).
+- **Talaba Telegram kirishi:** initData `user.allows_write_to_pm=true` bo'lsa talabaning "bot bloklangan" belgisi
+  tozalanadi (`POST /api/auth/telegram`, `/telegram/link`); javob shakli o'zgarmadi.
+- **Migratsiya `AdminMessages`:** `broadcast_messages`, `broadcast_deliveries` jadvallari; `users.telegram_linked_at`
+  (mavjud bog'lanishlar audit jurnalidagi `telegramLinked` dan tiklanadi), `users.telegram_bot_blocked_at`.
+- Endpoint soni **113 → 120** (Admin 69 → 76; `[Http*]` atributlari 115 → 122).

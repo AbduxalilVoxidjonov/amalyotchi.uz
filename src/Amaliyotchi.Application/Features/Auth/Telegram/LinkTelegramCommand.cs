@@ -44,7 +44,11 @@ internal sealed class LinkTelegramCommandHandler(
         }
 
         if (user.TelegramUserId == tgUser.Id)
+        {
+            if (tgUser.AllowsWriteToPm)
+                user.ClearBotBlocked();
             return await sessions.IssueSessionAsync(user, now, auditReason: "Telegram", cancellationToken);
+        }
 
         // Unikal indeks (telegram_user_id) o'chirilgan hisoblarni ham qamraydi — shuning uchun filtrsiz tekshiriladi.
         if (await IsTakenByOtherAsync(tgUser.Id, user.Id, cancellationToken))
@@ -57,7 +61,7 @@ internal sealed class LinkTelegramCommandHandler(
         try
         {
             // initData'da telefon yo'q — talabaning mavjud telefoni saqlanadi.
-            user.LinkTelegram(tgUser.Id);
+            user.LinkTelegram(tgUser.Id, linkedAt: now);
         }
         catch (ConflictException)
         {
@@ -66,6 +70,11 @@ internal sealed class LinkTelegramCommandHandler(
                 cancellationToken);
             throw;
         }
+
+        // Yangi bog'langan hisob: oldingi (boshqa Telegram'dagi) blok belgisi ma'nosiz — bot yoza olishi
+        // initData'dagi allows_write_to_pm bilan tasdiqlansa tozalanadi.
+        if (tgUser.AllowsWriteToPm)
+            user.ClearBotBlocked();
 
         await audit.WriteAsync(
             AuditAction.TelegramLinked, nameof(User), user.Id.ToString(),

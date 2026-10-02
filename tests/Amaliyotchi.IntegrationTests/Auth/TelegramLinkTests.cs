@@ -54,6 +54,54 @@ public sealed class TelegramLinkTests(ApiFixture fixture)
     }
 
     [Fact]
+    public async Task Boglash_TelegramLinkedAt_Ornatiladi_QaytaBoglashdaOzgarmaydi()
+    {
+        var student = await CreateStudentWithPasswordAsync(linkTelegram: false);
+        var tgId = NewTelegramId();
+        var before = DateTimeOffset.UtcNow.AddSeconds(-5);
+
+        (await PostLinkAsync(InitData(tgId), student.HemisId, TempPassword)).StatusCode.Should().Be(HttpStatusCode.OK);
+        var linkedAt = await Factory.WithDbAsync(db => db.Users.Where(u => u.Id == student.Id)
+            .Select(u => u.TelegramLinkedAt).SingleAsync());
+        linkedAt.Should().NotBeNull().And.BeOnOrAfter(before).And.BeOnOrBefore(DateTimeOffset.UtcNow.AddSeconds(5));
+
+        (await PostLinkAsync(InitData(tgId), student.HemisId, TempPassword)).StatusCode.Should().Be(HttpStatusCode.OK);
+        var again = await Factory.WithDbAsync(db => db.Users.Where(u => u.Id == student.Id)
+            .Select(u => u.TelegramLinkedAt).SingleAsync());
+        again.Should().Be(linkedAt, "qayta bog'lash birinchi vaqtni o'zgartirmaydi");
+    }
+
+    [Fact]
+    public async Task TelegramLogin_AllowsWriteToPm_BotBlokiniTozalaydi_FalseBolsaQoladi()
+    {
+        var student = await Factory.CreateStudentAsync();
+        var tgId = student.TelegramId!.Value;
+        await Factory.WithDbAsync(async db =>
+        {
+            var user = await db.Users.FirstAsync(u => u.Id == student.Id);
+            user.MarkBotBlocked(DateTimeOffset.UtcNow);
+            await db.SaveChangesAsync();
+        });
+
+        async Task<DateTimeOffset?> BlockedAt() => await Factory.WithDbAsync(db =>
+            db.Users.Where(u => u.Id == student.Id).Select(u => u.TelegramBotBlockedAt).SingleAsync());
+
+        async Task Login(bool? allows)
+        {
+            var initData = TelegramInitDataFactory.Create(tgId, ApiFactory.TelegramBotToken, DateTimeOffset.UtcNow, allowsWriteToPm: allows);
+            var response = await Factory.CreateClient().PostJsonAsync("/api/auth/telegram", new { initData });
+            response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+        }
+
+        await Login(null);
+        (await BlockedAt()).Should().NotBeNull("allows_write_to_pm yo'q — blok saqlanadi");
+        await Login(false);
+        (await BlockedAt()).Should().NotBeNull();
+        await Login(true);
+        (await BlockedAt()).Should().BeNull("bot yana yoza oladi");
+    }
+
+    [Fact]
     public async Task QaytaBoglash_ShuId_Bilan_200_Idempotent()
     {
         var student = await CreateStudentWithPasswordAsync(linkTelegram: false);

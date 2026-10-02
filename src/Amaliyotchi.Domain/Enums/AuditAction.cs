@@ -105,5 +105,12 @@ public enum AuditAction
 
     /// <summary>Admin o'z loginini (HEMIS ID) almashtirdi (<c>POST /api/auth/change-login</c>). <c>changes</c> —
     /// <c>{ oldLogin, newLogin }</c>, parol/sirlarsiz.</summary>
-    LoginChanged = 66
+    LoginChanged = 66,
+
+    /// <summary>Admin Telegram orqali xabar yubordi ("Xabarlar"). <c>changes</c> — auditoriya, qabul qiluvchilar soni va
+    /// matnning qisqartirilgan boshi.</summary>
+    BroadcastMessageCreated = 67,
+
+    /// <summary>Admin xabarning muvaffaqiyatsiz (<c>failed</c>) yetkazishlarini qayta navbatga qo'ydi.</summary>
+    BroadcastMessageRetried = 68
 }

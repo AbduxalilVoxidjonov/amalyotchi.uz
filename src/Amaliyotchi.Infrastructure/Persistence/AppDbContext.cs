@@ -10,6 +10,7 @@ using Amaliyotchi.Domain.Files;
 using Amaliyotchi.Domain.Grading;
 using Amaliyotchi.Domain.Identity;
 using Amaliyotchi.Domain.Leave;
+using Amaliyotchi.Domain.Messaging;
 using Amaliyotchi.Domain.Organization;
 using Amaliyotchi.Domain.Practice;
 using Amaliyotchi.Domain.Settings;
@@ -52,6 +53,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Holiday> Holidays => Set<Holiday>();
     public DbSet<DocumentTemplate> DocumentTemplates => Set<DocumentTemplate>();
     public DbSet<StoredFile> StoredFiles => Set<StoredFile>();
+    public DbSet<BroadcastMessage> BroadcastMessages => Set<BroadcastMessage>();
+    public DbSet<BroadcastDelivery> BroadcastDeliveries => Set<BroadcastDelivery>();
 
     /// <summary>Npgsql <c>timestamptz</c> ga faqat UTC (offset 0) <see cref="DateTimeOffset"/> yozadi — Toshkent
     /// (+05:00) qiymati (<c>PracticeTime.At</c>) to'g'ridan-to'g'ri saqlansa <c>ArgumentException</c>. Shuning uchun

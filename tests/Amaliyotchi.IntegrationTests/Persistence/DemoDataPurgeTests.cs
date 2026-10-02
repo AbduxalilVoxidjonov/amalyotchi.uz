@@ -2,6 +2,7 @@ using System.Net;
 using Amaliyotchi.Api.Infrastructure;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Domain.Identity;
+using Amaliyotchi.Domain.Messaging;
 using Amaliyotchi.Infrastructure.Persistence.Seeding;
 using Amaliyotchi.IntegrationTests.Infrastructure;
 using FluentAssertions;
@@ -108,6 +109,22 @@ public sealed class DemoDataPurgeTests(DemoPurgeFixture fixture) : IClassFixture
         var application = await factory.CreateApprovedApplicationAsync(student, period, company, tutor.Id);
         var realFile = await factory.CreateStoredFileAsync(student.Id);
 
+        // "Xabarlar": admin xabari demo talabaga ham, haqiqiy talabaga ham yuborilgan — demo yetkazish FK (Restrict)
+        // purge'ni to'xtatmasligi kerak: u o'chadi, xabar va haqiqiy talabaga yetkazish qoladi.
+        var (messageId, realDeliveryId) = await factory.WithDbAsync(async db =>
+        {
+            var demoStudentId = await db.StudentProfiles.Where(p => p.HemisId == DemoDataSeeder.StudentHemisId)
+                .Select(p => p.UserId).SingleAsync();
+            var message = BroadcastMessage.Create("Demo va haqiqiy", false, BroadcastAudienceKind.All, "Barcha ulanganlar", "{}");
+            var demoDelivery = BroadcastDelivery.Create(message.Id, demoStudentId, 777_000_001, DateTimeOffset.UtcNow);
+            demoDelivery.MarkSent(DateTimeOffset.UtcNow, 1);
+            var realDelivery = BroadcastDelivery.Create(message.Id, student.Id, student.TelegramId!.Value, DateTimeOffset.UtcNow);
+            db.BroadcastMessages.Add(message);
+            db.BroadcastDeliveries.AddRange(demoDelivery, realDelivery);
+            await db.SaveChangesAsync();
+            return (message.Id, realDelivery.Id);
+        });
+
         var before = await SnapshotAsync(factory);
         var (settings, holidays, years) = await factory.WithDbAsync(async db =>
             (await db.AppSettings.CountAsync(), await db.Holidays.CountAsync(), await db.AcademicYears.IgnoreQueryFilters().CountAsync()));
@@ -116,6 +133,7 @@ public sealed class DemoDataPurgeTests(DemoPurgeFixture fixture) : IClassFixture
 
         report.Applied.Should().BeTrue();
         report.Blockers.Should().BeEmpty();
+        report.Count("broadcast_deliveries").Should().Be(1, "faqat demo talabaga yetkazish");
         (await AnalyzeAsync(factory)).Found.Should().BeFalse("demo ma'lumot qolmadi");
 
         var after = await SnapshotAsync(factory);
@@ -140,6 +158,9 @@ public sealed class DemoDataPurgeTests(DemoPurgeFixture fixture) : IClassFixture
             (await db.PracticePeriods.AnyAsync(p => p.Id == period.Id)).Should().BeTrue();
             (await db.PracticeApplications.AnyAsync(a => a.Id == application.Id)).Should().BeTrue();
             (await db.StoredFiles.AnyAsync(f => f.Id == realFile.Id)).Should().BeTrue();
+            (await db.BroadcastMessages.AnyAsync(m => m.Id == messageId)).Should().BeTrue("admin xabari qoladi");
+            (await db.BroadcastDeliveries.Where(d => d.MessageId == messageId).Select(d => d.Id).ToListAsync())
+                .Should().Equal(realDeliveryId);
 
             // DbSeeder ma'lumoti tegilmagan.
             (await db.AppSettings.CountAsync()).Should().Be(settings);
@@ -378,6 +399,8 @@ public sealed class DemoDataPurgeTests(DemoPurgeFixture fixture) : IClassFixture
             ["app_settings"] = await db.AppSettings.CountAsync(),
             ["holidays"] = await db.Holidays.IgnoreQueryFilters().CountAsync(),
             ["document_templates"] = await db.DocumentTemplates.IgnoreQueryFilters().CountAsync(),
-            ["stored_files"] = await db.StoredFiles.CountAsync()
+            ["stored_files"] = await db.StoredFiles.CountAsync(),
+            ["broadcast_messages"] = await db.BroadcastMessages.CountAsync(),
+            ["broadcast_deliveries"] = await db.BroadcastDeliveries.CountAsync()
         });
 }

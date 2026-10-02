@@ -6,6 +6,7 @@ using Amaliyotchi.Domain.Files;
 using Amaliyotchi.Domain.Grading;
 using Amaliyotchi.Domain.Identity;
 using Amaliyotchi.Domain.Leave;
+using Amaliyotchi.Domain.Messaging;
 using Amaliyotchi.Domain.Organization;
 using Amaliyotchi.Domain.Practice;
 using Amaliyotchi.Domain.Settings;
@@ -45,6 +46,8 @@ public interface IApplicationDbContext
     DbSet<Holiday> Holidays { get; }
     DbSet<DocumentTemplate> DocumentTemplates { get; }
     DbSet<StoredFile> StoredFiles { get; }
+    DbSet<BroadcastMessage> BroadcastMessages { get; }
+    DbSet<BroadcastDelivery> BroadcastDeliveries { get; }
 
     /// <summary>Tranzaksiya va execution strategy (<c>CreateExecutionStrategy</c> / <c>BeginTransactionAsync</c>) uchun.
     /// Npgsql retry yoqilgan — foydalanuvchi tranzaksiyasi doimo strategy ichida ochilishi kerak

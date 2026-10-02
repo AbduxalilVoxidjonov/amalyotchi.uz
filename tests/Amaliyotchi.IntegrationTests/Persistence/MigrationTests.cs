@@ -134,7 +134,7 @@ public sealed class MigrationTests(ApiFixture fixture)
             tables.Should().Contain(["users", "student_profiles", "tutor_assignments", "tutor_scopes", "tutor_faculties", "companies", "practice_periods",
                 "practice_period_groups", "practice_applications", "daily_attendances", "attendance_events",
                 "diary_entries", "diary_attachments", "leave_requests", "practice_grades", "app_settings",
-                "holidays", "document_templates", "stored_files", "__migrations"]);
+                "holidays", "document_templates", "stored_files", "broadcast_messages", "broadcast_deliveries", "__migrations"]);
 
             var badNames = await db.Database
                 .SqlQueryRaw<string>(

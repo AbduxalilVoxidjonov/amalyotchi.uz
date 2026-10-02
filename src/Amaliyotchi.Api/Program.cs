@@ -38,6 +38,8 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 // Telegram bot (long polling) — faqat Telegram:BotEnabled=true va token + WebAppUrl berilganda ishlaydi.
 builder.Services.AddTelegramBot();
+// "Xabarlar" yetkazish dispetcheri (DB-navbat, ≤ 25 xabar/s) — faqat Telegram:BotToken'ga bog'liq, BotEnabled'ga emas.
+builder.Services.AddBroadcastDispatcher();
 // Fon xizmati (bot) kutilmagan xato bilan yiqilsa butun API to'xtamasin — xato log'ga yoziladi, HTTP ishlashda davom etadi.
 builder.Services.Configure<HostOptions>(options =>
     options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore);

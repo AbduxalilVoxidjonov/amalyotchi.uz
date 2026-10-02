@@ -436,6 +436,11 @@ public sealed class DemoDataPurger(
         plan.RefreshTokens.UnionWith(await db.RefreshTokens.AsNoTracking()
             .Where(t => demoUsers.Contains(t.UserId)).Select(t => t.Id).ToListAsync(ct));
 
+        // "Xabarlar": demo talabaga yuborilgan yetkazishlar (FK Restrict — aniq o'chiriladi). Xabarning o'zi (admin yozgan)
+        // va boshqa talabalarga yetkazishlar qoladi; xabar sonlari GROUP BY bilan hisoblangani uchun o'z-o'zidan kamayadi.
+        plan.BroadcastDeliveries.UnionWith(await db.BroadcastDeliveries.AsNoTracking()
+            .Where(d => demoUsers.Contains(d.RecipientUserId)).Select(d => d.Id).ToListAsync(ct));
+
         var deletedIds = plan.AllEntityIds().Select(id => id.ToString()).ToList();
         plan.AuditLogs.UnionWith(await db.AuditLogs.AsNoTracking()
             .Where(a => (a.UserId != null && demoUsers.Contains(a.UserId.Value))
@@ -644,6 +649,7 @@ public sealed class DemoDataPurger(
         await Delete("tutor_scopes", plan.TutorScopes, ids => db.TutorScopes.IgnoreQueryFilters().Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
         await Delete("tutor_faculties", plan.TutorFaculties, ids => db.TutorFaculties.Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
         await Delete("refresh_tokens", plan.RefreshTokens, ids => db.RefreshTokens.Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
+        await Delete("broadcast_deliveries", plan.BroadcastDeliveries, ids => db.BroadcastDeliveries.Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
         await Delete("student_profiles", plan.StudentProfiles, ids => db.StudentProfiles.IgnoreQueryFilters().Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
         await Delete("users", plan.DemoUsers, ids => db.Users.IgnoreQueryFilters().Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
         await Delete("companies", plan.Companies, ids => db.Companies.IgnoreQueryFilters().Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
@@ -702,6 +708,7 @@ public sealed class DemoDataPurger(
         public HashSet<Guid> Files { get; } = [];
         public List<string> StoragePaths { get; } = [];
         public HashSet<Guid> RefreshTokens { get; } = [];
+        public HashSet<Guid> BroadcastDeliveries { get; } = [];
         public HashSet<Guid> AuditLogs { get; } = [];
 
         public HashSet<Guid> DemoUsers => [.. Tutors, .. Students];
@@ -755,6 +762,7 @@ public sealed class DemoDataPurger(
             new("leave_requests", Leaves.Count),
             new("practice_grades", Grades.Count),
             new("stored_files", Files.Count),
+            new("broadcast_deliveries", BroadcastDeliveries.Count),
             new("audit_logs", AuditLogs.Count)
         ];
 

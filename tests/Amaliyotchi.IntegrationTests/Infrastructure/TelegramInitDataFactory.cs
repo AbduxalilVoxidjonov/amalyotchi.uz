@@ -15,11 +15,13 @@ public static class TelegramInitDataFactory
         DateTimeOffset authDate,
         string firstName = "Ali",
         string? username = "ali_student",
-        string? hashOverride = null)
+        string? hashOverride = null,
+        bool? allowsWriteToPm = null)
     {
+        var allows = allowsWriteToPm is { } value ? $$""","allows_write_to_pm":{{(value ? "true" : "false")}}""" : string.Empty;
         var userJson = username is null
-            ? $$"""{"id":{{telegramId}},"first_name":"{{firstName}}","language_code":"uz"}"""
-            : $$"""{"id":{{telegramId}},"first_name":"{{firstName}}","username":"{{username}}","language_code":"uz"}""";
+            ? $$"""{"id":{{telegramId}},"first_name":"{{firstName}}","language_code":"uz"{{allows}}}"""
+            : $$"""{"id":{{telegramId}},"first_name":"{{firstName}}","username":"{{username}}","language_code":"uz"{{allows}}}""";
 
         var fields = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {

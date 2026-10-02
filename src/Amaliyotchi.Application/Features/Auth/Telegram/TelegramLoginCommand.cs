@@ -48,6 +48,10 @@ internal sealed class TelegramLoginCommandHandler(
                 "Hisobingiz faol emas. Tyutoringizga murojaat qiling.", cancellationToken);
         }
 
+        // Mini App'dan kirdi va bot unga yoza oladi — "botni bloklagan" belgisi eskirgan (xabarlar yana yetkaziladi).
+        if (tgUser.AllowsWriteToPm)
+            user.ClearBotBlocked();
+
         return await sessions.IssueSessionAsync(user, now, auditReason: "Telegram", cancellationToken);
     }
 

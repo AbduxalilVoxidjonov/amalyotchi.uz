@@ -43,6 +43,14 @@ public sealed class User : AuditableEntity, ISoftDeletable
     /// <summary>Talaba uchun — Telegram hisobi. Admin/tyutorda bo'lmasligi mumkin.</summary>
     public long? TelegramUserId { get; private set; }
 
+    /// <summary>Telegram hisobi qachon bog'langan (<see cref="LinkTelegram"/>). Shu maydon qo'shilishidan oldin
+    /// bog'langan hisoblarda null bo'lishi mumkin (migratsiya audit jurnalidan tiklaydi).</summary>
+    public DateTimeOffset? TelegramLinkedAt { get; private set; }
+
+    /// <summary>Bot bu talabaga yoza olmasligi aniqlangan vaqt (Telegram 403: botni bloklagan / ishga tushirmagan,
+    /// 400 chat not found). Muvaffaqiyatli yuborish yoki <c>allows_write_to_pm=true</c> bilan Telegram kirishi tozalaydi.</summary>
+    public DateTimeOffset? TelegramBotBlockedAt { get; private set; }
+
     /// <summary>Talabaning fakulteti; tyutor uchun — ASOSIY fakultet (<see cref="Faculties"/> ro'yxatining birinchisi,
     /// auth/JWT mosligi uchun). Admin uchun null — u barcha fakultetni ko'radi. Tyutorning to'liq fakultetlar to'plami —
     /// <see cref="Faculties"/>; admin-tyutor mantig'i o'shanga tayanadi.</summary>
@@ -107,8 +115,9 @@ public sealed class User : AuditableEntity, ISoftDeletable
 
     /// <summary>Talabaga Telegram hisobini bog'laydi. <paramref name="phoneNumber"/> berilsa telefon ham
     /// yangilanadi; berilmasa (<c>null</c> — masalan Mini App <c>initData</c> da telefon yo'q) mavjud telefon
-    /// o'zgarmay qoladi. Shu id bilan qayta bog'lash — xato emas (idempotent).</summary>
-    public void LinkTelegram(long telegramUserId, string? phoneNumber = null)
+    /// o'zgarmay qoladi. Shu id bilan qayta bog'lash — xato emas (idempotent). <see cref="TelegramLinkedAt"/> —
+    /// birinchi bog'lash vaqti (<paramref name="linkedAt"/>, berilmasa joriy UTC); qayta bog'lashda o'zgarmaydi.</summary>
+    public void LinkTelegram(long telegramUserId, string? phoneNumber = null, DateTimeOffset? linkedAt = null)
     {
         if (Role != UserRole.Student)
             throw new DomainException("Telegram hisobi faqat talabaga bog'lanadi.");
@@ -116,6 +125,7 @@ public sealed class User : AuditableEntity, ISoftDeletable
             throw new ConflictException("Bu hisobga boshqa Telegram akkaunti bog'langan.");
 
         TelegramUserId = telegramUserId;
+        TelegramLinkedAt ??= linkedAt ?? DateTimeOffset.UtcNow;
         if (phoneNumber is not null)
             PhoneNumber = Phone.Normalize(phoneNumber);
     }
@@ -213,6 +223,12 @@ public sealed class User : AuditableEntity, ISoftDeletable
     }
 
     public void MarkLogin(DateTimeOffset at) => LastLoginAt = at;
+
+    /// <summary>Bot talabaga yoza olmadi (bloklangan / ishga tushirilmagan). Allaqachon belgilangan bo'lsa — birinchi vaqt saqlanadi.</summary>
+    public void MarkBotBlocked(DateTimeOffset at) => TelegramBotBlockedAt ??= at;
+
+    /// <summary>Bot yana yoza oladi (muvaffaqiyatli yuborish yoki Telegram kirishida <c>allows_write_to_pm=true</c>).</summary>
+    public void ClearBotBlocked() => TelegramBotBlockedAt = null;
 
     /// <summary>Hisobni faolsizlantiradi va uning barcha refresh tokenlarini bekor qiladi.
     /// DIQQAT: faqat XOTIRADAGI tokenlar bekor qilinadi — chaqiruvchi foydalanuvchini
