@@ -71,6 +71,32 @@ describe('diag (production beacon)', () => {
     }
   });
 
+  it("shaxsiy ma'lumot (JWT, initData, telefon, parol) beacon query'siga tushmaydi", () => {
+    mod.installDiagnostics();
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NSJ9.c2lnbmF0dXJlLXZhbHVl';
+    mod.diagError(
+      'route-error',
+      new Error(
+        `Bearer ${jwt} query_id=AAH1&user=%7B%22id%22%3A1%7D&hash=abc123 tel +998 90 123-45-67 {"password":"Sir123"}`,
+      ),
+    );
+    const [, err] = payloads();
+    expect(err).toBeDefined();
+    const m = String(err!['m']);
+    expect(m).not.toContain(jwt);
+    expect(m).not.toContain('abc123');
+    expect(m).not.toContain('%7B%22id');
+    expect(m).not.toContain('123-45-67');
+    expect(m).not.toContain('Sir123');
+    expect(m).toContain('[phone]');
+  });
+
+  it('redactSensitive: oddiy matn o‘zgarmaydi', () => {
+    expect(mod.redactSensitive('TypeError: x is undefined at /kundalik')).toBe(
+      'TypeError: x is undefined at /kundalik',
+    );
+  });
+
   it('shortUserAgent: Telegram Android WebView', () => {
     expect(
       mod.shortUserAgent(

@@ -79,6 +79,28 @@ function navigationType(): string | undefined {
   }
 }
 
+/**
+ * Beacon query'si nginx access log'ga tushadi — shaxsiy ma'lumot u yerga yozilmasin. Xato matni/stack'da
+ * tasodifan uchrashi mumkin bo'lganlar niqoblanadi: JWT (access/refresh token), `Bearer …`, Telegram
+ * initData maydonlari (`hash=`, `user=`, `query_id=`, `tgWebAppData=` …, URL-kodlangan ham), parol/token
+ * kalitlari va O'zbekiston telefon raqamlari (+998 …).
+ */
+const REDACTIONS: ReadonlyArray<[RegExp, string]> = [
+  [/eyJ[\w-]{5,}\.[\w-]{5,}\.[\w-]*/g, '[jwt]'],
+  [/Bearer\s+[^\s"\\]+/gi, 'Bearer [redacted]'],
+  [
+    /\b(initData|tgWebAppData|query_id|user|hash|signature|auth_date|token|access_?token|refresh_?token|password|parol)(=|%3D|\\?"?\s*:\s*\\?"?)[^&\s"\\,}]*/gi,
+    '$1$2[redacted]',
+  ],
+  [/\+?998[\s-]?\(?\d{2}\)?[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}/g, '[phone]'],
+];
+
+export function redactSensitive(text: string): string {
+  let out = text;
+  for (const [re, replacement] of REDACTIONS) out = out.replace(re, replacement);
+  return out;
+}
+
 /** Bitta beacon. Limitdan oshsa yoki o'chiq bo'lsa — hech narsa. */
 export function diag(event: string, data: Record<string, unknown> = {}): void {
   if (!enabled()) return;
@@ -96,7 +118,7 @@ export function diag(event: string, data: Record<string, unknown> = {}): void {
       n: sent + 1,
       ...data,
     };
-    const d = JSON.stringify(payload).slice(0, MAX_PAYLOAD);
+    const d = redactSensitive(JSON.stringify(payload)).slice(0, MAX_PAYLOAD);
     navigator.sendBeacon(`${env.apiUrl}/api/__diag?d=${encodeURIComponent(d)}`);
   } catch {
     /* diagnostika hech qachon ilovani yiqitmasin */

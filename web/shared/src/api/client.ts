@@ -79,11 +79,22 @@ async function parseBody(response: Response): Promise<unknown> {
 
 function toApiError(response: Response, body: unknown): ApiError {
   const problem: ProblemDetails | undefined = isProblemDetails(body) ? body : undefined;
-  const fallback =
-    response.status === 401
-      ? 'Avtorizatsiya talab qilinadi.'
-      : response.statusText || `HTTP ${response.status}`;
-  return ApiError.fromProblem(response.status, problem, fallback);
+  return ApiError.fromProblem(response.status, problem, fallbackMessage(response.status));
+}
+
+/**
+ * ProblemDetails bo'lmagan javob (nginx 502/503/504 HTML sahifasi, 413, 429 …) uchun foydalanuvchiga
+ * tushunarli matn. `statusText` ("Bad Gateway") yoki "HTTP 502" ko'rsatilmaydi.
+ */
+function fallbackMessage(status: number): string {
+  if (status === 401) return 'Avtorizatsiya talab qilinadi.';
+  if (status === 403) return "Bu amal uchun ruxsat yo'q.";
+  if (status === 404) return "So'ralgan ma'lumot topilmadi.";
+  if (status === 413) return 'Yuborilayotgan fayl hajmi juda katta.';
+  if (status === 429) return "So'rovlar juda ko'p. Birozdan so'ng qayta urinib ko'ring.";
+  if (status >= 500)
+    return "Server vaqtincha javob bermayapti. Birozdan so'ng qayta urinib ko'ring.";
+  return "So'rovni bajarib bo'lmadi. Qayta urinib ko'ring.";
 }
 
 /**

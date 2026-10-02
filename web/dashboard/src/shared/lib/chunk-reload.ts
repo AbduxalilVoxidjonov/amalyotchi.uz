@@ -8,6 +8,18 @@
 export const CHUNK_RELOAD_KEY = 'amaliyotchi:chunk-reload-at';
 export const RELOAD_COOLDOWN_MS = 60_000;
 
+const CHUNK_ERROR_RE =
+  /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Unable to preload CSS|Loading (CSS )?chunk [\w-]+ failed|ChunkLoadError/i;
+
+/** Lazy import / preload xatosimi (chunk topilmadi yoki yuklanmadi). */
+export function isChunkLoadError(error: unknown): boolean {
+  if (!error || typeof error !== 'object')
+    return typeof error === 'string' && CHUNK_ERROR_RE.test(error);
+  const { name, message } = error as { name?: unknown; message?: unknown };
+  if (name === 'ChunkLoadError') return true;
+  return typeof message === 'string' && CHUNK_ERROR_RE.test(message);
+}
+
 /** Testlarda almashtiriladi (jsdom `location.reload` ni qo'llamaydi). */
 export const chunkReloadDeps = {
   reload: () => window.location.reload(),

@@ -13,6 +13,7 @@ import { ComingSoonPage } from '@/pages/ComingSoonPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { RootRedirect } from '@/pages/RootRedirect';
 import { AppShell } from './layout/AppShell';
+import { RouteError } from './RouteError';
 
 // Lazy chunk'lar — har bo'lim alohida yuklanadi.
 const LoginPage = lazy(() => import('@/features/auth/LoginPage'));
@@ -72,6 +73,8 @@ function RootLayout() {
 export const routes: RouteObject[] = [
   {
     element: <RootLayout />,
+    // Render/lazy-chunk xatosi → inglizcha "Unexpected Application Error!" o'rniga o'zbekcha ekran.
+    errorElement: <RouteError scope="root" />,
     children: [
       { path: '/', element: <RootRedirect /> },
       { path: '/login', element: <LoginPage /> },
@@ -84,34 +87,40 @@ export const routes: RouteObject[] = [
           </RequireRole>
         ),
         children: [
-          { index: true, element: <AdminDashboardPage /> },
-          { path: 'faculties', element: <FacultiesPage /> },
-          { path: 'faculties/:facultyId', element: <FacultyDepartmentsPage /> },
           {
-            path: 'faculties/:facultyId/departments/:departmentId',
-            element: <DepartmentDirectionsPage />,
+            // Sahifa xatosi AppShell ichida ko'rsatiladi (sidebar/topbar ishlaydi).
+            errorElement: <RouteError scope="page" />,
+            children: [
+              { index: true, element: <AdminDashboardPage /> },
+              { path: 'faculties', element: <FacultiesPage /> },
+              { path: 'faculties/:facultyId', element: <FacultyDepartmentsPage /> },
+              {
+                path: 'faculties/:facultyId/departments/:departmentId',
+                element: <DepartmentDirectionsPage />,
+              },
+              {
+                path: 'faculties/:facultyId/departments/:departmentId/directions/:directionId',
+                element: <DirectionGroupsPage />,
+              },
+              { path: 'tutors', element: <TutorsPage /> },
+              { path: 'tutors/:tutorId', element: <TutorDetailPage /> },
+              { path: 'students', element: <StudentsPage /> },
+              { path: 'students/:studentId', element: <AdminStudentDetailPage /> },
+              { path: 'companies', element: <CompaniesPage /> },
+              { path: 'companies/:companyId', element: <CompanyDetailPage /> },
+              { path: 'practice-periods', element: <PracticePeriodsPage /> },
+              { path: 'practice-periods/new', element: <PracticePeriodCreatePage /> },
+              { path: 'practice-periods/:periodId', element: <PracticePeriodDetailPage /> },
+              {
+                path: 'practice-periods/:periodId/groups/:groupId',
+                element: <PeriodGroupPage />,
+              },
+              { path: 'reports', element: <ReportsPage /> },
+              { path: 'audit', element: <AuditPage /> },
+              { path: 'settings', element: <SettingsPage /> },
+              { path: '*', element: <ComingSoonPage /> },
+            ],
           },
-          {
-            path: 'faculties/:facultyId/departments/:departmentId/directions/:directionId',
-            element: <DirectionGroupsPage />,
-          },
-          { path: 'tutors', element: <TutorsPage /> },
-          { path: 'tutors/:tutorId', element: <TutorDetailPage /> },
-          { path: 'students', element: <StudentsPage /> },
-          { path: 'students/:studentId', element: <AdminStudentDetailPage /> },
-          { path: 'companies', element: <CompaniesPage /> },
-          { path: 'companies/:companyId', element: <CompanyDetailPage /> },
-          { path: 'practice-periods', element: <PracticePeriodsPage /> },
-          { path: 'practice-periods/new', element: <PracticePeriodCreatePage /> },
-          { path: 'practice-periods/:periodId', element: <PracticePeriodDetailPage /> },
-          {
-            path: 'practice-periods/:periodId/groups/:groupId',
-            element: <PeriodGroupPage />,
-          },
-          { path: 'reports', element: <ReportsPage /> },
-          { path: 'audit', element: <AuditPage /> },
-          { path: 'settings', element: <SettingsPage /> },
-          { path: '*', element: <ComingSoonPage /> },
         ],
       },
       {
@@ -123,20 +132,26 @@ export const routes: RouteObject[] = [
           </RequireRole>
         ),
         children: [
-          { index: true, element: <TodayPage /> },
-          { path: 'applications', element: <ApplicationsPage /> },
-          { path: 'students', element: <MyStudentsPage /> },
-          { path: 'students/:studentId', element: <StudentDetailPage /> },
-          { path: 'diaries', element: <DiariesPage /> },
-          { path: 'calendar', element: <CalendarPage /> },
-          { path: 'map', element: <MapPage /> },
-          { path: 'companies', element: <TutorCompaniesPage /> },
-          { path: 'companies/:companyId', element: <TutorCompanyDetailPage /> },
-          // Ruxsat so'rash moduli olib tashlandi (24.09.2026) — eski havolalar "Bugun"ga.
-          { path: 'leave-requests', element: <Navigate to="/tutor" replace /> },
-          { path: 'grading', element: <GradingPage /> },
-          { path: 'reports', element: <ReportsPage /> },
-          { path: '*', element: <ComingSoonPage /> },
+          {
+            // Sahifa xatosi AppShell ichida ko'rsatiladi (sidebar/topbar ishlaydi).
+            errorElement: <RouteError scope="page" />,
+            children: [
+              { index: true, element: <TodayPage /> },
+              { path: 'applications', element: <ApplicationsPage /> },
+              { path: 'students', element: <MyStudentsPage /> },
+              { path: 'students/:studentId', element: <StudentDetailPage /> },
+              { path: 'diaries', element: <DiariesPage /> },
+              { path: 'calendar', element: <CalendarPage /> },
+              { path: 'map', element: <MapPage /> },
+              { path: 'companies', element: <TutorCompaniesPage /> },
+              { path: 'companies/:companyId', element: <TutorCompanyDetailPage /> },
+              // Ruxsat so'rash moduli olib tashlandi (24.09.2026) — eski havolalar "Bugun"ga.
+              { path: 'leave-requests', element: <Navigate to="/tutor" replace /> },
+              { path: 'grading', element: <GradingPage /> },
+              { path: 'reports', element: <ReportsPage /> },
+              { path: '*', element: <ComingSoonPage /> },
+            ],
+          },
         ],
       },
       // Faqat dev: UI kit ko'rgazmasi (Storybook o'rniga). Production build'ga kirmaydi.
