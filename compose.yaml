@@ -1,6 +1,8 @@
-# Ildizdan `docker compose up -d --build` ishlashi uchun — asl stack deploy/docker-compose.yml da.
-# `include` har bir faylni o'z papkasiga nisbatan o'qiydi: build context'lar (`..`, `../web`)
+# Ildizdan `docker compose up -d --build` ishlashi uchun — asl stack deploy/docker-compose.yml da (PRODUCTION rejimi).
+# `include` har bir faylni o'z papkasiga nisbatan o'qiydi: build context'lar (`..`, `../web`), backup skripti
 # va maxfiy qiymatlar (deploy/.env) o'zgarmaydi.
+# Lokal demo (demo seed, host portlar) uchun ildizdan emas, to'g'ridan-to'g'ri:
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.dev.yml up -d --build
 include:
   - path: deploy/docker-compose.yml
     env_file: deploy/.env

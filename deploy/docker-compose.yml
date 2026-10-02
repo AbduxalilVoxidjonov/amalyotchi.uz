@@ -1,113 +1,148 @@
-# Amaliyotchi — to'liq stack (lokal demo / stend). Ishga tushirish: deploy/README.md
+# Amaliyotchi — PRODUCTION stack. Qadam-baqadam yo'riqnoma: deploy/README.md
 #   docker compose -f deploy/docker-compose.yml up -d --build
-# Maxfiy qiymatlar deploy/.env dan olinadi (namuna: deploy/.env.example).
+# Lokal demo (demo seed, host portlar, Seq autentifikatsiyasiz):
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.dev.yml up -d --build
+#
+# Barcha sirlar deploy/.env dan olinadi (namuna: deploy/.env.example, tekshiruv: deploy/scripts/preflight.sh).
+# `${VAR:?...}` — majburiy: bo'sh bo'lsa compose ishga tushmaydi va aniq xato chiqaradi.
+# Tashqi kirish FAQAT Cloudflare Tunnel orqali (cloudflared → http://dashboard:80, http://twa:80).
+# Hostga hech qaysi servis porti ochilmaydi, faqat Seq UI 127.0.0.1 da (SSH tunnel orqali ko'riladi).
 name: amaliyotchi
 
+# Umumiy sozlamalar: log rotatsiyasi (disk to'lib qolmasin), qayta ishga tushish, imtiyoz oshirishni taqiqlash.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: ${LOG_MAX_SIZE:-10m}
+    max-file: "${LOG_MAX_FILE:-5}"
+
+x-defaults: &defaults
+  restart: unless-stopped
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+
 services:
-  # ---------- Infratuzilma ----------
+  # ---------- Ma'lumotlar bazasi ----------
   postgres:
+    <<: *defaults
     image: postgis/postgis:16-3.4
     container_name: amaliyotchi-postgres
     environment:
       POSTGRES_DB: amaliyotchi
       POSTGRES_USER: amaliyotchi
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-amaliyotchi}
+      # Faqat volume BIRINCHI marta yaratilganda qo'llanadi (keyin o'zgartirish — README "Parolni almashtirish").
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD deploy/.env da berilishi shart (openssl rand -hex 24)}
       TZ: UTC
-    ports:
-      # Host IP/porti .env orqali (HOST_IP — faqat lokal; standart 5432 ko'pincha band bo'ladi — POSTGRES_PORT).
-      - "${HOST_IP:-127.0.0.1}:${POSTGRES_PORT:-55432}:5432"
+    # Konservativ tuning (2–4 GB RAM VPS uchun); .env orqali sozlanadi.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=${PG_SHARED_BUFFERS:-256MB}
+      - -c
+      - effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-768MB}
+      - -c
+      - work_mem=${PG_WORK_MEM:-8MB}
+      - -c
+      - maintenance_work_mem=${PG_MAINTENANCE_WORK_MEM:-64MB}
+      - -c
+      - max_connections=${PG_MAX_CONNECTIONS:-100}
+      - -c
+      - log_min_duration_statement=${PG_LOG_MIN_DURATION_MS:-2000}
+    shm_size: ${PG_SHM_SIZE:-256m}
+    stop_grace_period: 60s
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
       - amaliyotchi
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U amaliyotchi -d amaliyotchi"]
+      # -h 127.0.0.1 (TCP): birinchi init paytida vaqtinchalik server faqat unix socket'da tinglaydi —
+      # socket orqali tekshiruv "healthy" deb API'ni erta ishga tushirib yuborardi (connection refused).
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U amaliyotchi -d amaliyotchi"]
       interval: 10s
       timeout: 5s
+      start_period: 30s
       retries: 5
-    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: ${POSTGRES_MEM_LIMIT:-1g}
 
-  minio:
-    image: minio/minio:latest
-    container_name: amaliyotchi-minio
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: amaliyotchi
-      MINIO_ROOT_PASSWORD: amaliyotchi123
-    ports:
-      - "${HOST_IP:-127.0.0.1}:${MINIO_PORT:-9000}:9000"           # S3 API (.env: MINIO_PORT)
-      - "${HOST_IP:-127.0.0.1}:${MINIO_CONSOLE_PORT:-9001}:9001"   # veb-konsol (.env: MINIO_CONSOLE_PORT)
-    volumes:
-      - minio-data:/data
-    networks:
-      - amaliyotchi
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    container_name: amaliyotchi-redis
-    ports:
-      - "${HOST_IP:-127.0.0.1}:${REDIS_PORT:-56379}:6379"   # .env: REDIS_PORT
-    networks:
-      - amaliyotchi
-    restart: unless-stopped
-
+  # ---------- Loglar (Seq) ----------
+  # UI faqat 127.0.0.1:SEQ_PORT da — serverdan tashqarida: ssh -L 5341:127.0.0.1:5341 user@server → http://127.0.0.1:5341
   seq:
-    image: datalust/seq:latest
+    <<: *defaults
+    image: datalust/seq:2026.1.17182
     container_name: amaliyotchi-seq
     environment:
       ACCEPT_EULA: "Y"
-      # Yangi Seq versiyalari autentifikatsiyasiz ishga tushmaydi — lokal stend uchun o'chirilgan
-      # (production: SEQ_FIRSTRUN_ADMINPASSWORD bering va portni tashqariga ochmang).
-      SEQ_FIRSTRUN_NOAUTHENTICATION: "True"
+      # Birinchi ishga tushishda 'admin' foydalanuvchisining paroli (seq-data volume yangi bo'lganda).
+      SEQ_FIRSTRUN_ADMINPASSWORD: ${SEQ_ADMIN_PASSWORD:?SEQ_ADMIN_PASSWORD deploy/.env da berilishi shart (openssl rand -hex 16)}
     ports:
-      - "${HOST_IP:-127.0.0.1}:${SEQ_PORT:-5341}:80"   # UI: http://127.0.0.1:5341 (.env: SEQ_PORT; konteyner ichida ingestion 5341, UI 80)
+      - "127.0.0.1:${SEQ_PORT:-5341}:80"   # konteyner ichida: UI 80, ingestion 5341 (API → http://seq:5341)
     volumes:
       - seq-data:/data
     networks:
       - amaliyotchi
-    restart: unless-stopped
+    healthcheck:
+      # Image ichida curl bor; /health autentifikatsiyasiz (UI porti 80).
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: ${SEQ_MEM_LIMIT:-1g}
 
   # ---------- API ----------
   api:
+    <<: *defaults
     build:
       context: ..                              # loyiha ildizi (slnx, Directory.*.props, src/)
       dockerfile: src/Amaliyotchi.Api/Dockerfile
     image: amaliyotchi-api:local
     container_name: amaliyotchi-api
+    # init (tini) PID 1 bo'ladi: aks holda dotnet PID 1 sifatida startup xatosidan keyin (unhandled exception →
+    # abort) chiqmay 100% CPU'da osilib qoladi va restart siyosati ishlamaydi.
+    init: true
     depends_on:
       postgres:
         condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=amaliyotchi;Username=amaliyotchi;Password=${POSTGRES_PASSWORD:-amaliyotchi}
-      # Kamida 32 belgi — .env da majburiy (bo'sh bo'lsa compose xato beradi).
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=amaliyotchi;Username=amaliyotchi;Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD deploy/.env da berilishi shart}
+      # Kamida 32 belgi.
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?JWT_SIGNING_KEY deploy/.env da berilishi shart (openssl rand -base64 48)}
-      Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
+      Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:?TELEGRAM_BOT_TOKEN deploy/.env da berilishi shart (BotFather) — TWA login va bot shunga tayanadi}
       # Bot long polling (/start, /help, Menu Button → TWA). Bir vaqtda faqat BITTA instansiya polling qilsin (README).
       Telegram__BotEnabled: ${TELEGRAM_BOT_ENABLED:-true}
-      Telegram__WebAppUrl: ${TWA_PUBLIC_URL:-}
-      # Startup'da migratsiya + seed. Demo ma'lumot — faqat demo/stend uchun (production: SEED_DEMO=false).
+      Telegram__WebAppUrl: ${TWA_PUBLIC_URL:?TWA_PUBLIC_URL deploy/.env da berilishi shart (masalan https://app.amalyotchi.uz)}
+      # Startup'da migratsiya + asosiy seed (birinchi admin, sozlamalar). Demo ma'lumot production'da O'CHIQ.
       Seed__Enabled: "true"
-      Seed__Demo: ${SEED_DEMO:-true}
-      Seed__AdminHemisId: ${ADMIN_HEMIS_ID:-100000000001}
-      Seed__AdminPassword: ${ADMIN_PASSWORD:-admin12345}
+      Seed__Demo: ${SEED_DEMO:-false}
+      Seed__AdminHemisId: ${ADMIN_HEMIS_ID:?ADMIN_HEMIS_ID deploy/.env da berilishi shart (birinchi admin login'i, faqat raqamlar)}
+      Seed__AdminPassword: ${ADMIN_PASSWORD:?ADMIN_PASSWORD deploy/.env da berilishi shart (openssl rand -base64 18)}
       Storage__RootPath: /app/data/files
-      # nginx (dashboard/twa) X-Forwarded-For/Proto yuboradi; konteyner IP lari o'zgaruvchan — butun compose tarmog'i ishonchli.
-      ForwardedHeaders__KnownNetworks__0: ${DOCKER_SUBNET:-172.30.0.0/16}
+      # DataProtection kalitlari volume'da — konteyner qayta yaratilganda saqlanadi (zaxiraga kirmaydi, README).
+      DataProtection__KeysPath: /app/data/keys
+      # X-Forwarded-For/Proto faqat dashboard/twa nginx'idan (qat'iy IP) qabul qilinadi — tarmoqdagi boshqa
+      # konteyner yoki host porti orqali kelgan soxta sarlavha e'tiborsiz (loopback standart ishonchli qoladi).
+      ForwardedHeaders__KnownProxies__0: ${DASHBOARD_IP:-172.30.0.248}
+      ForwardedHeaders__KnownProxies__1: ${TWA_IP:-172.30.0.249}
       # Loglar: Console (appsettings) + Seq.
       Serilog__WriteTo__1__Name: Seq
       Serilog__WriteTo__1__Args__serverUrl: http://seq:5341
+      # Host sarlavhasi allow-list'i (nginx ommaviy domenni uzatadi; healthcheck — localhost). ';' bilan.
+      AllowedHosts: ${API_ALLOWED_HOSTS:-*}
       RateLimiting__AuthPerMinute: ${RATE_LIMIT_AUTH_PER_MINUTE:-10}
       RateLimiting__RefreshPerMinute: ${RATE_LIMIT_REFRESH_PER_MINUTE:-60}
-      # Brauzerdan to'g'ridan-to'g'ri 5080 ga murojaat uchun (dev server); nginx orqali /api/ same-origin — CORS kerak emas.
-      Cors__Origins__0: ${CORS_ORIGIN:-http://127.0.0.1:5173}
-      Cors__Origins__1: ${DASHBOARD_PUBLIC_URL:-http://127.0.0.1:8090}
-      Cors__Origins__2: ${TWA_PUBLIC_URL:-http://127.0.0.1:8091}
-    ports:
-      # Host portlari .env orqali sozlanadi (band bo'lsa API_PORT/DASHBOARD_PORT/TWA_PORT ni o'zgartiring).
-      - "${HOST_IP:-127.0.0.1}:${API_PORT:-5080}:8080"   # to'g'ridan-to'g'ri debug: http://127.0.0.1:5080/health
+      # nginx orqali /api/ same-origin — CORS faqat ommaviy domenlar uchun (dev origin'lar — docker-compose.dev.yml).
+      Cors__Origins__0: ${DASHBOARD_PUBLIC_URL:?DASHBOARD_PUBLIC_URL deploy/.env da berilishi shart (masalan https://amalyotchi.uz)}
+      Cors__Origins__1: ${TWA_PUBLIC_URL:?TWA_PUBLIC_URL deploy/.env da berilishi shart}
+    # Host porti YO'Q — tekshirish: docker compose -f deploy/docker-compose.yml exec api curl -fsS http://localhost:8080/health
     volumes:
       - api-data:/app/data
     networks:
@@ -118,61 +153,135 @@ services:
       timeout: 5s
       start_period: 90s
       retries: 5
-    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: ${API_MEM_LIMIT:-1g}
 
   # ---------- Web (nginx:80, /api/ → http://api:8080) ----------
   dashboard:
+    <<: *defaults
     build:
       context: ../web
       dockerfile: dashboard/Dockerfile
       args:
-        VITE_TWA_URL: ${TWA_PUBLIC_URL:-}   # masalan https://app.example.uz (.env)
+        VITE_TWA_URL: ${TWA_PUBLIC_URL:?TWA_PUBLIC_URL deploy/.env da berilishi shart}
     image: amaliyotchi-dashboard:local
+    environment:
+      # nginx real_ip: CF-Connecting-IP faqat cloudflared'dan (qat'iy IP) qabul qilinadi.
+      NGINX_REAL_IP_FROM: ${CLOUDFLARED_IP:-172.30.0.250}/32
     container_name: amaliyotchi-dashboard
     depends_on:
       api:
         condition: service_healthy
-    ports:
-      - "${HOST_IP:-127.0.0.1}:${DASHBOARD_PORT:-8090}:80"   # http://127.0.0.1:8090 (.env: DASHBOARD_PORT)
     networks:
-      - amaliyotchi
-    restart: unless-stopped
+      amaliyotchi:
+        # Qat'iy IP — API ForwardedHeaders:KnownProxies (DOCKER_SUBNET ichida bo'lsin).
+        ipv4_address: ${DASHBOARD_IP:-172.30.0.248}
+    deploy:
+      resources:
+        limits:
+          memory: ${WEB_MEM_LIMIT:-128m}
 
   twa:
+    <<: *defaults
     build:
       context: ../web
       dockerfile: twa/Dockerfile
     image: amaliyotchi-twa:local
+    environment:
+      # nginx real_ip: CF-Connecting-IP faqat cloudflared'dan (qat'iy IP) qabul qilinadi.
+      NGINX_REAL_IP_FROM: ${CLOUDFLARED_IP:-172.30.0.250}/32
     container_name: amaliyotchi-twa
     depends_on:
       api:
         condition: service_healthy
-    ports:
-      - "${HOST_IP:-127.0.0.1}:${TWA_PORT:-8091}:80"        # http://127.0.0.1:8091 (.env: TWA_PORT; Telegram uchun HTTPS tunnel — README)
     networks:
-      - amaliyotchi
-    restart: unless-stopped
+      amaliyotchi:
+        # Qat'iy IP — API ForwardedHeaders:KnownProxies (DOCKER_SUBNET ichida bo'lsin).
+        ipv4_address: ${TWA_IP:-172.30.0.249}
+    deploy:
+      resources:
+        limits:
+          memory: ${WEB_MEM_LIMIT:-128m}
 
-  # Cloudflare Tunnel (remote-managed): marshrutlar Cloudflare Zero Trust → Networks → Tunnels → Public Hostname'da.
-  # Konteyner shu tarmoqda — xizmat manzillari: dashboard → http://dashboard:80, TWA → http://twa:80.
+  # ---------- Cloudflare Tunnel (yagona tashqi kirish) ----------
+  # Remote-managed tunnel: marshrutlar Cloudflare Zero Trust → Networks → Tunnels → Public Hostname'da:
+  #   amalyotchi.uz → http://dashboard:80,  app.amalyotchi.uz → http://twa:80
   cloudflared:
-    image: cloudflare/cloudflared:latest
+    <<: *defaults
+    image: cloudflare/cloudflared:2026.9.3
     container_name: amaliyotchi-cloudflared
-    command: tunnel --no-autoupdate run
+    # Metrics faqat konteyner ichida (healthcheck `tunnel ready` uchun), hostga chiqmaydi.
+    command: tunnel --no-autoupdate --metrics 127.0.0.1:20241 run
     environment:
-      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN deploy/.env da berilishi shart}
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN deploy/.env da berilishi shart (Zero Trust → Tunnels → token)}
     depends_on:
       dashboard:
         condition: service_healthy
       twa:
         condition: service_healthy
     networks:
+      amaliyotchi:
+        # Qat'iy IP — nginx faqat shu manzildan kelgan CF-Connecting-IP ga ishonadi (DOCKER_SUBNET ichida bo'lsin).
+        ipv4_address: ${CLOUDFLARED_IP:-172.30.0.250}
+    healthcheck:
+      test: ["CMD", "cloudflared", "tunnel", "--metrics", "127.0.0.1:20241", "ready"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: ${CLOUDFLARED_MEM_LIMIT:-256m}
+
+  # ---------- Zaxira nusxa (kunlik pg_dump + fayllar arxivi, N kunlik rotatsiya) ----------
+  # Natija hostda: BACKUP_DIR (default deploy/backups) → db/*.dump, files/*.tar.gz.
+  # Qo'lda: docker compose -f deploy/docker-compose.yml exec backup /scripts/backup.sh once
+  # Tiklash: deploy/backup/restore.sh (README "Zaxira va tiklash").
+  backup:
+    <<: *defaults
+    image: postgis/postgis:16-3.4            # server bilan bir xil pg_dump (16) — qo'shimcha image yuklanmaydi
+    container_name: amaliyotchi-backup
+    entrypoint: ["bash", "/scripts/backup.sh"]
+    command: ["loop"]
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # API migratsiyani tugatib healthy bo'lgach — birinchi zaxira bo'sh (sxemasiz) bazadan olinmaydi.
+      api:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGUSER: amaliyotchi
+      PGDATABASE: amaliyotchi
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD deploy/.env da berilishi shart}
+      BACKUP_TIME_UTC: ${BACKUP_TIME_UTC:-21:00}          # 21:00 UTC = 02:00 Toshkent
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    volumes:
+      - ./backup/backup.sh:/scripts/backup.sh:ro
+      - api-data:/srv/api-data:ro
+      - ${BACKUP_DIR:-./backups}:/backups
+    networks:
       - amaliyotchi
-    restart: unless-stopped
+    healthcheck:
+      # Oxirgi muvaffaqiyatli zaxira 26 soatdan eski bo'lsa — unhealthy.
+      test: ["CMD-SHELL", "test -n \"$$(find /backups/.last_success -mmin -1560 2>/dev/null)\""]
+      interval: 5m
+      timeout: 10s
+      start_period: 15m
+      retries: 1
+    deploy:
+      resources:
+        limits:
+          memory: ${BACKUP_MEM_LIMIT:-512m}
 
 networks:
-  # Aniq subnet — API ForwardedHeaders:KnownNetworks shu qiymatga tayanadi. Hostda band bo'lsa
-  # .env da DOCKER_SUBNET ni o'zgartiring (ikkalasi ham shu o'zgaruvchidan oladi).
+  # Aniq subnet — qat'iy IP'lar (CLOUDFLARED_IP, DASHBOARD_IP, TWA_IP) shu subnet ichida bo'lishi shart.
+  # Hostda band bo'lsa .env da DOCKER_SUBNET va uchala IP'ni birga o'zgartiring (preflight.sh tekshiradi).
   amaliyotchi:
     name: amaliyotchi
     ipam:
@@ -181,6 +290,5 @@ networks:
 
 volumes:
   postgres-data:
-  minio-data:
   seq-data:
   api-data:
