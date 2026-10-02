@@ -1,40 +1,11 @@
-import { useEffect, useMemo, useRef, type ReactNode } from 'react';
-import { Badge, Button, Checkbox, ProgressBar, type DataTableColumn } from '@/shared/ui';
+import { useMemo, type ReactNode } from 'react';
+import { Badge, Button, ProgressBar, type DataTableColumn } from '@/shared/ui';
 import { AdminTable, type TableStateProps } from '../../components/AdminTable';
 import { RowLink } from '../../components/RowLink';
+import { SELECT_COLUMN_WIDTH, SelectBox, SelectCell } from '../../components/SelectBox';
 import { STUDENT_STATUS_LABEL, type Student } from '../types';
 import { PageSizeInput } from './PageSizeInput';
 import styles from './StudentsTable.module.css';
-
-/** Belgilash katagi: matnli label yo'q (jadval ustuni), nom `aria-label` orqali beriladi. */
-function SelectBox({
-  checked,
-  indeterminate = false,
-  label,
-  onChange,
-}: {
-  checked: boolean;
-  indeterminate?: boolean;
-  label: string;
-  onChange: (checked: boolean) => void;
-}) {
-  const ref = useRef<HTMLInputElement>(null);
-  // `indeterminate` — faqat DOM xossasi, atribut orqali berib bo'lmaydi.
-  useEffect(() => {
-    if (ref.current) ref.current.indeterminate = indeterminate;
-  }, [indeterminate]);
-
-  return (
-    <Checkbox
-      ref={ref}
-      wrapperClassName={styles.check}
-      label=""
-      aria-label={label}
-      checked={checked}
-      onChange={(e) => onChange(e.target.checked)}
-    />
-  );
-}
 
 /** Talaba profili — ism havolasi va butun qator bosilishi uchun bitta manba. */
 const studentHref = (r: Student) => `/admin/students/${r.id}`;
@@ -135,20 +106,13 @@ export function StudentsTable({
             onChange={onToggleAll}
           />
         ),
-        // Katak padding'i: chapda `--row-pad-x` (birinchi ustun), o'ngda 12px (`--col-gap`).
-        // Trek = padding + 15px katakcha — aks holda kontent qutisi katakchadan tor bo'lib,
-        // qatorlarda u `cellText` ning `overflow: hidden` i bilan kesiladi.
-        width: 'calc(var(--row-pad-x) + 15px + 12px)',
-        // `data-row-click-ignore` o'rami (`::before` bilan butun katakni qoplaydi): katakcha
-        // atrofidagi bo'sh joy bosilganda ham qator navigatsiyasi bo'lmaydi.
+        width: SELECT_COLUMN_WIDTH,
         render: (r) => (
-          <div className={styles.checkCell} data-row-click-ignore>
-            <SelectBox
-              checked={selectedIds.has(r.id)}
-              label={`${r.fullName} ni belgilash`}
-              onChange={(checked) => onToggleRow(r.id, checked)}
-            />
-          </div>
+          <SelectCell
+            checked={selectedIds.has(r.id)}
+            label={`${r.fullName} ni belgilash`}
+            onChange={(checked) => onToggleRow(r.id, checked)}
+          />
         ),
       },
       {

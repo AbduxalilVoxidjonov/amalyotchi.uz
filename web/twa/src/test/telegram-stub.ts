@@ -27,7 +27,7 @@ let qrCallback: ((text: string) => void | true) | null = null;
 /** `@twa-dev/sdk` uchun test stub'i — `initData` ni testda o'zgartirish mumkin. */
 export const webAppStub = {
   initData: '',
-  initDataUnsafe: {},
+  initDataUnsafe: {} as { user?: { id: number; allows_write_to_pm?: boolean } },
   colorScheme: 'light' as 'light' | 'dark',
   themeParams: {},
   version: '8.0',
@@ -54,6 +54,9 @@ export const webAppStub = {
     emit('scanQrPopupClosed');
   }),
   openLink: () => undefined,
+  requestWriteAccess: vi.fn((cb?: (granted: boolean) => unknown) => {
+    cb?.(true);
+  }),
   BackButton: {
     isVisible: false,
     show: vi.fn(() => {
@@ -103,6 +106,13 @@ export const qrPopup = {
 
 export function resetTelegramStub() {
   webAppStub.version = '8.0';
+  webAppStub.initDataUnsafe = {};
+  webAppStub.requestWriteAccess.mockClear();
+  try {
+    window.localStorage.removeItem('amaliyotchi.twa.writeAccessRequested');
+  } catch {
+    /* ignore */
+  }
   qrCallback = null;
   listeners.clear();
   backClicks.clear();

@@ -18,6 +18,7 @@ const ADMIN_NAV: readonly SidebarNavItem[] = [
   { label: 'Tyutorlar', to: '/admin/tutors' },
   { label: 'Korxonalar', to: '/admin/companies' },
   { label: 'Talabalar', to: '/admin/students' },
+  { label: 'Xabarlar', to: '/admin/messages' },
   { label: 'Amaliyot davrlari', to: '/admin/practice-periods' },
   { label: 'Hisobotlar', to: '/admin/reports' },
   { label: 'Audit jurnali', to: '/admin/audit' },

@@ -152,6 +152,49 @@ export function closeTelegramQrScanner(): void {
   }
 }
 
+/** Bot API: `requestWriteAccess` — 6.9+. */
+export const WRITE_ACCESS_MIN_VERSION = '6.9';
+/** localStorage bayrog'i — ruxsat so'rovi har qurilmada faqat BIR MARTA ko'rsatiladi. */
+export const WRITE_ACCESS_FLAG_KEY = 'amaliyotchi.twa.writeAccessRequested';
+
+function readWriteAccessFlag(): boolean {
+  try {
+    return window.localStorage.getItem(WRITE_ACCESS_FLAG_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeWriteAccessFlag(): void {
+  try {
+    window.localStorage.setItem(WRITE_ACCESS_FLAG_KEY, '1');
+  } catch {
+    /* private rejim — sessiya davomida qayta so'ralmaydi (AppShell bir marta chaqiradi) */
+  }
+}
+
+/**
+ * Bot talabaga shaxsiy xabar yubora olishi uchun (admin "Xabarlar" bo'limi) — Telegram'ning
+ * "botga yozishga ruxsat berish" so'rovi. Faqat Telegram ichida, foydalanuvchi hali ruxsat bermagan
+ * bo'lsa (`initDataUnsafe.user.allows_write_to_pm !== true`), klient 6.9+ bo'lsa va oldin
+ * so'ralmagan bo'lsa chaqiriladi. Natija (rozi/rad) muhim emas — bayroq so'rovdan OLDIN yoziladi,
+ * qayta-qayta bezovta qilinmaydi. `true` — so'rov ko'rsatildi.
+ */
+export function requestWriteAccessOnce(): boolean {
+  if (!isInsideTelegram()) return false;
+  try {
+    if (readWriteAccessFlag()) return false;
+    if (WebApp.initDataUnsafe?.user?.allows_write_to_pm === true) return false;
+    if (!versionAtLeast(WRITE_ACCESS_MIN_VERSION)) return false;
+    if (typeof WebApp.requestWriteAccess !== 'function') return false;
+    writeWriteAccessFlag();
+    WebApp.requestWriteAccess(() => undefined);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export { WebApp };
 
 /** Tashqi havola (PDF, shablon): Telegram ichida `openLink`, tashqarida yangi tab. */

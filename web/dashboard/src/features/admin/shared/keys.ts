@@ -47,5 +47,19 @@ export const adminKeys = {
   /** `GET /companies/{id}/checkin-qr` — korxona check-in QR kodi. */
   companyCheckinQr: (id: string) => ['admin', 'company', id, 'checkin-qr'] as const,
   audit: (params: ListParams) => ['admin', 'audit', params] as const,
+
+  /** Xabarlar: oluvchilar, guruh variantlari va yuborilganlar ro'yxati — bitta prefiks ostida. */
+  messagesAll: () => ['admin', 'messages'] as const,
+  messageRecipients: (params: ListParams) => ['admin', 'messages', 'recipients', params] as const,
+  messageRecipientGroups: (params: object) =>
+    ['admin', 'messages', 'recipient-groups', params] as const,
+  /** Yuborilganlar ro'yxati (yuborish/retry'dan keyin invalidate qilinadi). */
+  messagesSentAll: () => ['admin', 'messages', 'sent'] as const,
+  messagesSent: (params: ListParams) => ['admin', 'messages', 'sent', params] as const,
+  /** `GET /messages/{id}` — tafsilot; yetkazishlar ham shu prefiks ostida. */
+  message: (id: string) => ['admin', 'message', id] as const,
+  messageDeliveriesAll: (id: string) => ['admin', 'message', id, 'deliveries'] as const,
+  messageDeliveries: (id: string, params: ListParams) =>
+    ['admin', 'message', id, 'deliveries', params] as const,
   settings: () => ['admin', 'settings'] as const,
 };

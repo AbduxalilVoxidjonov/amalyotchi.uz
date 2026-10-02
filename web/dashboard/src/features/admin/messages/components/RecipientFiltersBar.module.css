@@ -1,0 +1,18 @@
+/* Filtrlar — qidiruv yonida (talabalar filtrlari uslubida), kengligi matnga qarab */
+.filter select {
+  width: auto;
+  min-width: 170px;
+  max-width: 240px;
+}
+.short select {
+  width: auto;
+  min-width: 130px;
+}
+
+/* Filtrlangan jami soni */
+.total {
+  align-self: center;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-dim);
+  white-space: nowrap;
+}

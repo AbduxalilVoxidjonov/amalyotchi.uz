@@ -55,6 +55,7 @@ describe('AppShell', () => {
         expect.stringMatching(/^Tyutorlar\d+$/),
         `Korxonalar${mockCompanies.length}`,
         `Talabalar${mockStudents.length}`,
+        'Xabarlar',
         'Amaliyot davrlari',
         'Hisobotlar',
         'Audit jurnali',

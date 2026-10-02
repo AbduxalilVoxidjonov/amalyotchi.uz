@@ -1,0 +1,105 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* "Kimga" qatori */
+.to {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border: var(--border-inner);
+  border-radius: var(--radius-md2);
+  background: var(--color-surface-2);
+}
+.toLabel {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+}
+.toValue {
+  font-size: var(--fs-md2);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+/* Oldindan ko'rish — Telegram suhbat foniga o'xshash, chapdagi pufak */
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.previewTitle {
+  margin: 0;
+  font-size: var(--fs-xs2);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-muted);
+}
+.chat {
+  padding: 14px;
+  border-radius: var(--radius-xl);
+  background: var(--color-surface-muted);
+  max-height: 260px;
+  overflow-y: auto;
+}
+.bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 88%;
+  padding: 9px 12px;
+  border-radius: var(--radius-2xl) var(--radius-2xl) var(--radius-2xl) var(--radius-xs);
+  background: var(--color-surface);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.06);
+}
+/* Matn — HTML emas, oddiy matn; qator ko'chishlari saqlanadi */
+.bubbleText {
+  margin: 0;
+  font-size: var(--fs-md2);
+  line-height: var(--lh-body);
+  color: var(--color-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.bubblePlaceholder {
+  margin: 0;
+  font-size: var(--fs-md2);
+  color: var(--color-text-disabled);
+}
+/* Inline tugma ("Ilovani ochish") — Telegram inline keyboard ko'rinishida */
+.appButton {
+  display: block;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: var(--fs-sm2);
+  font-weight: var(--fw-semibold);
+  text-align: center;
+}
+
+/* Tasdiq qadami */
+.confirm {
+  margin: 0;
+  font-size: var(--fs-base);
+  color: var(--color-text);
+}
+.confirmTarget {
+  margin: 0;
+  font-size: var(--fs-sm2);
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.error {
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: var(--radius-md2);
+  background: var(--color-bad-bg);
+  color: var(--color-bad-fg);
+  font-size: var(--fs-sm2);
+}

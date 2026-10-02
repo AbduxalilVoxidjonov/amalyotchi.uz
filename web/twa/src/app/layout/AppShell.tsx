@@ -2,6 +2,7 @@ import { Suspense, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Avatar, LoadingState } from '@/shared/ui';
 import { useAuthStore } from '@/shared/auth/store';
+import { requestWriteAccessOnce } from '@/shared/auth/telegram';
 import { crumbFor, navItemForPath } from '../nav';
 import styles from './AppShell.module.css';
 import { TabBar } from './TabBar';
@@ -17,6 +18,12 @@ export function AppShell() {
   const user = useAuthStore((s) => s.user);
   const nav = navItemForPath(pathname);
   const title = nav?.label ?? 'Amaliyotchi';
+
+  // Sessiya bor (shell faqat kirgandan keyin chiziladi) — bot xabar yubora olishi uchun ruxsat so'rovi
+  // (bir marta, Telegram 6.9+ da, ruxsat hali berilmagan bo'lsa).
+  useEffect(() => {
+    requestWriteAccessOnce();
+  }, []);
 
   useEffect(() => {
     document.title = nav ? `${nav.label} · Amaliyotchi` : 'Amaliyotchi';
