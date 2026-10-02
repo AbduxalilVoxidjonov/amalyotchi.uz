@@ -76,6 +76,7 @@ public static class DependencyInjection
         services.AddOptions<SeedOptions>().Bind(configuration.GetSection(SeedOptions.SectionName));
         services.AddScoped<DbSeeder>();
         services.AddScoped<DemoDataSeeder>();
+        services.AddScoped<DemoDataPurger>();
 
         return services;
     }

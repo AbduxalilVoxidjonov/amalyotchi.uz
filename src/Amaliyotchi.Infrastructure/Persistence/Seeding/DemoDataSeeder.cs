@@ -54,7 +54,7 @@ public sealed class DemoDataSeeder(
     /// (HEMIS ID): Rahimov Sardor, Abdullayev Jasur, Boboyeva Madina — tyutor xaritasida "bad" nuqtalar.</summary>
     private static readonly string[] SuspiciousHemisIds = ["341034", "341040", "341041"];
 
-    private static readonly (string Name, string HemisId, int GroupIndex, int CompanyIndex)[] MainStudents =
+    internal static readonly (string Name, string HemisId, int GroupIndex, int CompanyIndex)[] MainStudents =
     [
         ("Aliyev Akmal", "341030", 0, 0),
         ("Karimov Bekzod", "341031", 0, 1),
@@ -64,7 +64,7 @@ public sealed class DemoDataSeeder(
         ("Toshpulatova Zarina", "341035", 1, 5)
     ];
 
-    private static readonly string[] ExtraNames =
+    internal static readonly string[] ExtraNames =
     [
         "Abdullayev Jasur", "Boboyeva Madina", "Ergashev Sherzod", "Fayzullayeva Kamola", "Gʻaniyev Otabek",
         "Hasanova Dilnoza", "Ismoilov Javohir", "Jalilova Sevara", "Kamolov Bobur", "Latipova Gulnora",

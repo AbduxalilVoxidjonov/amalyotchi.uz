@@ -12,6 +12,11 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
 
+// CLI: `dotnet Amaliyotchi.Api.dll purge-demo [--apply]` — demo seed ma'lumotini o'chirish. Web host, Telegram bot va
+// fon xizmatlari ishga tushmaydi; konfiguratsiya/DI va ProductionConfigValidator API bilan bir xil (PurgeDemoCommand).
+if (PurgeDemoCommand.IsInvoked(args))
+    return await PurgeDemoCommand.RunAsync(args);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Production'da default/dev sirlar (JWT kalit, admin paroli, CHANGE_ME, demo seed, bot sozlamasi) bilan
@@ -141,6 +146,7 @@ if (DatabaseInitializer.IsEnabled(app.Services))
 }
 
 app.Run();
+return 0;
 
 /// <summary>Integratsiya testlari uchun ochiq: WebApplicationFactory shu tipga tayanadi.</summary>
 public partial class Program
