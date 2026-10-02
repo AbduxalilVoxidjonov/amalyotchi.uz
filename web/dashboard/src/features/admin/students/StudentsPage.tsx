@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/shared/ui';
 import { ExcelImportModal } from '../components/ExcelImportModal';
 import { tableState } from '../shared/useListParams';
 import { AssignCompanyModal } from './components/AssignCompanyModal';
 import { StudentFiltersBar } from './components/StudentFiltersBar';
+import { StudentFormModal } from './components/StudentFormModal';
 import { StudentsTable } from './components/StudentsTable';
 import {
   useImportStudents,
@@ -11,10 +13,14 @@ import {
   useStudentImportTemplate,
   useStudentsQuery,
 } from './hooks';
+import type { Student } from './types';
 import { useStudentListParams } from './useStudentListParams';
 import styles from './StudentsPage.module.css';
 
-/** Admin · Talabalar (SPEC-SCREENS §9.6). Container: jadval + qidiruv/filtrlar (URL'da) + import/biriktirish. */
+/**
+ * Admin · Talabalar (SPEC-SCREENS §9.6). Container: jadval + qidiruv/filtrlar (URL'da) +
+ * qo'lda qo'shish / Excel import / biriktirish.
+ */
 export function StudentsPage() {
   const list = useStudentListParams();
   const query = useStudentsQuery(list.params);
@@ -23,6 +29,9 @@ export function StudentsPage() {
   const importStudents = useImportStudents();
   const [importOpen, setImportOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  /** Oxirgi qo'shilgan talaba — sahifa ustidagi muvaffaqiyat xabari (loyihadagi flash uslubi). */
+  const [created, setCreated] = useState<Student | null>(null);
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
 
   const { page, params, filters, setFilters, hasFilters, clearFilters, setPageSize } = list;
@@ -71,14 +80,43 @@ export function StudentsPage() {
     [rows],
   );
 
+  function openCreate() {
+    setCreated(null);
+    setCreateOpen(true);
+  }
+
+  function handleCreated(student: Student, keepOpen: boolean) {
+    setCreated(student);
+    if (!keepOpen) setCreateOpen(false);
+  }
+
   return (
     <>
+      {created && !createOpen && (
+        <div className={styles.flash} role="status">
+          <span>
+            «{created.fullName}» talabalar ro'yxatiga qo'shildi.{' '}
+            <Link className={styles.flashLink} to={`/admin/students/${created.id}`}>
+              Talaba sahifasini ochish
+            </Link>
+          </span>
+          <button
+            type="button"
+            className={styles.flashClose}
+            aria-label="Xabarni yopish"
+            onClick={() => setCreated(null)}
+          >
+            ×
+          </button>
+        </div>
+      )}
       <StudentsTable
         {...tableState(list, query)}
         onDownloadTemplate={template.download}
         templateLoading={template.isLoading}
         templateError={template.error}
         onImportExcel={() => setImportOpen(true)}
+        onCreate={openCreate}
         selectedIds={selectedIds}
         onToggleRow={toggleRow}
         onToggleAll={toggleAll}
@@ -123,6 +161,14 @@ export function StudentsPage() {
         template={template}
         mutation={importStudents}
       />
+      {createOpen && (
+        <StudentFormModal
+          initialScope={filters}
+          filterOptions={filterOptions.data}
+          onClose={() => setCreateOpen(false)}
+          onCreated={handleCreated}
+        />
+      )}
       {assignOpen && (
         <AssignCompanyModal
           studentIds={[...selectedIds]}

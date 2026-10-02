@@ -133,3 +133,36 @@ export interface StudentListParams extends ListParams {
   directionId?: string;
   course?: number;
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Bitta talabani qo'lda yaratish — `POST /api/admin/students` → 201 `Student` (ro'yxat qatori).
+ * Parol yaratilmaydi: talaba Telegram orqali kiradi (brauzer uchun parol — profildagi
+ * "Parol o'rnatish"). Xatolar: 400 (`errors`: fullName/hemisId/groupId/phoneNumber) · 409
+ * (HEMIS ID yoki telefon band).
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+export interface StudentCreateInput {
+  fullName: string;
+  /** Faqat raqamlar, 5–20 belgi. */
+  hemisId: string;
+  groupId: string;
+  /** E.164 "+998901234567" yoki null (ixtiyoriy). */
+  phoneNumber?: string | null;
+}
+
+/** `GET /api/admin/students/group-options` — faqat faol guruhlar (yaratish formasidagi tanlov). */
+export interface StudentGroupOption {
+  id: string;
+  /** "412-22" */
+  name: string;
+  course: number | null;
+  directionName: string;
+  facultyName: string;
+}
+
+/** Guruh variantlarini toraytirish (hammasi ixtiyoriy, AND). */
+export interface StudentGroupOptionParams {
+  facultyId?: string;
+  directionId?: string;
+  course?: number;
+}

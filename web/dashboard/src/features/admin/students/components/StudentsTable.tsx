@@ -59,6 +59,8 @@ export interface StudentsTableProps extends TableStateProps<Student> {
   /** Shablon yuklanmasa — tugmalar yonidagi xabar. */
   templateError?: string | null;
   onImportExcel: () => void;
+  /** "Talaba qo'shish" — bitta talabani yaratish modali. */
+  onCreate: () => void;
   /** Belgilangan talabalar (ommaviy biriktirish uchun). */
   selectedIds: ReadonlySet<string>;
   onToggleRow: (id: string, checked: boolean) => void;
@@ -78,6 +80,7 @@ export function StudentsTable({
   templateLoading = false,
   templateError = null,
   onImportExcel,
+  onCreate,
   selectedIds,
   onToggleRow,
   onToggleAll,
@@ -169,6 +172,9 @@ export function StudentsTable({
           </Button>
           <Button size="xs" onClick={onImportExcel}>
             Excel import
+          </Button>
+          <Button size="xs" variant="primary" onClick={onCreate}>
+            Talaba qo'shish
           </Button>
         </>
       }

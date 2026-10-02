@@ -1,0 +1,74 @@
+/* "Talaba qo'shish" modali — TutorForms/FacultyFormModal ritmi (14px oraliq) */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+/* Guruhni toraytirish: Fakultet · Yo'nalish · Kurs (bir qatorda) */
+.fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}
+.scope {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.3fr) minmax(0, 0.8fr);
+  gap: 10px;
+}
+@media (max-width: 560px) {
+  .scope {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.error {
+  margin: 0;
+  font-size: var(--fs-sm2);
+  color: var(--color-bad-fg);
+}
+.success {
+  margin: 0;
+  font-size: var(--fs-sm2);
+  color: var(--color-ok-fg);
+}
+.success a {
+  color: inherit;
+  font-weight: var(--fw-semibold);
+}
+.note {
+  margin: 0;
+  padding-top: 12px;
+  border-top: var(--border-input);
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  line-height: var(--lh-note);
+}
+/* Saqlash tugmasidagi kichik spinner (loyihada umumiy spinner yo'q) */
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2s;
+  }
+}

@@ -9,9 +9,16 @@ import {
   STUDENTS_TEMPLATE_ENDPOINT,
   STUDENTS_TEMPLATE_FILE_NAME,
   studentFiltersKey,
+  studentGroupOptionsKey,
   studentsApi,
 } from './api';
-import type { AssignCompanyInput, SetStudentCompanyInput, StudentListParams } from './types';
+import type {
+  AssignCompanyInput,
+  SetStudentCompanyInput,
+  StudentCreateInput,
+  StudentGroupOptionParams,
+  StudentListParams,
+} from './types';
 
 export function useStudentsQuery(params: StudentListParams) {
   return useQuery({
@@ -30,6 +37,37 @@ export function useStudentFilters() {
     queryKey: studentFiltersKey(),
     queryFn: studentsApi.filters,
     staleTime: 5 * 60_000,
+  });
+}
+
+/**
+ * Yaratish formasidagi guruh variantlari (fakultet/yo'nalish/kurs bilan toraytiriladi).
+ * Faqat modal ochiq bo'lganda so'raladi; toraytirish o'zgarganda eski ro'yxat ko'rinib turadi.
+ */
+export function useStudentGroupOptions(params: StudentGroupOptionParams, enabled: boolean) {
+  return useQuery({
+    queryKey: studentGroupOptionsKey(params),
+    queryFn: () => studentsApi.groupOptions(params),
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
+    enabled,
+  });
+}
+
+/**
+ * Bitta talabani qo'lda yaratish. Muvaffaqiyatda ro'yxat (filtr variantlari ham — yangi kurs/
+ * fakultet paydo bo'lishi mumkin), sidebar sonlari va dashboard yangilanadi.
+ */
+export function useCreateStudent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ['admin', 'students', 'create'],
+    mutationFn: (input: StudentCreateInput) => studentsApi.create(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: adminKeys.studentsAll() });
+      void queryClient.invalidateQueries({ queryKey: navKeys.all });
+      void queryClient.invalidateQueries({ queryKey: adminKeys.dashboard() });
+    },
   });
 }
 

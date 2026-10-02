@@ -3,3 +3,33 @@
   display: block;
   margin-top: 10px;
 }
+/* "Talaba qo'shish"dan keyingi bir martalik muvaffaqiyat xabari (StudentDetailPage flash uslubi) */
+.flash {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--color-ok-bg);
+  color: var(--color-ok-fg);
+  font-size: var(--fs-sm2);
+}
+.flashLink {
+  color: inherit;
+  font-weight: var(--fw-semibold);
+}
+.flashClose {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: var(--fs-md);
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.flashClose:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

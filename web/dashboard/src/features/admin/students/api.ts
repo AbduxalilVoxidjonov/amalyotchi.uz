@@ -7,7 +7,10 @@ import type {
   AssignCompanyResult,
   SetStudentCompanyInput,
   Student,
+  StudentCreateInput,
   StudentFilters,
+  StudentGroupOption,
+  StudentGroupOptionParams,
   StudentListParams,
 } from './types';
 
@@ -16,7 +19,10 @@ import type {
  * GET  /api/admin/students?q=&page=&pageSize=&facultyId=&directionId=&course=
  *                                             → Paged<Student> (`q`: FISH, HEMIS ID, telefon, guruh;
  *                                               filtrlar ixtiyoriy, AND; `total` — filtrlangan)
+ * POST /api/admin/students                    → 201 Student (bitta talaba; parolsiz) · 400 · 409
  * GET  /api/admin/students/filters            → StudentFilters (fakultet/yo'nalish/kurs variantlari)
+ * GET  /api/admin/students/group-options?facultyId=&directionId=&course=
+ *                                             → StudentGroupOption[] (faqat faol guruhlar)
  * GET  /api/admin/students/{id}?periodId=     → AdminStudentDetail · 404 (talaba yoki begona davr)
  * GET  /api/admin/students/import/template    → .xlsx shablon (Bearer talab qiladi — `downloadAuthFile`)
  * POST /api/admin/students/import             → StudentImportResult (multipart `file`) · 400
@@ -37,6 +43,15 @@ export const STUDENTS_FILTERS_ENDPOINT = `${STUDENTS_ENDPOINT}/filters`;
  * invalidate ham qamraydi; fakultet/yo'nalish/guruh mutatsiyalari uni alohida invalidate qiladi.
  */
 export const studentFiltersKey = () => ['admin', 'students', 'filters'] as const;
+
+/** Yaratish formasidagi guruh tanlovi (faqat faol guruhlar). */
+export const STUDENTS_GROUP_OPTIONS_ENDPOINT = `${STUDENTS_ENDPOINT}/group-options`;
+
+/**
+ * Guruh variantlari kaliti — `studentsAll()` prefiksi ostida (yaratish/importdan keyin ham yangilanadi).
+ */
+export const studentGroupOptionsKey = (params: StudentGroupOptionParams) =>
+  ['admin', 'students', 'group-options', params] as const;
 
 export const STUDENTS_TEMPLATE_ENDPOINT = `${STUDENTS_ENDPOINT}/import/template`;
 export const STUDENTS_IMPORT_ENDPOINT = `${STUDENTS_ENDPOINT}/import`;
@@ -62,6 +77,11 @@ export const studentsApi = {
       },
     }),
   filters: () => api.get<StudentFilters>(STUDENTS_FILTERS_ENDPOINT),
+  create: (input: StudentCreateInput) => api.post<Student>(STUDENTS_ENDPOINT, input),
+  groupOptions: ({ facultyId, directionId, course }: StudentGroupOptionParams) =>
+    api.get<StudentGroupOption[]>(STUDENTS_GROUP_OPTIONS_ENDPOINT, {
+      query: { facultyId: facultyId || undefined, directionId: directionId || undefined, course },
+    }),
   detail: (id: string, periodId: string | null = null) =>
     api.get<AdminStudentDetail>(`${STUDENTS_ENDPOINT}/${id}`, { query: { periodId } }),
   importExcel: (file: File) => {

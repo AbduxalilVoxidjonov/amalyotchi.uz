@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll } from 'vitest';
 import { resetMessagesMock } from '@/features/admin/messages/mocks';
+import { resetStudentsMock } from '@/features/admin/students/mocks';
 import { resetCheckinQrMock } from '@/features/shared/checkin-qr/mocks';
 import { resetTutorMocks } from '@/features/tutor/mocks';
 import { resetMockState } from '@/mocks/data';
@@ -18,6 +19,7 @@ afterEach(() => {
   resetTutorMocks();
   resetCheckinQrMock();
   resetMessagesMock();
+  resetStudentsMock();
   useAuthStore.getState().clear();
   window.localStorage.clear();
 });

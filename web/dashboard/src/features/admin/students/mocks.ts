@@ -8,7 +8,9 @@ import {
   mockStudents as tutorMockStudents,
   periodNotFound,
 } from '@/features/tutor/students/mocks';
+import { mockUsers } from '@/mocks/data';
 import { mockCompanies } from '../companies/mocks';
+import { mockDepartments } from '../faculties/departments/mocks';
 import { mockDirections } from '../faculties/directions/mocks';
 import { mockGroups } from '../faculties/groups/mocks';
 import { mockFaculties } from '../faculties/mocks';
@@ -27,6 +29,7 @@ import {
   STUDENTS_ASSIGN_COMPANY_ENDPOINT,
   STUDENTS_ENDPOINT,
   STUDENTS_FILTERS_ENDPOINT,
+  STUDENTS_GROUP_OPTIONS_ENDPOINT,
   STUDENTS_IMPORT_ENDPOINT,
   STUDENTS_TEMPLATE_ENDPOINT,
   STUDENTS_TEMPLATE_FILE_NAME,
@@ -38,9 +41,12 @@ import type {
   AssignCompanyInput,
   SetStudentCompanyInput,
   Student,
+  StudentCreateInput,
   StudentFilters,
+  StudentGroupOption,
 } from './types';
 import { STUDENT_COMPANY_COMMENT_MAX } from './types';
+import { STUDENT_FORM_MESSAGES, STUDENT_FULL_NAME_MAX, normalizeUzPhone } from './schema';
 
 /**
  * Backend `StudentRow` shaklida (SPEC-SCREENS §9.6 raqamlari). `company` — faqat aktiv korxona va
@@ -120,6 +126,9 @@ export const mockStudents: Student[] = [
   },
 ];
 
+/** Urug' talabalar soni — `POST /students` qo'shganlari `resetStudentsMock()` da olib tashlanadi. */
+const SEED_STUDENT_COUNT = mockStudents.length;
+
 /* ────────────────────────────────────────────────────────────────────────────
  * Talaba profili mock'i. Bloklar tyutor mock'idan quriladi (backend'da ham ayni
  * handler), admin qatori esa unga nom/guruh/fakultet va admin maydonlarini beradi.
@@ -170,6 +179,119 @@ const companyOverrides = new Map<string, CompanyOverride>();
 
 export function resetStudentCompanyMock() {
   companyOverrides.clear();
+}
+
+/** Testlar orasida: qo'lda yaratilgan talabalar va biriktirishlar tozalanadi. */
+export function resetStudentsMock() {
+  mockStudents.splice(SEED_STUDENT_COUNT);
+  createdPhones.clear();
+  nextCreatedId = 1;
+  companyOverrides.clear();
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Qo'lda yaratish (`POST /students`) va guruh variantlari (`GET /students/group-options`).
+ * Guruhlar ierarxiya urug'idan: guruh → yo'nalish → kafedra → fakultet.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** Qo'lda yaratilgan talabalar telefonlari (backend'da `User.PhoneNumber` noyob). */
+const createdPhones = new Map<string, string>();
+let nextCreatedId = 1;
+
+interface GroupOptionSeed extends StudentGroupOption {
+  facultyId: string;
+  directionId: string;
+}
+
+function groupOptionSeeds(): GroupOptionSeed[] {
+  return mockGroups
+    .filter((g) => g.isActive)
+    .map((g) => {
+      const direction = mockDirections.find((d) => d.id === g.directionId);
+      const department = mockDepartments.find((d) => d.id === direction?.departmentId);
+      const faculty = mockFaculties.find((f) => f.id === department?.facultyId);
+      return {
+        id: g.id,
+        name: g.code,
+        course: g.course,
+        directionName: direction?.name ?? '',
+        facultyName: faculty?.name ?? '',
+        facultyId: faculty?.id ?? '',
+        directionId: g.directionId,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** `?facultyId=&directionId=&course=` bo'yicha faol guruhlar (backend shakli — seed maydonlarisiz). */
+export function buildGroupOptions(url: string): StudentGroupOption[] {
+  const sp = new URL(url).searchParams;
+  const facultyId = sp.get('facultyId');
+  const directionId = sp.get('directionId');
+  const course = sp.get('course');
+  return groupOptionSeeds()
+    .filter(
+      (g) =>
+        (!facultyId || g.facultyId === facultyId) &&
+        (!directionId || g.directionId === directionId) &&
+        (!course || g.course === Number(course)),
+    )
+    .map(({ facultyId: _f, directionId: _d, ...option }) => option);
+}
+
+const HEMIS_TAKEN = 'Bu HEMIS ID bilan talaba allaqachon mavjud.';
+const PHONE_TAKEN = 'Bu telefon raqami bilan foydalanuvchi bor.';
+
+function phoneTaken(phone: string): boolean {
+  return createdPhones.has(phone) || mockUsers.some((u) => u.phoneNumber === phone);
+}
+
+/** Backend validatori nusxasi: 400 `errors` (camelCase) · 409 band HEMIS ID/telefon · 201 `Student`. */
+async function createStudentMock(request: Request) {
+  const body = (await request.json().catch(() => null)) as Partial<StudentCreateInput> | null;
+  const fullName = (body?.fullName ?? '').trim();
+  const hemisId = (body?.hemisId ?? '').trim();
+  const rawPhone = (body?.phoneNumber ?? '').trim();
+  const phone = rawPhone ? normalizeUzPhone(rawPhone) : null;
+  const group = groupOptionSeeds().find((g) => g.id === body?.groupId);
+
+  const errors: Record<string, string[]> = {};
+  if (!fullName) errors['fullName'] = [STUDENT_FORM_MESSAGES.fullNameRequired];
+  else if (fullName.length > STUDENT_FULL_NAME_MAX)
+    errors['fullName'] = [STUDENT_FORM_MESSAGES.fullNameLength];
+  if (!hemisId) errors['hemisId'] = [STUDENT_FORM_MESSAGES.hemisRequired];
+  else if (!/^\d{5,20}$/.test(hemisId)) errors['hemisId'] = [STUDENT_FORM_MESSAGES.hemisFormat];
+  if (!body?.groupId) errors['groupId'] = [STUDENT_FORM_MESSAGES.groupRequired];
+  else if (!group) errors['groupId'] = ["Bunday faol guruh yo'q."];
+  if (rawPhone && !phone) errors['phoneNumber'] = [STUDENT_FORM_MESSAGES.phoneFormat];
+  if (Object.keys(errors).length > 0) {
+    return problemResponse(400, "Ma'lumotlar noto'g'ri", "Bir yoki bir nechta maydon noto'g'ri.", {
+      errors,
+    });
+  }
+
+  if (mockStudents.some((s) => s.hemisId === hemisId)) {
+    return problemResponse(409, 'Amal bajarilmadi', HEMIS_TAKEN);
+  }
+  if (phone && phoneTaken(phone)) return problemResponse(409, 'Amal bajarilmadi', PHONE_TAKEN);
+
+  const student: Student = {
+    id: `s-new-${nextCreatedId++}`,
+    fullName,
+    hemisId,
+    groupId: group!.id,
+    group: group!.name,
+    course: group!.course ?? 1,
+    faculty: group!.facultyName,
+    company: null,
+    attendancePct: 0,
+    suspiciousDays: 0,
+    telegramLinked: false,
+    status: 'unlinked',
+  };
+  mockStudents.push(student);
+  if (phone) createdPhones.set(phone, student.id);
+  return HttpResponse.json(student, { status: 201 });
 }
 
 /** Admin korxona qatori → profil `StudentCompany` shakli (rahbar/lokatsiya — mock qiymatlar). */
@@ -467,8 +589,13 @@ export const studentsHandlers: HttpHandler[] = [
     return detail && detail !== 'periodNotFound' ? HttpResponse.json(detail) : notFound();
   }),
 
-  // `/:id` dan oldin — aks holda "filters" talaba id'si sifatida tushib qoladi.
+  http.post(STUDENTS_ENDPOINT, ({ request }) => createStudentMock(request)),
+
+  // `/:id` dan oldin — aks holda "filters"/"group-options" talaba id'si sifatida tushib qoladi.
   http.get(STUDENTS_FILTERS_ENDPOINT, () => HttpResponse.json(buildStudentFilters())),
+  http.get(STUDENTS_GROUP_OPTIONS_ENDPOINT, ({ request }) =>
+    HttpResponse.json(buildGroupOptions(request.url)),
+  ),
 
   http.get(`${STUDENTS_ENDPOINT}/:id/attendance`, ({ params, request }) => {
     const source = sourceId(String(params['id']));
