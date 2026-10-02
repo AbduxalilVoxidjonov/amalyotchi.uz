@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Models;
 using Amaliyotchi.Application.Common.Practice;
@@ -86,28 +87,48 @@ internal sealed class GetAdminStudentsQueryHandler(IApplicationDbContext db, ICl
 
         var page = await students
             .OrderBy(x => x.User.FullName).ThenBy(x => x.Profile.HemisId)
-            .Select(x => new
-            {
-                x.User.Id,
-                x.User.FullName,
-                x.Profile.HemisId,
-                GroupId = x.Group.Id,
-                Group = x.Group.Name,
-                x.Group.Course,
-                Faculty = x.Faculty.Name,
-                TelegramLinked = x.User.TelegramUserId != null
-            })
+            .Select(Seed)
             .ToPagedAsync(request, cancellationToken);
 
         if (page.Total == 0)
             return Paged<StudentRow>.Empty(request);
 
-        var ids = page.Items.Select(s => s.Id).ToList();
+        var rows = await ToRowsAsync(db, clock, page.Items, cancellationToken);
+        return new Paged<StudentRow>(rows, page.Page, page.PageSize, page.Total);
+    }
+
+    /// <summary>Bitta talabaning ro'yxat qatori (ro'yxatdagi bilan aynan bir xil hisob) — masalan yaratilgandan keyin
+    /// (<c>POST /api/admin/students</c> javobi). Topilmasa <c>null</c>.</summary>
+    internal static async Task<StudentRow?> LoadRowAsync(
+        IApplicationDbContext db, IClock clock, Guid studentUserId, CancellationToken cancellationToken)
+    {
+        var seeds = await Source(db).Where(x => x.User.Id == studentUserId).Select(Seed).ToListAsync(cancellationToken);
+        return seeds.Count == 0 ? null : (await ToRowsAsync(db, clock, seeds, cancellationToken))[0];
+    }
+
+    private static readonly Expression<Func<AdminStudentSource, StudentRowSeed>> Seed =
+        x => new StudentRowSeed
+        {
+            Id = x.User.Id,
+            FullName = x.User.FullName,
+            HemisId = x.Profile.HemisId,
+            GroupId = x.Group.Id,
+            Group = x.Group.Name,
+            Course = x.Group.Course,
+            Faculty = x.Faculty.Name,
+            TelegramLinked = x.User.TelegramUserId != null
+        };
+
+    /// <summary>Bazadan olingan asosiy maydonlarga davomat foizi, shubhali kunlar, aktiv korxona va holatni qo'shadi.</summary>
+    private static async Task<List<StudentRow>> ToRowsAsync(
+        IApplicationDbContext db, IClock clock, IReadOnlyList<StudentRowSeed> items, CancellationToken cancellationToken)
+    {
+        var ids = items.Select(s => s.Id).ToList();
         var calendar = await PracticeCalendar.LoadAsync(db, clock, cancellationToken);
         var today = calendar.Today;
 
         // Har talaba — guruhining sukut bo'yicha davri (davom etayotgan → oxirgi tugagan → kelgusi) kesimida.
-        var periodIds = page.Items.Select(s => calendar.For(s.GroupId)?.PeriodId).OfType<Guid>().Distinct().ToList();
+        var periodIds = items.Select(s => calendar.For(s.GroupId)?.PeriodId).OfType<Guid>().Distinct().ToList();
 
         var attendance = await db.DailyAttendances
             .AsNoTracking()
@@ -126,7 +147,7 @@ internal sealed class GetAdminStudentsQueryHandler(IApplicationDbContext db, ICl
         // Korxona — faqat aktiv (hozir davom etayotgan davrdagi tasdiqlangan) arizadan; davomat davridan mustaqil.
         var companies = await db.LoadActiveCompaniesAsync(ids, today, cancellationToken);
 
-        var rows = page.Items.Select(s =>
+        return items.Select(s =>
         {
             var periodId = calendar.For(s.GroupId)?.PeriodId ?? Guid.Empty;
             var stats = attendance.GetValueOrDefault((s.Id, periodId));
@@ -141,9 +162,20 @@ internal sealed class GetAdminStudentsQueryHandler(IApplicationDbContext db, ICl
                 companies.GetValueOrDefault(s.Id)?.Name,
                 pct, suspicious, s.TelegramLinked, status);
         }).ToList();
-
-        return new Paged<StudentRow>(rows, page.Page, page.PageSize, page.Total);
     }
+}
+
+/// <summary>Ro'yxat qatorining bazadan olinadigan qismi (EF proyeksiyasi uchun init-xossali tur).</summary>
+internal sealed class StudentRowSeed
+{
+    public required Guid Id { get; init; }
+    public required string FullName { get; init; }
+    public required string HemisId { get; init; }
+    public required Guid GroupId { get; init; }
+    public required string Group { get; init; }
+    public required int Course { get; init; }
+    public required string Faculty { get; init; }
+    public required bool TelegramLinked { get; init; }
 }
 
 /// <summary>Admin talabalar ro'yxati manbasi qatori (EF kompozitsiyasi uchun init-xossali tur, konstruktor emas).</summary>

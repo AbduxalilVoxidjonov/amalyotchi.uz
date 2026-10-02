@@ -4,12 +4,9 @@ using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Features.Student.Common;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Domain.Exceptions;
-using Amaliyotchi.Domain.Identity;
 using Amaliyotchi.Domain.Students;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Hemis = Amaliyotchi.Domain.ValueObjects.HemisId;
-using Phone = Amaliyotchi.Domain.ValueObjects.PhoneNumber;
 
 namespace Amaliyotchi.Application.Features.Admin.Students;
 
@@ -19,7 +16,8 @@ namespace Amaliyotchi.Application.Features.Admin.Students;
 /// Fayl o'qilmasa yoki sarlavha qatori topilmasa → 400.</summary>
 public sealed record ImportStudentsCommand(UploadedFile? File) : IRequest<ImportResult>;
 
-/// <summary>Qator xatolari matni — hisobotda foydalanuvchiga shu ko'rinishda chiqadi.</summary>
+/// <summary>Qator xatolari matni — hisobotda foydalanuvchiga shu ko'rinishda chiqadi. Maydon xabarlari
+/// (<see cref="StudentFieldRules"/>) yakka talaba formasida (<c>POST /api/admin/students</c>) ham ishlatiladi.</summary>
 public static class StudentImportMessages
 {
     public const string FullNameRequiredMessage = "FISH bo'sh.";
@@ -39,8 +37,6 @@ internal sealed class ImportStudentsCommandHandler(
     IApplicationDbContext db, IStudentImportExcel excel, IAuditWriter audit)
     : IRequestHandler<ImportStudentsCommand, ImportResult>
 {
-    private const int FullNameMaxLength = 200;
-
     public async Task<ImportResult> Handle(ImportStudentsCommand request, CancellationToken cancellationToken)
     {
         // Validator allaqachon tekshirgan; bu — nullable kontrakt uchun himoya tarmog'i.
@@ -56,10 +52,8 @@ internal sealed class ImportStudentsCommandHandler(
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
 
         // Takrorlanish nazorati: bazadagi qiymatlar (unikal indekslar bilan bir xil shart) + shu fayl ichidagilar.
-        var takenHemis = await db.StudentProfiles.AsNoTracking()
-            .Select(p => p.HemisId).ToListAsync(cancellationToken);
-        var takenPhones = await db.Users.AsNoTracking()
-            .Where(u => u.PhoneNumber != null).Select(u => u.PhoneNumber!).ToListAsync(cancellationToken);
+        var takenHemis = await StudentRegistration.TakenHemisIds(db).ToListAsync(cancellationToken);
+        var takenPhones = await StudentRegistration.TakenPhones(db).ToListAsync(cancellationToken);
 
         var hemisSeen = new HashSet<string>(takenHemis, StringComparer.Ordinal);
         var phoneSeen = new HashSet<string>(takenPhones, StringComparer.Ordinal);
@@ -73,17 +67,12 @@ internal sealed class ImportStudentsCommandHandler(
         {
             var before = errors.Count;
 
-            var fullName = row.FullName?.Trim();
-            if (string.IsNullOrEmpty(fullName))
-                errors.Add(Error(row, StudentImportColumns.FullName, row.FullName, StudentImportMessages.FullNameRequiredMessage));
-            else if (fullName.Length > FullNameMaxLength)
-                errors.Add(Error(row, StudentImportColumns.FullName, fullName, StudentImportMessages.FullNameLengthMessage));
+            if (StudentFieldRules.FullNameError(row.FullName, out var fullName) is { } fullNameError)
+                errors.Add(Error(row, StudentImportColumns.FullName,
+                    fullName.Length == 0 ? row.FullName : fullName, fullNameError));
 
-            var hemisId = string.Empty;
-            if (string.IsNullOrWhiteSpace(row.HemisId))
-                errors.Add(Error(row, StudentImportColumns.HemisId, row.HemisId, StudentImportMessages.HemisRequiredMessage));
-            else if (!Hemis.TryNormalize(row.HemisId, out hemisId))
-                errors.Add(Error(row, StudentImportColumns.HemisId, row.HemisId, StudentImportMessages.HemisFormatMessage));
+            if (StudentFieldRules.HemisIdError(row.HemisId, out var hemisId) is { } hemisError)
+                errors.Add(Error(row, StudentImportColumns.HemisId, row.HemisId, hemisError));
             else if (fileHemis.Contains(hemisId))
                 errors.Add(Error(row, StudentImportColumns.HemisId, row.HemisId, StudentImportMessages.HemisDuplicateInFileMessage));
             else if (hemisSeen.Contains(hemisId))
@@ -107,25 +96,17 @@ internal sealed class ImportStudentsCommandHandler(
                 group = matches[0];
             }
 
-            string? phone = null;
-            if (!string.IsNullOrWhiteSpace(row.Phone))
-            {
-                if (!Phone.TryNormalize(row.Phone, out var normalized))
-                    errors.Add(Error(row, StudentImportColumns.Phone, row.Phone, StudentImportMessages.PhoneFormatMessage));
-                else if (filePhones.Contains(normalized))
-                    errors.Add(Error(row, StudentImportColumns.Phone, row.Phone, StudentImportMessages.PhoneDuplicateInFileMessage));
-                else if (phoneSeen.Contains(normalized))
-                    errors.Add(Error(row, StudentImportColumns.Phone, row.Phone, StudentImportMessages.PhoneTakenMessage));
-                else
-                    phone = normalized;
-            }
+            if (StudentFieldRules.PhoneError(row.Phone, out var phone) is { } phoneError)
+                errors.Add(Error(row, StudentImportColumns.Phone, row.Phone, phoneError));
+            else if (phone is not null && filePhones.Contains(phone))
+                errors.Add(Error(row, StudentImportColumns.Phone, row.Phone, StudentImportMessages.PhoneDuplicateInFileMessage));
+            else if (phone is not null && phoneSeen.Contains(phone))
+                errors.Add(Error(row, StudentImportColumns.Phone, row.Phone, StudentImportMessages.PhoneTakenMessage));
 
-            if (errors.Count != before || group is null || fullName is null)
+            if (errors.Count != before || group is null)
                 continue;
 
-            var user = User.CreateStudent(fullName, group.FacultyId, phone);
-            db.Users.Add(user);
-            db.StudentProfiles.Add(StudentProfile.Create(user.Id, hemisId, group.GroupId));
+            StudentRegistration.Add(db, fullName, hemisId, group, phone);
 
             fileHemis.Add(hemisId);
             if (phone is not null)

@@ -1,4 +1,4 @@
-# API-CONTRACT v3.24
+# API-CONTRACT v3.25
 
 Oxirgi yangilanish: 02.10.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
@@ -26,9 +26,10 @@ v3.20 (admin talabalar ro'yxati filtrlari — `facultyId`/`directionId`/`course`
 v3.21 (admin talabalar ro'yxatida `pageSize` 500 gacha) — §6.27,
 v3.22 (admin o'z loginini almashtiradi — `GET /api/auth/login-available`, `POST /api/auth/change-login`) — §6.28,
 v3.23 (admin dashboard ko'rsatkichlari loyiha qoidalariga moslandi — ochiq davrlar, davom etayotgan davr davomati) — §6.29,
-v3.24 ("Xabarlar": admin Telegram orqali talabalarga xabar yuboradi — `/api/admin/messages`) — §6.30.
+v3.24 ("Xabarlar": admin Telegram orqali talabalarga xabar yuboradi — `/api/admin/messages`) — §6.30,
+v3.25 (bitta talabani forma orqali qo'shish — `POST /api/admin/students`, `GET /api/admin/students/group-options`) — §6.31.
 
-Jami **120 ta endpoint**: Auth 9 · Admin 76 · Reports 1 · Tutor 21 · Student (TWA) 11 · Files 1 · Companies 1.
+Jami **122 ta endpoint**: Auth 9 · Admin 78 · Reports 1 · Tutor 21 · Student (TWA) 11 · Files 1 · Companies 1.
 
 > Kontrollerlarda `[Http*]` atributlari **122 ta**: `POST /api/student/checkin` va `POST /api/student/checkout`
 > har birida ikkitadan action bor (`multipart/form-data` va `application/json` — `[Consumes]` bilan ajratiladi,
@@ -846,6 +847,60 @@ interface AdminStudentFilters {
   teng bo'lsa `name`, keyin `id`.
 - `courses` — o'chirilmagan guruhlardagi noyob `course` qiymatlari, o'sish tartibida.
 - 3 ta yengil SELECT, sahifalash yo'q.
+
+#### GET `/api/admin/students/group-options?facultyId=&directionId=&course=` · 200 · 401 · 403 — v3.25
+
+Talaba qo'shish formasi uchun guruh variantlari. Faqat **faol** guruhlar — import shablonidagi «Guruhlar» varag'i va
+import/yaratish qabul qiladigan to'plamning aynan o'zi (faol o'quv yilidagi, zanjiri — yo'nalish, kafedra, fakultet —
+to'liq faol). Filtrlar ixtiyoriy, bir-biri bilan **AND** (`facultyId` — yo'nalish kafedrasining fakulteti); mos kelmasa —
+bo'sh massiv, 400 emas. Tartib: fakultet nomi → yo'nalish nomi → kurs → guruh nomi. Sahifalash yo'q.
+
+```ts
+interface StudentGroupOption {
+  id: string;
+  name: string;
+  course: number /*int; backend doimo to'ldiradi (TS'da number | null deb olinsa ham mos)*/;
+  directionName: string;
+  facultyName: string;
+}
+// javob: StudentGroupOption[]
+```
+
+#### POST `/api/admin/students` · 201 · 400 · 401 · 403 · 409 — v3.25
+
+Bitta talabani forma orqali qo'shish. Talaba Excel import bilan **aynan bir xil** yaratiladi (umumiy qoidalar va
+xabarlar — quyidagi import jadvalidagi FISH/HEMIS ID/Telefon matnlari bilan bir xil).
+
+```ts
+interface CreateStudentRequest {
+  fullName: string;            // trim; bo'sh emas, ≤ 200 belgi
+  hemisId: string;             // trim; faqat raqam, 5–20 belgi
+  groupId: string;             // faol guruh (GET .../group-options)
+  phoneNumber?: string | null; // ixtiyoriy; "901234567" / "90 123 45 67" / "+998901234567" → "+998901234567"
+}
+```
+
+**201** + `Location: /api/admin/students/{id}`, tana — `StudentRow` (`GET /api/admin/students` elementi bilan bir xil
+shakl; yangi talaba: `telegramLinked: false`, `status: "unlinked"`, `company: null`).
+
+| Status | Holat | `errors` kaliti / `detail` |
+|---|---|---|
+| 400 | FISH bo'sh / > 200 belgi | `errors.fullName`: `"FISH bo'sh."` · `"FISH 200 ta belgidan oshmasligi kerak."` |
+| 400 | HEMIS ID bo'sh / format | `errors.hemisId`: `"HEMIS ID bo'sh."` · `"HEMIS ID 5–20 ta raqamdan iborat bo'lishi kerak."` |
+| 400 | guruh berilmagan | `errors.groupId`: `"Guruh bo'sh."` |
+| 400 | guruh yo'q, o'chirilgan yoki faol emas (zanjirda) | `errors.groupId`: `"Bunday faol guruh yo'q."` |
+| 400 | telefon formati | `errors.phoneNumber`: `"Telefon raqami noto'g'ri. Namuna: +998901234567"` |
+| 409 | HEMIS ID o'chirilmagan talabada band | `detail`: `"Bu HEMIS ID bilan talaba allaqachon mavjud."` |
+| 409 | telefon o'chirilmagan foydalanuvchida band | `detail`: `"Bu telefon raqami bilan foydalanuvchi bor."` |
+
+`errors` kalitlari — **camelCase** (so'rov tanasidagi maydon nomlari; formada maydon ostida ko'rsatiladi). Bandlik
+import bilan bir xil: o'chirilgan (soft-deleted) talabaning HEMIS ID/telefoni qayta ishlatilishi mumkin (bazadagi unikal
+indekslar ham `is_deleted = false`). Noto'g'ri formatli `groupId` (Guid emas) — ASP.NET model binding 400 (`errors["$.groupId"]`).
+
+Yaratilgan talaba — importdagidek: `User` (rol `student`, parolsiz, Telegramsiz), fakulteti guruh zanjiridan;
+`StudentProfile` (`hemisId`, guruh, holat `active`). Tyutor ko'lamlari guruh orqali avtomatik qamraydi. Telegram bilan
+bog'lanish ham importdagidek (admin vaqtinchalik parol beradi → `POST /api/auth/telegram/link`). Audit: `studentCreated`
+(`entityId` — talaba `User.Id`, `changes`: `{ hemisId, groupId }`).
 
 #### GET `/api/admin/students/import/template` · 200
 
@@ -2660,7 +2715,7 @@ Tartib: davom etayotgan ochiq davr(lar) birinchi, keyin `startDate` kamayish (te
 | `TutorScopeLevel`                  | `faculty` · `department` · `direction` · `group`                                                                                                                                                                                                                                                                                          | admin tutors `scopes[].level`, `PUT .../scopes` body                                   |
 | `AdminStudentStatus`               | `active` · `flagged` · `unlinked`                                                                                                                                                                                                                                                                                                         | admin students                                                                         |
 | `CompanyFlag`                      | `suspicious` · `tooManyStudents` · `largeRadius` · `null` — ustuvorlik aynan shu tartibda                                                                                                                                                                                                                                                 | admin companies, tutor companies                                                       |
-| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorScopesChanged` · `studentsImported` · `company*` (§6.9) · `studentsAssignedToCompany` · `practicePeriodCreated` · `practicePeriodUpdated` · `practicePeriodGroupsChanged` · `practicePeriodClosed` · `practicePeriodDeleted` · `companyQrRotated` (v3.7) · `studentPasswordSet` · `passwordChanged` (v3.8) · `telegramLinked` (v3.9) · `studentCompanyReassigned` · `loginChanged` (v3.22) · `broadcastMessageCreated` · `broadcastMessageRetried` (v3.24) | admin audit `action`, `?action=`                                                       |
+| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorScopesChanged` · `studentsImported` · `company*` (§6.9) · `studentsAssignedToCompany` · `practicePeriodCreated` · `practicePeriodUpdated` · `practicePeriodGroupsChanged` · `practicePeriodClosed` · `practicePeriodDeleted` · `companyQrRotated` (v3.7) · `studentPasswordSet` · `passwordChanged` (v3.8) · `telegramLinked` (v3.9) · `studentCompanyReassigned` · `loginChanged` (v3.22) · `broadcastMessageCreated` · `broadcastMessageRetried` (v3.24) · `studentCreated` (v3.25) | admin audit `action`, `?action=`                                                       |
 | `BroadcastAudienceKind` (request)  | `selected` · `filter` · `all`                                                                                                                                                                                                                                                                                                             | `POST /api/admin/messages` `audience.kind` (v3.24)                                     |
 | `BroadcastMessageStatus`           | `queued` · `sending` · `completed` — yetkazishlardan hisoblanadi (§2.3.5)                                                                                                                                                                                                                                                                 | `MessageSummary.status`                                                                |
 | `BroadcastDeliveryStatus`          | `pending` · `sent` · `failed` · `blocked`                                                                                                                                                                                                                                                                                                 | `MessageDeliveryRow.status`, `?status=`                                                |
@@ -3400,3 +3455,13 @@ Foydalanuvchi qarori: talabalar ruxsat (leave) so'ramaydi — funksiya butunlay 
 - **Migratsiya `AdminMessages`:** `broadcast_messages`, `broadcast_deliveries` jadvallari; `users.telegram_linked_at`
   (mavjud bog'lanishlar audit jurnalidagi `telegramLinked` dan tiklanadi), `users.telegram_bot_blocked_at`.
 - Endpoint soni **113 → 120** (Admin 69 → 76; `[Http*]` atributlari 115 → 122).
+
+### 6.31 v3.24 → v3.25 (02.10.2026): bitta talabani forma orqali qo'shish
+
+- **Yangi endpoint'lar (2 ta, AdminOnly)** — §2.3: `GET /api/admin/students/group-options?facultyId&directionId&course`
+  (faol guruhlar, `{ id, name, course, directionName, facultyName }[]`), `POST /api/admin/students`
+  (`{ fullName, hemisId, groupId, phoneNumber? }` → 201 + Location, tana — `StudentRow`; 400 `errors` camelCase; 409 band).
+- Maydon qoidalari, faol guruh to'plami va HEMIS ID/telefon bandligi Excel import bilan umumiy kodda — import xatti-harakati
+  va xabarlari o'zgarmadi.
+- **Enum:** `AuditAction` + `studentCreated` (69). Migratsiya yo'q (audit `action` — int).
+- Endpoint soni **120 → 122** (Admin 76 → 78; `[Http*]` atributlari 122 → 124).

@@ -35,6 +35,30 @@ public sealed class AdminStudentsController(ISender sender) : ControllerBase
     public async Task<ActionResult<AdminStudentFiltersDto>> Filters(CancellationToken cancellationToken)
         => Ok(await sender.Send(new GetAdminStudentFiltersQuery(), cancellationToken));
 
+    /// <summary>Talaba qo'shish formasi uchun guruh variantlari (<c>?facultyId&amp;directionId&amp;course</c>, ixtiyoriy) — faqat faol
+    /// guruhlar (import qabul qiladigan to'plam), tartib: fakultet, yo'nalish, kurs, nom.</summary>
+    [HttpGet("group-options")]
+    [ProducesResponseType<IReadOnlyList<StudentGroupOption>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<IReadOnlyList<StudentGroupOption>>> GroupOptions(
+        [FromQuery] Guid? facultyId, [FromQuery] Guid? directionId, [FromQuery] int? course, CancellationToken cancellationToken)
+        => Ok(await sender.Send(new GetStudentGroupOptionsQuery(facultyId, directionId, course), cancellationToken));
+
+    /// <summary>Bitta talabani forma orqali qo'shish: <c>{ fullName, hemisId, groupId, phoneNumber? }</c> → 201 + Location
+    /// (<c>/api/admin/students/{id}</c>), tana — ro'yxat qatori (<see cref="StudentRow"/>). Qoidalar Excel import bilan bir xil.
+    /// Maydon xatosi yoki faol guruh topilmasa → 400 (<c>errors.fullName|hemisId|groupId|phoneNumber</c>);
+    /// HEMIS ID yoki telefon band → 409.</summary>
+    [HttpPost]
+    [ProducesResponseType<StudentRow>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<StudentRow>> Create(CreateStudentCommand command, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(command, cancellationToken);
+        return CreatedAtAction(nameof(Detail), new { id = result.Id }, result);
+    }
+
     /// <summary>To'ldirish uchun <c>.xlsx</c> shablon: "Talabalar" (sarlavha qatori), "Yo'riqnoma" va
     /// mavjud faol guruhlar ro'yxati ("Guruhlar"). Import shu nomlar bo'yicha o'qiydi.</summary>
     [HttpGet("import/template")]

@@ -112,5 +112,9 @@ public enum AuditAction
     BroadcastMessageCreated = 67,
 
     /// <summary>Admin xabarning muvaffaqiyatsiz (<c>failed</c>) yetkazishlarini qayta navbatga qo'ydi.</summary>
-    BroadcastMessageRetried = 68
+    BroadcastMessageRetried = 68,
+
+    /// <summary>Admin bitta talabani forma orqali qo'shdi (<c>POST /api/admin/students</c>). <c>changes</c> —
+    /// <c>{ hemisId, groupId }</c>.</summary>
+    StudentCreated = 69
 }
