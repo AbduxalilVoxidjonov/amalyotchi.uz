@@ -101,7 +101,7 @@ internal sealed class GetStudentAttendanceQueryHandler(IApplicationDbContext db,
             var leave = leaves.FirstOrDefault(l => date >= l.DateFrom && date <= l.DateTo);
 
             var status = row?.Status
-                ?? AttendanceStatusResolver.Resolve(period, date, today, localNow, leave is not null);
+                ?? AttendanceStatusResolver.Resolve(period, date, today, localNow, leave is not null, profile.HoursOn(today));
 
             var checkIns = dayEvents.Where(e => e.Kind == AttendanceEventKind.CheckIn).ToList();
             var acceptedCheckIn = checkIns.LastOrDefault(e => e.Accepted);

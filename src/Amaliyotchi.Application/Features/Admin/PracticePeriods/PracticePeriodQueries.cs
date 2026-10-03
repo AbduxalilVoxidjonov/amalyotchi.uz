@@ -128,7 +128,8 @@ internal static class PracticePeriodQueries
     }
 
     /// <summary>Kunlik ish vaqtini davrning daqiqa qoidalari bilan birga tekshiradi (<see cref="CheckInRules"/>).
-    /// Domain xatosi (tugash boshlanishdan oldin, check-in oynasi sig'maydi) → 400 <c>errors.DailyEnd</c>.</summary>
+    /// Domain xatosi (tugash boshlanishdan oldin) → 400 <c>errors.DailyEnd</c>. Check-in oynasi ish kunidan uzun bo'lsa
+    /// xato emas — u ish tugashigacha avtomatik qisqaradi.</summary>
     public static CheckInRules BuildRules(
         TimeOnly dailyStart, TimeOnly dailyEnd, int lateToleranceMinutes, int checkInWindowMinutes,
         int checkoutGraceMinutes, double minAccuracyM)

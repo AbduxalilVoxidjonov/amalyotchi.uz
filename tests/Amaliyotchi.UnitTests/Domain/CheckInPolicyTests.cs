@@ -236,6 +236,44 @@ public sealed class CheckInPolicyTests
     }
 
     [Fact]
+    public void Qoidalar_QisqaKun_OynaVaKechikishIshTugashigachaQisqaradi()
+    {
+        var rules = new CheckInRules(new TimeOnly(9, 0), new TimeOnly(10, 0), 15, 90, 60, 100);
+
+        rules.CheckInWindowMinutes.Should().Be(90);
+        rules.EffectiveWindowMinutes.Should().Be(60);
+        rules.WindowEnd.Should().Be(new TimeOnly(10, 0));
+        rules.LateAfter.Should().Be(new TimeOnly(9, 15));
+
+        // Kechikish chegarasi ham oynadan oshmaydi: 30 daqiqalik kun, 45 daqiqa kechikish.
+        var tiny = new CheckInRules(new TimeOnly(9, 0), new TimeOnly(9, 30), 45, 90, 60, 100);
+        tiny.WindowEnd.Should().Be(new TimeOnly(9, 30));
+        tiny.LateAfter.Should().Be(new TimeOnly(9, 30));
+    }
+
+    [Fact]
+    public void Qoidalar_AvtoYopishYarimTundanOtmaydi()
+    {
+        var rules = new CheckInRules(new TimeOnly(20, 0), new TimeOnly(23, 30), 15, 90, 60, 100);
+
+        rules.AutoCloseAt.Should().Be(TimeOnly.MaxValue);
+        rules.WindowEnd.Should().Be(new TimeOnly(21, 30));
+    }
+
+    [Fact]
+    public void Qoidalar_WithHours_DaqiqalarSaqlanadi_VaqtlarYangi()
+    {
+        var own = Rules.WithHours(new TimeOnly(13, 0), new TimeOnly(18, 0));
+
+        own.LateToleranceMinutes.Should().Be(Rules.LateToleranceMinutes);
+        own.CheckInWindowMinutes.Should().Be(Rules.CheckInWindowMinutes);
+        own.MinAccuracyM.Should().Be(Rules.MinAccuracyM);
+        own.LateAfter.Should().Be(new TimeOnly(13, 15));
+        own.WindowEnd.Should().Be(new TimeOnly(14, 30));
+        own.AutoCloseAt.Should().Be(new TimeOnly(19, 0));
+    }
+
+    [Fact]
     public void Qoidalar_OynaKechikishdanKichik_XatoBeradi()
     {
         var act = () => new CheckInRules(new TimeOnly(9, 0), new TimeOnly(17, 0), 30, 30, 60, 100);

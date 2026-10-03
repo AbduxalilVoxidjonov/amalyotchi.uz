@@ -11,7 +11,8 @@ namespace Amaliyotchi.Application.Features.Admin.PracticePeriods;
 /// workDays? }</c> → 201 <see cref="PracticePeriodDetail"/>. <c>dailyStart</c>/<c>dailyEnd</c> — "HH:mm" (Toshkent),
 /// <c>workDays</c> — "1,2,3,4,5" (1=Du … 7=Ya, kamida bitta); yuborilmasa (null) — standart 09:00/17:00 va global
 /// <c>workDays</c> sozlamasi. Kechikish/check-in oynasi/avto-yopish daqiqalari va <c>dailyReportRequired</c> global
-/// sozlamalardan nusxalanadi; check-in oynasi ish tugashigacha sig'masa → 400 <c>errors.DailyEnd</c>.
+/// sozlamalardan nusxalanadi; tugash boshlanishdan oldin → 400 <c>errors.DailyEnd</c> (check-in oynasi kundan
+/// uzun bo'lsa — ish tugashigacha avtomatik qisqaradi).
 /// <c>requiredDays</c> — oraliqdagi ish kunlari (bayramlarsiz). O'quv yili — joriy (faol), yo'q → 400.
 /// Guruh topilmasa/faol emas → 400 <c>errors.GroupIds</c>; sanalari kesishadigan boshqa ochiq davrda bo'lsa → 409.
 /// Saqlanadigan holat darhol <c>Active</c> (ochiq); <c>planned</c> ko'rinishi sanadan hisoblanadi.</summary>

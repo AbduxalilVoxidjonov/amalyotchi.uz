@@ -100,7 +100,9 @@ internal sealed class GetTutorStudentDetailQueryHandler(IApplicationDbContext db
         // Aktiv korxona — tanlangan davrdan mustaqil (bugun davom etayotgan ochiq davrdagi tasdiqlangan ariza).
         var activeCompany = await db.LoadActiveCompanyAsync(profile.UserId, today, cancellationToken);
 
-        var stats = StudentStatsCalculator.ComputeAttendance(period, attendance, leaves, today, localNow);
+        // Talabaning bugun amaldagi o'z ish vaqti (bo'lsa) — bugungi oyna va ko'rsatiladigan soatlar shundan.
+        var ownHours = profile.HoursOn(today);
+        var stats = StudentStatsCalculator.ComputeAttendance(period, attendance, leaves, today, localNow, ownHours);
         var diary = StudentStatsCalculator.ComputeDiary(diaryScores);
 
         // Baho — faqat boshlangan davr uchun (rejalashtirilgan davrda hisoblanadigan narsa yo'q).
@@ -133,7 +135,7 @@ internal sealed class GetTutorStudentDetailQueryHandler(IApplicationDbContext db
             current is null
                 ? null
                 : new StudentApplication(current.Id, current.Status, current.SubmittedAt, current.DecidedAt, current.DecisionComment, contract),
-            period is null ? null : ToPeriod(period.Period),
+            period is null ? null : ToPeriod(period.Period, ownHours),
             new AttendanceSummary(
                 stats.TotalDays,
                 stats.AttendedDays,
@@ -150,14 +152,17 @@ internal sealed class GetTutorStudentDetailQueryHandler(IApplicationDbContext db
             activeCompany);
     }
 
-    private static StudentPeriod ToPeriod(PracticePeriod period)
+    /// <summary>Davr bloki; <c>dailyStart</c>/<c>dailyEnd</c> — talabaning bugun amaldagi soatlari (o'zi belgilagan
+    /// bo'lsa — <c>customWorkHours = true</c>, aks holda davr soatlari).</summary>
+    private static StudentPeriod ToPeriod(PracticePeriod period, (TimeOnly Start, TimeOnly End)? ownHours)
         => new(
             period.Id,
             period.Name,
             period.StartDate,
             period.EndDate,
-            PracticeTime.Hm(period.DailyStart),
-            PracticeTime.Hm(period.DailyEnd),
+            PracticeTime.Hm(ownHours?.Start ?? period.DailyStart),
+            PracticeTime.Hm(ownHours?.End ?? period.DailyEnd),
             WorkDayNumbers.Of(period.WorkDays),
-            period.RequiredDays);
+            period.RequiredDays,
+            ownHours is not null);
 }

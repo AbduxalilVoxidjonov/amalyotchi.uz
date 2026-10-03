@@ -116,5 +116,9 @@ public enum AuditAction
 
     /// <summary>Admin bitta talabani forma orqali qo'shdi (<c>POST /api/admin/students</c>). <c>changes</c> —
     /// <c>{ hemisId, groupId }</c>.</summary>
-    StudentCreated = 69
+    StudentCreated = 69,
+
+    /// <summary>Talaba o'z ish vaqtini (kelish/ketish) o'zgartirdi (<c>PUT /api/student/profile/work-hours</c>).
+    /// <c>changes</c> — <c>{ from: { start, end }, to: { start, end }, effectiveFrom }</c>; null — davr soatlari.</summary>
+    StudentWorkHoursChanged = 70
 }

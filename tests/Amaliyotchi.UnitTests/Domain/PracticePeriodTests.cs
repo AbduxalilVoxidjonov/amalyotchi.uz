@@ -72,14 +72,20 @@ public sealed class PracticePeriodTests
     }
 
     [Fact]
-    public void ChangeSchedule_CheckInOynasiSigmasa_400()
+    public void ChangeSchedule_QisqaKun_OynaIshTugashigachaQisqaradi()
     {
         var period = NewPeriod(Today, Today.AddDays(10));
 
-        // Standart oyna 90 daqiqa: 09:00 + 90 > 10:00.
-        var act = () => period.ChangeSchedule(new TimeOnly(9, 0), new TimeOnly(10, 0), WorkDays.MondayToFriday, 5);
+        // Standart oyna 90 daqiqa: 09:00 + 90 > 10:00 — xato emas, oyna 10:00 da yopiladi.
+        period.ChangeSchedule(new TimeOnly(9, 0), new TimeOnly(10, 0), WorkDays.MondayToFriday, 5);
 
-        act.Should().Throw<DomainException>().WithMessage("Check-in oynasi*");
+        period.DailyEnd.Should().Be(new TimeOnly(10, 0));
+        period.CheckInWindowMinutes.Should().Be(CheckInRules.Default.CheckInWindowMinutes, "saqlangan daqiqalar o'zgarmaydi");
+        period.Rules(100).WindowEnd.Should().Be(new TimeOnly(10, 0));
+
+        // Kun yana uzaysa — to'liq oyna qaytadi.
+        period.ChangeSchedule(new TimeOnly(9, 0), new TimeOnly(17, 0), WorkDays.MondayToFriday, 5);
+        period.Rules(100).WindowEnd.Should().Be(new TimeOnly(10, 30));
     }
 
     [Fact]

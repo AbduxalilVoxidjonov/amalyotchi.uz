@@ -23,11 +23,14 @@ internal static class AttendanceSnapshotQueries
             a.AutoClosed, a.IsSuspicious, a.IsManual));
 }
 
-/// <summary>Bazada qatori yo'q kun uchun holat: dam olish / sababli (ruxsat) / kelmadi / kutilmoqda.</summary>
+/// <summary>Bazada qatori yo'q kun uchun holat: dam olish / sababli (ruxsat) / kelmadi / kutilmoqda.
+/// <c>ownHours</c> — talabaning bugun amaldagi o'z ish vaqti (<see cref="Domain.Students.StudentProfile.HoursOn"/>):
+/// faqat bugungi oyna yopilganini aniqlashga ta'sir qiladi (o'tgan kunlar baribir "kelmadi").</summary>
 public static class AttendanceStatusResolver
 {
     public static AttendanceStatus Resolve(
-        PeriodContext? period, DateOnly date, DateOnly today, TimeOnly localNow, bool hasApprovedLeave)
+        PeriodContext? period, DateOnly date, DateOnly today, TimeOnly localNow, bool hasApprovedLeave,
+        (TimeOnly Start, TimeOnly End)? ownHours = null)
     {
         if (period is null || !period.IsWorkDay(date))
             return AttendanceStatus.DayOff;
@@ -37,12 +40,13 @@ public static class AttendanceStatusResolver
             return AttendanceStatus.Absent;
         if (date > today)
             return AttendanceStatus.Pending;
-        return period.IsWindowClosed(localNow) ? AttendanceStatus.Absent : AttendanceStatus.Pending;
+        return period.IsWindowClosed(localNow, ownHours) ? AttendanceStatus.Absent : AttendanceStatus.Pending;
     }
 
     /// <summary>Kalendar katagi: qator bo'lsa undan, bo'lmasa hisoblab; kelajakdagi ish kuni — <c>future</c>.</summary>
     public static CalendarDayStatus ResolveCalendar(
-        PeriodContext? period, DateOnly date, DateOnly today, TimeOnly localNow, AttendanceSnapshot? row, bool hasApprovedLeave)
+        PeriodContext? period, DateOnly date, DateOnly today, TimeOnly localNow, AttendanceSnapshot? row, bool hasApprovedLeave,
+        (TimeOnly Start, TimeOnly End)? ownHours = null)
     {
         if (row is not null)
             return ToCalendar(row.Status);
@@ -54,7 +58,7 @@ public static class AttendanceStatusResolver
         if (date > today)
             return CalendarDayStatus.Future;
 
-        return ToCalendar(Resolve(period, date, today, localNow, hasApprovedLeave: false));
+        return ToCalendar(Resolve(period, date, today, localNow, hasApprovedLeave: false, ownHours));
     }
 
     public static CalendarDayStatus ToCalendar(AttendanceStatus status) => status switch

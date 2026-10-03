@@ -18,6 +18,13 @@ public sealed class StudentProfileConfiguration : IEntityTypeConfiguration<Stude
         builder.Property(x => x.Status).HasConversion<int>().IsRequired();
         builder.Property(x => x.InviteToken).HasMaxLength(100);
 
+        // Talabaning o'z ish vaqti (hammasi ixtiyoriy) — StudentProfile.SetWorkHours/HoursOn.
+        builder.Property(x => x.WorkStart);
+        builder.Property(x => x.WorkEnd);
+        builder.Property(x => x.WorkHoursEffectiveFrom);
+        builder.Property(x => x.PreviousWorkStart);
+        builder.Property(x => x.PreviousWorkEnd);
+
         // User ↔ StudentProfile 1:1 — bitta foydalanuvchiga bitta profil.
         builder.HasOne(x => x.User)
             .WithOne(u => u.StudentProfile)

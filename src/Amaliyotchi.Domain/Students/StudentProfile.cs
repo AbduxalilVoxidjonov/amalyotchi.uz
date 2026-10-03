@@ -32,6 +32,24 @@ public sealed class StudentProfile : AuditableEntity, ISoftDeletable
     public bool IsDeleted { get; set; }
     public DateTimeOffset? DeletedAt { get; set; }
 
+    /// <summary>Ish vaqti uchun eng qisqa davomiylik (daqiqa).</summary>
+    public const int MinWorkMinutes = 60;
+
+    /// <summary>Talabaning o'zi belgilagan kelish vaqti (Toshkent). null — davr soatlari ishlatiladi.
+    /// <see cref="WorkHoursEffectiveFrom"/> dan boshlab amal qiladi.</summary>
+    public TimeOnly? WorkStart { get; private set; }
+
+    /// <summary>Talabaning o'zi belgilagan ketish vaqti. <see cref="WorkStart"/> bilan birga null yoki birga qiymatli.</summary>
+    public TimeOnly? WorkEnd { get; private set; }
+
+    /// <summary><see cref="WorkStart"/>/<see cref="WorkEnd"/> shu sanadan (Toshkent) amal qiladi; undan oldin —
+    /// <see cref="PreviousWorkStart"/>/<see cref="PreviousWorkEnd"/>. Hech qachon o'rnatilmagan bo'lsa null.</summary>
+    public DateOnly? WorkHoursEffectiveFrom { get; private set; }
+
+    /// <summary>O'zgarish kuchga kirgunga qadar amal qiladigan oldingi soatlar (null — davr soatlari).</summary>
+    public TimeOnly? PreviousWorkStart { get; private set; }
+    public TimeOnly? PreviousWorkEnd { get; private set; }
+
     public static StudentProfile Create(Guid userId, string hemisId, Guid studentGroupId)
     {
         if (userId == Guid.Empty)
@@ -71,6 +89,47 @@ public sealed class StudentProfile : AuditableEntity, ISoftDeletable
     public void Graduate() => Status = StudentStatus.Graduated;
 
     public bool IsActive => Status == StudentStatus.Active && !IsDeleted;
+
+    /// <summary>Talaba o'z ish vaqtini belgilaydi (ikkalasi null — davr soatlariga qaytish). O'zgarish ERTADAN
+    /// (<paramref name="today"/> + 1, Toshkent) kuchga kiradi — bugungi kelish vaqtini surib "kech keldi"dan qochib
+    /// bo'lmaydi. Joriy soatlar allaqachon amalda bo'lsa ular "oldingi"ga o'tadi; hali kuchga kirmagan o'zgarish
+    /// bo'lsa — faqat u almashtiriladi (oldingi soatlar saqlanadi).</summary>
+    public void SetWorkHours(TimeOnly? start, TimeOnly? end, DateOnly today)
+    {
+        if (start is null != end is null)
+            throw new DomainException("Kelish va ketish vaqtlari birga ko'rsatilishi kerak.");
+        if (start is { } s && end is { } e)
+        {
+            if (e <= s)
+                throw new DomainException("Ketish vaqti kelish vaqtidan keyin bo'lishi kerak.");
+            if ((e.ToTimeSpan() - s.ToTimeSpan()).TotalMinutes < MinWorkMinutes)
+                throw new DomainException("Ish vaqti kamida 1 soat bo'lishi kerak.");
+        }
+
+        if (WorkHoursEffectiveFrom is null || WorkHoursEffectiveFrom <= today)
+        {
+            PreviousWorkStart = WorkStart;
+            PreviousWorkEnd = WorkEnd;
+        }
+
+        WorkStart = start;
+        WorkEnd = end;
+        WorkHoursEffectiveFrom = today.AddDays(1);
+    }
+
+    /// <summary><paramref name="date"/> kuni amaldagi o'z soatlari; null — davr (standart) soatlari.</summary>
+    public (TimeOnly Start, TimeOnly End)? HoursOn(DateOnly date)
+        => ResolveHours(WorkStart, WorkEnd, WorkHoursEffectiveFrom, PreviousWorkStart, PreviousWorkEnd, date);
+
+    /// <summary><see cref="HoursOn"/> ning statik shakli — so'rov proyeksiyalaridan olingan ustunlar uchun.</summary>
+    public static (TimeOnly Start, TimeOnly End)? ResolveHours(
+        TimeOnly? workStart, TimeOnly? workEnd, DateOnly? effectiveFrom,
+        TimeOnly? previousStart, TimeOnly? previousEnd, DateOnly date)
+    {
+        var current = effectiveFrom is null || date >= effectiveFrom;
+        var (start, end) = current ? (workStart, workEnd) : (previousStart, previousEnd);
+        return start is { } s && end is { } e ? (s, e) : null;
+    }
 
     public void IssueInviteToken(string token, DateTimeOffset expiresAt)
     {

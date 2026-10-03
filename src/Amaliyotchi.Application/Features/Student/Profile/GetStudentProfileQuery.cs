@@ -35,7 +35,8 @@ public sealed record StudentProfilePracticeDto(
 /// <c>practice</c> — sukut bo'yicha davr (davom etayotgan → oxirgi tugagan → eng yaqin kelgusi); davr yo'q → null.
 /// <c>practices</c> — talabaning BARCHA davrlari (<c>GET /api/student/period-days</c> dagi <c>periods</c> bilan bir xil to'plam),
 /// har biri o'z davri bo'yicha; tartib: davom etayotgan ochiq davr(lar) birinchi, keyin <c>startDate</c> kamayish tartibida.
-/// Davr yo'q → bo'sh ro'yxat.</summary>
+/// Davr yo'q → bo'sh ro'yxat. <c>workHours</c> — talabaning o'z ish vaqti va bugun amaldagi soatlar
+/// (<see cref="StudentWorkHoursDto"/>).</summary>
 public sealed record StudentProfileDto(
     Guid Id,
     string FullName,
@@ -51,7 +52,8 @@ public sealed record StudentProfileDto(
     bool HasPassword,
     bool MustChangePassword,
     StudentProfilePracticeDto? Practice,
-    IReadOnlyList<StudentProfilePracticeDto> Practices);
+    IReadOnlyList<StudentProfilePracticeDto> Practices,
+    StudentWorkHoursDto WorkHours);
 
 public sealed record GetStudentProfileQuery : IRequest<StudentProfileDto>;
 
@@ -132,6 +134,8 @@ internal sealed class GetStudentProfileQueryHandler(IApplicationDbContext db, IC
             practice = ToPractice(detail, PracticePeriod.ResolveStatus(status, period.StartDate, today), finalizedIds.Contains(period.Id));
         }
 
+        var workHours = await StudentWorkHoursMapper.LoadAsync(db, userId, today, cancellationToken);
+
         return new StudentProfileDto(
             detail.Id,
             detail.Name,
@@ -147,7 +151,8 @@ internal sealed class GetStudentProfileQueryHandler(IApplicationDbContext db, IC
             detail.HasPassword,
             org.MustChangePassword,
             practice,
-            practices);
+            practices,
+            workHours);
     }
 
     /// <summary>Davom etayotgan ochiq davr: yopilmagan, boshlangan va tugash sanasi o'tmagan.</summary>

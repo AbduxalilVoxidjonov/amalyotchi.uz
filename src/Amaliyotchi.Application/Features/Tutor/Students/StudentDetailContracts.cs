@@ -30,8 +30,11 @@ public sealed record StudentApplication(
     string? Comment,
     ApplicationContract? Contract);
 
-/// <param name="DailyStart">"HH:mm" (Toshkent).</param>
+/// <param name="DailyStart">"HH:mm" (Toshkent) — talabaning BUGUN amaldagi kelish vaqti: o'zi belgilagan
+/// (<see cref="CustomWorkHours"/>) yoki davr soati.</param>
+/// <param name="DailyEnd">"HH:mm" — bugun amaldagi ketish vaqti (xuddi shu qoida).</param>
 /// <param name="WorkDays">Ish kunlari raqamlari: 1 = Dushanba … 7 = Yakshanba.</param>
+/// <param name="CustomWorkHours">Talabaning o'zi belgilagan ish vaqti bugun amalda.</param>
 public sealed record StudentPeriod(
     Guid Id,
     string Name,
@@ -40,7 +43,8 @@ public sealed record StudentPeriod(
     string DailyStart,
     string DailyEnd,
     IReadOnlyList<int> WorkDays,
-    int RequiredDays);
+    int RequiredDays,
+    bool CustomWorkHours);
 
 /// <param name="TotalDays">Hisobga olinadigan ish kunlari (sababli kunlarsiz).</param>
 /// <param name="AbsentDays">Hisobga olinadigan kunlardan kelmaganlari.</param>

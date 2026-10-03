@@ -52,8 +52,13 @@ internal sealed record StudentPractice(
     /// <summary>Check-in uchun shart: tasdiqlangan ariza + korxona.</summary>
     public bool IsApproved => Application is { Status: ApplicationStatus.Approved } && Company is not null;
 
-    /// <summary>Davr qoidalari (davr bo'lmasa — standart), GPS aniqligi sozlamadan.</summary>
-    public CheckInRules Rules => Period?.Rules(Settings.MinGpsAccuracyM)
+    /// <summary>Bugungi qoidalar: davr qoidalari (davr bo'lmasa — standart), GPS aniqligi sozlamadan; talaba o'z ish
+    /// vaqtini belgilagan va u bugun amalda bo'lsa (<see cref="StudentProfile.HoursOn"/>) — kelish/ketish shu soatlardan,
+    /// daqiqa qoidalari davrnikidan. Check-in, check-out, "bugun" va kalendar shu qoidadan foydalanadi.</summary>
+    public CheckInRules Rules => Student.HoursOn(Today) is { } own ? PeriodRules.WithHours(own.Start, own.End) : PeriodRules;
+
+    /// <summary>Faqat davr (yoki standart) qoidalari — talabaning o'z soatlarisiz.</summary>
+    public CheckInRules PeriodRules => Period?.Rules(Settings.MinGpsAccuracyM)
         ?? new CheckInRules(
             CheckInRules.Default.DailyStart, CheckInRules.Default.DailyEnd,
             CheckInRules.Default.LateToleranceMinutes, CheckInRules.Default.CheckInWindowMinutes,

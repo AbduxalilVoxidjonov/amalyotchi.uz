@@ -9,6 +9,7 @@ using Amaliyotchi.Domain.Exceptions;
 using Amaliyotchi.Domain.Leave;
 using Amaliyotchi.Domain.Practice;
 using Amaliyotchi.Domain.Settings;
+using Amaliyotchi.Domain.Students;
 using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Admin.Companies;
@@ -282,7 +283,12 @@ internal static class CompanyQueries
                                   GroupId = g.Id,
                                   GroupName = g.Name,
                                   g.Course,
-                                  Faculty = f.Name
+                                  Faculty = f.Name,
+                                  p.WorkStart,
+                                  p.WorkEnd,
+                                  p.WorkHoursEffectiveFrom,
+                                  p.PreviousWorkStart,
+                                  p.PreviousWorkEnd
                               })
             .ToListAsync(cancellationToken);
 
@@ -331,7 +337,10 @@ internal static class CompanyQueries
                 attendance[key].ToList(),
                 leaves[key].ToList(),
                 today,
-                localNow);
+                localNow,
+                StudentProfile.ResolveHours(
+                    profile.WorkStart, profile.WorkEnd, profile.WorkHoursEffectiveFrom,
+                    profile.PreviousWorkStart, profile.PreviousWorkEnd, today));
             var diary = StudentStatsCalculator.ComputeDiary(diaries[key].ToList());
 
             result.Add(new CompanyStudent(

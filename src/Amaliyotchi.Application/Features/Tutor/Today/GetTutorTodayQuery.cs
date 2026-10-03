@@ -79,7 +79,8 @@ internal sealed class GetTutorTodayQueryHandler(IApplicationDbContext db, IScope
             var rejectedDistance = rejectedAttempts.TryGetValue(student.UserId, out var d) ? d : (double?)null;
 
             var status = row?.Status
-                ?? AttendanceStatusResolver.Resolve(period, today, today, localNow, onLeave.Contains(student.UserId));
+                ?? AttendanceStatusResolver.Resolve(
+                    period, today, today, localNow, onLeave.Contains(student.UserId), student.HoursOn(today));
 
             var isWorkDay = period is not null && period.IsWorkDay(today);
             DiaryState? diary = null;

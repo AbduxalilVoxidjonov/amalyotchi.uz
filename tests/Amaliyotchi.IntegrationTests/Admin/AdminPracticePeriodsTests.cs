@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Amaliyotchi.Application.Features.Admin.PracticePeriods;
+using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Domain.Practice;
 using Amaliyotchi.IntegrationTests.Infrastructure;
@@ -381,9 +382,34 @@ public sealed class AdminPracticePeriodsTests(ApiFixture fixture)
             .Should().Contain("\"WorkDays\"");
         // Faqat tugash yuborildi — standart 09:00 bilan solishtiriladi (handler, errors.DailyEnd).
         (await Bad(new { dailyEnd = "08:00" })).Should().Contain("\"DailyEnd\"");
-        // Check-in oynasi (standart 90 daqiqa) ish tugashigacha sig'maydi.
-        (await Bad(new { dailyStart = "09:00", dailyEnd = "10:00" }))
-            .Should().Contain("\"DailyEnd\"").And.Contain("Check-in oynasi");
+    }
+
+    [Fact]
+    public async Task Tahrirlash_QisqaKun_CheckInOynasiAvtomatikQisqaradi_200()
+    {
+        var group = await Factory.CreateGroupAsync();
+        var client = await Factory.LoginAsAdminAsync();
+        var start = Factory.Today().AddDays(240);
+        var end = start.AddDays(10);
+        var period = await CreateAsync(client, start, end, group.GroupId);
+
+        // Standart oyna 90 daqiqa, kun esa 60 daqiqa — endi xato emas: oyna 10:00 da yopiladi.
+        var response = await client.PutAsJsonAsync($"{Url}/{period.Id}", new
+        {
+            name = period.Name, startDate = D(start), endDate = D(end), dailyStart = "09:00", dailyEnd = "10:00"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+        var updated = (await response.Content.ReadAsync<PracticePeriodDetail>())!;
+        updated.DailyStart.Should().Be("09:00");
+        updated.DailyEnd.Should().Be("10:00");
+
+        await Factory.WithDbAsync(async db =>
+        {
+            var saved = await db.PracticePeriods.AsNoTracking().SingleAsync(p => p.Id == period.Id);
+            saved.CheckInWindowMinutes.Should().Be(CheckInRules.Default.CheckInWindowMinutes, "sozlangan daqiqalar saqlanadi");
+            saved.Rules(100).WindowEnd.Should().Be(new TimeOnly(10, 0));
+        });
     }
 
     [Fact]

@@ -77,7 +77,11 @@ internal static class PeriodStatsCalculator
                               join u in db.Users.IgnoreQueryFilters() on s.UserId equals u.Id
                               where groupIds.Contains(s.StudentGroupId) && !s.IsDeleted && s.Status == StudentStatus.Active
                               orderby u.FullName, s.HemisId
-                              select new { s.UserId, s.StudentGroupId, u.FullName, s.HemisId })
+                              select new
+                              {
+                                  s.UserId, s.StudentGroupId, u.FullName, s.HemisId,
+                                  s.WorkStart, s.WorkEnd, s.WorkHoursEffectiveFrom, s.PreviousWorkStart, s.PreviousWorkEnd
+                              })
             .ToListAsync(cancellationToken);
 
         if (students.Count == 0)
@@ -120,7 +124,10 @@ internal static class PeriodStatsCalculator
         foreach (var student in students)
         {
             var stats = StudentStatsCalculator.ComputeAttendance(
-                context, attendance[student.UserId].ToList(), leaves[student.UserId].ToList(), today, localNow);
+                context, attendance[student.UserId].ToList(), leaves[student.UserId].ToList(), today, localNow,
+                StudentProfile.ResolveHours(
+                    student.WorkStart, student.WorkEnd, student.WorkHoursEffectiveFrom,
+                    student.PreviousWorkStart, student.PreviousWorkEnd, today));
 
             var studentDiaries = diaries[student.UserId].ToList();
             var scores = studentDiaries.Select(d => d.Score).ToList();

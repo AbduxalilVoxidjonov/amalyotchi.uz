@@ -38,8 +38,15 @@ public sealed class PeriodContext
         }
     }
 
-    /// <summary>Bugungi kun statistikaga kiradimi — check-in oynasi yopilgan bo'lsa (10:30 dan keyin).</summary>
-    public bool IsWindowClosed(TimeOnly localNow) => localNow >= Rules.WindowEnd;
+    /// <summary>Talaba uchun bugungi qoidalar: o'z ish vaqti (<see cref="Domain.Students.StudentProfile.HoursOn"/>)
+    /// bo'lsa — shu soatlar bilan, aks holda davr qoidalari.</summary>
+    public CheckInRules RulesFor((TimeOnly Start, TimeOnly End)? ownHours)
+        => ownHours is { } hours ? Rules.WithHours(hours.Start, hours.End) : Rules;
+
+    /// <summary>Bugungi kun statistikaga kiradimi — check-in oynasi yopilgan bo'lsa (10:30 dan keyin).
+    /// <paramref name="ownHours"/> — talabaning bugun amaldagi o'z ish vaqti (bo'lsa oyna shundan hisoblanadi).</summary>
+    public bool IsWindowClosed(TimeOnly localNow, (TimeOnly Start, TimeOnly End)? ownHours = null)
+        => localNow >= RulesFor(ownHours).WindowEnd;
 }
 
 /// <summary>Guruh → amaliyot davrlari xaritasi. Davrlar oz (o'nlab), shuning uchun hammasi (o'chirilmaganlari,

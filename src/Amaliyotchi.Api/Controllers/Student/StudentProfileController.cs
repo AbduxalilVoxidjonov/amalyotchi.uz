@@ -19,4 +19,14 @@ public sealed class StudentProfileController(ISender sender) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<StudentProfileDto>> Get(CancellationToken cancellationToken)
         => Ok(await sender.Send(new GetStudentProfileQuery(), cancellationToken));
+
+    /// <summary>Talaba o'z ish vaqtini belgilaydi: <c>{ start: "HH:mm"|null, end: "HH:mm"|null }</c> (ikkalasi null —
+    /// davr soatlariga qaytish). O'zgarish ERTADAN kuchga kiradi. Format/oraliq xatosi → 400.</summary>
+    [HttpPut("work-hours")]
+    [ProducesResponseType<StudentWorkHoursDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<StudentWorkHoursDto>> SetWorkHours(
+        SetStudentWorkHoursCommand command, CancellationToken cancellationToken)
+        => Ok(await sender.Send(command, cancellationToken));
 }

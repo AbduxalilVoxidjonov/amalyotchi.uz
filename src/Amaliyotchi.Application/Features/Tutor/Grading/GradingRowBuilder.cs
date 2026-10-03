@@ -56,7 +56,7 @@ internal static class GradingRowBuilder
 
             var key = (student.UserId, period.Period.Id);
             var stats = StudentStatsCalculator.ComputeAttendance(
-                period, attendance[student.UserId].ToList(), leaves[key].ToList(), today, localNow);
+                period, attendance[student.UserId].ToList(), leaves[key].ToList(), today, localNow, student.HoursOn(today));
             var diary = StudentStatsCalculator.ComputeDiary(diaries[key].ToList());
             var grade = grades.FirstOrDefault(g => g.StudentUserId == student.UserId && g.PeriodId == period.Period.Id);
 

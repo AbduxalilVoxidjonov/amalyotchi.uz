@@ -52,9 +52,7 @@ internal sealed class UpdateGradingCommandHandler(
 
         await db.SaveChangesAsync(cancellationToken);
 
-        var student = new ScopedStudent(
-            profile.UserId, profile.User.FullName, profile.HemisId, profile.StudentGroupId,
-            profile.Group.Name, profile.Group.Course, profile.Status);
+        var student = ScopedStudent.From(profile);
         var rows = await GradingRowBuilder.BuildAsync(db, scope, [student], periods, today, clock.LocalTime(), cancellationToken);
         return rows.Single();
     }

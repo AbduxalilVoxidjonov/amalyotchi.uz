@@ -202,7 +202,8 @@ public sealed class PracticePeriod : AuditableEntity, ISoftDeletable
 
     /// <summary>Kunlik ish vaqti va ish kunlarini o'zgartirish. Yopilgan davr → 409. Davrning kechikish/check-in oynasi/
     /// avto-yopish daqiqalari saqlanadi — yangi soatlar ular bilan birga <see cref="CheckInRules"/> orqali tekshiriladi
-    /// (tugash boshlanishdan keyin, check-in oynasi ish tugashigacha yopiladi). <paramref name="requiredDays"/> — yangi
+    /// (tugash boshlanishdan keyin). Kun check-in oynasidan qisqa bo'lsa xato emas: oyna ish tugashigacha avtomatik
+    /// qisqaradi (<see cref="CheckInRules.WindowEnd"/>), saqlangan daqiqalar esa o'zgarmaydi. <paramref name="requiredDays"/> — yangi
     /// ish kunlari bo'yicha qayta hisoblangan. Davomat yozuvlari o'zgarmaydi — ish kuni belgisi davrdan dinamik o'qiladi.</summary>
     public void ChangeSchedule(TimeOnly dailyStart, TimeOnly dailyEnd, WorkDays workDays, int requiredDays)
     {

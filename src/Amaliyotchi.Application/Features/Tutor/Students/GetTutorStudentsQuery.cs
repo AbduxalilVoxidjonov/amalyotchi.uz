@@ -97,7 +97,7 @@ internal sealed class GetTutorStudentsQueryHandler(IApplicationDbContext db, ISc
             var period = periods.ForGroup(student.GroupId);
             var key = (student.UserId, period?.Period.Id ?? Guid.Empty);
             var stats = StudentStatsCalculator.ComputeAttendance(
-                period, attendance[student.UserId].ToList(), leaves[key].ToList(), today, localNow);
+                period, attendance[student.UserId].ToList(), leaves[key].ToList(), today, localNow, student.HoursOn(today));
             var diary = StudentStatsCalculator.ComputeDiary(diaries[key].ToList());
 
             var state = StudentStateRule.For(stats);

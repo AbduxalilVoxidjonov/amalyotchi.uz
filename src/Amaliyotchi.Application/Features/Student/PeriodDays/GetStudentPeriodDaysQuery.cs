@@ -96,7 +96,8 @@ internal sealed class GetStudentPeriodDaysQueryHandler(
                 a.AutoClosed, a.IsSuspicious, a.IsManual))
             .ToList();
         var stats = StudentStatsCalculator.ComputeAttendance(
-            context, snapshots, leaves.Select(l => (l.DateFrom, l.DateTo)).ToList(), today, localNow);
+            context, snapshots, leaves.Select(l => (l.DateFrom, l.DateTo)).ToList(), today, localNow,
+            practice.Student.HoursOn(today));
 
         var days = new List<StudentPeriodDayDto>(period.EndDate.DayNumber - period.StartDate.DayNumber + 1);
         for (var date = period.StartDate; date <= period.EndDate; date = date.AddDays(1))

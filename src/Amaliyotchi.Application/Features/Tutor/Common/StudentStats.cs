@@ -21,13 +21,15 @@ public sealed record DiaryStats(int Count, int ScoredCount, double Avg)
 public static class StudentStatsCalculator
 {
     /// <summary>Davomat foizi = kelgan (keldi + kech keldi) / hisobga olinadigan ish kunlari × 100.
-    /// <paramref name="rows"/> dan faqat <paramref name="period"/> ga tegishlilari olinadi.</summary>
+    /// <paramref name="rows"/> dan faqat <paramref name="period"/> ga tegishlilari olinadi.
+    /// <paramref name="ownHours"/> — talabaning bugun amaldagi o'z ish vaqti (bugungi oyna shundan hisoblanadi).</summary>
     public static StudentStats ComputeAttendance(
         PeriodContext? period,
         IReadOnlyCollection<AttendanceSnapshot> rows,
         IReadOnlyCollection<(DateOnly From, DateOnly To)> approvedLeaves,
         DateOnly today,
-        TimeOnly localNow)
+        TimeOnly localNow,
+        (TimeOnly Start, TimeOnly End)? ownHours = null)
     {
         if (period is null)
             return new StudentStats(0, 0, 0, 0, rows.Count(r => r.IsSuspicious), 0);
@@ -38,7 +40,7 @@ public static class StudentStatsCalculator
         var suspicious = rows.Count(r => r.IsSuspicious);
 
         var byDate = rows.ToDictionary(r => r.Date);
-        var countable = new HashSet<DateOnly>(ElapsedWorkDays(period, today, localNow));
+        var countable = new HashSet<DateOnly>(ElapsedWorkDays(period, today, localNow, ownHours));
 
         // Oyna hali yopilmagan bo'lsa ham, bugun allaqachon belgilangan kun hisobga kiradi.
         foreach (var row in rows.Where(r => r.Status is AttendanceStatus.Present or AttendanceStatus.Late))
@@ -71,13 +73,15 @@ public static class StudentStatsCalculator
 
     /// <summary>Davr boshidan hisobga olinadigan (o'tgan) ish kunlari: kechagacha + bugun (check-in oynasi yopilgan
     /// bo'lsa), davr tugash sanasi bilan cheklangan. <see cref="ComputeAttendance"/> maxrajining asosi (sababli kunlar va
-    /// bugun allaqachon belgilangan kun talaba bo'yicha qo'shimcha hisoblanadi).</summary>
-    public static IEnumerable<DateOnly> ElapsedWorkDays(PeriodContext period, DateOnly today, TimeOnly localNow)
+    /// bugun allaqachon belgilangan kun talaba bo'yicha qo'shimcha hisoblanadi). <paramref name="ownHours"/> — talabaning
+    /// bugungi o'z ish vaqti (davr bo'yicha umumiy hisobda null — davr oynasi).</summary>
+    public static IEnumerable<DateOnly> ElapsedWorkDays(
+        PeriodContext period, DateOnly today, TimeOnly localNow, (TimeOnly Start, TimeOnly End)? ownHours = null)
     {
         var lastCountable = today < period.Period.EndDate ? today : period.Period.EndDate;
         foreach (var date in period.WorkDays(period.Period.StartDate, lastCountable))
         {
-            if (date < today || period.IsWindowClosed(localNow))
+            if (date < today || period.IsWindowClosed(localNow, ownHours))
                 yield return date;
         }
     }

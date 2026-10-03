@@ -13,8 +13,8 @@ namespace Amaliyotchi.Application.Features.Admin.PracticePeriods;
 /// workDays? }</c> → 200 <see cref="PracticePeriodDetail"/>. <see cref="Id"/> route'dan. Topilmasa → 404; yopilgan → 409;
 /// faol davrda <c>startDate</c> o'zgarsa yoki yangi <c>endDate</c> bugundan oldin bo'lsa → 400. Sanalar o'zgarsa —
 /// ustma-ust tushish qayta tekshiriladi (409). <c>dailyStart</c>/<c>dailyEnd</c> ("HH:mm") va <c>workDays</c>
-/// ("1,2,3,4,5") ixtiyoriy — null → o'zgarmaydi; davrning kechikish/oyna/avto-yopish daqiqalari saqlanadi, check-in
-/// oynasi sig'masa → 400 <c>errors.DailyEnd</c>. Sanalar yoki <c>workDays</c> o'zgarsa <c>requiredDays</c> qayta
+/// ("1,2,3,4,5") ixtiyoriy — null → o'zgarmaydi; davrning kechikish/oyna/avto-yopish daqiqalari saqlanadi (kun oynadan
+/// qisqa bo'lsa oyna ish tugashigacha avtomatik qisqaradi), tugash boshlanishdan oldin → 400 <c>errors.DailyEnd</c>. Sanalar yoki <c>workDays</c> o'zgarsa <c>requiredDays</c> qayta
 /// hisoblanadi (bayramlarsiz). Davomat yozuvlari o'zgarmaydi.</summary>
 public sealed record UpdatePracticePeriodCommand(
     Guid Id,
