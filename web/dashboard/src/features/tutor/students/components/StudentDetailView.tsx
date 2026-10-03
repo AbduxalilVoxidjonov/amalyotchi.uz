@@ -292,7 +292,19 @@ export function StudentDetailView({
                 { k: 'Davr', v: period.name },
                 { k: 'Boshlanishi', v: fmtDateOnly(period.startDate) },
                 { k: 'Tugashi', v: fmtDateOnly(period.endDate) },
-                { k: 'Kunlik vaqt', v: `${period.dailyStart} — ${period.dailyEnd}` },
+                {
+                  k: 'Kunlik vaqt',
+                  v: (
+                    <span className={styles.hours}>
+                      {`${period.dailyStart} — ${period.dailyEnd}`}
+                      {period.customWorkHours && (
+                        <Badge status="info" size="sm" title="Talaba o'z ish vaqtini belgilagan">
+                          talaba belgilagan
+                        </Badge>
+                      )}
+                    </span>
+                  ),
+                },
                 { k: 'Ish kunlari', v: workDaysLabel(period.workDays) },
                 { k: 'Talab qilinadigan kunlar', v: `${period.requiredDays} kun` },
               ]}

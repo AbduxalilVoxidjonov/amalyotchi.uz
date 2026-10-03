@@ -459,6 +459,29 @@ describe('StudentDetailPage — amaliyot davri tanlagichi (v3.5)', () => {
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
   });
 
+  it('talaba o\'zi belgilagan ish vaqti → "Kunlik vaqt" yonida "talaba belgilagan" belgisi', async () => {
+    mockProfilePeriods(
+      'tutor',
+      detailWithPeriods(ENDED_OPTIONS.slice(0, 1), {
+        ...ENDED_PERIOD,
+        dailyStart: '10:00',
+        dailyEnd: '19:00',
+        customWorkHours: true,
+      }),
+    );
+    renderStudentDetail('/tutor/students/s-341030');
+    const card = await screen.findByRole('region', { name: 'Amaliyot davri' });
+    expect(await within(card).findByText('10:00 — 19:00')).toBeInTheDocument();
+    expect(within(card).getByText('talaba belgilagan')).toBeInTheDocument();
+  });
+
+  it("davr vaqti amalda (customWorkHours: false) → belgi yo'q", async () => {
+    renderStudentDetail('/tutor/students/s-341031');
+    const card = await screen.findByRole('region', { name: 'Amaliyot davri' });
+    expect(await within(card).findByText('09:00 — 18:00')).toBeInTheDocument();
+    expect(within(card).queryByText('talaba belgilagan')).not.toBeInTheDocument();
+  });
+
   it("0 ta davr: bo'sh holat, statistika yo'q", async () => {
     mockProfilePeriods('tutor', detailWithPeriods([], null));
     renderStudentDetail('/tutor/students/s-341030');

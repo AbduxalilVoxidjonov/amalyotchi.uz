@@ -125,6 +125,7 @@ const PERIOD: StudentPeriod = {
   endDate: '2026-12-18',
   dailyStart: '09:00',
   dailyEnd: '18:00',
+  customWorkHours: false,
   workDays: [1, 2, 3, 4, 5, 6],
   requiredDays: 72,
 };
@@ -140,6 +141,7 @@ export const SPRING_PERIOD: StudentPeriod = {
   endDate: '2027-04-30',
   dailyStart: '09:00',
   dailyEnd: '17:00',
+  customWorkHours: false,
   workDays: [1, 2, 3, 4, 5],
   requiredDays: 60,
 };
@@ -156,6 +158,7 @@ export const CLOSED_PERIOD: StudentPeriod = {
   endDate: '2026-07-31',
   dailyStart: '09:00',
   dailyEnd: '18:00',
+  customWorkHours: false,
   workDays: [1, 2, 3, 4, 5],
   requiredDays: 40,
 };

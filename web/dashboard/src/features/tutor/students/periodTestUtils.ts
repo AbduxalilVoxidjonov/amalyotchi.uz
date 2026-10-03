@@ -15,6 +15,7 @@ export const ENDED_PERIOD: StudentPeriod = {
   endDate: '2026-04-30',
   dailyStart: '09:00',
   dailyEnd: '17:00',
+  customWorkHours: false,
   workDays: [1, 2, 3, 4, 5],
   requiredDays: 60,
 };

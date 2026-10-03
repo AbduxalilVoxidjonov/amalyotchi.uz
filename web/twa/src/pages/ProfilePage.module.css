@@ -105,3 +105,35 @@
   border-radius: var(--radius-md2);
   padding: 10px 12px;
 }
+/* "Ish vaqtim": kutilayotgan o'zgarish, forma (kelish/ketish yonma-yon). */
+.pending {
+  margin-top: 10px;
+  font-size: var(--fs-md);
+  color: var(--color-info-fg);
+  background: var(--color-info-bg);
+  border-radius: var(--radius-md2);
+  padding: 10px 12px;
+  line-height: var(--lh-note);
+}
+.whForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: var(--border-inner);
+}
+.whFields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.error {
+  font-size: var(--fs-md);
+  color: var(--color-bad-fg);
+  background: var(--color-bad-bg);
+  border: var(--border-w) solid var(--color-bad-border);
+  border-radius: var(--radius-md2);
+  padding: 10px 12px;
+  line-height: var(--lh-note);
+}

@@ -95,3 +95,10 @@
 .factsLast {
   padding-bottom: var(--card-pad);
 }
+/* "Kunlik vaqt" + "talaba belgilagan" belgisi bir qatorda. */
+.hours {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}

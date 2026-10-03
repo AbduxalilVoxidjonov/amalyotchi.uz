@@ -45,6 +45,11 @@ export const STUDENT_ENDPOINTS = {
   periodDays: '/api/student/period-days',
   /** GET → StudentProfileDto (shaxsiy/o'quv ma'lumotlari, amaliyot xulosasi, hisob holati) */
   profile: '/api/student/profile',
+  /**
+   * PUT { start: "HH:mm"|null, end: "HH:mm"|null } → StudentWorkHoursDto | 400 `errors.start`/`errors.end`.
+   * Ikkalasi null — davr vaqtiga qaytarish. O'zgarish ERTADAN kuchga kiradi (bugungi oyna o'zgarmaydi).
+   */
+  profileWorkHours: '/api/student/profile/work-hours',
 } as const;
 
 /**

@@ -4,7 +4,13 @@ import { accountFromRequest, mockStudent, mockStudentNew, type MockAccount } fro
 import { problem, requireBearer } from '@/mocks/problem';
 import { MOCK_AUTUMN_PERIOD } from '@/features/period/mocks';
 import { MOCK_PD_SUMMER_PERIOD } from '@/features/period-days/mocks';
-import type { StudentProfileDto, StudentProfilePracticeDto } from './types';
+import { addDays, tashkentToday, validateWorkHours } from './lib';
+import type {
+  StudentProfileDto,
+  StudentProfilePracticeDto,
+  StudentWorkHoursDto,
+  UpdateWorkHoursRequest,
+} from './types';
 
 /** Kuzgi (faol, sukut) davr — bosh ekran davr tanlagichidagi "Kuzgi amaliyot 2026" bilan bir xil id/nom. */
 export const mockAutumnPractice: StudentProfilePracticeDto = {
@@ -67,6 +73,15 @@ export const mockProfile: StudentProfileDto = {
   mustChangePassword: false,
   practice: mockAutumnPractice,
   practices: [mockAutumnPractice, mockSummerPractice],
+  workHours: {
+    start: null,
+    end: null,
+    effectiveFrom: null,
+    todayStart: '09:00',
+    todayEnd: '18:00',
+    periodStart: '09:00',
+    periodEnd: '18:00',
+  },
 };
 
 /** Bitta davrli variant (faqat kuzgi). */
@@ -92,7 +107,23 @@ export const mockProfileNoPractice: StudentProfileDto = {
   mustChangePassword: true,
   practice: null,
   practices: [],
+  workHours: {
+    start: null,
+    end: null,
+    effectiveFrom: null,
+    todayStart: '09:00',
+    todayEnd: '18:00',
+    periodStart: null,
+    periodEnd: null,
+  },
 };
+
+/** PUT work-hours bilan o'zgargan ish vaqti (talaba id → workHours); testlarda har testdan keyin tozalanadi. */
+const mockWorkHours = new Map<string, StudentWorkHoursDto>();
+
+export function resetProfileMocks() {
+  mockWorkHours.clear();
+}
 
 function profileFor(account: MockAccount | undefined): StudentProfileDto | null {
   const base =
@@ -101,7 +132,27 @@ function profileFor(account: MockAccount | undefined): StudentProfileDto | null 
       : account?.user.id === mockStudent.id || account === undefined
         ? mockProfile
         : null;
-  return base && { ...base, mustChangePassword: account?.mustChangePassword ?? false };
+  if (!base) return null;
+  return {
+    ...base,
+    mustChangePassword: account?.mustChangePassword ?? false,
+    ...(base.workHours && { workHours: mockWorkHours.get(base.id) ?? base.workHours }),
+  };
+}
+
+/** Server qoidalari: ikkalasi null (davr vaqtiga qaytish) yoki ikkalasi ham; ketish > kelish, ≥ 1 soat. */
+function workHoursErrors(body: UpdateWorkHoursRequest): Record<string, string[]> | null {
+  if (body.start === null && body.end === null) return null;
+  if (body.start === null || body.end === null) {
+    return {
+      [body.start === null ? 'start' : 'end']: ['Kelish va ketish vaqti birga berilishi kerak.'],
+    };
+  }
+  const e = validateWorkHours(body.start, body.end);
+  const out: Record<string, string[]> = {};
+  if (e.start) out.start = [e.start];
+  if (e.end) out.end = [e.end];
+  return Object.keys(out).length > 0 ? out : null;
 }
 
 export const profileHandlers: HttpHandler[] = [
@@ -111,5 +162,25 @@ export const profileHandlers: HttpHandler[] = [
     const profile = profileFor(accountFromRequest(request));
     if (!profile) return problem(403, "Ruxsat yo'q", 'Faqat talabalar uchun.');
     return HttpResponse.json(profile);
+  }),
+  http.put(STUDENT_ENDPOINTS.profileWorkHours, async ({ request }) => {
+    const unauth = requireBearer(request);
+    if (unauth) return unauth;
+    const profile = profileFor(accountFromRequest(request));
+    if (!profile?.workHours) return problem(403, "Ruxsat yo'q", 'Faqat talabalar uchun.');
+    const body = (await request.json()) as UpdateWorkHoursRequest;
+    const errors = workHoursErrors(body);
+    if (errors) {
+      return problem(400, "Ma'lumot noto'g'ri", "Ish vaqti noto'g'ri.", { errors });
+    }
+    // Bugungi oyna o'zgarmaydi — yangi qiymat ertadan kuchga kiradi.
+    const next: StudentWorkHoursDto = {
+      ...profile.workHours,
+      start: body.start,
+      end: body.end,
+      effectiveFrom: addDays(tashkentToday(), 1),
+    };
+    mockWorkHours.set(profile.id, next);
+    return HttpResponse.json(next);
   }),
 ];

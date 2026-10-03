@@ -27,7 +27,8 @@ v3.21 (admin talabalar ro'yxatida `pageSize` 500 gacha) — §6.27,
 v3.22 (admin o'z loginini almashtiradi — `GET /api/auth/login-available`, `POST /api/auth/change-login`) — §6.28,
 v3.23 (admin dashboard ko'rsatkichlari loyiha qoidalariga moslandi — ochiq davrlar, davom etayotgan davr davomati) — §6.29,
 v3.24 ("Xabarlar": admin Telegram orqali talabalarga xabar yuboradi — `/api/admin/messages`) — §6.30,
-v3.25 (bitta talabani forma orqali qo'shish — `POST /api/admin/students`, `GET /api/admin/students/group-options`) — §6.31.
+v3.25 (bitta talabani forma orqali qo'shish — `POST /api/admin/students`, `GET /api/admin/students/group-options`) — §6.31,
+v3.26 (talabaning o'z ish vaqti — `PUT /api/student/profile/work-hours`; check-in oynasi qisqa kunga moslashadi) — §6.32.
 
 Jami **122 ta endpoint**: Auth 9 · Admin 78 · Reports 1 · Tutor 21 · Student (TWA) 11 · Files 1 · Companies 1.
 
@@ -3465,3 +3466,19 @@ Foydalanuvchi qarori: talabalar ruxsat (leave) so'ramaydi — funksiya butunlay 
   va xabarlari o'zgarmadi.
 - **Enum:** `AuditAction` + `studentCreated` (69). Migratsiya yo'q (audit `action` — int).
 - Endpoint soni **120 → 122** (Admin 76 → 78; `[Http*]` atributlari 122 → 124).
+
+### 6.32 v3.25 → v3.26 (03.10.2026): talabaning o'z ish vaqti
+
+- **Yangi maydon:** `GET /api/student/profile` → `workHours: { start, end, effectiveFrom, todayStart, todayEnd,
+  periodStart, periodEnd }` ("HH:mm" / "yyyy-MM-dd"; `start/end = null` — davr vaqti ishlatiladi; `today*` — bugun
+  amaldagi vaqt; `period*` — sukut davr vaqti, davr yo'q → null).
+- **Yangi endpoint (StudentOnly):** `PUT /api/student/profile/work-hours` `{ start: "HH:mm"|null, end: "HH:mm"|null }` →
+  200 `StudentWorkHoursDto` (yuqoridagi shakl). Ikkalasi null — davr vaqtiga qaytish. O'zgarish **ertadan** (Toshkent)
+  kuchga kiradi. 400 `errors.Start`/`errors.End`: format, bittasi bo'sh, ketish ≤ kelish, 1 soatdan qisqa.
+- Talabaning o'z vaqti check-in/kechikish/check-out, `today`, kalendar va tyutor/admin davomat holatlariga qo'llanadi.
+  Tyutor talaba profili `period.dailyStart/dailyEnd` — talabaning bugungi amaldagi vaqti; yangi `period.customWorkHours: boolean`.
+- **Davr ish vaqti:** check-in oynasi kundan uzun bo'lsa endi 400 emas — oyna ish tugashigacha qisqaradi (saqlangan
+  daqiqalar o'zgarmaydi; kechikish chegarasi ham oyna ichida qoladi).
+- **Enum:** `AuditAction` + `studentWorkHoursChanged` (70). **Migratsiya `StudentWorkHours`:** `student_profiles` ga
+  5 ta nullable ustun.
+- Endpoint soni **122 → 123** (`[Http*]` atributlari 124 → 125).

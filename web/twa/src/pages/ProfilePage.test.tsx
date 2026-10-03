@@ -1,5 +1,6 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
+import { addDays, tashkentToday } from '@/features/profile/lib';
 import {
   mockAutumnPractice,
   mockProfile,
@@ -189,14 +190,15 @@ describe('ProfilePage (/profil)', () => {
   it("parolni o'zgartirish (ixtiyoriy) → forma, 204 → tasdiq xabari", async () => {
     renderApp('/profil');
     await screen.findByRole('heading', { name: 'Aliyev Akmal' });
-    fireEvent.click(screen.getByRole('button', { name: "Parolni o'zgartirish" }));
+    const account = profileSection('Hisob');
+    fireEvent.click(within(account).getByRole('button', { name: "Parolni o'zgartirish" }));
 
     fireEvent.change(screen.getByLabelText('Joriy parol'), { target: { value: 'talaba12345' } });
     fireEvent.change(screen.getByLabelText('Yangi parol'), { target: { value: 'yangiParol9' } });
     fireEvent.change(screen.getByLabelText('Yangi parolni takrorlang'), {
       target: { value: 'yangiParol9' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Saqlash' }));
+    fireEvent.click(within(account).getByRole('button', { name: 'Saqlash' }));
 
     expect(await screen.findByText("Parol o'zgartirildi.")).toBeInTheDocument();
     expect(screen.queryByLabelText('Joriy parol')).not.toBeInTheDocument();
@@ -255,5 +257,177 @@ describe('ProfilePage (/profil)', () => {
       await screen.findByRole('heading', { name: 'Bosh ekran', level: 1 }),
     ).toBeInTheDocument();
     expect(useSessionFlags.getState().loggedOut).toBe(false);
+  });
+
+  describe('Ish vaqtim', () => {
+    const tomorrow = () => {
+      const [y, m, d] = addDays(tashkentToday(), 1).split('-');
+      return `${d}.${m}.${y}`;
+    };
+    const section = () => profileSection('Ish vaqtim');
+    const field = (label: 'Kelish' | 'Ketish') => within(section()).getByLabelText(label);
+
+    function spyPut() {
+      const put = vi.fn();
+      server.events.on('request:start', async ({ request }) => {
+        if (request.method === 'PUT' && request.url.endsWith('/api/student/profile/work-hours')) {
+          put(await request.clone().json());
+        }
+      });
+      return put;
+    }
+
+    afterEach(() => server.events.removeAllListeners());
+
+    it("davr vaqti amalda: bugungi vaqt, manba, davr vaqti; qaytarish tugmasi yo'q", async () => {
+      renderApp('/profil');
+      await screen.findByRole('heading', { name: 'Aliyev Akmal' });
+      const s = section();
+      expect(s).toHaveTextContent('Bugun09:00–18:00');
+      expect(s).toHaveTextContent('ManbaDavr vaqti');
+      expect(s).toHaveTextContent('Davr vaqti09:00–18:00');
+      expect(s).toHaveTextContent(`O'zgarish ertadan (${tomorrow()}) kuchga kiradi`);
+      expect(field('Kelish')).toHaveValue('09:00');
+      expect(field('Ketish')).toHaveValue('18:00');
+      expect(
+        within(s).queryByRole('button', { name: 'Davr vaqtiga qaytarish' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("o'zi belgilagan vaqt amalda + kutilayotgan o'zgarish ko'rsatiladi", async () => {
+      mockProfileResponse({
+        ...mockProfile,
+        workHours: {
+          start: '08:00',
+          end: '16:00',
+          effectiveFrom: '2099-01-01',
+          todayStart: '10:00',
+          todayEnd: '19:00',
+          periodStart: '09:00',
+          periodEnd: '18:00',
+        },
+      });
+      renderApp('/profil');
+      await screen.findByRole('heading', { name: 'Aliyev Akmal' });
+      const s = section();
+      expect(s).toHaveTextContent('Bugun10:00–19:00');
+      expect(s).toHaveTextContent("O'zim belgilaganman");
+      expect(within(s).getByRole('note')).toHaveTextContent(
+        '01.01.2099 dan yangi vaqt: 08:00–16:00.',
+      );
+      expect(field('Kelish')).toHaveValue('08:00');
+      expect(within(s).getByRole('button', { name: 'Davr vaqtiga qaytarish' })).toBeEnabled();
+    });
+
+    it('saqlash → PUT, "ertadan kuchga kiradi" xabari, kutilayotgan o\'zgarish', async () => {
+      const put = spyPut();
+      renderApp('/profil');
+      await screen.findByRole('heading', { name: 'Aliyev Akmal' });
+      fireEvent.change(field('Kelish'), { target: { value: '10:00' } });
+      fireEvent.change(field('Ketish'), { target: { value: '19:00' } });
+      fireEvent.click(within(section()).getByRole('button', { name: 'Saqlash' }));
+
+      expect(await within(section()).findByRole('status')).toHaveTextContent(
+        `Ish vaqti saqlandi. O'zgarish ertadan (${tomorrow()}) kuchga kiradi.`,
+      );
+      expect(put).toHaveBeenCalledWith({ start: '10:00', end: '19:00' });
+      // Bugungi vaqt o'zgarmaydi; ertangi o'zgarish va "qaytarish" tugmasi ko'rinadi.
+      expect(section()).toHaveTextContent('Bugun09:00–18:00');
+      expect(within(section()).getByRole('note')).toHaveTextContent(
+        `${tomorrow()} dan yangi vaqt: 10:00–19:00.`,
+      );
+      expect(
+        within(section()).getByRole('button', { name: 'Davr vaqtiga qaytarish' }),
+      ).toBeInTheDocument();
+    });
+
+    it("klient validatsiyasi: ketish ≤ kelish, 1 soatdan kam → so'rov yuborilmaydi", async () => {
+      const put = spyPut();
+      renderApp('/profil');
+      await screen.findByRole('heading', { name: 'Aliyev Akmal' });
+      const save = () =>
+        fireEvent.click(within(section()).getByRole('button', { name: 'Saqlash' }));
+
+      fireEvent.change(field('Kelish'), { target: { value: '18:00' } });
+      fireEvent.change(field('Ketish'), { target: { value: '09:00' } });
+      save();
+      expect(
+        await within(section()).findByText("Ketish vaqti kelish vaqtidan keyin bo'lishi kerak."),
+      ).toBeInTheDocument();
+      expect(field('Ketish')).toHaveAttribute('aria-invalid', 'true');
+
+      fireEvent.change(field('Kelish'), { target: { value: '09:00' } });
+      fireEvent.change(field('Ketish'), { target: { value: '09:30' } });
+      save();
+      expect(
+        await within(section()).findByText("Ish vaqti kamida 1 soat bo'lishi kerak."),
+      ).toBeInTheDocument();
+
+      fireEvent.change(field('Kelish'), { target: { value: '' } });
+      save();
+      expect(await within(section()).findByText('Kelish vaqtini kiriting.')).toBeInTheDocument();
+      expect(put).not.toHaveBeenCalled();
+    });
+
+    it('server 400 errors.start → maydon ostida', async () => {
+      server.use(
+        http.put('/api/student/profile/work-hours', () =>
+          HttpResponse.json(
+            {
+              status: 400,
+              title: "Ma'lumot noto'g'ri",
+              errors: { start: ['Kelish vaqti davr oynasidan tashqarida.'] },
+            },
+            { status: 400, headers: { 'Content-Type': 'application/problem+json' } },
+          ),
+        ),
+      );
+      renderApp('/profil');
+      await screen.findByRole('heading', { name: 'Aliyev Akmal' });
+      fireEvent.change(field('Kelish'), { target: { value: '07:00' } });
+      fireEvent.click(within(section()).getByRole('button', { name: 'Saqlash' }));
+      expect(
+        await within(section()).findByText('Kelish vaqti davr oynasidan tashqarida.'),
+      ).toBeInTheDocument();
+      expect(field('Kelish')).toHaveAttribute('aria-invalid', 'true');
+      expect(within(section()).queryByRole('status')).not.toBeInTheDocument();
+    });
+
+    it('davr vaqtiga qaytarish → PUT { start: null, end: null }', async () => {
+      const put = spyPut();
+      mockProfileResponse({
+        ...mockProfile,
+        workHours: {
+          start: '10:00',
+          end: '19:00',
+          effectiveFrom: '2020-01-01',
+          todayStart: '10:00',
+          todayEnd: '19:00',
+          periodStart: '09:00',
+          periodEnd: '18:00',
+        },
+      });
+      renderApp('/profil');
+      await screen.findByRole('heading', { name: 'Aliyev Akmal' });
+      expect(section()).toHaveTextContent("O'zim belgilaganman");
+      expect(within(section()).queryByRole('note')).not.toBeInTheDocument();
+
+      fireEvent.click(within(section()).getByRole('button', { name: 'Davr vaqtiga qaytarish' }));
+      expect(await within(section()).findByRole('status')).toHaveTextContent(
+        `Davr vaqtiga qaytarildi. O'zgarish ertadan (${tomorrow()}) kuchga kiradi.`,
+      );
+      expect(put).toHaveBeenCalledWith({ start: null, end: null });
+      expect(field('Kelish')).toHaveValue('09:00');
+      expect(field('Ketish')).toHaveValue('18:00');
+    });
+
+    it("eski server (workHours yo'q) → bo'lim ko'rsatilmaydi", async () => {
+      const legacy: Record<string, unknown> = { ...mockProfile };
+      delete legacy.workHours;
+      mockProfileResponse(legacy);
+      renderApp('/profil');
+      await screen.findByRole('heading', { name: 'Aliyev Akmal' });
+      expect(screen.queryByRole('region', { name: 'Ish vaqtim' })).not.toBeInTheDocument();
+    });
   });
 });
