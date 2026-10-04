@@ -11,19 +11,16 @@ export function useAuth() {
       isAuthenticated: s.status === 'authenticated',
       isRestoring: s.status === 'restoring',
       isAdmin: s.user?.role === UserRole.Admin,
-      isTutor: s.user?.role === UserRole.Tutor,
+      /** v3.28 — bosh admin ("Adminlar" bo'limi). */
+      isSuperAdmin: s.user?.role === UserRole.Admin && s.user.isSuperAdmin,
     })),
   );
 }
 
-/** Rolga qarab foydalanuvchining "uy" sahifasi. */
+/**
+ * Rolga qarab foydalanuvchining "uy" sahifasi. v3.28: dashboard faqat admin uchun —
+ * boshqa rol (talaba, eski tyutor sessiyasi) kirish sahifasiga qaytadi.
+ */
 export function homePathForRole(role: UserRole | undefined): string {
-  switch (role) {
-    case UserRole.Admin:
-      return '/admin';
-    case UserRole.Tutor:
-      return '/tutor';
-    default:
-      return '/login';
-  }
+  return role === UserRole.Admin ? '/admin' : '/login';
 }

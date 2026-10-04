@@ -3,14 +3,14 @@ import { act, render, renderHook, screen, waitFor, within } from '@testing-libra
 import userEvent from '@testing-library/user-event';
 import { delay, http, HttpResponse } from 'msw';
 import { RouterProvider } from 'react-router-dom';
-import { tutorNavMock } from '@/app/nav-mocks';
+import { opsNavCounts } from '@/app/nav-mocks';
 import { AppProviders } from '@/app/providers';
 import { createTestRouter } from '@/app/router';
 import { mockCompanies } from '@/features/admin/companies/mocks';
 import { mockFaculties } from '@/features/admin/faculties/mocks';
 import { mockStudents } from '@/features/admin/students/mocks';
-import { useApplicationDecision } from '@/features/tutor/applications/hooks';
-import { mockApplications } from '@/features/tutor/applications/mocks';
+import { useApplicationDecision } from '@/features/admin/applications/hooks';
+import { mockApplications } from '@/features/admin/applications/mocks';
 import { issueSession, mockUsers } from '@/mocks/data';
 import { server } from '@/mocks/server';
 import { useAuthStore } from '@/shared/auth/store';
@@ -40,10 +40,12 @@ function loginAs(index: 0 | 1) {
 
 describe('AppShell', () => {
   it('admin: sidebar admin nav, crumb, title override, user bloki', async () => {
-    loginAs(0);
+    loginAs(1);
     renderApp('/admin');
     const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
-    // Badge'lar — `GET /api/admin/nav` (mock: ro'yxat endpoint'larining jami).
+    const ops = opsNavCounts();
+    const withBadge = (label: string, n: number) => (n > 0 ? `${label}${n}` : label);
+    // Badge'lar — `GET /api/admin/nav` (mock: ro'yxat endpoint'larining jami + kundalik nazorat sonlari).
     await waitFor(() =>
       expect(
         within(nav)
@@ -51,32 +53,73 @@ describe('AppShell', () => {
           .map((l) => l.textContent),
       ).toEqual([
         'Dashboard',
-        `Fakultetlar${mockFaculties.length}`,
-        expect.stringMatching(/^Tyutorlar\d+$/),
-        `Korxonalar${mockCompanies.length}`,
+        withBadge('Bugun', ops.today),
+        withBadge('Arizalar', ops.applications),
+        withBadge('Yuz tasdiqlash', ops.pendingFaceEnrollments),
+        withBadge('Kundaliklar', ops.diaries),
+        'Baholash',
+        'Kalendar',
+        'Xarita',
         `Talabalar${mockStudents.length}`,
-        'Xabarlar',
+        `Korxonalar${mockCompanies.length}`,
+        `Fakultetlar${mockFaculties.length}`,
         'Amaliyot davrlari',
+        'Xabarlar',
         'Hisobotlar',
         'Audit jurnali',
         'Sozlamalar',
       ]),
     );
+    // Oddiy admin — "Adminlar" va "Tyutorlar" bandlari yo'q.
+    expect(within(nav).queryByRole('link', { name: /Adminlar/ })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole('link', { name: /Tyutor/ })).not.toBeInTheDocument();
     expect(within(nav).getByRole('link', { name: 'Dashboard' })).toHaveAttribute(
       'aria-current',
       'page',
     );
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Umumiy dashboard');
     expect(screen.getByText('Admin · 2026-2027')).toBeInTheDocument();
-    expect(screen.getByText('Admin Adminov')).toBeInTheDocument();
+    expect(screen.getByText('Nodira Saidova')).toBeInTheDocument();
+    expect(screen.getByText("Admin · o'quv bo'limi")).toBeInTheDocument();
     expect(await screen.findByText('Jami amaliyotchi')).toBeInTheDocument(); // AdminDashboardPage
+  });
+
+  it('bosh admin: "Adminlar" bandi (Audit jurnalidan oldin) va rol yozuvi', async () => {
+    loginAs(0);
+    renderApp('/admin');
+    const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
+    const labels = within(nav)
+      .getAllByRole('link')
+      .map((l) => l.textContent ?? '');
+    const admins = labels.indexOf('Adminlar');
+    expect(admins).toBeGreaterThan(0);
+    expect(labels[admins + 1]).toBe('Audit jurnali');
+    expect(within(nav).getByRole('link', { name: 'Adminlar' })).toHaveAttribute(
+      'href',
+      '/admin/admins',
+    );
+    expect(screen.getByText("Bosh admin · o'quv bo'limi")).toBeInTheDocument();
+  });
+
+  it('oddiy admin /admin/admins ga kira olmaydi → /admin', async () => {
+    loginAs(1);
+    const router = renderApp('/admin/admins');
+    await waitFor(() => expect(router.state.location.pathname).toBe('/admin'));
   });
 
   it('admin: API sonlari badge’da (katta son formatlanadi, 0 — badge yo‘q); o‘quv yili null → "Admin"', async () => {
     server.use(
       http.get('/api/admin/nav', () =>
         HttpResponse.json({
-          counts: { faculties: 0, tutors: 18, companies: 412, students: 1284 },
+          counts: {
+            faculties: 0,
+            companies: 412,
+            students: 1284,
+            today: 38,
+            applications: 7,
+            diaries: 0,
+            pendingFaceEnrollments: 3,
+          },
           context: { academicYear: null },
         }),
       ),
@@ -87,10 +130,15 @@ describe('AppShell', () => {
     // Ming ajratgich — thin space (U+2009), `formatCount` uslubi.
     await waitFor(() =>
       expect(within(nav).getByRole('link', { name: /Talabalar/ }).textContent).toBe(
-        'Talabalar1\u2009284',
+        'Talabalar1 284',
       ),
     );
-    expect(within(nav).getByRole('link', { name: /Tyutorlar/ })).toHaveTextContent('Tyutorlar18');
+    expect(within(nav).getByRole('link', { name: /Bugun/ })).toHaveTextContent('Bugun38');
+    expect(within(nav).getByRole('link', { name: /Arizalar/ })).toHaveTextContent('Arizalar7');
+    expect(within(nav).getByRole('link', { name: /Yuz tasdiqlash/ })).toHaveTextContent(
+      'Yuz tasdiqlash3',
+    );
+    expect(within(nav).getByRole('link', { name: /Kundaliklar/ }).textContent).toBe('Kundaliklar');
     expect(within(nav).getByRole('link', { name: /Korxonalar/ })).toHaveTextContent(
       'Korxonalar412',
     );
@@ -98,36 +146,25 @@ describe('AppShell', () => {
     expect(crumbText()).toBe('Admin');
   });
 
-  it('yuklanishda badge va soxta son yo‘q; crumb — faqat rol', async () => {
+  it('yuklanishda badge va soxta son yo‘q; crumb — faqat "Admin"', async () => {
     server.use(
-      http.get('/api/tutor/nav', async () => {
+      http.get('/api/admin/nav', async () => {
         await delay('infinite');
         return HttpResponse.json({});
       }),
     );
     loginAs(1);
-    renderApp('/tutor');
+    renderApp('/admin/today');
     const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
     expect(
       within(nav)
         .getAllByRole('link')
-        .map((l) => l.textContent),
-    ).toEqual([
-      'Bugun',
-      'Arizalar',
-      'Talabalarim',
-      'Yuz tasdiqlash',
-      'Kundaliklar',
-      'Kalendar',
-      'Xarita',
-      'Korxonalar',
-      'Baholash',
-      'Hisobotlar',
-    ]);
-    expect(crumbText()).toBe('Tyutor');
+        .every((l) => !/\d/.test(l.textContent ?? '')),
+    ).toBe(true);
+    expect(crumbText()).toBe('Admin');
   });
 
-  it('nav API xatosi → badge yo‘q, crumb faqat rol', async () => {
+  it('nav API xatosi → badge yo‘q, crumb faqat "Admin"', async () => {
     server.use(http.get('/api/admin/nav', () => new HttpResponse(null, { status: 500 })));
     loginAs(0);
     renderApp('/admin');
@@ -137,35 +174,13 @@ describe('AppShell', () => {
     expect(crumbText()).toBe('Admin');
   });
 
-  it('tyutor: badge va crumb — `GET /api/tutor/nav` (mock ro‘yxatlar bilan mos)', async () => {
-    const expected = tutorNavMock();
-    loginAs(1);
-    renderApp('/tutor');
-    const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
-    await waitFor(() =>
-      expect(within(nav).getByRole('link', { name: /Bugun/ })).toHaveTextContent(
-        `Bugun${expected.counts.today}`,
-      ),
-    );
-    expect(within(nav).getByRole('link', { name: /Arizalar/ })).toHaveTextContent(
-      `Arizalar${expected.counts.applications}`,
-    );
-    expect(within(nav).getByRole('link', { name: /Talabalarim/ })).toHaveTextContent(
-      `Talabalarim${expected.counts.students}`,
-    );
-    expect(within(nav).getByRole('link', { name: /Kundaliklar/ })).toHaveTextContent(
-      `Kundaliklar${expected.counts.diaries}`,
-    );
-    expect(crumbText()).toBe('Tyutor · 412-22, 413-22 · 3-kurs ishlab chiqarish amaliyoti');
-  });
-
-  it('tyutor: ariza qaroridan keyin "Arizalar" badge yangilanadi (nav invalidate)', async () => {
+  it('ariza qaroridan keyin "Arizalar" badge yangilanadi (nav invalidate)', async () => {
     const pending = mockApplications.filter((a) => a.status === 'submitted');
-    loginAs(1);
+    loginAs(0);
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <AppProviders queryClient={queryClient}>
-        <RouterProvider router={createTestRouter(['/tutor'])} />
+        <RouterProvider router={createTestRouter(['/admin/today'])} />
       </AppProviders>,
     );
     const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
@@ -186,12 +201,10 @@ describe('AppShell', () => {
     await waitFor(() => expect(link()).toHaveTextContent(`Arizalar${pending.length - 1}`));
   });
 
-  it('tyutor: tyutor nav; nav havolasi → shell ichidagi sahifa + title', async () => {
-    loginAs(1);
-    const router = renderApp('/tutor');
+  it('nav havolasi → shell ichidagi sahifa + title (Bugun → Kundaliklar)', async () => {
+    loginAs(0);
+    const router = renderApp('/admin/today');
     const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
-    expect(within(nav).getAllByRole('link')).toHaveLength(10);
-    expect(within(nav).queryByRole('link', { name: /Ruxsat/ })).not.toBeInTheDocument();
     expect(within(nav).getByRole('link', { name: /Bugun/ })).toHaveAttribute(
       'aria-current',
       'page',
@@ -199,12 +212,12 @@ describe('AppShell', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Bugun');
 
     await userEvent.click(within(nav).getByRole('link', { name: /Kundaliklar/ }));
-    await waitFor(() => expect(router.state.location.pathname).toBe('/tutor/diaries'));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/admin/diaries'));
     // Lazy sahifa: title chunk yuklangach yangilanadi.
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Kundalik hisobotlar'),
     );
-    // Kundaliklar sahifasi (features/tutor/diaries) shell ichida ochiladi.
+    // Kundaliklar sahifasi (features/admin/diaries) shell ichida ochiladi.
     expect(
       await screen.findByRole('article', { name: 'Kundalik: Aliyev Akmal' }),
     ).toBeInTheDocument();
@@ -212,16 +225,15 @@ describe('AppShell', () => {
     expect(screen.getByRole('navigation', { name: 'Asosiy' })).toBeInTheDocument();
   });
 
-  it("tyutor: eski /tutor/leave-requests → /tutor (ruxsat so'rash moduli olib tashlangan)", async () => {
-    loginAs(1);
-    const router = renderApp('/tutor/leave-requests');
-    await waitFor(() => expect(router.state.location.pathname).toBe('/tutor'));
-    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Bugun');
+  it("eski /tutor yo'llari endi yo'q (404)", async () => {
+    loginAs(0);
+    renderApp('/tutor');
+    expect(await screen.findByText('404 — Sahifa topilmadi')).toBeInTheDocument();
   });
 
   it('Chiqish → sessiya tozalanadi → /login', async () => {
-    loginAs(1);
-    const router = renderApp('/tutor');
+    loginAs(0);
+    const router = renderApp('/admin/today');
     await userEvent.click(await screen.findByRole('button', { name: 'Chiqish' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
     expect(useAuthStore.getState().status).toBe('anonymous');

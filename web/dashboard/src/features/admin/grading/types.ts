@@ -1,8 +1,8 @@
 import type { StatusKind } from '@/shared/ui';
 
 /**
- * GET /api/tutor/grading → GradingRow[] (backend `GradingRow`).
- * Davomat 40 + hisobotlar 30 + tyutor 20 + tavsifnoma 10 → jami → baho (2–5; null = qayta topshiradi).
+ * GET /api/admin/grading → GradingRow[] (backend `GradingRow`).
+ * Davomat 40 + hisobotlar 30 + admin 20 + tavsifnoma 10 → jami → baho (2–5; null = qayta topshiradi).
  */
 export interface GradingRow {
   studentId: string;
@@ -11,7 +11,7 @@ export interface GradingRow {
   attendance: { points: number; pct: number };
   /** Hisobot · 30 ball: { points: 25.2, avg: 4.2 } */
   reports: { points: number; avg: number };
-  /** Tyutor · 20 (null → "—", hali qo'yilmagan) */
+  /** Admin · 20 (null → "—", hali qo'yilmagan) */
   tutorPoints: number | null;
   /** Tavsifnoma · 10 */
   referencePoints: number | null;
@@ -22,7 +22,7 @@ export interface GradingRow {
   grade: number | null;
 }
 
-/** PUT /api/tutor/grading/:studentId → GradingRow (0–20 / 0–10; 404 ko'lamdan tashqari; 400 faol davr yo'q; 409 yakunlangan) */
+/** PUT /api/admin/grading/:studentId → GradingRow (0–20 / 0–10; 404 ko'lamdan tashqari; 400 faol davr yo'q; 409 yakunlangan) */
 export interface GradingUpdateRequest {
   tutorPoints: number | null;
   referencePoints: number | null;

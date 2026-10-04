@@ -1,10 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { renderTutorRoute } from '../test-utils';
+import { renderAdminRoute } from '../shared/renderAdminRoute';
 
-describe('CalendarPage (/tutor/calendar)', () => {
+describe('CalendarPage (/admin/calendar)', () => {
   it("oy grid, katak kodlari (backend holati → kod) va legend ko'rinadi", async () => {
-    renderTutorRoute('/tutor/calendar?month=2026-10');
+    renderAdminRoute('/admin/calendar?month=2026-10');
     expect(
       await screen.findByRole('heading', { level: 2, name: 'Oktabr 2026 · 01–31 kunlar' }),
     ).toBeInTheDocument();
@@ -14,7 +14,12 @@ describe('CalendarPage (/tutor/calendar)', () => {
     expect(within(akmal).getByRole('rowheader')).toHaveTextContent('Aliyev Akmal');
     const cells = within(akmal).getAllByRole('cell');
     expect(cells).toHaveLength(31);
-    expect(cells.slice(0, 12).map((c) => c.getAttribute('data-code')).join('')).toBe('kkkldkkkakkn');
+    expect(
+      cells
+        .slice(0, 12)
+        .map((c) => c.getAttribute('data-code'))
+        .join(''),
+    ).toBe('kkkldkkkakkn');
     expect(cells[11]).toHaveAttribute('data-status', 'pending');
     expect(cells[30]).toHaveAttribute('data-status', 'future');
     expect(cells[3]).toHaveAttribute('data-status', 'late');
@@ -26,7 +31,7 @@ describe('CalendarPage (/tutor/calendar)', () => {
 
   it('oy almashtirish → ?month= va sarlavha yangilanadi', async () => {
     const user = userEvent.setup();
-    const router = renderTutorRoute('/tutor/calendar?month=2026-10');
+    const router = renderAdminRoute('/admin/calendar?month=2026-10');
     await screen.findByRole('heading', { level: 2, name: 'Oktabr 2026 · 01–31 kunlar' });
 
     await user.click(screen.getByRole('button', { name: 'Noyabr ›' }));

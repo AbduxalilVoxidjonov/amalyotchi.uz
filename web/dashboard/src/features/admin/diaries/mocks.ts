@@ -1,7 +1,12 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
 import { problem } from '@/mocks/data';
-import { applyProfileDiaryReviewMock, findProfileDiaryMock } from '../students/mocks';
-import { isDiaryReviewable, type DiaryEntry, type DiaryReviewRequest, type DiaryStatus } from './types';
+import { applyProfileDiaryReviewMock, findProfileDiaryMock } from '../student-profile/mocks';
+import {
+  isDiaryReviewable,
+  type DiaryEntry,
+  type DiaryReviewRequest,
+  type DiaryStatus,
+} from './types';
 
 const SPEC_DIARIES: DiaryEntry[] = [
   {
@@ -68,54 +73,52 @@ const validation = (errors: Record<string, string[]>) =>
   });
 
 export const diariesHandlers: HttpHandler[] = [
-  http.get('/api/tutor/diaries', ({ request }) => {
+  http.get('/api/admin/diaries', ({ request }) => {
     const status = new URL(request.url).searchParams.get('status');
     if (status !== null && !(STATUSES as string[]).includes(status))
       return validation({ Status: [`The value '${status}' is not valid for Status.`] });
     return HttpResponse.json(mockDiaries.filter((d) => status === null || d.status === status));
   }),
 
-  // Baholash — tyutor va admin yo'llarida bir xil (backend'da ham ayni buyruq).
-  ...(['tutor', 'admin'] as const).map((area) =>
-    http.post(`/api/${area}/diaries/:id/review`, async ({ params, request }) => {
-      const id = String(params['id']);
-      // Kundaliklar sahifasidagi ro'yxat, bo'lmasa talaba profilidagi kundalik.
-      const local = mockDiaries.find((d) => d.id === id);
-      const entry = local ?? findProfileDiaryMock(id);
-      if (!entry)
-        return HttpResponse.json(problem(404, 'Topilmadi', 'Kundalik yozuvi topilmadi.'), {
-          status: 404,
-        });
+  // Baholash — Kundaliklar sahifasi va talaba profili uchun bitta endpoint.
+  http.post('/api/admin/diaries/:id/review', async ({ params, request }) => {
+    const id = String(params['id']);
+    // Kundaliklar sahifasidagi ro'yxat, bo'lmasa talaba profilidagi kundalik.
+    const local = mockDiaries.find((d) => d.id === id);
+    const entry = local ?? findProfileDiaryMock(id);
+    if (!entry)
+      return HttpResponse.json(problem(404, 'Topilmadi', 'Kundalik yozuvi topilmadi.'), {
+        status: 404,
+      });
 
-      const body = (await request.json().catch(() => ({}))) as Partial<DiaryReviewRequest>;
-      if (body.action !== 'approve' && body.action !== 'score' && body.action !== 'rewrite')
-        return validation({ Action: ['Amal: approve, score yoki rewrite.'] });
-      if (body.score !== undefined && (body.score < 1 || body.score > 5))
-        return validation({ Score: ["Ball 1–5 oralig'ida bo'lishi kerak."] });
-      if (body.action === 'score' && body.score === undefined)
-        return validation({ Score: ['Baholashda ball majburiy.'] });
-      if (body.action === 'rewrite' && !body.comment?.trim())
-        return validation({ Comment: ['Qayta yozish sababi (izoh) majburiy.'] });
-      if (!isDiaryReviewable(entry))
-        return HttpResponse.json(
-          problem(409, 'Ziddiyat', `Hisobot allaqachon ko'rib chiqilgan (holat: ${entry.status}).`),
-          { status: 409 },
-        );
+    const body = (await request.json().catch(() => ({}))) as Partial<DiaryReviewRequest>;
+    if (body.action !== 'approve' && body.action !== 'score' && body.action !== 'rewrite')
+      return validation({ Action: ['Amal: approve, score yoki rewrite.'] });
+    if (body.score !== undefined && (body.score < 1 || body.score > 5))
+      return validation({ Score: ["Ball 1–5 oralig'ida bo'lishi kerak."] });
+    if (body.action === 'score' && body.score === undefined)
+      return validation({ Score: ['Baholashda ball majburiy.'] });
+    if (body.action === 'rewrite' && !body.comment?.trim())
+      return validation({ Comment: ['Qayta yozish sababi (izoh) majburiy.'] });
+    if (!isDiaryReviewable(entry))
+      return HttpResponse.json(
+        problem(409, 'Ziddiyat', `Hisobot allaqachon ko'rib chiqilgan (holat: ${entry.status}).`),
+        { status: 409 },
+      );
 
-      const patch =
-        body.action === 'rewrite'
-          ? { status: 'rewrite' as const, score: null }
-          : { status: 'approved' as const, score: body.score ?? entry.score };
-      const reviewed = {
-        ...patch,
-        comment: body.comment?.trim() || null,
-        reviewedAt: new Date().toISOString(),
-      };
+    const patch =
+      body.action === 'rewrite'
+        ? { status: 'rewrite' as const, score: null }
+        : { status: 'approved' as const, score: body.score ?? entry.score };
+    const reviewed = {
+      ...patch,
+      comment: body.comment?.trim() || null,
+      reviewedAt: new Date().toISOString(),
+    };
 
-      if (local) Object.assign(local, reviewed);
-      else applyProfileDiaryReviewMock(id, reviewed);
+    if (local) Object.assign(local, reviewed);
+    else applyProfileDiaryReviewMock(id, reviewed);
 
-      return HttpResponse.json({ ...entry, ...reviewed });
-    }),
-  ),
+    return HttpResponse.json({ ...entry, ...reviewed });
+  }),
 ];

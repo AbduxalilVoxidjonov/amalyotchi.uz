@@ -9,7 +9,7 @@ import {
   Pill,
   PillGroup,
 } from '@/shared/ui';
-import { monthLabel, todayInTashkent } from '../../format';
+import { monthLabel, todayInTashkent } from '../../shared/fmt';
 import { QueryState } from '../../components/QueryState';
 import { useStudentAttendanceQuery, useStudentDiariesQuery } from '../hooks';
 import {
@@ -21,12 +21,7 @@ import {
   stepMonthWithin,
   type MonthCursor,
 } from '../periods';
-import type {
-  AttendanceRange,
-  StudentApiArea,
-  StudentPeriodOption,
-  TutorStudentDetail,
-} from '../types';
+import type { AttendanceRange, StudentPeriodOption, StudentProfileDetail } from '../types';
 import { AttendanceDayTable } from './AttendanceDayTable';
 import styles from './StudentAttendanceSection.module.css';
 
@@ -58,18 +53,15 @@ function initialFilters(period: StudentPeriodOption | null, today: string): Filt
 /**
  * "Kundalik jadval" bo'limi: oy bo'yicha yoki sana oralig'i bilan filtrlash + kunlar jadvali.
  * Qator bosilsa — o'sha kun tafsiloti (lokatsiya, rasm, yuborgan kundaligi).
- * `area` — profil qaysi rol endpoint'idan o'qiyotgani (tyutor yoki admin).
  * `period` — tanlangan davr (v3.5): so'rovlar `periodId` bilan ketadi, oy navigatsiyasi
  * davr chegarasidan chiqmaydi, davr almashsa kalendar davrning oxirgi faol oyiga o'tadi.
  */
 export function StudentAttendanceSection({
   detail,
   period,
-  area = 'tutor',
 }: {
-  detail: TutorStudentDetail;
+  detail: StudentProfileDetail;
   period: StudentPeriodOption | null;
-  area?: StudentApiArea;
 }) {
   const today = todayInTashkent();
   const phase = period ? periodPhase(period, today) : null;
@@ -92,18 +84,16 @@ export function StudentAttendanceSection({
     );
   }
 
-  return <AttendanceFilters detail={detail} period={period} area={area} today={today} />;
+  return <AttendanceFilters detail={detail} period={period} today={today} />;
 }
 
 function AttendanceFilters({
   detail,
   period,
-  area,
   today,
 }: {
-  detail: TutorStudentDetail;
+  detail: StudentProfileDetail;
   period: StudentPeriodOption;
-  area: StudentApiArea;
   today: string;
 }) {
   const [filters, setFilters] = useState<FilterState>(() => initialFilters(period, today));
@@ -119,9 +109,9 @@ function AttendanceFilters({
     return { from: null, to: null };
   }, [mode, cursor, from, to]);
 
-  const query = useStudentAttendanceQuery(detail.id, range, area, period.id);
+  const query = useStudentAttendanceQuery(detail.id, range, period.id);
   // Kundaliklar bo'limi bilan bir xil kalit — TanStack so'rovni takrorlamaydi.
-  const diaries = useStudentDiariesQuery(detail.id, area, period.id);
+  const diaries = useStudentDiariesQuery(detail.id, period.id);
 
   const { first, last } = periodMonthRange(period);
   const atFirst = compareMonth(cursor, first) <= 0;
@@ -217,7 +207,6 @@ function AttendanceFilters({
                 days={days}
                 radiusM={detail.company?.radiusM ?? null}
                 diaries={diaries.data ?? []}
-                area={area}
               />
             </div>
           )}

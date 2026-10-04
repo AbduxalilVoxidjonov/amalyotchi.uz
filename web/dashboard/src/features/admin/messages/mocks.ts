@@ -328,7 +328,7 @@ function seedMessages(): MessageState[] {
     completedMessage(
       'm1',
       '2026-09-20T04:00:00Z',
-      'Assalomu alaykum! Amaliyot davri 1-oktabrdan boshlanadi. Korxonangizni ilova orqali tanlang va tyutoringizga tasdiqlating.',
+      'Assalomu alaykum! Amaliyot davri 1-oktabrdan boshlanadi. Korxonangizni ilova orqali tanlang va arizangiz tasdiqlanishini kuting.',
       'Barcha ulanganlar',
       mockRecipients,
     ),

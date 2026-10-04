@@ -1,11 +1,11 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { renderTutorRoute } from '../test-utils';
+import { renderAdminRoute } from '../shared/renderAdminRoute';
 
-describe('GradingPage (/tutor/grading)', () => {
+describe('GradingPage (/admin/grading)', () => {
   it("jadval ko'rinadi; tavsiya etilgan ballarni qabul qilish → PUT → baho hisoblanadi", async () => {
     const user = userEvent.setup();
-    renderTutorRoute('/tutor/grading');
+    renderAdminRoute('/admin/grading');
     const table = await screen.findByRole('table', { name: 'Baholash' });
     expect(within(table).getByText('40,0 · 100%')).toBeInTheDocument();
     expect(within(table).getByText('28,8 · 4,8')).toBeInTheDocument();
@@ -26,7 +26,7 @@ describe('GradingPage (/tutor/grading)', () => {
 
   it('qidiruv nom bo‘yicha filtrlaydi', async () => {
     const user = userEvent.setup();
-    renderTutorRoute('/tutor/grading');
+    renderAdminRoute('/admin/grading');
     const table = await screen.findByRole('table', { name: 'Baholash' });
     await user.type(screen.getByRole('textbox', { name: 'Qidirish' }), 'sardor');
     expect(within(table).getByText('Rahimov Sardor')).toBeInTheDocument();

@@ -1,10 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { renderTutorRoute } from '../test-utils';
+import { renderAdminRoute } from '../shared/renderAdminRoute';
 
-describe('TodayPage (/tutor)', () => {
+describe('TodayPage (/admin/today)', () => {
   it("stat, alert banner va davomat jadvali mock ma'lumot bilan ko'rinadi", async () => {
-    renderTutorRoute('/tutor');
+    renderAdminRoute('/admin/today');
     expect(await screen.findByText('Aliyev Akmal')).toBeInTheDocument();
     expect(screen.getByText('radius ichida')).toBeInTheDocument();
     expect(screen.getByText('23/38')).toBeInTheDocument();
@@ -17,7 +17,7 @@ describe('TodayPage (/tutor)', () => {
 
   it('filtr pill → ?status= va jadval filtrlanadi; banner yopiladi', async () => {
     const user = userEvent.setup();
-    const router = renderTutorRoute('/tutor');
+    const router = renderAdminRoute('/admin/today');
     await screen.findByText('Aliyev Akmal');
 
     await user.click(screen.getByRole('button', { name: 'Kelmadi' }));

@@ -1,7 +1,7 @@
-import type { TutorStudentDetail } from '@/features/tutor/students/types';
+import type { StudentProfileDetail } from '@/features/admin/student-profile/types';
 import type { ListParams } from '../shared/types';
 
-export type { ActiveCompanyRef } from '@/features/tutor/students/types';
+export type { ActiveCompanyRef } from '@/features/admin/student-profile/types';
 
 /** Kontrakt v2 `Student` (backend `StudentRow`). Holat: Faol (ok) · Qizil bayroq (bad) · Ulanmagan (neu). */
 export type StudentStatus = 'active' | 'flagged' | 'unlinked';
@@ -38,26 +38,18 @@ export const STUDENT_STATUS_LABEL: Record<
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Talaba profili (`/admin/students/:studentId`) — `GET /api/admin/students/{id}`.
- * Bloklar tyutor profilidagi bilan bir xil (ayni backend handler), shuning uchun
- * turlar `features/tutor/students/types` dan olinadi; bu yerda faqat admin qo'shimchalari.
+ * Bloklar `student-profile` bilan umumiy (ayni backend handler), shuning uchun
+ * turlar `features/admin/student-profile/types` dan olinadi; bu yerda faqat tashkiliy qo'shimchalar.
  * ──────────────────────────────────────────────────────────────────────────── */
 
-/** Talaba guruhiga biriktirilgan tyutor (bir nechtasi bo'lsa — FISH bo'yicha birinchisi). */
-export interface AdminStudentTutor {
-  id: string;
-  fullName: string;
-  phone: string | null;
-}
-
-/** `GET /api/admin/students/{id}` → tyutor profili maydonlari + adminga xoslari. */
-export interface AdminStudentDetail extends TutorStudentDetail {
+/** `GET /api/admin/students/{id}` → profil bloklari + tashkiliy maydonlar. */
+export interface AdminStudentDetail extends StudentProfileDetail {
   groupId: string;
-  /** Kafedra nomi (tyutor profilida yo'q). */
+  /** Kafedra nomi. */
   department: string;
   /** Ro'yxatdagi holat bilan bir xil qoida (faol · qizil bayroq · ulanmagan). */
   adminStatus: StudentStatus;
   telegramLinked: boolean;
-  tutor: AdminStudentTutor | null;
 }
 
 /* ────────────────────────────────────────────────────────────────────────────

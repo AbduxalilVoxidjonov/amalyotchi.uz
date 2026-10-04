@@ -128,13 +128,12 @@ export function resetPlaceMocks() {
 }
 
 const NOT_FOUND_MESSAGE =
-  'Bu STIR bilan faol korxona topilmadi. Korxona avval tizimga kiritilishi kerak — tyutoringizga murojaat qiling.';
+  'Bu STIR bilan faol korxona topilmadi. Korxona avval tizimga kiritilishi kerak — administratorga murojaat qiling.';
 const NO_PLACE_MESSAGE =
-  'Amaliyot joyi biriktirilmagan. Korxonani STIR orqali tanlang yoki tyutoringizga murojaat qiling.';
-const PENDING_MESSAGE =
-  "Arizangiz ko'rib chiqilmoqda — tyutor qaroridan keyin o'zgartirish mumkin.";
+  'Amaliyot joyi biriktirilmagan. Korxonani STIR orqali tanlang yoki administratorga murojaat qiling.';
+const PENDING_MESSAGE = "Arizangiz ko'rib chiqilmoqda — admin qaroridan keyin o'zgartirish mumkin.";
 const ALREADY_APPROVED_MESSAGE =
-  "Sizga allaqachon amaliyot joyi biriktirilgan. O'zgartirish uchun tyutoringizga murojaat qiling.";
+  "Sizga allaqachon amaliyot joyi biriktirilgan. O'zgartirish uchun administratorga murojaat qiling.";
 
 const normalizeTin = (tin: string | null | undefined) => (tin ?? '').replace(/[\s-]/g, '');
 const isValidTin = (tin: string) => tin.length === TIN_DIGITS && /^\d+$/.test(tin);

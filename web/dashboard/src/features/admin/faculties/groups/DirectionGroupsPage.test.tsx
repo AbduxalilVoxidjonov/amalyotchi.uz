@@ -34,7 +34,7 @@ describe('DirectionGroupsPage', () => {
     renderPage();
     expect(await screen.findByText('412-22')).toBeInTheDocument();
     expect(screen.getByText('413-22')).toBeInTheDocument();
-    expect(screen.getAllByText('Nodira Saidova')).toHaveLength(2);
+    expect(screen.queryByText('Nodira Saidova')).not.toBeInTheDocument();
 
     const breadcrumb = screen.getByRole('navigation', { name: "Yo'l" });
     expect(within(breadcrumb).getByRole('link', { name: 'Fakultetlar' })).toBeInTheDocument();
@@ -49,10 +49,10 @@ describe('DirectionGroupsPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('tyutorsiz guruh — chiziqcha', async () => {
+  it("v3.28: jadvalda 'Tyutor' ustuni yo'q", async () => {
     renderPage('f1', 'd1', 'dir2');
     expect(await screen.findByText('421-23')).toBeInTheDocument();
-    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Tyutor' })).not.toBeInTheDocument();
   });
 
   it("yaratish: modal ochiladi → to'ldiriladi → ro'yxatda paydo bo'ladi", async () => {
@@ -138,9 +138,7 @@ describe('DirectionGroupsPage', () => {
     const dialog = await screen.findByRole('dialog', { name: "Guruhni o'chirish" });
     await user.click(within(dialog).getByRole('button', { name: "O'chirish" }));
 
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'Guruhda talabalar yoki biriktirilgan tyutor bor',
-    );
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Guruhda talabalar bor');
     expect(screen.getByText('412-22')).toBeInTheDocument();
   });
 

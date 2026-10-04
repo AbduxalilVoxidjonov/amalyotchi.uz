@@ -1,20 +1,16 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Badge, Card } from '@/shared/ui';
 import { AuthFileEmbed } from '@/shared/files';
-import { fmtDateOnly, fmtTime } from '../../format';
+import { fmtDateOnly, fmtTime } from '../../shared/fmt';
 import { DiaryReviewControls } from '../../diaries/components/DiaryReviewControls';
-import {
-  DIARY_STATUS_LABEL,
-  type DiaryEntry,
-  type DiaryReviewRequest,
-} from '../../diaries/types';
+import { DIARY_STATUS_LABEL, type DiaryEntry, type DiaryReviewRequest } from '../../diaries/types';
 import styles from './DiaryDayCard.module.css';
 
 export interface DiaryDayCardProps {
   entry: DiaryEntry;
   /**
    * Berilsa — karta ostida baholash qatori chiqadi (Tasdiqlash · Ball · Izoh · Qayta yozish).
-   * Kun oynasida tyutor ham, admin ham shu orqali baho qo'yadi.
+   * Kun oynasida admin shu orqali baho qo'yadi.
    */
   review?:
     | {
@@ -38,7 +34,7 @@ export interface DiaryDayCardProps {
 /**
  * Talaba profilidagi kun oynasi uchun kundalik kartasi: sarlavha (sana, holat, ball), matn,
  * "o'rganganim", **biriktirilgan fayllar joyida ochiq** (talaba daftardagi kundalikni rasmga olib
- * PDF qilib yuboradi — `AuthFileEmbed` uni token bilan yuklab, shu yerda ko'rsatadi), tyutor izohi
+ * PDF qilib yuboradi — `AuthFileEmbed` uni token bilan yuklab, shu yerda ko'rsatadi), admin izohi
  * va baholash qatori. Kundaliklar sahifasidagi karta — `diaries/components/DiaryCard.tsx`.
  */
 export function DiaryDayCard({
@@ -114,7 +110,7 @@ export function DiaryDayCard({
 
       {entry.comment && (
         <p className={styles.note}>
-          <span className={styles.noteLabel}>Tyutor izohi: </span>
+          <span className={styles.noteLabel}>Admin izohi: </span>
           {entry.comment}
         </p>
       )}

@@ -1,9 +1,9 @@
 import { screen, within } from '@testing-library/react';
-import { renderTutorRoute } from '../test-utils';
+import { renderAdminRoute } from '../shared/renderAdminRoute';
 
-describe('MapPage (/tutor/map)', () => {
+describe('MapPage (/admin/map)', () => {
   it("placeholder va nuqtalar ro'yxati mock bilan ko'rinadi", async () => {
-    renderTutorRoute('/tutor/map');
+    renderAdminRoute('/admin/map');
     const list = await screen.findByRole('region', { name: 'Bugungi nuqtalar · 12.10' });
     expect(within(list).getAllByRole('listitem')).toHaveLength(5);
     expect(within(list).getByText('45 m / 150 m')).toBeInTheDocument();

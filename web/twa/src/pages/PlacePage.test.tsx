@@ -18,7 +18,7 @@ describe('PlacePage (isJoyim)', () => {
     expect(screen.getByText('01.10–15.11.2026')).toBeInTheDocument();
     expect(screen.getByText('shartnoma_aliyev.pdf')).toBeInTheDocument();
     expect(screen.getByText('2 bet · 1,8 MB · 24.09.2026 da yuklangan')).toBeInTheDocument();
-    expect(screen.getByText('08.10.2026 da tyutor N. Saidova tasdiqladi')).toBeInTheDocument();
+    expect(screen.getByText('08.10.2026 da N. Saidova tasdiqladi')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Xarita (nuqta + 150 m doira)' })).toHaveTextContent(
       '41.3111, 69.2797',
     );
@@ -35,11 +35,11 @@ describe('PlacePage (isJoyim)', () => {
     setMockPlace({ ...mockPlace, status: 'submitted', contract: null });
     renderApp('/joyim');
     expect(await screen.findByText('Tekshiruvda')).toBeInTheDocument();
-    expect(screen.getByText("Ariza tyutorga yuborildi — ko'rib chiqilmoqda.")).toBeInTheDocument();
+    expect(screen.getByText("Ariza adminga yuborildi — ko'rib chiqilmoqda.")).toBeInTheDocument();
     expect(screen.queryByLabelText('Korxona STIR raqami')).not.toBeInTheDocument();
   });
 
-  it("revisionNeeded → 'Qayta topshirish' + tyutor izohi; shartnoma yo'q; qayta tanlash formasi", async () => {
+  it("revisionNeeded → 'Qayta topshirish' + admin izohi; shartnoma yo'q; qayta tanlash formasi", async () => {
     server.use(
       http.get('/api/student/place', () =>
         HttpResponse.json({
@@ -54,7 +54,7 @@ describe('PlacePage (isJoyim)', () => {
     );
     renderApp('/joyim');
     expect(await screen.findByText('Qayta topshirish')).toBeInTheDocument();
-    expect(screen.getByText('Tyutor izohi: Shartnomada muhr yo‘q')).toBeInTheDocument();
+    expect(screen.getByText('Admin izohi: Shartnomada muhr yo‘q')).toBeInTheDocument();
     expect(screen.getByText('Shartnoma hali yuklanmagan')).toBeInTheDocument();
     expect(screen.getByText('—')).toBeInTheDocument(); // mentor yo'q
     expect(screen.getByText('Amaliyot joyini qayta tanlash')).toBeInTheDocument();
@@ -90,7 +90,7 @@ describe('PlacePage (isJoyim)', () => {
     expect(tinField()).toHaveValue('123456789');
   });
 
-  it("noma'lum STIR → 404 xabari (tyutorga murojaat)", async () => {
+  it("noma'lum STIR → 404 xabari (administratorga murojaat)", async () => {
     setMockPlace(null);
     renderApp('/joyim');
     await screen.findByText('Amaliyot joyini tanlash');
@@ -128,7 +128,7 @@ describe('PlacePage (isJoyim)', () => {
     expect(await screen.findByText("Korxona ma'lumotlari")).toBeInTheDocument();
     expect(screen.getByText('Tekshiruvda')).toBeInTheDocument();
     expect(screen.getByText(company.name)).toBeInTheDocument();
-    expect(screen.getByText("Ariza tyutorga yuborildi — ko'rib chiqilmoqda.")).toBeInTheDocument();
+    expect(screen.getByText("Ariza adminga yuborildi — ko'rib chiqilmoqda.")).toBeInTheDocument();
     expect(screen.queryByLabelText('Korxona STIR raqami')).not.toBeInTheDocument();
   });
 
@@ -194,7 +194,7 @@ describe('PlacePage (isJoyim)', () => {
       await screen.findByRole('heading', { name: "O'tgan amaliyot davri" });
       expect(screen.getByText('Yakunlangan')).toBeInTheDocument();
       expect(screen.queryByText('Rad etilgan')).not.toBeInTheDocument();
-      expect(screen.queryByText('Tyutor izohi: Korxona mos emas')).not.toBeInTheDocument();
+      expect(screen.queryByText('Admin izohi: Korxona mos emas')).not.toBeInTheDocument();
       expect(screen.queryByText('Amaliyot joyini qayta tanlash')).not.toBeInTheDocument();
       expect(screen.queryByText('Shartnoma hali yuklanmagan')).not.toBeInTheDocument();
       expect(screen.queryByRole('heading', { name: 'Shartnoma' })).not.toBeInTheDocument();

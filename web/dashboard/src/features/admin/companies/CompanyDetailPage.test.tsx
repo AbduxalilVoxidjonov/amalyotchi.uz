@@ -104,7 +104,7 @@ describe('CompanyDetailPage', () => {
     expect(facts.getByText("Talaba ko'p")).toHaveAttribute('data-status', 'bad');
   });
 
-  it("aktiv amaliyotchilar jadvali FISH, tyutor, davr, davomat va holat bilan to'ladi", async () => {
+  it("aktiv amaliyotchilar jadvali FISH, davr, davomat va holat bilan to'ladi", async () => {
     renderPage();
     expect(await screen.findByText('Aliyev Akmal')).toBeInTheDocument();
     const table = studentsTable();
@@ -115,7 +115,7 @@ describe('CompanyDetailPage', () => {
     );
     expect(table.getByText('HEMIS 341100')).toBeInTheDocument();
     expect(table.getAllByText('412-22').length).toBeGreaterThan(0);
-    expect(table.getAllByText('Nodira Saidova').length).toBeGreaterThan(0);
+    expect(table.queryByText('Nodira Saidova')).not.toBeInTheDocument();
     expect(table.getAllByText('3-kurs kuzgi amaliyot')).toHaveLength(4);
     expect(screen.getByRole('heading', { name: 'Aktiv amaliyotchilar' })).toBeInTheDocument();
     expect(screen.getByText("Hozir amaliyot o'tayotganlar: 4 ta talaba")).toBeInTheDocument();

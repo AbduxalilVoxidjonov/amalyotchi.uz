@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { navKeys } from '@/app/nav-keys';
-import { keepPreviousForSameStudent } from '@/features/tutor/students/hooks';
+import { keepPreviousForSameStudent } from '@/features/admin/student-profile/hooks';
 import { companiesApi } from '../companies/api';
 import { adminKeys } from '../shared/keys';
 import type { ListParams } from '../shared/types';

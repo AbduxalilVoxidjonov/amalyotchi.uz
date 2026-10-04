@@ -73,7 +73,7 @@ function RootLayout() {
       return (
         <LoginScreen
           title="Hisobingizni bog'lang"
-          subtitle="Birinchi marta kiryapsiz. Tyutoringiz bergan HEMIS ID va parolni kiriting — Telegram hisobingiz bog'lanadi va keyingi safar avtomatik kirasiz."
+          subtitle="Birinchi marta kiryapsiz. Administrator bergan HEMIS ID va parolni kiriting — Telegram hisobingiz bog'lanadi va keyingi safar avtomatik kirasiz."
           submitLabel="Bog'lash va kirish"
           note={null}
           submit={submitTelegramLink}

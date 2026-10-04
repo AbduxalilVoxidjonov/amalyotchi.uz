@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button, EmptyState, Pill, PillGroup } from '@/shared/ui';
 import { ErrorState, LoadingState, QueryState } from '../components/QueryState';
-import { mutationErrorMessage } from '../errors';
+import { mutationErrorMessage } from '../shared/errors';
 import { ApplicationCard } from './components/ApplicationCard';
 import { ApplicationDetailPanel } from './components/ApplicationDetailPanel';
 import { useApplicationDecision, useApplicationDetailQuery, useApplicationsQuery } from './hooks';
@@ -25,7 +25,7 @@ const isNarrow = () =>
 const scrollTo = (el: HTMLElement | null) =>
   el?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
 
-/** Tyutor · Arizalar (SPEC-SCREENS §4) — master-detail container. URL: `?tab=` · `?id=`. */
+/** Admin · Arizalar (SPEC-SCREENS §4) — master-detail container. URL: `?tab=` · `?id=`. */
 export function ApplicationsPage() {
   const [params, setParams] = useSearchParams();
   const tab: ApplicationTab = isApplicationTab(params.get('tab'))

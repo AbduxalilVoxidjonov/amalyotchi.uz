@@ -260,21 +260,18 @@ describe('ConfirmDialog', () => {
 describe('SidebarNav', () => {
   it('aktiv element aria-current="page", badge ko‘rinadi', () => {
     render(
-      <MemoryRouter initialEntries={['/tutor/students']}>
+      <MemoryRouter initialEntries={['/admin/students']}>
         <SidebarNav
           items={[
-            { label: 'Bugun', to: '/tutor', end: true, badge: 38 },
-            { label: 'Talabalarim', to: '/tutor/students', badge: 12 },
-            { label: 'Xarita', to: '/tutor/map' },
+            { label: 'Dashboard', to: '/admin', end: true, badge: 38 },
+            { label: 'Talabalar', to: '/admin/students', badge: 12 },
+            { label: 'Xarita', to: '/admin/map' },
           ]}
         />
       </MemoryRouter>,
     );
-    expect(screen.getByRole('link', { name: /Talabalarim/ })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
-    expect(screen.getByRole('link', { name: /Bugun/ })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('link', { name: /Talabalar/ })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: /Dashboard/ })).not.toHaveAttribute('aria-current');
     expect(screen.getByText('12')).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Asosiy' })).toBeInTheDocument();
   });

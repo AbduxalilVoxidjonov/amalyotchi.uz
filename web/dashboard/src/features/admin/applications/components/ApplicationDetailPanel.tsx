@@ -10,7 +10,7 @@ import {
   MapPlaceholder,
   Textarea,
 } from '@/shared/ui';
-import { fmtBytes, fmtPhone, fmtTin } from '../../format';
+import { fmtBytes, fmtPhone, fmtTin } from '../../shared/fmt';
 import {
   APPLICATION_STATUS_LABEL,
   CHECKLIST_ITEMS,

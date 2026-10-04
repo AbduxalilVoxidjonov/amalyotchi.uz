@@ -1,4 +1,4 @@
-/** SPEC-SCREENS §12 `isHisobot` (tyutor + admin, bir xil blok) — backend `ReportsCatalog`. */
+/** SPEC-SCREENS §12 `isHisobot` (admin) — backend `ReportsCatalog`. */
 export type ReportFormat = 'pdf' | 'xlsx';
 
 export interface ReportCard {
@@ -16,9 +16,9 @@ export interface ReportFilter {
   /** Faol davr sanalari (DateOnly) — faol davr bo'lmasa null. */
   dateFrom: string | null;
   dateTo: string | null;
-  /** Ko'lam yorlig'i: tyutor — "412-22, 413-22", admin — "Barcha fakultetlar". */
+  /** Ko'lam yorlig'i: admin — "Barcha fakultetlar". */
   scope: string;
-  /** Tyutor guruhlari (admin uchun bo'sh). */
+  /** Guruhlar (v3.28 dan admin uchun bo'sh; eski tyutor ko'lami). */
   groups: string[];
   studentCount: number;
 }

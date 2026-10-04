@@ -10,6 +10,3 @@ export interface CompanyCheckInQr {
   /** ISO 8601 — oxirgi yangilanish (rotatsiya) vaqti. */
   rotatedAt: string;
 }
-
-/** Qaysi rol endpoint'i: `/api/admin/companies/...` yoki `/api/tutor/companies/...`. */
-export type CheckInQrArea = 'admin' | 'tutor';

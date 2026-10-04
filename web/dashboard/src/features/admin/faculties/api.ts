@@ -18,6 +18,6 @@ export const facultiesApi = {
   /** PATCH /{id}/status — 200 FacultyDto. 404. */
   setStatus: (id: string, isActive: boolean) =>
     api.patch<FacultyDto>(`${FACULTIES_ENDPOINT}/${id}/status`, { isActive }),
-  /** DELETE /{id} — 204. 404; 409 bog'liq guruh/tyutor/talaba bor. */
+  /** DELETE /{id} — 204. 404; 409 bog'liq guruh/talaba bor. */
   remove: (id: string) => api.delete<void>(`${FACULTIES_ENDPOINT}/${id}`),
 };

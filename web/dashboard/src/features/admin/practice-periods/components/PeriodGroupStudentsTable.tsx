@@ -7,8 +7,8 @@ import {
   ProgressBar,
   type DataTableColumn,
 } from '@/shared/ui';
-import { fmtDecimal } from '@/features/tutor/format';
-import { gradeLabel } from '@/features/tutor/grading/types';
+import { fmtDecimal } from '@/features/admin/shared/fmt';
+import { gradeLabel } from '@/features/admin/grading/types';
 import { RowLink } from '../../components/RowLink';
 import { APPLICATION_STATUS_LABEL } from '../../companies/types';
 import {
@@ -209,7 +209,7 @@ export function PeriodGroupStudentsTable({
     },
     {
       key: 'tutorPoints',
-      header: <span title="Tyutor balli (20 dan)">Tyut. /20</span>,
+      header: <span title="Admin balli (20 dan)">Adm. /20</span>,
       width: 'minmax(64px,.45fr)',
       mono: true,
       align: 'right',

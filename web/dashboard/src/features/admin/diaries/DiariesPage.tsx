@@ -1,11 +1,11 @@
 import { EmptyState } from '@/shared/ui';
 import { QueryState } from '../components/QueryState';
-import { mutationErrorMessage } from '../errors';
+import { mutationErrorMessage } from '../shared/errors';
 import { DiaryCard } from './components/DiaryCard';
 import { useDiariesQuery, useDiaryReview } from './hooks';
 import styles from './DiariesPage.module.css';
 
-/** Tyutor · Kundalik hisobotlar (SPEC-SCREENS §6, tyutor varianti) — container. */
+/** Admin · Kundalik hisobotlar (SPEC-SCREENS §6, baholash tugmalari bilan) — container. */
 export function DiariesPage() {
   const query = useDiariesQuery();
   const review = useDiaryReview();

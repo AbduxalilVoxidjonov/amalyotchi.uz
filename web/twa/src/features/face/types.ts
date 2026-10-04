@@ -1,6 +1,6 @@
 /**
  * Yuzni tasdiqlash (kontrakt v3.27 §6.33) — talabaning etalon (namuna) selfisi.
- * Oqim: talaba etalon yuboradi (rozilik bilan) → tyutor tasdiqlaydi/rad etadi → har check-in selfisi
+ * Oqim: talaba etalon yuboradi (rozilik bilan) → admin tasdiqlaydi/rad etadi → har check-in selfisi
  * server tomonida etalon bilan solishtiriladi (moslik `faceMatchThreshold` dan past → rad).
  */
 export type FaceStatus = 'none' | 'pending' | 'approved' | 'rejected';
@@ -15,7 +15,7 @@ export interface StudentFaceDto {
   /** ISO 8601 */
   submittedAt: string | null;
   reviewedAt: string | null;
-  /** Tyutor rad etgan bo'lsa — sabab. */
+  /** Admin rad etgan bo'lsa — sabab. */
   rejectReason: string | null;
 }
 
@@ -24,14 +24,14 @@ export const FACE_STATUS: Record<
   { label: string; badge: 'ok' | 'late' | 'bad' | 'neu' }
 > = {
   none: { label: 'Yuborilmagan', badge: 'neu' },
-  pending: { label: 'Tyutor tekshirmoqda', badge: 'late' },
+  pending: { label: 'Admin tekshirmoqda', badge: 'late' },
   approved: { label: 'Tasdiqlangan', badge: 'ok' },
   rejected: { label: 'Rad etilgan', badge: 'bad' },
 };
 
 /** Rozilik matni (etalon formasi). */
 export const FACE_CONSENT_TEXT =
-  'Roziman: rasmim faqat davomatda shaxsimni tasdiqlash uchun ishlatiladi va uni tyutorim ko‘radi.';
+  'Roziman: rasmim faqat davomatda shaxsimni tasdiqlash uchun ishlatiladi va uni administrator ko‘radi.';
 
 /** Etalon sahifasi marshruti. */
 export const FACE_PATH = '/face';

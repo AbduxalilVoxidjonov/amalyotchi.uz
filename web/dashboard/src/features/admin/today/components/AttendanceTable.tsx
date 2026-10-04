@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Badge, Button, DataTable, PersonCell, type DataTableColumn } from '@/shared/ui';
-import { fmtDistance } from '../../format';
+import { fmtDistance } from '../../shared/fmt';
 import { DIARY_LABEL, rowStatusLabel, type AttendanceRow, type Paged } from '../types';
 import styles from './AttendanceTable.module.css';
 

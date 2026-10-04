@@ -23,7 +23,7 @@ import {
   fmtDistance,
   fmtPhone,
   fmtTin,
-} from '../../format';
+} from '../../shared/fmt';
 import { periodPhase, plannedPeriodText } from '../periods';
 import {
   fmtCoords,
@@ -33,7 +33,7 @@ import {
   studentStateLabel,
   workDaysLabel,
   type StudentPeriodOption,
-  type TutorStudentDetail,
+  type StudentProfileDetail,
 } from '../types';
 import styles from './StudentDetailView.module.css';
 
@@ -53,14 +53,14 @@ export function StudentDetailView({
   actions,
   labelPeriodCompany = false,
 }: {
-  detail: TutorStudentDetail;
+  detail: StudentProfileDetail;
   selectedPeriod: StudentPeriodOption | null;
   today: string;
   /** Sarlavha kartasidagi amallar (masalan "Parol o'rnatish") — belgilar yonida. */
   actions?: ReactNode;
   /**
    * true — yopilgan/tugagan davrda korxona bloki aktiv korxonadan farq qilsa, sarlavha
-   * "Korxona (tanlangan davr)" bo'ladi (joriy deb o'ylanmasligi uchun). Tyutor profilida o'chiq.
+   * "Korxona (tanlangan davr)" bo'ladi (joriy deb o'ylanmasligi uchun).
    */
   labelPeriodCompany?: boolean;
 }) {
@@ -244,7 +244,7 @@ export function StudentDetailView({
               />
               {application.comment && (
                 <p className={styles.comment}>
-                  <span className={styles.commentLabel}>Tyutor izohi: </span>
+                  <span className={styles.commentLabel}>Admin izohi: </span>
                   {application.comment}
                 </p>
               )}

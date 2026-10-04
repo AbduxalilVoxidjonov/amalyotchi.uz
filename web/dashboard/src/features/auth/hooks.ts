@@ -7,12 +7,20 @@ import { authApi, type ChangeLoginRequest, type ChangePasswordRequest } from './
 
 /**
  * Backend talabaga ham `/api/auth/login` da 200 qaytaradi (TWA brauzerda kiradi), lekin dashboard
- * faqat admin/tyutor uchun: talaba sessiyasi saqlanmaydi — tokenlar tashlanadi, server sessiyasi yopiladi.
+ * faqat admin uchun: talaba sessiyasi saqlanmaydi — tokenlar tashlanadi, server sessiyasi yopiladi.
  */
 export class StudentLoginRejectedError extends Error {
   constructor() {
     super('Talabalar dashboard orqali kirmaydi.');
     this.name = 'StudentLoginRejectedError';
+  }
+}
+
+/** v3.28: tyutor roli olib tashlandi — admin bo'lmagan har qanday boshqa rol ham rad etiladi. */
+export class NonAdminLoginRejectedError extends Error {
+  constructor() {
+    super('Dashboard faqat administratorlar uchun.');
+    this.name = 'NonAdminLoginRejectedError';
   }
 }
 
@@ -28,12 +36,15 @@ export function useLogin() {
     mutationKey: ['auth', 'login'],
     mutationFn: async (body: LoginRequest) => {
       const result = await authApi.login(body);
-      if (toUserRole(result.user.role) === UserRole.Student) {
+      const role = toUserRole(result.user.role);
+      if (role !== UserRole.Admin) {
         // Refresh token server tomonda bekor qilinadi (xatosi kirish xabariga ta'sir qilmaydi).
         void authApi
           .logoutWithToken(result.accessToken, { refreshToken: result.refreshToken })
           .catch(() => undefined);
-        throw new StudentLoginRejectedError();
+        throw role === UserRole.Student
+          ? new StudentLoginRejectedError()
+          : new NonAdminLoginRejectedError();
       }
       return result;
     },

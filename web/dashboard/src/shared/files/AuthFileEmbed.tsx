@@ -13,7 +13,7 @@ export interface AuthFileEmbedProps {
 
 /**
  * Faylni **joyida** ko'rsatadi (bosish shart emas): PDF — `<iframe>`, rasm — `<img>`.
- * Talaba kundalikni daftardan rasmga olib PDF qilib yuboradi, tyutor/admin kun oynasida
+ * Talaba kundalikni daftardan rasmga olib PDF qilib yuboradi, admin kun oynasida
  * uni darhol o'qiydi. Fayl nomi ham havola — bosilsa yangi oynada to'liq ochiladi.
  * Boshqa turlar brauzerda ko'rsatilmaydi — yuklab olish havolasi qoladi.
  */

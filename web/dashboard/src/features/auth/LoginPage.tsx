@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import { UserRole } from '@amaliyotchi/shared/auth';
 import { errorMessage } from '@/shared/api/client';
 import { homePathForRole, useAuth } from '@/shared/auth/useAuth';
 import { Button, Checkbox, Input } from '@/shared/ui';
@@ -15,7 +16,7 @@ const PRINCIPLES = [
   },
   {
     k: "Har bir rol faqat o'z ko'lamini ko'radi",
-    v: "Tyutor — o'z guruhlari, talaba — faqat o'zi.",
+    v: "Admin — butun amaliyot jarayoni, talaba — faqat o'zi.",
   },
   {
     k: "Har bir o'zgarish iz qoldiradi",
@@ -37,7 +38,8 @@ export function LoginPage() {
     {},
   );
 
-  if (isAuthenticated && user) {
+  // Faqat admin sessiyasi yo'naltiriladi (eski/boshqa rol sessiyasida forma ko'rsatiladi — sikl bo'lmasin).
+  if (isAuthenticated && user && user.role === UserRole.Admin) {
     const from = (location.state as { from?: string } | null)?.from;
     return <Navigate to={from && from !== '/login' ? from : homePathForRole(user.role)} replace />;
   }

@@ -62,7 +62,7 @@ describe('Web login (Telegram tashqarisida)', () => {
           {
             status: 403,
             title: "Ruxsat yo'q",
-            detail: 'Hisobingiz faol emas. Tyutoringizga murojaat qiling.',
+            detail: 'Hisobingiz faol emas. Administratorga murojaat qiling.',
           },
           { status: 403, headers: { 'Content-Type': 'application/problem+json' } },
         ),
@@ -71,7 +71,7 @@ describe('Web login (Telegram tashqarisida)', () => {
     renderApp('/', { initData: '' });
     await submitLogin('341030', 'talaba12345');
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Hisobingiz faol emas. Tyutoringizga murojaat qiling.',
+      'Hisobingiz faol emas. Administratorga murojaat qiling.',
     );
     expect(screen.getByRole('heading', { name: 'Tizimga kirish' })).toBeInTheDocument();
     expect(
@@ -115,7 +115,7 @@ describe('Web login (Telegram tashqarisida)', () => {
     expect(login).not.toHaveBeenCalled();
   });
 
-  it('xodim (tyutor) hisobi → rad etiladi, sessiya saqlanmaydi, server sessiyasi bekor qilinadi', async () => {
+  it('xodim (admin) hisobi → rad etiladi, sessiya saqlanmaydi, server sessiyasi bekor qilinadi', async () => {
     const logout = vi.fn();
     server.use(
       http.post('/api/auth/logout', ({ request }) => {
@@ -124,7 +124,7 @@ describe('Web login (Telegram tashqarisida)', () => {
       }),
     );
     renderApp('/', { initData: '' });
-    await submitLogin('100000000002', 'tyutor123');
+    await submitLogin('100000000002', 'xodim12345');
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       "Bu ilova faqat talabalar uchun. Xodimlar dashboard'dan kiradi.",

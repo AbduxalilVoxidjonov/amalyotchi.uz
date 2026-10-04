@@ -53,13 +53,13 @@ describe('Yuzni tasdiqlash sahifasi (/face)', () => {
     expect(faceMocks.lastFaceSubmission).toBeNull();
   });
 
-  it('muvaffaqiyat → "Tyutor tekshirmoqda", rasm va yuborilgan vaqt', async () => {
+  it('muvaffaqiyat → "Admin tekshirmoqda", rasm va yuborilgan vaqt', async () => {
     renderApp('/face');
     await title();
     await capture();
     fireEvent.click(consent());
     send();
-    expect(await screen.findByText('Tyutor tekshirmoqda')).toBeInTheDocument();
+    expect(await screen.findByText('Admin tekshirmoqda')).toBeInTheDocument();
     expect(screen.getByText(/Rasmingiz yuborildi/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Yuborish' })).not.toBeInTheDocument();
     expect(screen.getByText('Yuborilgan')).toBeInTheDocument();
@@ -93,7 +93,7 @@ describe('Yuzni tasdiqlash sahifasi (/face)', () => {
     });
     renderApp('/face');
     await title();
-    expect(screen.getByText('Tyutor tekshirmoqda')).toBeInTheDocument();
+    expect(screen.getByText('Admin tekshirmoqda')).toBeInTheDocument();
     expect(screen.getByText('12.10.2026 09:00')).toBeInTheDocument();
     expect(screen.queryByLabelText('Yuz rasmini olish')).not.toBeInTheDocument();
   });
@@ -127,7 +127,7 @@ describe('Yuzni tasdiqlash sahifasi (/face)', () => {
     await capture();
     fireEvent.click(consent());
     send();
-    expect(await screen.findByText('Tyutor tekshirmoqda')).toBeInTheDocument();
+    expect(await screen.findByText('Admin tekshirmoqda')).toBeInTheDocument();
   });
 
   it('server 409 (allaqachon tasdiqlangan) — umumiy xabar', async () => {
@@ -135,7 +135,7 @@ describe('Yuzni tasdiqlash sahifasi (/face)', () => {
     await title();
     await capture();
     fireEvent.click(consent());
-    // Sahifa ochilgandan keyin tyutor tasdiqlagan.
+    // Sahifa ochilgandan keyin admin tasdiqlagan.
     setMockFace({ status: 'approved' });
     send();
     expect(await screen.findByText(FACE_MESSAGES.alreadyApproved)).toBeInTheDocument();
@@ -154,7 +154,7 @@ describe('Yuz darvozasi', () => {
     await capture();
     fireEvent.click(consent());
     send();
-    expect(await screen.findByText('Tyutor tekshirmoqda')).toBeInTheDocument();
+    expect(await screen.findByText('Admin tekshirmoqda')).toBeInTheDocument();
     await waitFor(() => expect(tabBar()).toBeInTheDocument());
     expect(screen.queryByRole('button', { name: 'Chiqish' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('link', { name: 'Bosh ekranga' }));

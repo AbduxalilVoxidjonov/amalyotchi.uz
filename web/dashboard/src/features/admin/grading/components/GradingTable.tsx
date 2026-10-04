@@ -1,9 +1,9 @@
 import { Badge, Button, DataTable, Input, type DataTableColumn } from '@/shared/ui';
-import { fmtDecimal } from '../../format';
+import { fmtDecimal } from '../../shared/fmt';
 import { gradeLabel, type GradingRow } from '../types';
 import styles from './GradingTable.module.css';
 
-/** Butun ballar (tyutor 0–20, tavsifnoma 0–10) — kasrsiz. */
+/** Butun ballar (admin 0–20, tavsifnoma 0–10) — kasrsiz. */
 const dash = (v: number | null) => (v === null ? '—' : String(v));
 
 /** SPEC-SCREENS §9.2 — cols/head aynan. */
@@ -25,7 +25,7 @@ const COLUMNS: DataTableColumn<GradingRow>[] = [
   },
   {
     key: 'tutorPoints',
-    header: 'Tyutor · 20',
+    header: 'Admin · 20',
     width: 'minmax(100px,.9fr)',
     mono: true,
     render: (r) => dash(r.tutorPoints),

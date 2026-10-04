@@ -22,7 +22,7 @@ export function TodaySummary({ today }: { today: TodayDto }) {
       <p className={styles.note}>{note}</p>
       {today.checkin.suspicious && (
         <p className={styles.warn} role="note">
-          Belgilanish shubhali deb belgilandi — tyutor tekshiradi.
+          Belgilanish shubhali deb belgilandi — admin tekshiradi.
         </p>
       )}
       {canMarkNow(today) && (

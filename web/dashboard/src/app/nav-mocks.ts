@@ -1,30 +1,23 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
-import { UserRole } from '@amaliyotchi/shared/auth';
+import { mockApplications } from '@/features/admin/applications/mocks';
 import { COMPANIES_ENDPOINT } from '@/features/admin/companies/api';
+import { mockDiaries } from '@/features/admin/diaries/mocks';
 import { FACULTIES_ENDPOINT } from '@/features/admin/faculties/api';
+import { pendingFaceCount } from '@/features/admin/face/mocks';
 import { STUDENTS_ENDPOINT } from '@/features/admin/students/api';
-import { TUTORS_ENDPOINT } from '@/features/admin/tutors/api';
-import { mockApplications } from '@/features/tutor/applications/mocks';
-import { mockDiaries } from '@/features/tutor/diaries/mocks';
-import { pendingFaceCount } from '@/features/tutor/face/mocks';
-import {
-  mockStudents as tutorMockStudents,
-  resolveMockPeriod,
-} from '@/features/tutor/students/mocks';
-import { mockTodayRows } from '@/features/tutor/today/mocks';
-import { NAV_ENDPOINTS, type AdminNavDto, type TutorNavDto } from './nav-data';
+import { mockTodayRows } from '@/features/admin/today/mocks';
+import { NAV_ENDPOINT, type AdminNavDto } from './nav-data';
 
 /**
- * `GET /api/admin/nav`, `GET /api/tutor/nav` mock'lari. Sonlar qattiq yozilmaydi:
- *  - admin: ro'yxat endpoint'larining (mutatsiyalar o'zgartirgan in-memory holat) `total` qiymati —
- *    feature mock'lari holat massivini eksport qilmaydi, shuning uchun o'sha handler'ning o'zidan
- *    (`?pageSize=1`, sukut holati — qidiruv/filtrsiz) o'qiladi; sahifa jamiga aynan teng.
- *  - tyutor: mock massivlar uzunligi, sahifalarning sukut filtri bilan
- *    (bugun — hammasi; arizalar — "Yangi" (`submitted`) tab; talabalar — hammasi; kundaliklar — hammasi).
+ * `GET /api/admin/nav` mock'i. Sonlar qattiq yozilmaydi:
+ *  - fakultet/korxona/talaba: ro'yxat endpoint'larining (mutatsiyalar o'zgartirgan in-memory holat)
+ *    `total` qiymati — o'sha handler'ning o'zidan (`?pageSize=1`, sukut holati) o'qiladi.
+ *  - bugun/arizalar/kundaliklar/yuz: mock massivlar uzunligi, sahifalarning sukut filtri bilan
+ *    (bugun — hammasi; arizalar — "Yangi" (`submitted`) tab; kundaliklar — hammasi; yuz — kutayotgan).
  *    `mockApplications`/`mockDiaries` — `export let` (live binding): qaror/bahodan keyin ham mos.
  */
 
-/** ❓ Faol o'quv yili — tyutorlar mock'idagi `ACADEMIC_YEAR` bilan bir xil (u eksport qilinmaydi). */
+/** ❓ Faol o'quv yili (mock). */
 const MOCK_ACADEMIC_YEAR = '2026-2027';
 
 async function listTotal(requestUrl: string, endpoint: string): Promise<number> {
@@ -35,38 +28,27 @@ async function listTotal(requestUrl: string, endpoint: string): Promise<number> 
   return body.total;
 }
 
-export function tutorNavMock(): TutorNavDto {
-  const groups = [...new Set(tutorMockStudents.map((s) => s.group))].sort();
-  const first = tutorMockStudents[0];
+/** Sobiq tyutor nav sonlari (v3.28 da `counts` ga qo'shildi) — mock holatidan. */
+export function opsNavCounts() {
   return {
-    counts: {
-      today: mockTodayRows.length,
-      applications: mockApplications.filter((a) => a.status === 'submitted').length,
-      students: tutorMockStudents.length,
-      diaries: mockDiaries.length,
-      pendingFaceEnrollments: pendingFaceCount(),
-    },
-    context: {
-      groups,
-      periodName: (first && resolveMockPeriod(first.id, null)?.name) ?? null,
-    },
+    today: mockTodayRows.length,
+    applications: mockApplications.filter((a) => a.status === 'submitted').length,
+    diaries: mockDiaries.length,
+    pendingFaceEnrollments: pendingFaceCount(),
   };
 }
 
 export const navHandlers: HttpHandler[] = [
-  http.get(NAV_ENDPOINTS[UserRole.Admin], async ({ request }) => {
-    const [faculties, tutors, companies, students] = await Promise.all([
+  http.get(NAV_ENDPOINT, async ({ request }) => {
+    const [faculties, companies, students] = await Promise.all([
       listTotal(request.url, FACULTIES_ENDPOINT),
-      listTotal(request.url, TUTORS_ENDPOINT),
       listTotal(request.url, COMPANIES_ENDPOINT),
       listTotal(request.url, STUDENTS_ENDPOINT),
     ]);
     const body: AdminNavDto = {
-      counts: { faculties, tutors, companies, students },
+      counts: { faculties, companies, students, ...opsNavCounts() },
       context: { academicYear: MOCK_ACADEMIC_YEAR },
     };
     return HttpResponse.json(body);
   }),
-
-  http.get(NAV_ENDPOINTS[UserRole.Tutor], () => HttpResponse.json(tutorNavMock())),
 ];

@@ -16,7 +16,6 @@ export interface StudentProfileDto {
   direction: string;
   group: string;
   course: number;
-  tutor: { fullName: string; phoneNumber: string | null } | null;
   telegramLinked: boolean;
   hasPassword: boolean;
   mustChangePassword: boolean;

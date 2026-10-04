@@ -16,7 +16,7 @@ export function describeToday(today: TodayDto): { title: string; note: string } 
         }
       : {
           title: 'Kun avtomatik yakunlandi',
-          note: 'Check-out qilinmagan — server kunni avtomatik yopdi. Bu tyutorga ko‘rinadi.',
+          note: 'Check-out qilinmagan — server kunni avtomatik yopdi. Bu adminga ko‘rinadi.',
         };
   }
   if (isCheckedIn(checkin)) {

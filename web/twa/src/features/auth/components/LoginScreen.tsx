@@ -40,7 +40,7 @@ export interface LoginScreenProps {
   submit?: CredentialsSubmit;
   /** TanStack mutation kaliti (default `['auth','login']`). */
   mutationKey?: readonly string[];
-  /** Server xatosi `detail` ostidagi qo'shimcha izoh (masalan 409 → "Tyutoringizga murojaat qiling."). */
+  /** Server xatosi `detail` ostidagi qo'shimcha izoh (masalan 409 → "Administratorga murojaat qiling."). */
   errorHint?: (error: unknown) => string | undefined;
 }
 
@@ -57,7 +57,7 @@ export function LoginScreen({
   title = 'Tizimga kirish',
   subtitle = 'HEMIS ID va parol orqali kiring.',
   submitLabel = 'Kirish',
-  note = "Parolni tyutoringizdan oling. Bot tayyor bo'lgach ilovaga Telegram orqali ham kira olasiz.",
+  note = "Parolni administratordan oling. Bot tayyor bo'lgach ilovaga Telegram orqali ham kira olasiz.",
   submit = submitWebLogin,
   mutationKey = DEFAULT_MUTATION_KEY,
   errorHint,

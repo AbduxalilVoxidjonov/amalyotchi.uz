@@ -136,7 +136,8 @@ export interface CompanyStudent {
   group: string;
   course: number;
   faculty: string;
-  tutorName: string | null;
+  /** v3.28 dan ishlatilmaydi (tyutor roli olib tashlandi); eski server yuborishi mumkin. */
+  tutorName?: string | null;
   applicationStatus: ApplicationStatus;
   periodName: string | null;
   /** 0–100 (kasrli bo'lishi mumkin). */

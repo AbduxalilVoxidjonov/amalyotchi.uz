@@ -7,7 +7,6 @@ import {
 import { errorMessage, isApiError } from '@/shared/api';
 import { getTwaUrl } from '@/shared/lib/env';
 import { Button, Input, Modal } from '@/shared/ui';
-import type { StudentPasswordArea } from './api';
 import { copyText } from './copyText';
 import { studentCredentialsText } from './credentials';
 import { generatePassword } from './generatePassword';
@@ -16,7 +15,6 @@ import styles from './StudentPasswordModal.module.css';
 
 export interface StudentPasswordModalProps {
   open: boolean;
-  area: StudentPasswordArea;
   student: { id: string; name: string; hemisId: string };
   onClose: () => void;
 }
@@ -26,13 +24,13 @@ type FieldKey = keyof PasswordResetFormValues;
 const EMPTY_VALUES: PasswordResetFormValues = { password: '', confirm: '' };
 
 /**
- * "Parol o'rnatish" — talabaga admin/tyutor parol beradi (`POST /api/{area}/students/{id}/password`).
- * Validatsiya tyutor parol tiklash modali bilan umumiy (`features/shared/password/schema`).
+ * "Parol o'rnatish" — talabaga admin parol beradi (`POST /api/admin/students/{id}/password`).
+ * Validatsiya admin parol tiklash bilan umumiy (`features/shared/password/schema`).
  * 204 dan keyin ikkinchi qadam: talabaga beriladigan "HEMIS ID · Parol · Kirish" qatori nusxalash bilan.
  */
-export function StudentPasswordModal({ open, area, student, onClose }: StudentPasswordModalProps) {
+export function StudentPasswordModal({ open, student, onClose }: StudentPasswordModalProps) {
   const formId = useId();
-  const mutation = useSetStudentPassword(area);
+  const mutation = useSetStudentPassword();
   const [values, setValues] = useState<PasswordResetFormValues>(EMPTY_VALUES);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldKey, string>>>({});
   const [visible, setVisible] = useState(false);

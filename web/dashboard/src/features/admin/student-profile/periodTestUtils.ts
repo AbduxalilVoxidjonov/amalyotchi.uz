@@ -1,10 +1,10 @@
 import { http, HttpResponse } from 'msw';
 import { server } from '@/mocks/server';
 import { buildDetail } from './mocks';
-import type { StudentPeriod, StudentPeriodOption, TutorStudentDetail } from './types';
+import type { StudentPeriod, StudentPeriodOption, StudentProfileDetail } from './types';
 
 /**
- * Talaba profili testlari (admin va tyutor) uchun davr fixture'lari — faqat testlarda import qilinadi.
+ * Talaba profili testlari uchun davr fixture'lari — faqat testlarda import qilinadi.
  */
 
 /** Tugagan, lekin yopilmagan davr (backend `active` qaytaradi) — frontend "Tugagan" deb ko'rsatadi. */
@@ -40,27 +40,34 @@ function pick(p: StudentPeriod) {
 export function detailWithPeriods(
   periods: StudentPeriodOption[],
   period: StudentPeriod | null,
-): TutorStudentDetail {
+): StudentProfileDetail {
   const base = buildDetail('s-341030');
   if (!base || base === 'periodNotFound') throw new Error('mock profil topilmadi');
   return { ...base, periods, period, selectedPeriodId: period?.id ?? null };
 }
 
+/** `AdminStudentDetail` ning tashkiliy maydonlari (profil fixture'iga qo'shiladi). */
+export const ADMIN_EXTRA = {
+  groupId: 'g1',
+  department: 'Dasturiy injiniring kafedrasi',
+  adminStatus: 'active',
+  telegramLinked: true,
+};
+
 /**
- * `GET /api/{area}/students/:id` ni almashtiradi; `/attendance` bo'sh qaytaradi.
+ * `GET /api/admin/students/:id` ni almashtiradi; `/attendance` va `/diaries` bo'sh qaytaradi.
  * `extra` — admin profili maydonlari (javobga qo'shiladi).
  */
 export function mockProfilePeriods(
-  area: 'tutor' | 'admin',
-  detail: TutorStudentDetail,
-  extra: Record<string, unknown> = {},
+  detail: StudentProfileDetail,
+  extra: Record<string, unknown> = ADMIN_EXTRA,
 ) {
   server.use(
-    http.get(`/api/${area}/students/:id`, ({ params }) =>
+    http.get('/api/admin/students/:id', ({ params }) =>
       HttpResponse.json({ ...detail, ...extra, id: String(params['id']) }),
     ),
-    http.get(`/api/${area}/students/:id/attendance`, () => HttpResponse.json([])),
-    http.get(`/api/${area}/students/:id/diaries`, () => HttpResponse.json([])),
+    http.get('/api/admin/students/:id/attendance', () => HttpResponse.json([])),
+    http.get('/api/admin/students/:id/diaries', () => HttpResponse.json([])),
   );
 }
 

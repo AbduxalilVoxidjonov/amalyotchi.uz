@@ -117,7 +117,7 @@ export function formatRelative(iso: string | null | undefined, now: number = Dat
   return formatShortDateTime(iso);
 }
 
-/** Tyutor biriktirilgan doirasi: "AT · 412-22, 413-22"; 3 tadan ko'p guruh — "AT · 5 guruh". */
+/** Ko'lam yorlig'i (fakultet kodi + guruhlar): "AT · 412-22, 413-22"; 3 tadan ko'p guruh — "AT · 5 guruh". */
 export function formatScope(
   facultyCode: string | null | undefined,
   groups: readonly string[],

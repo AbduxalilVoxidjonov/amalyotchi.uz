@@ -75,11 +75,16 @@ export const AUDIT_ACTION_LABEL: Record<AuditAction, { label: string; kind: Stat
   faceEnrollmentApproved: { label: 'Yuz rasmi tasdiqlandi', kind: 'ok' },
   faceEnrollmentRejected: { label: 'Yuz rasmi rad etildi', kind: 'bad' },
   faceEnrollmentReset: { label: 'Yuz rasmi bekor qilindi', kind: 'late' },
+  adminCreated: { label: 'Admin yaratildi', kind: 'ok' },
+  adminUpdated: { label: "Admin ma'lumotlari o'zgartirildi", kind: 'neu' },
+  adminStatusChanged: { label: "Admin holati o'zgartirildi", kind: 'late' },
+  adminPasswordReset: { label: 'Admin paroli tiklandi', kind: 'late' },
 };
 
+/** `tutor` — v3.28 da olib tashlangan rol; eski yozuvlarda tarix sifatida ko'rinadi. */
 export const USER_ROLE_LABEL: Record<AuditUserRole, string> = {
   admin: 'admin',
-  tutor: 'tyutor',
+  tutor: 'tyutor (sobiq)',
   student: 'talaba',
 };
 
@@ -153,7 +158,7 @@ export function auditDetail(entry: AuditEntry): string {
   return parts.join(' — ');
 }
 
-/** "N. Saidova · tyutor"; foydalanuvchisiz (interceptor) yozuv — "Tizim". */
+/** "N. Saidova · admin"; foydalanuvchisiz (interceptor) yozuv — "Tizim". */
 export function auditWho(entry: AuditEntry): string {
   if (!entry.userName) return 'Tizim';
   const role = entry.userRole ? USER_ROLE_LABEL[entry.userRole] : null;

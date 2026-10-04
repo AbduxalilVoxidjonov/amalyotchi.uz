@@ -16,7 +16,7 @@ export interface AuthFileButtonProps {
 
 /**
  * Token bilan ochiladigan fayl. PDF va rasm modalda ko'rsatiladi (talaba kundalikni rasmga olib
- * PDF qilib yuborsa — tyutor/admin shu yerda o'qiydi), boshqa turlar yuklab olinadi.
+ * PDF qilib yuborsa — admin shu yerda o'qiydi), boshqa turlar yuklab olinadi.
  * Faqat shu ikki tur ichkarida ochiladi: HTML/SVG kabi fayllar skript ishlatishi mumkin, ular yuklanadi.
  */
 export function AuthFileButton({ url, name, variant = 'chip', label }: AuthFileButtonProps) {

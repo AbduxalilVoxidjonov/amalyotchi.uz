@@ -10,12 +10,11 @@ import {
   facultyPctText,
   NO_ONGOING_PRACTICE,
   NOT_A_WORK_DAY,
-  pendingKind,
 } from './derive';
 import { mockAdminDashboard } from './mocks';
 
 describe('AdminDashboardPage', () => {
-  it('v2 xom raqamlardan stat, fakultet, tyutor, audit matnlarini yasaydi', async () => {
+  it('v2 xom raqamlardan stat, fakultet, audit matnlarini yasaydi', async () => {
     renderWithProviders(<AdminDashboardPage />);
     expect(await screen.findByText('Jami amaliyotchi')).toBeInTheDocument();
     // thin space (U+2009) — default normalizer bo'shliqlarni yig'adi, shuning uchun normalizer o'chiriladi
@@ -30,12 +29,8 @@ describe('AdminDashboardPage', () => {
     expect(screen.getByText('Fakultetlar kesimida davomat')).toBeInTheDocument();
     expect(screen.getByText('286 talaba')).toBeInTheDocument();
 
-    expect(screen.getByText('Nodira Saidova')).toBeInTheDocument();
-    expect(screen.getByText('AT · 412-22, 413-22')).toBeInTheDocument();
-    expect(screen.getByText('IM · 5 guruh')).toBeInTheDocument();
-    expect(screen.getByText('7 ariza')).toBeInTheDocument();
-    expect(screen.getByText("o'rtacha 3.5 kun")).toBeInTheDocument();
-    expect(screen.getByText("o'rtacha 4 soat")).toBeInTheDocument();
+    // v3.28: "Tyutorlar faolligi" bloki yo'q.
+    expect(screen.queryByText('Tyutorlar faolligi')).not.toBeInTheDocument();
 
     // Audit: Toshkent vaqti (UTC+5), tafsilot va kim — describe.ts
     expect(screen.getByText('12.10 09:31')).toBeInTheDocument();
@@ -43,7 +38,7 @@ describe('AdminDashboardPage', () => {
       screen.getByText('Davomat 01a0a0e1 — sabab: telefon zaryadi tugagan'),
     ).toBeInTheDocument();
     expect(screen.getByText('Korxona 01a0a0e0 — RadiusM: 200 → 120')).toBeInTheDocument();
-    expect(screen.getAllByText('Nodira Saidova · tyutor')).toHaveLength(2);
+    expect(screen.getAllByText('Nodira Saidova · admin')).toHaveLength(2);
     expect(screen.getByRole('link', { name: 'Hammasi' })).toHaveAttribute('href', '/admin/audit');
   });
 
@@ -73,7 +68,6 @@ describe('AdminDashboardPage', () => {
             attendedToday: 0,
             attendancePct: 0,
           })),
-          tutors: [],
           audit: [],
         }),
       ),
@@ -84,7 +78,6 @@ describe('AdminDashboardPage', () => {
     expect(screen.queryByText('0%')).not.toBeInTheDocument();
     expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(5);
     expect(screen.getByText("kechikkani yo'q")).toBeInTheDocument();
-    expect(screen.getByText("Faol tyutorlar yo'q")).toBeInTheDocument();
     expect(screen.getByText("Hozircha yozuv yo'q")).toBeInTheDocument();
   });
 
@@ -144,12 +137,5 @@ describe('derive', () => {
     const f = mockAdminDashboard.faculties[0]!;
     expect(facultyPctText(f)).toBe('94%');
     expect(facultyPctText({ ...f, expectedToday: 0, attendancePct: 0 })).toBe('—');
-  });
-
-  it('tyutor kutayotgan rangi: late → bad, bor → late, 0 → ok', () => {
-    const [late, some, , none] = mockAdminDashboard.tutors;
-    expect(pendingKind(late!)).toBe('bad');
-    expect(pendingKind(some!)).toBe('late');
-    expect(pendingKind(none!)).toBe('ok');
   });
 });

@@ -9,9 +9,9 @@ import {
   FactGrid,
   type FactItem,
 } from '@/shared/ui';
-import { mutationErrorMessage } from '../../errors';
-import { fmtDate, fmtTime } from '../../format';
-import { PhotoPreview } from '../../students/components/PhotoPreview';
+import { mutationErrorMessage } from '../../shared/errors';
+import { fmtDate, fmtTime } from '../../shared/fmt';
+import { PhotoPreview } from '../../student-profile/components/PhotoPreview';
 import { useFaceAction } from '../hooks';
 import type { StudentFace } from '../types';
 import { FaceStatusBadge } from './FaceStatusBadge';
@@ -25,8 +25,8 @@ export interface StudentFaceCardProps {
   studentName: string;
   face: StudentFace;
   /**
-   * Tasdiqlash/rad etish/bekor qilish amallari — faqat tyutor profilida (endpoint'lar
-   * `/api/tutor/students/:id/face/*`). Admin profilida karta faqat ko'rish uchun.
+   * Tasdiqlash/rad etish/bekor qilish amallari (`/api/admin/students/:id/face/*`). false —
+   * karta faqat ko'rish uchun.
    */
   canManage: boolean;
 }

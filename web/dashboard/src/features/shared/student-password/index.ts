@@ -1,4 +1,4 @@
-export { studentPasswordApi, studentPasswordEndpoint, type StudentPasswordArea } from './api';
+export { studentPasswordApi, studentPasswordEndpoint } from './api';
 export { useSetStudentPassword } from './hooks';
 export { generatePassword } from './generatePassword';
 export { StudentPasswordAction, type StudentPasswordActionProps } from './StudentPasswordAction';

@@ -32,12 +32,6 @@ const COLUMNS: DataTableColumn<CompanyStudent>[] = [
     render: (r) => `${r.course}-kurs`,
   },
   { key: 'faculty', header: 'Fakultet', width: 'minmax(160px,1.3fr)', wrap: true },
-  {
-    key: 'tutorName',
-    header: 'Tyutor',
-    width: 'minmax(140px,1.1fr)',
-    render: (r) => r.tutorName ?? DASH,
-  },
   // Ariza ustuni yo'q: endpoint faqat aktiv amaliyotchilarni qaytaradi — ariza doim `approved`.
   {
     key: 'periodName',

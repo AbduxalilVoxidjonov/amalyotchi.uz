@@ -1,7 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { homePathForRole, useAuth } from '@/shared/auth/useAuth';
 
-/** `/` → rolga qarab /admin, /tutor yoki /login. */
+/** `/` → admin bo'lsa /admin, aks holda /login. */
 export function RootRedirect() {
   const { status, user } = useAuth();
   if (status === 'restoring') return null;

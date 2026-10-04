@@ -1,5 +1,5 @@
 /**
- * Mijoz tekshiruvi — backend `ChangePasswordCommandValidator` + `TutorValidationRules`:
+ * Mijoz tekshiruvi — backend `ChangePasswordCommandValidator` + umumiy parol qoidalari:
  * joriy parol bo'sh emas; yangi parol 8–128 belgi va joriydan farqli. Takror — faqat frontend.
  */
 export const PASSWORD_MIN_LENGTH = 8;

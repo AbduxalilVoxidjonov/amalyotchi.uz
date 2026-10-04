@@ -104,7 +104,7 @@ export type CompanyFormValues = Omit<z.input<typeof companySchema>, 'lat' | 'lng
   lng: number | null;
 };
 
-/** Zod xatolarini `{ maydon: birinchi xabar }` ko'rinishiga yig'adi (tyutor formasidagi bilan bir xil). */
+/** Zod xatolarini `{ maydon: birinchi xabar }` ko'rinishiga yig'adi (admin formalari bilan bir xil). */
 export function firstIssues<K extends string>(issues: readonly z.ZodIssue[]) {
   const next: Partial<Record<K, string>> = {};
   for (const issue of issues) {

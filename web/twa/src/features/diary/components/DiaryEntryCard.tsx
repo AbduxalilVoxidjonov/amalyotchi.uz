@@ -10,8 +10,8 @@ export interface DiaryEntryCardProps {
 }
 
 /**
- * SPEC-SCREENS §6 article — talaba varianti: tyutor tugmalari (Tasdiqlash/Ball/Izoh) YO'Q ❓,
- * o'rniga tyutor bergan ball va izoh ko'rsatiladi.
+ * SPEC-SCREENS §6 article — talaba varianti: admin tugmalari (Tasdiqlash/Ball/Izoh) YO'Q ❓,
+ * o'rniga admin bergan ball va izoh ko'rsatiladi.
  */
 export function DiaryEntryCard({ entry, studentName }: DiaryEntryCardProps) {
   const status = DIARY_STATUS[entry.status];
@@ -57,7 +57,7 @@ export function DiaryEntryCard({ entry, studentName }: DiaryEntryCardProps) {
               Ball <b>{entry.score}</b>
             </span>
           )}
-          {entry.comment && <span className={styles.comment}>Tyutor izohi: {entry.comment}</span>}
+          {entry.comment && <span className={styles.comment}>Admin izohi: {entry.comment}</span>}
         </footer>
       )}
     </Card>

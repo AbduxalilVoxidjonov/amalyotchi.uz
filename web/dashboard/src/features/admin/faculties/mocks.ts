@@ -186,7 +186,7 @@ export const facultiesHandlers: HttpHandler[] = [
       return problemResponse(
         409,
         'Ziddiyat',
-        "Fakultetga guruhlar, tyutorlar yoki talabalar biriktirilgan — avval ularni boshqa fakultetga ko'chiring.",
+        "Fakultetga guruhlar yoki talabalar biriktirilgan — avval ularni boshqa fakultetga ko'chiring.",
       );
     }
     state = state.filter((f) => f.id !== id);

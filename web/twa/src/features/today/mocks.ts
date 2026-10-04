@@ -357,7 +357,7 @@ export const todayHandlers: HttpHandler[] = [
       return problem(
         409,
         'Ziddiyat',
-        `Korxona radiusidan tashqaridasiz: ${distanceM} m / ${MOCK_PLACE.radiusM} m. Urinish tyutorga ko'rinadi.`,
+        `Korxona radiusidan tashqaridasiz: ${distanceM} m / ${MOCK_PLACE.radiusM} m. Urinish adminga ko'rinadi.`,
       );
     }
     const at = new Date(body.occurredAt);

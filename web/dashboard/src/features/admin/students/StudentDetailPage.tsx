@@ -3,9 +3,9 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { StudentPasswordAction } from '@/features/shared/student-password';
 import { isApiError } from '@/shared/api';
-import { StudentProfile } from '@/features/tutor/students/components/StudentProfile';
-import { todayInTashkent } from '@/features/tutor/format';
-import { periodPhase, usePeriodParam } from '@/features/tutor/students/periods';
+import { StudentProfile } from '@/features/admin/student-profile/components/StudentProfile';
+import { todayInTashkent } from '@/features/admin/shared/fmt';
+import { periodPhase, usePeriodParam } from '@/features/admin/student-profile/periods';
 import { LoadingState } from '../components/PageStatus';
 import { HierarchyListPage } from '../faculties/components/HierarchyListPage';
 import { AdminStudentMetaCard } from './components/AdminStudentMetaCard';
@@ -32,10 +32,10 @@ function canChangeCompany(
 }
 
 /**
- * Admin · Talaba profili (`/admin/students/:studentId`): tyutor profilidagi bloklar
- * (davr tanlagichi, sarlavha kartasi, korxona, ariza, davr, kundalik jadval) + tashkiliy
- * ma'lumot (tyutor, kafedra, Telegram). Davomat/kundalik `area="admin"` bilan
- * `/api/admin/students/:id/...` dan so'raladi. Tashkiliy blokdagi tugma talabani korxonaga
+ * Admin · Talaba profili (`/admin/students/:studentId`): profil bloklari (davr tanlagichi,
+ * sarlavha kartasi, korxona, ariza, davr, yuz kartasi, kundalik jadval) + tashkiliy ma'lumot
+ * (kafedra, Telegram). Davomat/kundalik `/api/admin/students/:id/...` dan so'raladi; parol
+ * o'rnatish va yuz tasdiqlash/rad etish/bekor qilish (v3.28) shu sahifada. Tashkiliy blokdagi tugma talabani korxonaga
  * biriktiradi yoki boshqa korxonaga o'tkazadi (faqat shu sahifada — ommaviy biriktirish alohida).
  */
 export function StudentDetailPage() {
@@ -97,9 +97,8 @@ export function StudentDetailPage() {
             requestedPeriodId={periodId}
             onSelectPeriod={setPeriodId}
             isPlaceholderData={query.isPlaceholderData}
-            area="admin"
             labelPeriodCompany
-            headerActions={<StudentPasswordAction area="admin" student={detail} />}
+            headerActions={<StudentPasswordAction student={detail} />}
           >
             <AdminStudentMetaCard
               detail={detail}

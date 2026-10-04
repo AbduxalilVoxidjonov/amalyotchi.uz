@@ -12,7 +12,7 @@ export function useStudentFaceQuery() {
   return useQuery({
     queryKey: faceKeys.all,
     queryFn: ({ signal }) => faceApi.get(signal),
-    // Tyutor qarori (pending → approved/rejected) ilova ochiq turganda ham ko'rinsin.
+    // Admin qarori (pending → approved/rejected) ilova ochiq turganda ham ko'rinsin.
     refetchInterval: (query) => (query.state.data?.status === 'pending' ? 60_000 : false),
   });
 }

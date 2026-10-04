@@ -20,7 +20,7 @@ export const mockStudent: UserSummaryDto = {
   hemisId: '341030',
 };
 
-/** Ikkinchi talaba (web-login): vaqtinchalik parol, amaliyot davri va tyutor biriktirilmagan. */
+/** Ikkinchi talaba (web-login): vaqtinchalik parol, amaliyot davri biriktirilmagan. */
 export const mockStudentNew: UserSummaryDto = {
   id: '44444444-4444-4444-8444-444444444444',
   fullName: 'Karimova Dilnoza',
@@ -33,12 +33,12 @@ export const mockStudentNew: UserSummaryDto = {
   hemisId: '341031',
 };
 
-/** Xodim (tyutor) — TWA web-login'da rad etilishi kerak. */
-export const mockTutor: UserSummaryDto = {
+/** Xodim (admin) — TWA web-login'da rad etilishi kerak. */
+export const mockStaff: UserSummaryDto = {
   id: '22222222-2222-4222-8222-222222222222',
   fullName: 'Saidova Nodira',
-  role: 'tutor',
-  facultyId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  role: 'admin',
+  facultyId: null,
   phoneNumber: '+998901234567',
   groupId: null,
   groupName: null,
@@ -55,14 +55,14 @@ export interface MockAccount {
 /**
  * Web-login mock hisoblari (HEMIS ID → hisob). Parollar:
  *   341030 / talaba12345  — Aliyev Akmal (davr bor, parol doimiy)
- *   341031 / vaqtincha1   — Karimova Dilnoza (mustChangePassword, davr/tyutor yo'q)
- *   100000000002 / tyutor123 — tyutor (TWA rad etadi)
+ *   341031 / vaqtincha1   — Karimova Dilnoza (mustChangePassword, davr yo'q)
+ *   100000000002 / xodim12345 — admin xodim (TWA rad etadi)
  */
 function seedAccounts(): Map<string, MockAccount> {
   return new Map([
     ['341030', { user: mockStudent, password: 'talaba12345', mustChangePassword: false }],
     ['341031', { user: mockStudentNew, password: 'vaqtincha1', mustChangePassword: true }],
-    ['100000000002', { user: mockTutor, password: 'tyutor123', mustChangePassword: false }],
+    ['100000000002', { user: mockStaff, password: 'xodim12345', mustChangePassword: false }],
   ]);
 }
 

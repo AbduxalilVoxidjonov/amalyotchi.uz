@@ -262,11 +262,7 @@ export const groupsHandlers: HttpHandler[] = [
     const existing = state.find((g) => g.id === id);
     if (!existing) return problemResponse(404, 'Topilmadi', 'Guruh topilmadi.');
     if (GROUPS_WITH_DEPENDENTS.has(id)) {
-      return problemResponse(
-        409,
-        'Ziddiyat',
-        "Guruhda talabalar yoki biriktirilgan tyutor bor — avval ularni ko'chiring.",
-      );
+      return problemResponse(409, 'Ziddiyat', "Guruhda talabalar bor — avval ularni ko'chiring.");
     }
     state = state.filter((g) => g.id !== id);
     return new HttpResponse(null, { status: 204 });

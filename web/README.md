@@ -1,6 +1,6 @@
 # Amaliyotchi — web
 
-npm workspaces monorepo: `dashboard` (admin + tyutor SPA), `twa` (talaba Telegram Web App),
+npm workspaces monorepo: `dashboard` (admin SPA; v3.28 dan tyutor roli yo'q), `twa` (talaba Telegram Web App),
 `shared` (ikkalasi uchun umumiy tokenlar, bazaviy UI kit, API client, auth). Backend — `../src` (.NET, `http://127.0.0.1:5080`).
 
 Holat (14.09.2026): admin 9, tyutor 8, talaba 6 ekran — barchasi MSW mock bilan ishlaydi.
@@ -42,8 +42,8 @@ Mock foydalanuvchilar (`dashboard/src/mocks/data.ts`):
 
 | Rol    | Telefon        | Parol        | Kirgandan keyin |
 |--------|----------------|--------------|-----------------|
-| Admin  | +998901234567  | admin12345   | `/admin` (Umumiy dashboard) |
-| Tyutor | +998907654321  | tutor12345   | `/tutor` (Bugun) |
+| Bosh admin (HEMIS `100000000001`) | +998901234567 | admin12345 | `/admin` (+ "Adminlar") |
+| Admin (HEMIS `100000000002`)      | +998907654321 | admin23456 | `/admin` |
 
 Talaba (`twa/src/mocks/data.ts`): Akmal Aliyev, `412-22` guruhi — mock rejimida `POST /api/auth/telegram`
 istalgan `initData` bilan talaba sessiyasini beradi (`initData: "invalid"` → 403). Oddiy brauzerda
@@ -116,27 +116,27 @@ web/
 | Papka | Marshrut | Ekran | API |
 |---|---|---|---|
 | `auth/` | `/login` | Kirish (telefon + parol, zod) | `POST /api/auth/login` (haqiqiy backend) |
-| `admin/dashboard/` | `/admin` | Umumiy dashboard (stat, fakultetlar, tyutorlar, audit) | `GET /api/admin/dashboard` |
+| `admin/dashboard/` | `/admin` | Umumiy dashboard (stat, fakultetlar, audit) | `GET /api/admin/dashboard` |
 | `admin/faculties/` | `/admin/faculties` | Fakultetlar jadvali | `GET /api/admin/faculties` |
 | `admin/groups/` | `/admin/groups` | Guruhlar | `GET /api/admin/groups` |
-| `admin/tutors/` | `/admin/tutors` | Tyutorlar | `GET /api/admin/tutors` |
+| `admin/admins/` | `/admin/admins` | Adminlar (faqat bosh admin) | `/api/admin/admins*` |
 | `admin/companies/` | `/admin/companies` | Korxonalar | `GET /api/admin/companies` |
 | `admin/students/` | `/admin/students` | Talabalar | `GET /api/admin/students` |
 | `admin/audit/` | `/admin/audit` | Audit jurnali | `GET /api/admin/audit` |
 | `admin/settings/` | `/admin/settings` | Sozlamalar (guruhlangan qoidalar, bayramlar) | `GET/PUT /api/admin/settings` |
-| `reports/` | `/admin/reports`, `/tutor/reports` | Hisobotlar katalogi (ikkala rol) | `GET /api/reports` |
-| `tutor/today/` | `/tutor` | Bugun (davomat, filtr, ogohlantirish) | `GET /api/tutor/today` |
-| `tutor/applications/` | `/tutor/applications` | Arizalar (tab'lar, detal panel, checklist, radius) | `GET/POST /api/tutor/applications*` |
-| `tutor/students/` | `/tutor/students` | Talabalarim | `GET /api/tutor/students` |
-| `tutor/diaries/` | `/tutor/diaries` | Kundalik hisobotlar (tasdiqlash/baho/qayta yozish) | `GET/POST /api/tutor/diaries*` |
-| `tutor/calendar/` | `/tutor/calendar` | Kalendar (guruh × kunlar) | `GET /api/tutor/calendar` |
-| `tutor/map/` | `/tutor/map` | Xarita (nuqtalar ro'yxati, placeholder) | `GET /api/tutor/map` |
-| `tutor/leave-requests/` | `/tutor/leave-requests` | Ruxsat so'rovlari | `GET/POST /api/tutor/leave-requests*` |
-| `tutor/grading/` | `/tutor/grading` | Baholash (100 ballik) | `GET/PUT /api/tutor/grading*` |
+| `reports/` | `/admin/reports` | Hisobotlar katalogi | `GET /api/reports` |
+| `admin/today/` | `/admin/today` | Bugun (davomat, filtr, ogohlantirish) | `GET /api/admin/today` |
+| `admin/applications/` | `/admin/applications` | Arizalar (tab'lar, detal panel, checklist, radius) | `GET/POST /api/admin/applications*` |
+| `admin/face/` | `/admin/face` | Yuz tasdiqlash | `/api/admin/face-enrollments`, `/api/admin/students/{id}/face/*` |
+| `admin/diaries/` | `/admin/diaries` | Kundalik hisobotlar (tasdiqlash/baho/qayta yozish) | `GET /api/admin/diaries`, `POST .../{id}/review` |
+| `admin/calendar/` | `/admin/calendar` | Kalendar (guruh × kunlar) | `GET /api/admin/calendar` |
+| `admin/map/` | `/admin/map` | Xarita (nuqtalar ro'yxati) | `GET /api/admin/map` |
+| `admin/grading/` | `/admin/grading` | Baholash (100 ballik) | `GET/PUT /api/admin/grading*` |
+| `admin/student-profile/` | `/admin/students/:id` ichida | Talaba profili bloklari (davomat, kundalik) | `/api/admin/students/{id}/*` |
 
 Umumiy yordamchilar: `admin/shared/` (`Paged<T>`, `useListParams` — qidiruv debounce + sahifa, `paginateMock`),
-`admin/components/` (`AdminTable`, `PageStatus`), `tutor/query-keys.ts`, `tutor/components/QueryState.tsx`.
-Admin/tyutor `mocks.ts` fayllari feature handler'larini yig'ib `src/mocks/handlers.ts` ga beradi.
+`admin/components/` (`AdminTable`, `PageStatus`, `QueryState`), `admin/shared/opsKeys.ts`.
+Admin `mocks.ts`/`ops-mocks.ts` fayllari feature handler'larini yig'ib `src/mocks/handlers.ts` ga beradi.
 
 ### TWA tuzilmasi (`twa/src/`)
 
@@ -184,7 +184,7 @@ Marshrutlar (SPEC-NAV 3.2): `/` Bosh ekran · `/joyim` · `/kundalik` · `/kalen
 - **Import**: `@/` — `src/` alias. Shared'dan: `import { ... } from '@amaliyotchi/shared'`.
 - **Stil**: CSS Modules + faqat `tokens.css` custom property'lari (xom rang/px komponent ichida yo'q).
   Variant/holat — `data-*` atributlar. UI kit: `dashboard/src/shared/ui/README.md`; ko'rgazma: `/dev/kit`.
-- **Shell**: `/admin/*`, `/tutor/*` — `AppShell` ichida (`RequireRole` + `<Outlet/>`). Sahifa sarlavhasi
+- **Shell**: `/admin/*` — `AppShell` ichida (`RequireRole` + `<Outlet/>`). Sahifa sarlavhasi
   nav'dan avtomatik; o'zgartirish — `usePageHeader({ title })`, tugmalar — `<TopbarActions>`.
 - **Testlar**: fayl yonida `*.test.ts(x)`; tarmoq — faqat MSW orqali (`server.use(...)` bilan override).
 

@@ -31,7 +31,7 @@ export interface HierarchyListPageProps<TDetail> {
 /**
  * Ierarxiya sahifalari (kafedralar/yo'nalishlar/guruhlar) uchun umumiy qobiq:
  * breadcrumb + "ota topilmadi" (404) / xato holatlari. `FacultyDepartmentsPage`,
- * `DepartmentDirectionsPage`, `DirectionGroupsPage` (va `rootBreadcrumb` bilan `TutorDetailPage`)
+ * `DepartmentDirectionsPage`, `DirectionGroupsPage` (va `rootBreadcrumb` bilan talaba/korxona sahifalari)
  * shu orqali takrorlanishni kamaytiradi.
  */
 export function HierarchyListPage<TDetail>({

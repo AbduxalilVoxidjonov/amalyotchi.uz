@@ -2,13 +2,7 @@ import type { StatusKind } from '@/shared/ui';
 
 /** `?status=` filtri (backend `TodayFilter`): enum holatlari + `suspicious` (bayroq bo'yicha). */
 export type AttendanceFilter =
-  | 'all'
-  | 'present'
-  | 'late'
-  | 'absent'
-  | 'excused'
-  | 'pending'
-  | 'suspicious';
+  'all' | 'present' | 'late' | 'absent' | 'excused' | 'pending' | 'suspicious';
 
 /** Kunlik davomat holati (backend `AttendanceStatus`, JSON camelCase). */
 export type AttendanceStatus = 'pending' | 'present' | 'late' | 'absent' | 'excused' | 'dayOff';
@@ -32,7 +26,7 @@ export interface TodayStats {
 export interface TodayAlert {
   kind: TodayAlertKind;
   count: number;
-  /** Ichki havola (masalan `/tutor/applications`). */
+  /** Ichki havola (masalan `/admin/applications`). */
   href: string;
   /** Faqat `outOfRadius` — bugungi eng uzoq rad etilgan urinish (m). */
   maxDistanceM?: number | null;
@@ -54,7 +48,7 @@ export interface AttendanceRow {
   status: AttendanceStatus;
   /** Shubhali kun (GPS/vaqt anomaliyasi). */
   suspicious: boolean;
-  /** Tyutor qo'lda belgilagan. */
+  /** Admin qo'lda belgilagan. */
   manual: boolean;
   /** Check-out bo'lmagani uchun avtomatik yopilgan. */
   autoClosed: boolean;
@@ -68,7 +62,7 @@ export interface Paged<T> {
   total: number;
 }
 
-/** GET /api/tutor/today?status=&q=&page=&pageSize= */
+/** GET /api/admin/today?status=&q=&page=&pageSize= */
 export interface TodayResponse {
   /** DateOnly "2026-10-12" */
   date: string;

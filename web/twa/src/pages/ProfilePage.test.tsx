@@ -27,7 +27,7 @@ function mockProfileResponse(body: Record<string, unknown>) {
 }
 
 describe('ProfilePage (/profil)', () => {
-  it("davr bor: shaxsiy/o'quv ma'lumotlari, tyutor tel: havolasi, amaliyot xulosasi", async () => {
+  it("davr bor: shaxsiy/o'quv ma'lumotlari (tyutor bloki yo'q), amaliyot xulosasi", async () => {
     renderApp('/profil');
     expect(await screen.findByRole('heading', { name: 'Profil', level: 1 })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Aliyev Akmal' })).toBeInTheDocument();
@@ -39,11 +39,8 @@ describe('ProfilePage (/profil)', () => {
     expect(personal).toHaveTextContent('Dasturiy injiniring kafedrasi');
     expect(personal).toHaveTextContent('412-22');
     expect(personal).toHaveTextContent('3-kurs');
-    expect(personal).toHaveTextContent('Saidova Nodira');
-    expect(within(personal).getByRole('link', { name: '+998 90 123 45 67' })).toHaveAttribute(
-      'href',
-      'tel:+998901234567',
-    );
+    // v3.28: "Tyutor" qatori olib tashlandi.
+    expect(personal).not.toHaveTextContent('Tyutor');
 
     const cards = periodCards();
     expect(cards).toHaveLength(2);
@@ -169,13 +166,12 @@ describe('ProfilePage (/profil)', () => {
     );
   });
 
-  it("davr yo'q, tyutor yo'q, Telegram bog'lanmagan", async () => {
+  it("davr yo'q, Telegram bog'lanmagan", async () => {
     server.use(http.get('/api/student/profile', () => HttpResponse.json(mockProfileNoPractice)));
     renderApp('/profil');
     await screen.findByRole('heading', { name: 'Karimova Dilnoza' });
 
     const personal = profileSection('Karimova Dilnoza');
-    expect(personal).toHaveTextContent('TyutorBiriktirilmagan');
     expect(personal).toHaveTextContent("Ko'rsatilmagan");
     expect(within(personal).queryByRole('link')).not.toBeInTheDocument();
 

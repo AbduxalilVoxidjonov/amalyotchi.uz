@@ -13,7 +13,7 @@ const ROOT: BreadcrumbItem[] = [{ label: 'Korxonalar', to: '/admin/companies' }]
 /**
  * Admin · Korxona sahifasi (`/admin/companies/:companyId`): korxona kartasi + lokatsiya,
  * STIR nazorati, aktiv amaliyot davri, check-in QR kodi va shu korxonadagi aktiv amaliyotchilar jadvali.
- * Breadcrumb/404/xato qobig'i — `HierarchyListPage` (tyutor detali bilan bir xil naqsh).
+ * Breadcrumb/404/xato qobig'i — `HierarchyListPage` (ierarxiya sahifalari bilan bir xil naqsh).
  */
 export function CompanyDetailPage() {
   const { companyId = '' } = useParams<{ companyId: string }>();
@@ -35,7 +35,7 @@ export function CompanyDetailPage() {
       {company ? (
         <div className={styles.stack}>
           <CompanyDetailView company={company} />
-          <CheckInQrCard area="admin" companyId={company.id} />
+          <CheckInQrCard companyId={company.id} />
           <CompanyStudentsTable
             rows={studentsQuery.data ?? []}
             isLoading={studentsQuery.isPending}

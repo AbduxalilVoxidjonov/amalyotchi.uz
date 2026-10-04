@@ -34,7 +34,7 @@ describe('Bosh ekran — davr kartasi', () => {
     await renderHome();
     expect(screen.queryByRole('heading', { name: /Portfolio/ })).not.toBeInTheDocument();
     expect(
-      screen.queryByText(/Yakuniy baho|Tyutor xulosasi|Portfolio PDF/),
+      screen.queryByText(/Yakuniy baho|Tyutor xulosasi|Admin xulosasi|Portfolio PDF/),
     ).not.toBeInTheDocument();
   });
 });
@@ -107,13 +107,13 @@ describe('Bosh ekran — kunlar accordion', () => {
 
   it("o'tgan kun tafsiloti: vaqtlar, belgilar, kundalik holati", async () => {
     await renderHome();
-    // 04.09 — avtomatik yopilgan (ketish — yopilish vaqti), kundalik tyutor ko'rgan.
+    // 04.09 — avtomatik yopilgan (ketish — yopilish vaqti), kundalik admin ko'rgan.
     fireEvent.click(row(/^04\.09/));
     let p = panelOf(/^04\.09/);
     expect(p.getByText('08:51')).toBeInTheDocument();
     expect(p.getByText('18:00')).toBeInTheDocument();
     expect(p.getByText('Avtomatik yopilgan')).toBeInTheDocument();
-    expect(p.getByText("Tyutor ko'rdi")).toBeInTheDocument();
+    expect(p.getByText("Admin ko'rdi")).toBeInTheDocument();
 
     // 05.09 — kech keldi, kundalik tasdiqlangan + ball.
     fireEvent.click(row(/^05\.09/));

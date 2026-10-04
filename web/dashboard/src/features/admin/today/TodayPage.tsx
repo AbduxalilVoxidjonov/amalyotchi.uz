@@ -15,12 +15,12 @@ type View = 'list' | 'company';
 /** views (SPEC-NAV §4.1): Kalendar/Xarita → alohida ekran; Korxona → korxona bo'yicha saralash ❓. */
 const VIEWS: { key: View | 'calendar' | 'map'; label: string; to?: string }[] = [
   { key: 'list', label: "Ro'yxat" },
-  { key: 'calendar', label: 'Kalendar', to: '/tutor/calendar' },
-  { key: 'map', label: 'Xarita', to: '/tutor/map' },
+  { key: 'calendar', label: 'Kalendar', to: '/admin/calendar' },
+  { key: 'map', label: 'Xarita', to: '/admin/map' },
   { key: 'company', label: 'Korxona' },
 ];
 
-/** Tyutor · Bugun (SPEC-SCREENS §3) — container. */
+/** Admin · Bugun (SPEC-SCREENS §3) — container. */
 export function TodayPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();

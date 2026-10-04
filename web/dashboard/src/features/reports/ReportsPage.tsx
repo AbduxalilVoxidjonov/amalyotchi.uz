@@ -3,7 +3,7 @@ import { ReportsView } from './components/ReportsView';
 import { useReportsCatalogQuery } from './hooks';
 
 /**
- * Hisobotlar (SPEC-SCREENS §12) — admin (`/admin/reports`) va tyutor (`/tutor/reports`) uchun bitta ekran.
+ * Hisobotlar (SPEC-SCREENS §12) — admin (`/admin/reports`) ekrani (v3.28 — faqat admin).
  * ❓ Rolga bog'liq matn dizaynda yo'q; ko'lam serverdan (Bearer bo'yicha) keladi.
  * Holat komponentlari admin feature'idan qayta ishlatiladi (shared/ui ga yangi komponent qo'shilmadi).
  */

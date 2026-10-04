@@ -21,7 +21,7 @@ export interface DiaryReviewControlsProps {
 
 /**
  * Kundalikni ko'rib chiqish boshqaruvi: Tasdiqlash · Ball 1–5 · Izoh · Qayta yozishga qaytarish.
- * Ikki joyda ishlatiladi — tyutorning "Kundaliklar" sahifasidagi karta (`DiaryCard`) va
+ * Ikki joyda ishlatiladi — "Kundaliklar" sahifasidagi karta (`DiaryCard`) va
  * talaba profilidagi kun oynasi (`students/components/DiaryDayCard`).
  * Backend: approve/score → Tasdiqlangan; rewrite → izoh majburiy; ko'rib chiqilgan → 409 (tugmalar o'chadi).
  */

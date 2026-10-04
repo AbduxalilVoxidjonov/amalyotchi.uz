@@ -304,7 +304,7 @@ function elapsedWorkDaysOf(p: PeriodSeed): number {
   return end < p.startDate ? 0 : workDaysBetween(p.startDate, end, p.workDays);
 }
 
-/** Tyutor baholash qoidasi: davomat < 70% yoki jami < 56 → qayta topshiradi (null). */
+/** Baholash qoidasi: davomat < 70% yoki jami < 56 → qayta topshiradi (null). */
 function gradeOf(attendancePct: number, total: number): number | null {
   if (attendancePct < 70 || total < 56) return null;
   if (total >= 86) return 5;

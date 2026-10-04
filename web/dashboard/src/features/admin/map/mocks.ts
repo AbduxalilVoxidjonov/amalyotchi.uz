@@ -69,5 +69,5 @@ export const mockMap: MapResponse = {
 };
 
 export const mapHandlers: HttpHandler[] = [
-  http.get('/api/tutor/map', () => HttpResponse.json(mockMap)),
+  http.get('/api/admin/map', () => HttpResponse.json(mockMap)),
 ];

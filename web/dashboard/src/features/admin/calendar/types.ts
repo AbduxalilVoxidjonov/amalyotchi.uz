@@ -1,12 +1,6 @@
 /** Backend `CalendarDayStatus` (JSON camelCase). */
 export type CalendarDayStatus =
-  | 'future'
-  | 'pending'
-  | 'present'
-  | 'late'
-  | 'absent'
-  | 'excused'
-  | 'dayOff';
+  'future' | 'pending' | 'present' | 'late' | 'absent' | 'excused' | 'dayOff';
 
 /** SPEC-TOKENS 1.5 — kalendar katak kodlari (CSS `data-code`). */
 export type DayCode = 'k' | 'l' | 'a' | 's' | 'd' | 'n';
@@ -18,7 +12,7 @@ export interface CalendarRow {
   days: CalendarDayStatus[];
 }
 
-/** GET /api/tutor/calendar?month=YYYY-MM */
+/** GET /api/admin/calendar?month=YYYY-MM */
 export interface CalendarResponse {
   /** "2026-10" */
   month: string;

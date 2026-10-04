@@ -26,16 +26,12 @@ export const adminKeys = {
   groupsAll: (directionId: string) => ['admin', 'groups', directionId] as const,
   group: (id: string) => ['admin', 'group', id] as const,
 
-  tutors: (params: ListParams) => ['admin', 'tutors', params] as const,
-  /** Barcha `tutors(params)` so'rovlarini invalidate qilish uchun. */
-  tutorsAll: () => ['admin', 'tutors'] as const,
-  /** `GET /tutors/{id}` — detail sahifasi; `scope-tree` ham shu prefiks ostida. */
-  tutor: (id: string) => ['admin', 'tutor', id] as const,
-  tutorScopeTree: (id: string) => ['admin', 'tutor', id, 'scope-tree'] as const,
+  /** v3.28 — "Adminlar" (faqat bosh admin). */
+  admins: () => ['admin', 'admins'] as const,
   students: (params: ListParams) => ['admin', 'students', params] as const,
   /** Barcha `students(params)` so'rovlarini invalidate qilish uchun (Excel importdan keyin). */
   studentsAll: () => ['admin', 'students'] as const,
-  /** `GET /students/{id}` — talaba profili (davomat/kundalik kalitlari `tutorKeys.students` da). */
+  /** `GET /students/{id}` — talaba profili (davomat/kundalik kalitlari `opsKeys.students` da, shared/opsKeys.ts). */
   student: (id: string, periodId: string | null = null) =>
     ['admin', 'student', id, periodId] as const,
   companies: (params: ListParams) => ['admin', 'companies', params] as const,

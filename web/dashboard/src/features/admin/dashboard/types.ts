@@ -1,9 +1,10 @@
 import type { AuditEntry } from '../audit/types';
-import type { TutorStatus } from '../tutors/types';
 
 /**
  * Kontrakt v2 `GET /api/admin/dashboard` (backend `AdminDashboardDto`). Faqat xom raqamlar —
  * stat kartalar matni, foizlar, "N ariza" kabi yozuvlar `DashboardView` da yasaladi.
+ * v3.28: tyutor roli olib tashlandi — "Tyutorlar faolligi" (`tutors`) bloki endi ko'rsatilmaydi
+ * (eski server yuborsa ham e'tiborsiz qoldiriladi).
  */
 export interface DashboardStats {
   /** Talabalar ro'yxati (va sidebar nav) bilan teng. */
@@ -54,28 +55,11 @@ export interface FacultyAttendance {
   attendancePct: number;
 }
 
-export interface TutorActivity {
-  id: string;
-  name: string;
-  facultyCode: string | null;
-  /** Guruh kodlari: ["412-22", "413-22"]. */
-  groups: string[];
-  studentCount: number;
-  pendingCount: number;
-  /** ISO yoki null. */
-  oldestPendingAt: string | null;
-  /** Qaror tezligi (soat), qaror bo'lmasa null. */
-  avgDecisionHours: number | null;
-  lastActiveAt: string | null;
-  status: TutorStatus;
-}
-
 export interface AdminDashboard {
   /** Toshkent kuni: "2026-09-14". */
   date: string;
   stats: DashboardStats;
   faculties: FacultyAttendance[];
-  tutors: TutorActivity[];
   /** Oxirgi audit yozuvlari (yangisi birinchi). */
   audit: AuditEntry[];
 }

@@ -1,6 +1,6 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
+import { ADMIN_TO_PROFILE_ID } from '@/features/admin/student-profile/mockIds';
 import { mockStudents as adminMockStudents } from '@/features/admin/students/mocks';
-import { mockStudents as tutorMockStudents } from '@/features/tutor/students/mocks';
 import { problem } from '@/mocks/data';
 import { setMockStudentPassword } from './passwordStore';
 
@@ -22,8 +22,8 @@ function validation(errors: Record<string, string[]>) {
 const notFound = () =>
   HttpResponse.json(problem(404, 'Topilmadi', 'Talaba topilmadi.'), { status: 404 });
 
-function handler(area: 'admin' | 'tutor', exists: (id: string) => boolean) {
-  return http.post(`/api/${area}/students/:id/password`, async ({ request, params }) => {
+function handler(exists: (id: string) => boolean) {
+  return http.post('/api/admin/students/:id/password', async ({ request, params }) => {
     const id = String(params['id']);
     if (!exists(id)) return notFound();
     const body = (await request.json().catch(() => ({}))) as { password?: string };
@@ -39,8 +39,11 @@ function handler(area: 'admin' | 'tutor', exists: (id: string) => boolean) {
   });
 }
 
-/** `POST /api/{admin|tutor}/students/{id}/password` mock'lari (`src/mocks/handlers.ts` ga ulanadi). */
+/** `POST /api/admin/students/{id}/password` mock'i (`src/mocks/handlers.ts` ga ulanadi). */
 export const studentPasswordHandlers: HttpHandler[] = [
-  handler('admin', (id) => adminMockStudents.some((s) => s.id === id)),
-  handler('tutor', (id) => tutorMockStudents.some((s) => s.id === id)),
+  // Admin ro'yxati id'si (`s1`) yoki kundalik nazorat sahifalaridagi profil id'si (`s-341030`).
+  handler(
+    (id) =>
+      adminMockStudents.some((s) => s.id === id) || Object.values(ADMIN_TO_PROFILE_ID).includes(id),
+  ),
 ];

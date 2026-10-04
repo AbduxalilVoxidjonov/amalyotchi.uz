@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, DataTable, EmptyState, ProgressBar, type DataTableColumn } from '@/shared/ui';
-import { fmtDecimal } from '@/features/tutor/format';
+import { fmtDecimal } from '@/features/admin/shared/fmt';
 import { RowLink } from '../../components/RowLink';
 import { formatCount } from '../../shared/format';
 import { periodGroupHref } from '../paths';

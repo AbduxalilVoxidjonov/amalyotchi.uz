@@ -1,0 +1,59 @@
+/* "Adminlar" (v3.28) — forma/modal ritmi FacultyFormModal bilan bir xil (14px oraliq) */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.error {
+  margin: 0;
+  font-size: var(--fs-sm2);
+  color: var(--color-bad-fg);
+}
+.flash {
+  margin: 0 0 12px;
+  font-size: var(--fs-sm2);
+  color: var(--color-ok-fg);
+}
+.name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.self {
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}
+.done {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.secret {
+  margin: 0;
+  padding: 10px 12px;
+  border: var(--border-input);
+  border-radius: var(--radius-md2);
+  background: var(--color-surface-input);
+  font-family: var(--font-mono);
+  font-size: var(--fs-md2);
+  color: var(--color-text);
+  word-break: break-all;
+}
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.copied {
+  font-size: var(--fs-xs2);
+  color: var(--color-ok-fg);
+}
+.note {
+  margin: 0;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  line-height: var(--lh-note);
+}

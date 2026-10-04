@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { QueryState } from '../components/QueryState';
-import { mutationErrorMessage } from '../errors';
+import { mutationErrorMessage } from '../shared/errors';
 import { GradingTable } from './components/GradingTable';
 import { useGradingQuery, useGradingUpdate } from './hooks';
 
-/** Tyutor · Baholash (SPEC-SCREENS §9.2) — container. */
+/** Admin · Baholash (SPEC-SCREENS §9.2) — container. */
 export function GradingPage() {
   const query = useGradingQuery();
   const update = useGradingUpdate();

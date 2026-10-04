@@ -1,7 +1,7 @@
 import type { StatusKind } from '@/shared/ui';
 
 /**
- * Yuzni tasdiqlash (kontrakt v3.27, §6.33). Talaba etalon selfi yuboradi (`pending`), tyutor tasdiqlaydi
+ * Yuzni tasdiqlash (kontrakt v3.27, §6.33). Talaba etalon selfi yuboradi (`pending`), admin tasdiqlaydi
  * (`approved`) yoki sabab bilan rad etadi (`rejected`); `none` — hali yuborilmagan (yoki bekor qilingan).
  */
 export type FaceStatus = 'none' | 'pending' | 'approved' | 'rejected';
@@ -22,7 +22,7 @@ export interface StudentFace {
 /** Ro'yxat tab'lari (`?status=`); `none` ro'yxatda bo'lmaydi. */
 export type FaceEnrollmentTab = Exclude<FaceStatus, 'none'>;
 
-/** `GET /api/tutor/face-enrollments?status=` → `{ items }` elementi. */
+/** `GET /api/admin/face-enrollments?status=` → `{ items }` elementi. */
 export interface FaceEnrollment {
   studentId: string;
   fullName: string;

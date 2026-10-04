@@ -1,6 +1,6 @@
 import { AuthFileButton } from '@/shared/files';
 import { Avatar, Badge, Card, ChipRow } from '@/shared/ui';
-import { fmtDateOnly, fmtTime } from '../../format';
+import { fmtDateOnly, fmtTime } from '../../shared/fmt';
 import { DIARY_STATUS_LABEL, type DiaryEntry, type DiaryReviewRequest } from '../types';
 import { DiaryReviewControls } from './DiaryReviewControls';
 import styles from './DiaryCard.module.css';
@@ -14,7 +14,7 @@ export interface DiaryCardProps {
 }
 
 /**
- * SPEC-SCREENS §6 — kundalik kartasi (tyutor varianti, tugmalar bilan).
+ * SPEC-SCREENS §6 — kundalik kartasi (baholash tugmalari bilan).
  * Ko'rib chiqish qatori — umumiy `DiaryReviewControls` (talaba profilidagi kun oynasi ham shuni ishlatadi).
  */
 export function DiaryCard({ entry, pending, error, onReview }: DiaryCardProps) {
@@ -49,7 +49,7 @@ export function DiaryCard({ entry, pending, error, onReview }: DiaryCardProps) {
       )}
       {entry.comment && (
         <p className={styles.tutorComment}>
-          <span className={styles.learnedLabel}>Tyutor izohi: </span>
+          <span className={styles.learnedLabel}>Admin izohi: </span>
           {entry.comment}
         </p>
       )}

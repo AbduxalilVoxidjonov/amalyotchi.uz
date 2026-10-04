@@ -30,7 +30,7 @@ describe("Telegram ichida hisobni bog'lash (403 → /api/auth/telegram/link)", (
     renderApp('/kundalik', { initData: 'unlinked' });
     expect(
       await screen.findByText(
-        "Birinchi marta kiryapsiz. Tyutoringiz bergan HEMIS ID va parolni kiriting — Telegram hisobingiz bog'lanadi va keyingi safar avtomatik kirasiz.",
+        "Birinchi marta kiryapsiz. Administrator bergan HEMIS ID va parolni kiriting — Telegram hisobingiz bog'lanadi va keyingi safar avtomatik kirasiz.",
       ),
     ).toBeInTheDocument();
     await submitLink('341030', 'talaba12345');
@@ -51,12 +51,12 @@ describe("Telegram ichida hisobni bog'lash (403 → /api/auth/telegram/link)", (
     expect(useAuthStore.getState().status).toBe('anonymous');
   });
 
-  it('409 → `detail` + "Tyutoringizga murojaat qiling."', async () => {
+  it('409 → `detail` + "Administratorga murojaat qiling."', async () => {
     renderApp('/', { initData: 'unlinked' });
     await submitLink('341099', 'istalgan1');
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent("Bu Telegram akkaunti boshqa hisobga bog'langan.");
-    expect(alert).toHaveTextContent('Tyutoringizga murojaat qiling.');
+    expect(alert).toHaveTextContent('Administratorga murojaat qiling.');
     expect(useAuthStore.getState().status).toBe('anonymous');
   });
 
@@ -65,7 +65,7 @@ describe("Telegram ichida hisobni bog'lash (403 → /api/auth/telegram/link)", (
     await submitLink('341429', 'istalgan1');
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent("Juda ko'p urinish.");
-    expect(alert).not.toHaveTextContent('Tyutoringizga murojaat qiling.');
+    expect(alert).not.toHaveTextContent('Administratorga murojaat qiling.');
   });
 
   it("mustChangePassword → majburiy parol ekrani, ilovaga o'tkazilmaydi", async () => {
@@ -82,8 +82,8 @@ describe("Telegram ichida hisobni bog'lash (403 → /api/auth/telegram/link)", (
     const logout = vi.fn();
     server.use(
       http.post('/api/auth/telegram/link', async () => {
-        const { issueSession, mockTutor } = await import('@/mocks/data');
-        return HttpResponse.json(issueSession(mockTutor));
+        const { issueSession, mockStaff } = await import('@/mocks/data');
+        return HttpResponse.json(issueSession(mockStaff));
       }),
       http.post('/api/auth/logout', ({ request }) => {
         logout(request.headers.get('authorization'));
@@ -91,7 +91,7 @@ describe("Telegram ichida hisobni bog'lash (403 → /api/auth/telegram/link)", (
       }),
     );
     renderApp('/', { initData: 'unlinked' });
-    await submitLink('100000000002', 'tyutor123');
+    await submitLink('100000000002', 'xodim12345');
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       "Bu ilova faqat talabalar uchun. Xodimlar dashboard'dan kiradi.",

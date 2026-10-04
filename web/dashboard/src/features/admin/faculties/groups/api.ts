@@ -23,6 +23,6 @@ export const groupsApi = {
   /** PATCH /api/admin/groups/{id}/status — 200 GroupDto. 404. */
   setStatus: (id: string, isActive: boolean) =>
     api.patch<GroupDto>(`/api/admin/groups/${id}/status`, { isActive }),
-  /** DELETE /api/admin/groups/{id} — 204. 404; 409 talaba/tyutor biriktirilgan. */
+  /** DELETE /api/admin/groups/{id} — 204. 404; 409 talaba biriktirilgan. */
   remove: (id: string) => api.delete<void>(`/api/admin/groups/${id}`),
 };

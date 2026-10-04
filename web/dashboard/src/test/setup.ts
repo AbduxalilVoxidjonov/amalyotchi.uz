@@ -2,9 +2,10 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll } from 'vitest';
 import { resetMessagesMock } from '@/features/admin/messages/mocks';
+import { resetAdminsMock } from '@/features/admin/admins/mocks';
+import { resetOpsMocks } from '@/features/admin/ops-mocks';
 import { resetStudentsMock } from '@/features/admin/students/mocks';
 import { resetCheckinQrMock } from '@/features/shared/checkin-qr/mocks';
-import { resetTutorMocks } from '@/features/tutor/mocks';
 import { resetMockState } from '@/mocks/data';
 import { server } from '@/mocks/server';
 import { useAuthStore } from '@/shared/auth/store';
@@ -16,7 +17,8 @@ afterEach(() => {
   server.resetHandlers();
   resetMockState();
   // Mutatsiya qiladigan mock'lar (ariza qarori, kundalik bahosi, ruxsat, baholash) — testlar bir-biriga ta'sir qilmasin.
-  resetTutorMocks();
+  resetOpsMocks();
+  resetAdminsMock();
   resetCheckinQrMock();
   resetMessagesMock();
   resetStudentsMock();

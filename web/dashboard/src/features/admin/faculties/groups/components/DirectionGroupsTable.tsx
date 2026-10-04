@@ -9,12 +9,6 @@ import type { GroupRow } from '../types';
 const COLUMNS: DataTableColumn<GroupRow>[] = [
   { key: 'code', header: 'Guruh', width: 'minmax(100px,.9fr)', mono: true, strong: true },
   { key: 'course', header: 'Kurs', width: 'minmax(70px,.6fr)', mono: true },
-  {
-    key: 'tutor',
-    header: 'Tyutor',
-    width: 'minmax(160px,1.4fr)',
-    render: (r) => r.tutor ?? <span data-dim>—</span>,
-  },
   { key: 'students', header: 'Talaba', width: 'minmax(80px,.7fr)', mono: true },
   {
     key: 'attendancePct',

@@ -6,13 +6,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { server } from '@/mocks/server';
 import { CheckInQrCard } from './CheckInQrCard';
 import { mockQrPayload } from './mocks';
-import type { CheckInQrArea } from './types';
 
-function renderCard(area: CheckInQrArea = 'tutor', companyId = 'c1') {
+function renderCard(companyId = 'c1') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <CheckInQrCard area={area} companyId={companyId} />
+      <CheckInQrCard companyId={companyId} />
     </QueryClientProvider>,
   );
 }
@@ -20,10 +19,10 @@ function renderCard(area: CheckInQrArea = 'tutor', companyId = 'c1') {
 afterEach(() => vi.restoreAllMocks());
 
 describe('CheckInQrCard', () => {
-  it.each(['tutor', 'admin'] as const)(
+  it.each(['admin'] as const)(
     "QR rasmi payload'dan chiziladi, sana va amallar ko'rinadi (%s)",
-    async (area) => {
-      renderCard(area);
+    async () => {
+      renderCard();
       const card = within(await screen.findByRole('region', { name: 'Check-in QR kodi' }));
       const img = await card.findByRole('img', { name: 'Tech Solutions MChJ check-in QR kodi' });
       expect(img.getAttribute('src')).toMatch(/^data:image\/svg\+xml/);
@@ -38,7 +37,7 @@ describe('CheckInQrCard', () => {
 
   it('Yangilash → tasdiq oynasi → yangi payload va sana', async () => {
     const user = userEvent.setup();
-    renderCard('admin');
+    renderCard();
     const region = await screen.findByRole('region', { name: 'Check-in QR kodi' });
     const card = within(region);
     await card.findByText(mockQrPayload('c1', 0));
@@ -66,7 +65,7 @@ describe('CheckInQrCard', () => {
 
   it("rotatsiya xatosi tasdiq oynasida ko'rinadi", async () => {
     server.use(
-      http.post('/api/tutor/companies/:id/checkin-qr/rotate', () =>
+      http.post('/api/admin/companies/:id/checkin-qr/rotate', () =>
         HttpResponse.json(
           { status: 500, title: 'Server xatosi', detail: 'QR yangilanmadi.' },
           { status: 500, headers: { 'Content-Type': 'application/problem+json' } },
@@ -74,7 +73,7 @@ describe('CheckInQrCard', () => {
       ),
     );
     const user = userEvent.setup();
-    renderCard('tutor');
+    renderCard();
     const card = within(await screen.findByRole('region', { name: 'Check-in QR kodi' }));
     await card.findByText(mockQrPayload('c1', 0));
     await user.click(card.getByRole('button', { name: 'Yangilash' }));
@@ -84,8 +83,8 @@ describe('CheckInQrCard', () => {
     expect(card.getByText(mockQrPayload('c1', 0))).toBeInTheDocument();
   });
 
-  it("ko'lamdan tashqari korxona → 404 holati", async () => {
-    renderCard('tutor', 'c-unknown');
+  it("mavjud bo'lmagan korxona → 404 holati", async () => {
+    renderCard('c-unknown');
     const card = within(await screen.findByRole('region', { name: 'Check-in QR kodi' }));
     expect(await card.findByText('QR kod topilmadi')).toBeInTheDocument();
     expect(card.queryByRole('button', { name: 'Yangilash' })).not.toBeInTheDocument();
@@ -104,7 +103,7 @@ describe('CheckInQrCard', () => {
       ),
     );
     const user = userEvent.setup();
-    renderCard('admin');
+    renderCard();
     const card = within(await screen.findByRole('region', { name: 'Check-in QR kodi' }));
     expect(await card.findByText('QR kodni yuklab bo‘lmadi')).toBeInTheDocument();
     expect(card.getByText('Ichki xato.')).toBeInTheDocument();
@@ -122,7 +121,7 @@ describe('CheckInQrCard', () => {
       clicked.push(this);
     });
     const user = userEvent.setup();
-    renderCard('tutor');
+    renderCard();
     const card = within(await screen.findByRole('region', { name: 'Check-in QR kodi' }));
     await card.findByText(mockQrPayload('c1', 0));
     await user.click(card.getByRole('button', { name: 'Yuklab olish (PNG)' }));

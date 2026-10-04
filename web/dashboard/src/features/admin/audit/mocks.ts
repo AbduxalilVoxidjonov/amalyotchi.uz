@@ -3,8 +3,8 @@ import { paginateMock } from '../shared/paginate';
 import { AUDIT_ENDPOINT } from './api';
 import { AUDIT_ACTIONS, type AuditAction, type AuditEntry } from './types';
 
-const TUTOR_ID = '01a0a0e0-572d-74ad-96a4-4b1d36b09e80';
-const TUTOR2_ID = '01a0a0e0-572d-7728-95d8-6833405c4f65';
+const ADMIN2_ID = '01a0a0e0-572d-74ad-96a4-4b1d36b09e80';
+const FORMER_TUTOR_ID = '01a0a0e0-572d-7728-95d8-6833405c4f65';
 const ADMIN_ID = '01a0a0df-3383-77dc-bc67-85c3bbbf4c73';
 
 /** Backend `AuditEntryDto` shaklida (SPEC-SCREENS §9.8 syujeti; vaqtlar ISO, UTC). */
@@ -17,9 +17,9 @@ export const mockAudit: AuditEntry[] = [
     entityId: '01a0a0e1-0001-7000-8000-000000000001',
     reason: 'telefon zaryadi tugagan',
     changes: null,
-    userId: TUTOR_ID,
+    userId: ADMIN2_ID,
     userName: 'Nodira Saidova',
-    userRole: 'tutor',
+    userRole: 'admin',
   },
   {
     id: 'a2',
@@ -29,9 +29,9 @@ export const mockAudit: AuditEntry[] = [
     entityId: '01a0a0e0-5734-7001-8000-000000000002',
     reason: null,
     changes: '{"RadiusM":{"old":200,"new":120}}',
-    userId: TUTOR_ID,
+    userId: ADMIN2_ID,
     userName: 'Nodira Saidova',
-    userRole: 'tutor',
+    userRole: 'admin',
   },
   {
     id: 'a3',
@@ -41,8 +41,9 @@ export const mockAudit: AuditEntry[] = [
     entityId: '01a0a0e1-0002-7000-8000-000000000003',
     reason: "shartnomada muhr yo'q",
     changes: null,
-    userId: TUTOR2_ID,
+    userId: FORMER_TUTOR_ID,
     userName: 'Baxtiyor Rasulov',
+    // v3.28 dan oldingi tarixiy yozuv — sobiq tyutor.
     userRole: 'tutor',
   },
   {
@@ -63,7 +64,7 @@ export const mockAudit: AuditEntry[] = [
     action: 'gradeReverted',
     entityName: 'PracticeGrade',
     entityId: '01a0a0e1-0003-7000-8000-000000000005',
-    reason: 'tyutor qarori admin tomonidan qaytarildi',
+    reason: 'avvalgi qaror admin tomonidan qaytarildi',
     changes: null,
     userId: ADMIN_ID,
     userName: 'Admin Adminov',

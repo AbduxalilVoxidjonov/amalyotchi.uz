@@ -1,5 +1,5 @@
 import { Button, Card, Chip } from '@/shared/ui';
-import { fmtDateRange } from '@/features/tutor/format';
+import { fmtDateRange } from '@/features/admin/shared/fmt';
 import { formatLabel, type ReportsCatalog } from '../types';
 import styles from './ReportsView.module.css';
 

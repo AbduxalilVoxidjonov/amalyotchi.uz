@@ -55,7 +55,7 @@ function currentUser(request: Request): MockUser {
   return mockUsers[0]!;
 }
 
-/** Band loginlar: mock admin/tyutor/talaba foydalanuvchilari + talabalar ro'yxati HEMIS ID'lari. */
+/** Band loginlar: mock admin/talaba foydalanuvchilari + talabalar ro'yxati HEMIS ID'lari. */
 function isTaken(login: string, exceptUserId: string): boolean {
   if (mockUsers.some((u) => u.id !== exceptUserId && u.hemisId === login)) return true;
   return mockStudents.some((s) => s.hemisId === login);

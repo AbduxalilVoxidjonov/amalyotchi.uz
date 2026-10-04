@@ -1,11 +1,11 @@
 import { useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { StatusKind } from '@/shared/ui';
-import { fmtDateOnly, fmtDayMonth, shiftMonth } from '../format';
+import { fmtDateOnly, fmtDayMonth, shiftMonth } from '../shared/fmt';
 import type { StudentPeriodOption } from './types';
 
 /**
- * Talaba profilidagi davr tanlagichi yordamchilari (API v3.5, §4.6). Admin va tyutor profillari
+ * Talaba profilidagi davr tanlagichi yordamchilari (API v3.5, §4.6). Admin talaba profili
  * bir xil komponentlarni ishlatadi, shuning uchun hammasi shu yerda.
  */
 

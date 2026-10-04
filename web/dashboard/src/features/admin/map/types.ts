@@ -19,7 +19,7 @@ export interface MapPoint {
   lng: number;
 }
 
-/** GET /api/tutor/map?date=YYYY-MM-DD */
+/** GET /api/admin/map?date=YYYY-MM-DD */
 export interface MapResponse {
   /** DateOnly */
   date: string;

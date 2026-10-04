@@ -1,11 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { tutorKeys } from '../query-keys';
-import { studentsApi } from './api';
-import type { AttendanceRange, StudentApiArea } from './types';
-
-export function useMyStudentsQuery() {
-  return useQuery({ queryKey: tutorKeys.students(), queryFn: studentsApi.list });
-}
+import { opsKeys } from '../shared/opsKeys';
+import { studentProfileApi } from './api';
+import type { AttendanceRange } from './types';
 
 /**
  * Davr almashganda eski ma'lumot (xiralashgan holda) qoladi — faqat ayni talaba uchun;
@@ -17,43 +13,25 @@ export function keepPreviousForSameStudent<T>(studentId: string, idIndex: number
     prevQuery?.queryKey[idIndex] === studentId ? prev : undefined;
 }
 
-/** Talaba profili (`/tutor/students/:studentId?period=`). `periodId` null — sukut davri. */
-export function useStudentQuery(studentId: string, periodId: string | null = null) {
-  return useQuery({
-    queryKey: tutorKeys.students.detail(studentId, periodId),
-    queryFn: () => studentsApi.detail(studentId, periodId),
-    enabled: studentId.length > 0,
-    placeholderData: keepPreviousForSameStudent(studentId, 3),
-  });
-}
-
-/**
- * Kun-bakun davomat; `range` o'zgarsa qayta so'raladi. `area` — qaysi endpoint oilasidan
- * so'ralayotgani (tyutor yoki admin profili); kalitga ham kiradi, ikki rol keshni almashtirmasin.
- */
+/** Kun-bakun davomat; `range` o'zgarsa qayta so'raladi. */
 export function useStudentAttendanceQuery(
   studentId: string,
   range: AttendanceRange,
-  area: StudentApiArea = 'tutor',
   periodId: string | null = null,
 ) {
   return useQuery({
-    queryKey: tutorKeys.students.attendance(studentId, range, area, periodId),
-    queryFn: () => studentsApi.attendance(studentId, range, area, periodId),
+    queryKey: opsKeys.students.attendance(studentId, range, periodId),
+    queryFn: () => studentProfileApi.attendance(studentId, range, periodId),
     enabled: studentId.length > 0,
     placeholderData: keepPreviousData,
   });
 }
 
 /** Talabaning tanlangan davrdagi kundaliklari (faqat o'qish). */
-export function useStudentDiariesQuery(
-  studentId: string,
-  area: StudentApiArea = 'tutor',
-  periodId: string | null = null,
-) {
+export function useStudentDiariesQuery(studentId: string, periodId: string | null = null) {
   return useQuery({
-    queryKey: tutorKeys.students.diaries(studentId, area, periodId),
-    queryFn: () => studentsApi.diaries(studentId, area, periodId),
+    queryKey: opsKeys.students.diaries(studentId, periodId),
+    queryFn: () => studentProfileApi.diaries(studentId, periodId),
     enabled: studentId.length > 0,
     placeholderData: keepPreviousData,
   });

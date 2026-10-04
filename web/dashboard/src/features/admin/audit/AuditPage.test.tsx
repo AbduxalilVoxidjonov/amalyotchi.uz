@@ -12,7 +12,7 @@ describe('AuditPage', () => {
     expect(screen.getByText('Baho bekor qilindi')).toBeInTheDocument();
     expect(screen.getByText('Tizimga kirdi')).toBeInTheDocument();
     expect(screen.getByText('Sozlama — geofenceRadius: 200 → 250')).toBeInTheDocument();
-    expect(screen.getByText('Baxtiyor Rasulov · tyutor')).toBeInTheDocument();
+    expect(screen.getByText('Baxtiyor Rasulov · tyutor (sobiq)')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Filtr: barcha amallar' })).toBeInTheDocument();
     expect(screen.getByText('1–6 / 6')).toBeInTheDocument();
   });

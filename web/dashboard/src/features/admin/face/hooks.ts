@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { navKeys } from '@/app/nav-keys';
-import { tutorKeys } from '../query-keys';
+import { opsKeys } from '../shared/opsKeys';
 import { faceApi } from './api';
 import type { FaceEnrollmentTab } from './types';
 
 export function useFaceEnrollmentsQuery(params: { status: FaceEnrollmentTab }) {
   return useQuery({
-    queryKey: tutorKeys.face.list(params),
+    queryKey: opsKeys.face.list(params),
     queryFn: () => faceApi.list(params),
     placeholderData: (prev) => prev,
   });
@@ -24,7 +24,7 @@ export type FaceAction =
 export function useFaceAction() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationKey: ['tutor', 'face', 'action'],
+    mutationKey: ['admin', 'face', 'action'],
     mutationFn: (action: FaceAction) => {
       switch (action.kind) {
         case 'approve':
@@ -36,8 +36,8 @@ export function useFaceAction() {
       }
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: tutorKeys.face.all });
-      void queryClient.invalidateQueries({ queryKey: tutorKeys.students.all });
+      void queryClient.invalidateQueries({ queryKey: opsKeys.face.all });
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'student'] });
       void queryClient.invalidateQueries({ queryKey: navKeys.all });
     },
   });

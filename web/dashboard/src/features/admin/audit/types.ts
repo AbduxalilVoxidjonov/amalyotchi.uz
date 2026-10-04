@@ -74,11 +74,16 @@ export const AUDIT_ACTIONS = [
   'faceEnrollmentApproved',
   'faceEnrollmentRejected',
   'faceEnrollmentReset',
+  // v3.28 — bosh admin adminlarni boshqaradi (tyutor amallari tarix uchun qoldi).
+  'adminCreated',
+  'adminUpdated',
+  'adminStatusChanged',
+  'adminPasswordReset',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
-/** `UserRole.cs` — JSON'da camelCase. */
+/** `UserRole.cs` — JSON'da camelCase. `tutor` — v3.28 dan oldingi tarixiy yozuvlar uchun. */
 export type AuditUserRole = 'admin' | 'tutor' | 'student';
 
 export interface AuditEntry {

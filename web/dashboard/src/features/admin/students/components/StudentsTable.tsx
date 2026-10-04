@@ -17,7 +17,7 @@ const BASE_COLUMNS: DataTableColumn<Student>[] = [
     header: 'Talaba',
     width: 'minmax(180px,1.6fr)',
     strong: true,
-    // Ism — talaba profiliga havola (`/admin/students/:studentId`), tyutor/korxona jadvallaridagidek.
+    // Ism — talaba profiliga havola (`/admin/students/:studentId`), korxona jadvallaridagidek.
     render: (r) => <RowLink to={studentHref(r)}>{r.fullName}</RowLink>,
   },
   { key: 'group', header: 'Guruh', width: 'minmax(90px,.7fr)', mono: true, dim: true },

@@ -56,7 +56,7 @@ export const mockSummerPractice: StudentProfilePracticeDto = {
   finalized: true,
 };
 
-/** Aliyev Akmal — ikki davr (kuzgi faol + yozgi yakunlangan), korxona, tyutor bor (Telegram bog'langan). */
+/** Aliyev Akmal — ikki davr (kuzgi faol + yozgi yakunlangan), korxona bor (Telegram bog'langan). */
 export const mockProfile: StudentProfileDto = {
   id: mockStudent.id,
   fullName: mockStudent.fullName,
@@ -67,7 +67,6 @@ export const mockProfile: StudentProfileDto = {
   direction: 'Dasturiy injiniring',
   group: '412-22',
   course: 3,
-  tutor: { fullName: 'Saidova Nodira', phoneNumber: '+998901234567' },
   telegramLinked: true,
   hasPassword: true,
   mustChangePassword: false,
@@ -90,7 +89,7 @@ export const mockProfileSinglePractice: StudentProfileDto = {
   practices: [mockAutumnPractice],
 };
 
-/** Karimova Dilnoza — davr va tyutor biriktirilmagan, Telegram bog'lanmagan. */
+/** Karimova Dilnoza — davr biriktirilmagan, Telegram bog'lanmagan. */
 export const mockProfileNoPractice: StudentProfileDto = {
   id: mockStudentNew.id,
   fullName: mockStudentNew.fullName,
@@ -101,7 +100,6 @@ export const mockProfileNoPractice: StudentProfileDto = {
   direction: 'Kompyuter injiniringi',
   group: '411-22',
   course: 3,
-  tutor: null,
   telegramLinked: false,
   hasPassword: true,
   mustChangePassword: true,

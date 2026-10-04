@@ -1,7 +1,7 @@
 import type { AuthResultDto, ProblemDetails, UserSummaryDto } from '@amaliyotchi/shared';
 
 /**
- * Mock foydalanuvchilar. Rol raqamlari UserRole.cs bilan mos (Admin=1, Tutor=2, Student=3).
+ * Mock foydalanuvchilar. Rol raqamlari UserRole.cs bilan mos (Admin=1, Student=3; tyutor v3.28 da olib tashlandi).
  * Login: HEMIS ID + parol (pastda). `phoneNumber` — faqat ma'lumot maydoni, login uchun ishlatilmaydi.
  */
 export interface MockUser extends UserSummaryDto {
@@ -10,40 +10,26 @@ export interface MockUser extends UserSummaryDto {
 
 export const mockUsers: MockUser[] = [
   {
+    // Bosh admin (v3.28): "Adminlar" bo'limini ko'radi va boshqa adminlarni boshqaradi.
     id: '11111111-1111-4111-8111-111111111111',
     fullName: 'Admin Adminov',
     role: 1,
     facultyId: null,
     phoneNumber: '+998901234567',
     hemisId: '100000000001',
+    isSuperAdmin: true,
     password: 'admin12345',
   },
   {
-    id: '22222222-2222-4222-8222-222222222222',
+    // Oddiy admin — "Adminlar" bo'limi unga ko'rinmaydi (403).
+    id: '11111111-1111-4111-8111-111111111112',
     fullName: 'Nodira Saidova',
-    role: 2,
-    facultyId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    role: 1,
+    facultyId: null,
     phoneNumber: '+998907654321',
     hemisId: '100000000002',
-    password: 'tutor12345',
-  },
-  {
-    id: '22222222-2222-4222-8222-222222222223',
-    fullName: 'Baxtiyor Rasulov',
-    role: 2,
-    facultyId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-    phoneNumber: '+998912445102',
-    hemisId: '100000000003',
-    password: 'tutor12345',
-  },
-  {
-    id: '22222222-2222-4222-8222-222222222224',
-    fullName: 'Dilshod Ergashev',
-    role: 2,
-    facultyId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-    phoneNumber: '+998937001845',
-    hemisId: '100000000004',
-    password: 'tutor12345',
+    isSuperAdmin: false,
+    password: 'admin23456',
   },
   {
     // Talaba: backend `/api/auth/login` da 200 qaytaradi (TWA uchun) — dashboard esa rad etadi.
@@ -107,7 +93,7 @@ export function issueSession(user: MockUser, ttlSeconds?: number): AuthResultDto
     accessTokenExpiresAt: expiresAt,
     refreshToken,
     user: summary,
-    // Talaba admin/tyutor bergan parol bilan kiradi — birinchi kirishda o'zgartiradi.
+    // Talaba admin bergan parol bilan kiradi — birinchi kirishda o'zgartiradi.
     mustChangePassword: user.role === 3,
   };
 }

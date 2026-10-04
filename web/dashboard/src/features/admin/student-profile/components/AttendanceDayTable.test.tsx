@@ -100,11 +100,11 @@ const DAYS: StudentAttendanceDay[] = [
   }),
 ];
 
-function renderTable(area: 'tutor' | 'admin' = 'tutor') {
+function renderTable() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <AttendanceDayTable days={DAYS} radiusM={150} area={area} />
+      <AttendanceDayTable days={DAYS} radiusM={150} />
     </QueryClientProvider>,
   );
 }
@@ -135,11 +135,11 @@ describe('AttendanceDayTable', () => {
     expect(screen.queryByRole('dialog', { name: /kun tafsiloti/ })).not.toBeInTheDocument();
   });
 
-  it.each(['tutor', 'admin'] as const)(
+  it.each(['admin'] as const)(
     'kun oynasida urinishlar galereyasi — qabul/rad, sabab, masofa va rasmlar (%s)',
-    async (area) => {
+    async () => {
       const user = userEvent.setup();
-      renderTable(area);
+      renderTable();
       await user.click(screen.getByText('09.09.2026'));
       const dialog = await screen.findByRole('dialog', { name: /09\.09\.2026 — kun tafsiloti/ });
       const gallery = within(dialog).getByRole('region', { name: 'Urinishlar' });

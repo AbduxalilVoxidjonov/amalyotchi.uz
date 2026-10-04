@@ -1,12 +1,12 @@
 import { MapPlaceholder } from '@/shared/ui';
 import { QueryState } from '../components/QueryState';
-import { fmtDayMonth } from '../format';
+import { fmtDayMonth } from '../shared/fmt';
 import { MapPointList } from './components/MapPointList';
 import { useMapQuery } from './hooks';
 import styles from './MapPage.module.css';
 
 /**
- * Tyutor · Xarita (SPEC-SCREENS §11) — container.
+ * Admin · Xarita (SPEC-SCREENS §11) — container.
  * ❓ Xarita kutubxonasi (Leaflet/Yandex) hali tanlanmagan — MapPlaceholder; `points[].lat/lng` tayyor.
  */
 export function MapPage() {

@@ -41,7 +41,7 @@ export function StatTile({
 }
 
 export interface StatGridProps extends HTMLAttributes<HTMLDivElement> {
-  /** minmax(min, 1fr): 170px (tyutor, 5 ta) · 180px (admin, 4 ta). */
+  /** minmax(min, 1fr): 170px (5 ta) · 180px (admin dashboard, 4 ta). */
   min?: 170 | 180 | number;
 }
 

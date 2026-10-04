@@ -1,8 +1,8 @@
 import type { StatusKind } from '@/shared/ui';
 import { DASH, formatCount, formatPct } from '../shared/format';
-import type { DashboardStats, FacultyAttendance, TutorActivity } from './types';
+import type { DashboardStats, FacultyAttendance } from './types';
 
-/** v2 xom raqamlar → SPEC §7 stat kartalar va tyutor holati ranglari (View'dan ajratilgan — testlanadi). */
+/** v2 xom raqamlar → SPEC §7 stat kartalar (View'dan ajratilgan — testlanadi). */
 type NoteTone = Extract<StatusKind, 'ok' | 'late' | 'bad'> | undefined;
 
 interface StatCard {
@@ -83,10 +83,4 @@ export function buildStatCards(s: DashboardStats): StatCard[] {
 /** Fakultet foizi matni: bugun kutilgan talaba bo'lmasa "—" (0% emas). */
 export function facultyPctText(f: FacultyAttendance): string {
   return f.expectedToday > 0 ? formatPct(f.attendancePct) : DASH;
-}
-
-/** Kutayotgan arizalar rangi: kechikayotgan tyutor — bad, bor — late, yo'q — ok. */
-export function pendingKind(t: TutorActivity): 'ok' | 'late' | 'bad' {
-  if (t.status === 'late') return 'bad';
-  return t.pendingCount > 0 ? 'late' : 'ok';
 }

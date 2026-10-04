@@ -2,12 +2,12 @@ import { lazy, Suspense } from 'react';
 import {
   createBrowserRouter,
   createMemoryRouter,
-  Navigate,
   Outlet,
   type RouteObject,
 } from 'react-router-dom';
 import { UserRole } from '@amaliyotchi/shared/auth';
 import { RequireRole } from '@/shared/auth/RequireRole';
+import { RequireSuperAdmin } from '@/shared/auth/RequireSuperAdmin';
 import { useSessionBootstrap } from '@/features/auth/hooks';
 import { ComingSoonPage } from '@/pages/ComingSoonPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -28,8 +28,6 @@ const DepartmentDirectionsPage = lazy(
 const DirectionGroupsPage = lazy(
   () => import('@/features/admin/faculties/groups/DirectionGroupsPage'),
 );
-const TutorsPage = lazy(() => import('@/features/admin/tutors/TutorsPage'));
-const TutorDetailPage = lazy(() => import('@/features/admin/tutors/TutorDetailPage'));
 const StudentsPage = lazy(() => import('@/features/admin/students/StudentsPage'));
 const AdminStudentDetailPage = lazy(() => import('@/features/admin/students/StudentDetailPage'));
 const CompaniesPage = lazy(() => import('@/features/admin/companies/CompaniesPage'));
@@ -49,17 +47,14 @@ const MessageDetailPage = lazy(() => import('@/features/admin/messages/MessageDe
 const AuditPage = lazy(() => import('@/features/admin/audit/AuditPage'));
 const SettingsPage = lazy(() => import('@/features/admin/settings/SettingsPage'));
 const ReportsPage = lazy(() => import('@/features/reports/ReportsPage'));
-const TodayPage = lazy(() => import('@/features/tutor/today/TodayPage'));
-const ApplicationsPage = lazy(() => import('@/features/tutor/applications/ApplicationsPage'));
-const MyStudentsPage = lazy(() => import('@/features/tutor/students/MyStudentsPage'));
-const StudentDetailPage = lazy(() => import('@/features/tutor/students/StudentDetailPage'));
-const FaceEnrollmentsPage = lazy(() => import('@/features/tutor/face/FaceEnrollmentsPage'));
-const DiariesPage = lazy(() => import('@/features/tutor/diaries/DiariesPage'));
-const CalendarPage = lazy(() => import('@/features/tutor/calendar/CalendarPage'));
-const MapPage = lazy(() => import('@/features/tutor/map/MapPage'));
-const GradingPage = lazy(() => import('@/features/tutor/grading/GradingPage'));
-const TutorCompaniesPage = lazy(() => import('@/features/tutor/companies/CompaniesPage'));
-const TutorCompanyDetailPage = lazy(() => import('@/features/tutor/companies/CompanyDetailPage'));
+const TodayPage = lazy(() => import('@/features/admin/today/TodayPage'));
+const ApplicationsPage = lazy(() => import('@/features/admin/applications/ApplicationsPage'));
+const FaceEnrollmentsPage = lazy(() => import('@/features/admin/face/FaceEnrollmentsPage'));
+const DiariesPage = lazy(() => import('@/features/admin/diaries/DiariesPage'));
+const CalendarPage = lazy(() => import('@/features/admin/calendar/CalendarPage'));
+const MapPage = lazy(() => import('@/features/admin/map/MapPage'));
+const GradingPage = lazy(() => import('@/features/admin/grading/GradingPage'));
+const AdminsPage = lazy(() => import('@/features/admin/admins/AdminsPage'));
 // `import.meta.env.DEV` build'da `false` ga almashadi → chunk umuman yaratilmaydi.
 const KitPage = import.meta.env.DEV ? lazy(() => import('@/dev/KitPage')) : null;
 
@@ -105,8 +100,14 @@ export const routes: RouteObject[] = [
                 path: 'faculties/:facultyId/departments/:departmentId/directions/:directionId',
                 element: <DirectionGroupsPage />,
               },
-              { path: 'tutors', element: <TutorsPage /> },
-              { path: 'tutors/:tutorId', element: <TutorDetailPage /> },
+              // v3.28: sobiq tyutor bo'limi sahifalari (kundalik nazorat) — endi adminda.
+              { path: 'today', element: <TodayPage /> },
+              { path: 'applications', element: <ApplicationsPage /> },
+              { path: 'face', element: <FaceEnrollmentsPage /> },
+              { path: 'diaries', element: <DiariesPage /> },
+              { path: 'grading', element: <GradingPage /> },
+              { path: 'calendar', element: <CalendarPage /> },
+              { path: 'map', element: <MapPage /> },
               { path: 'students', element: <StudentsPage /> },
               { path: 'students/:studentId', element: <AdminStudentDetailPage /> },
               { path: 'companies', element: <CompaniesPage /> },
@@ -121,40 +122,17 @@ export const routes: RouteObject[] = [
               { path: 'messages', element: <MessagesPage /> },
               { path: 'messages/:messageId', element: <MessageDetailPage /> },
               { path: 'reports', element: <ReportsPage /> },
+              {
+                // Faqat bosh admin (v3.28); oddiy admin → /admin.
+                path: 'admins',
+                element: (
+                  <RequireSuperAdmin>
+                    <AdminsPage />
+                  </RequireSuperAdmin>
+                ),
+              },
               { path: 'audit', element: <AuditPage /> },
               { path: 'settings', element: <SettingsPage /> },
-              { path: '*', element: <ComingSoonPage /> },
-            ],
-          },
-        ],
-      },
-      {
-        // Tyutor bo'limi. "Bugun" — index (/tutor). SPEC-NAV §3.1.
-        path: '/tutor',
-        element: (
-          <RequireRole roles={[UserRole.Tutor]}>
-            <AppShell />
-          </RequireRole>
-        ),
-        children: [
-          {
-            // Sahifa xatosi AppShell ichida ko'rsatiladi (sidebar/topbar ishlaydi).
-            errorElement: <RouteError scope="page" />,
-            children: [
-              { index: true, element: <TodayPage /> },
-              { path: 'applications', element: <ApplicationsPage /> },
-              { path: 'students', element: <MyStudentsPage /> },
-              { path: 'students/:studentId', element: <StudentDetailPage /> },
-              { path: 'face', element: <FaceEnrollmentsPage /> },
-              { path: 'diaries', element: <DiariesPage /> },
-              { path: 'calendar', element: <CalendarPage /> },
-              { path: 'map', element: <MapPage /> },
-              { path: 'companies', element: <TutorCompaniesPage /> },
-              { path: 'companies/:companyId', element: <TutorCompanyDetailPage /> },
-              // Ruxsat so'rash moduli olib tashlandi (24.09.2026) — eski havolalar "Bugun"ga.
-              { path: 'leave-requests', element: <Navigate to="/tutor" replace /> },
-              { path: 'grading', element: <GradingPage /> },
-              { path: 'reports', element: <ReportsPage /> },
               { path: '*', element: <ComingSoonPage /> },
             ],
           },

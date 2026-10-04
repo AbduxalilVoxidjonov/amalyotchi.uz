@@ -165,10 +165,6 @@ export const prodProfile = {
   direction: 'Dasturiy injiniring',
   group: '412-22',
   course: 3,
-  tutor: {
-    fullName: 'Demo Tyutor',
-    phoneNumber: '+998900000002',
-  },
   telegramLinked: true,
   hasPassword: true,
   mustChangePassword: false,

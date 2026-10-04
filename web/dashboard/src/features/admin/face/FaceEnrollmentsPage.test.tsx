@@ -2,16 +2,16 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/mocks/server';
-import { renderTutorRoute } from '../test-utils';
+import { renderAdminRoute } from '../shared/renderAdminRoute';
 import { mockFaceOf } from './mockStore';
 
 const list = () => screen.findByRole('list', { name: "Yuz rasmlari ro'yxati" });
 const card = async (name: string) =>
   within(await list()).findByRole('article', { name: `Yuz rasmi: ${name}` });
 
-describe('FaceEnrollmentsPage (/tutor/face)', () => {
+describe('FaceEnrollmentsPage (/admin/face)', () => {
   it("sukut — Kutilmoqda tab'i: rasm, ism, guruh, yuborilgan vaqt, amallar", async () => {
-    renderTutorRoute('/tutor/face');
+    renderAdminRoute('/admin/face');
     expect(await screen.findByRole('tab', { name: /Kutilmoqda/ })).toHaveAttribute(
       'aria-selected',
       'true',
@@ -25,7 +25,7 @@ describe('FaceEnrollmentsPage (/tutor/face)', () => {
     const c = await card('Karimov Bekzod');
     expect(within(c).getByRole('link', { name: 'Karimov Bekzod' })).toHaveAttribute(
       'href',
-      '/tutor/students/s-341031',
+      '/admin/students/s-341031',
     );
     expect(within(c).getByText('412-22 · HEMIS 341031')).toBeInTheDocument();
     expect(within(c).getByText('Yuborilgan: 11.10.2026 09:05')).toBeInTheDocument();
@@ -38,7 +38,7 @@ describe('FaceEnrollmentsPage (/tutor/face)', () => {
 
   it("Tasdiqlash → POST approve → ro'yxatdan chiqadi, Tasdiqlangan tab'da ko'rinadi", async () => {
     const user = userEvent.setup();
-    renderTutorRoute('/tutor/face');
+    renderAdminRoute('/admin/face');
     const c = await card('Karimov Bekzod');
     await user.click(within(c).getByRole('button', { name: 'Tasdiqlash' }));
     await waitFor(() =>
@@ -64,7 +64,7 @@ describe('FaceEnrollmentsPage (/tutor/face)', () => {
         body = await request.clone().json();
       }
     });
-    renderTutorRoute('/tutor/face');
+    renderAdminRoute('/admin/face');
     const c = await card('Sobirov Diyor');
     await user.click(within(c).getByRole('button', { name: 'Rad etish' }));
     const dialog = await screen.findByRole('dialog', { name: 'Yuz rasmini rad etish' });
@@ -92,14 +92,14 @@ describe('FaceEnrollmentsPage (/tutor/face)', () => {
   it('server 409 (allaqachon ko‘rib chiqilgan) → kartada xato matni', async () => {
     const user = userEvent.setup();
     server.use(
-      http.post('/api/tutor/students/:id/face/approve', () =>
+      http.post('/api/admin/students/:id/face/approve', () =>
         HttpResponse.json(
           { status: 409, title: 'Ziddiyat', detail: 'Yuz rasmi allaqachon ko‘rib chiqilgan.' },
           { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
         ),
       ),
     );
-    renderTutorRoute('/tutor/face');
+    renderAdminRoute('/admin/face');
     const c = await card('Karimov Bekzod');
     await user.click(within(c).getByRole('button', { name: 'Tasdiqlash' }));
     expect(await within(c).findByRole('alert')).toHaveTextContent(
@@ -108,8 +108,8 @@ describe('FaceEnrollmentsPage (/tutor/face)', () => {
   });
 
   it("bo'sh tab — tushunarli bo'sh holat", async () => {
-    server.use(http.get('/api/tutor/face-enrollments', () => HttpResponse.json({ items: [] })));
-    renderTutorRoute('/tutor/face');
+    server.use(http.get('/api/admin/face-enrollments', () => HttpResponse.json({ items: [] })));
+    renderAdminRoute('/admin/face');
     expect(await screen.findByText("Tekshiruvni kutayotgan yuz rasmi yo'q")).toBeInTheDocument();
   });
 });

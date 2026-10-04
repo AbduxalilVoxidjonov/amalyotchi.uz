@@ -1,11 +1,11 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { renderTutorRoute } from '../test-utils';
+import { renderAdminRoute } from '../shared/renderAdminRoute';
 
-describe('DiariesPage (/tutor/diaries)', () => {
+describe('DiariesPage (/admin/diaries)', () => {
   it("kundalik kartalari ko'rinadi; ball → Tasdiqlangan (score tasdiqlaydi); tugmalar qulflanadi", async () => {
     const user = userEvent.setup();
-    renderTutorRoute('/tutor/diaries');
+    renderAdminRoute('/admin/diaries');
     const card = await screen.findByRole('article', { name: 'Kundalik: Aliyev Akmal' });
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Kundalik hisobotlar');
     expect(within(card).getByText('412-22 · 11.10.2026 · 17:42')).toBeInTheDocument();
@@ -32,7 +32,7 @@ describe('DiariesPage (/tutor/diaries)', () => {
 
   it('Qayta yozishga qaytarish — izohsiz lokal xato, izoh bilan → status rewrite', async () => {
     const user = userEvent.setup();
-    renderTutorRoute('/tutor/diaries');
+    renderAdminRoute('/admin/diaries');
     const card = await screen.findByRole('article', { name: 'Kundalik: Yusupova Nilufar' });
 
     await user.click(within(card).getByRole('button', { name: 'Qayta yozishga qaytarish' }));
@@ -44,7 +44,7 @@ describe('DiariesPage (/tutor/diaries)', () => {
     await waitFor(() =>
       expect(within(card).getByText('Qayta yozish kerak')).toHaveAttribute('data-status', 'late'),
     );
-    expect(within(card).getByText('Tyutor izohi:')).toBeInTheDocument();
+    expect(within(card).getByText('Admin izohi:')).toBeInTheDocument();
     expect(within(card).getByText('Statistika jadvalini biriktiring')).toBeInTheDocument();
   });
 });

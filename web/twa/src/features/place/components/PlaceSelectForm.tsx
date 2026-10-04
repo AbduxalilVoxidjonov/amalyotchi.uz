@@ -161,7 +161,7 @@ export function PlaceSelectForm({ resubmit = false, periodName = null }: PlaceSe
             )}
             {submit.isSuccess && (
               <p className={styles.success} role="status">
-                Ariza tyutorga yuborildi — ko'rib chiqilmoqda.
+                Ariza adminga yuborildi — ko'rib chiqilmoqda.
               </p>
             )}
           </div>
@@ -169,7 +169,7 @@ export function PlaceSelectForm({ resubmit = false, periodName = null }: PlaceSe
       )}
 
       <p className={styles.note}>
-        STIR topilmasa, korxona hali tizimga kiritilmagan — tyutoringizga murojaat qiling.
+        STIR topilmasa, korxona hali tizimga kiritilmagan — administratorga murojaat qiling.
       </p>
     </Card>
   );

@@ -7,7 +7,7 @@ import {
   ENDED_PERIOD,
   mockProfilePeriods,
   recordRequests,
-} from '@/features/tutor/students/periodTestUtils';
+} from '@/features/admin/student-profile/periodTestUtils';
 import { renderHierarchyPage } from '../shared/renderHierarchyPage';
 import { StudentDetailPage } from './StudentDetailPage';
 
@@ -32,7 +32,6 @@ const ADMIN_EXTRA = {
   department: 'Dasturiy injiniring kafedrasi',
   adminStatus: 'active',
   telegramLinked: true,
-  tutor: null,
 };
 
 describe('Admin StudentDetailPage', () => {
@@ -51,17 +50,14 @@ describe('Admin StudentDetailPage', () => {
     expect(profile.getByText('412-22')).toBeInTheDocument();
 
     const meta = within(screen.getByRole('region', { name: "Tashkiliy ma'lumot" }));
-    expect(meta.getByRole('link', { name: 'Nodira Saidova' })).toHaveAttribute(
-      'href',
-      '/admin/tutors/t1',
-    );
-    expect(meta.getByText('+998 90 765-43-21')).toBeInTheDocument();
+    // v3.28: tyutor qatorlari yo'q.
+    expect(meta.queryByText('Tyutor')).not.toBeInTheDocument();
     expect(meta.getByText('Dasturiy injiniring kafedrasi')).toBeInTheDocument();
     expect(meta.getByText("Bog'langan")).toBeInTheDocument();
     expect(meta.getByText('Faol')).toBeInTheDocument();
   });
 
-  it("korxona, ariza va davr bloklari tyutor profilidagidek to'ladi", async () => {
+  it("korxona, ariza va davr bloklari to'ladi", async () => {
     renderPage();
     const company = within(await screen.findByRole('region', { name: 'Korxona' }));
     expect(company.getAllByText('Tech Solutions MChJ').length).toBeGreaterThan(0);
@@ -207,7 +203,7 @@ describe('Admin StudentDetailPage — amaliyot davri tanlagichi (v3.5)', () => {
   });
 
   it("0 ta davr: bo'sh holat", async () => {
-    mockProfilePeriods('admin', detailWithPeriods([], null), ADMIN_EXTRA);
+    mockProfilePeriods(detailWithPeriods([], null), ADMIN_EXTRA);
     renderPage();
     expect(
       await screen.findByText('Talabaga hali amaliyot davri biriktirilmagan'),
@@ -217,7 +213,7 @@ describe('Admin StudentDetailPage — amaliyot davri tanlagichi (v3.5)', () => {
 
   it('"Tugagan" belgisi va oy navigatsiyasi davr chegarasida', async () => {
     const user = userEvent.setup();
-    mockProfilePeriods('admin', detailWithPeriods(ENDED_OPTIONS, ENDED_PERIOD), ADMIN_EXTRA);
+    mockProfilePeriods(detailWithPeriods(ENDED_OPTIONS, ENDED_PERIOD), ADMIN_EXTRA);
     renderPage();
 
     const tab = await screen.findByRole('tab', { name: /Bahorgi amaliyot 2026/ });
@@ -234,11 +230,11 @@ describe('Admin StudentDetailPage — amaliyot davri tanlagichi (v3.5)', () => {
     expect(prev).toBeDisabled();
   });
 
-  it('"Yuz" kartasi — faqat ko\'rish (admin amallari yo\'q)', async () => {
+  it('"Yuz" kartasi — v3.28 dan admin amallari bor (tasdiqlangan → "Bekor qilish")', async () => {
     renderPage();
     const card = await screen.findByRole('region', { name: 'Yuz' });
     expect(within(card).getByText('Tasdiqlangan')).toBeInTheDocument();
-    expect(within(card).queryByRole('button', { name: 'Bekor qilish' })).not.toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: 'Bekor qilish' })).toBeInTheDocument();
     expect(within(card).queryByRole('button', { name: 'Tasdiqlash' })).not.toBeInTheDocument();
   });
 });

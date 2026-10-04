@@ -1,20 +1,19 @@
 import type { ReactNode } from 'react';
 import { StudentFaceCard } from '../../face/components/StudentFaceCard';
-import { todayInTashkent } from '../../format';
-import type { StudentApiArea, TutorStudentDetail } from '../types';
+import { todayInTashkent } from '../../shared/fmt';
+import type { StudentProfileDetail } from '../types';
 import { StudentAttendanceSection } from './StudentAttendanceSection';
 import { StudentDetailView } from './StudentDetailView';
 import { StudentPeriodSwitcher } from './StudentPeriodSwitcher';
 import styles from './StudentProfile.module.css';
 
 export interface StudentProfileProps {
-  detail: TutorStudentDetail;
+  detail: StudentProfileDetail;
   /** URL'dagi `?period=` (null — backend sukut davri, `detail.selectedPeriodId`). */
   requestedPeriodId: string | null;
   onSelectPeriod: (periodId: string) => void;
   /** Yangi davr yuklanmoqda — eski ma'lumot xiralashgan holda ko'rinadi. */
   isPlaceholderData: boolean;
-  area: StudentApiArea;
   /** Profil bloklari va davomat jadvali orasidagi qo'shimcha bloklar (admin: tashkiliy ma'lumot). */
   children?: ReactNode;
   /** Sarlavha kartasidagi amallar (parol o'rnatish). */
@@ -27,7 +26,7 @@ export interface StudentProfileProps {
 }
 
 /**
- * Talaba profili (tyutor va admin): davr tanlagichi + tanlangan davr bo'yicha bloklar.
+ * Talaba profili (admin): davr tanlagichi + tanlangan davr bo'yicha bloklar.
  * Tanlagich darhol yangi davrni ko'rsatadi; bloklar yangi javob kelguncha eskisini xira ko'rsatadi.
  */
 export function StudentProfile({
@@ -35,7 +34,6 @@ export function StudentProfile({
   requestedPeriodId,
   onSelectPeriod,
   isPlaceholderData,
-  area,
   children,
   headerActions,
   labelPeriodCompany = false,
@@ -66,17 +64,17 @@ export function StudentProfile({
           actions={headerActions}
           labelPeriodCompany={labelPeriodCompany}
         />
-        {/* v3.27: "Yuz" kartasi — server `face` yuborsa; amallar faqat tyutor profilida. */}
+        {/* v3.27: "Yuz" kartasi — server `face` yuborsa; v3.28 dan amallar adminda. */}
         {detail.face && (
           <StudentFaceCard
             studentId={detail.id}
             studentName={detail.name}
             face={detail.face}
-            canManage={area === 'tutor'}
+            canManage
           />
         )}
         {children}
-        <StudentAttendanceSection detail={detail} period={shownPeriod} area={area} />
+        <StudentAttendanceSection detail={detail} period={shownPeriod} />
       </div>
     </>
   );

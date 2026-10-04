@@ -1,7 +1,8 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
 import { problem } from '@/mocks/data';
-import { mockStudents } from '../students/mocks';
+import { mockStudents } from '../student-profile/mocks';
 import { FACE_ENROLLMENTS_ENDPOINT } from './api';
+import { profileMockId } from '../student-profile/mockIds';
 import { mockFaceEntries, mockFaceOf, setMockFace } from './mockStore';
 import {
   FACE_REJECT_REASON_REQUIRED,
@@ -19,7 +20,7 @@ const json = (status: number, title: string, detail: string, extra?: object) =>
     headers: { 'Content-Type': 'application/problem+json' },
   });
 
-/** Sidebar badge'i uchun — tekshiruv kutayotganlar soni (`GET /api/tutor/nav`). */
+/** Sidebar badge'i uchun — tekshiruv kutayotganlar soni (`GET /api/admin/nav`). */
 export function pendingFaceCount(): number {
   return mockFaceEntries().filter(([, f]) => f.status === 'pending').length;
 }
@@ -47,7 +48,7 @@ export function mockFaceEnrollments(status: string): FaceEnrollment[] {
     .sort((a, b) => (b.submittedAt ?? '').localeCompare(a.submittedAt ?? ''));
 }
 
-/** Talaba ko'lamda bo'lmasa — 404; aks holda joriy holat. */
+/** Talaba topilmasa — 404; aks holda joriy holat. Admin ro'yxati id'si profil id'siga moslanadi. */
 function scoped(id: string) {
   return mockStudents.some((s) => s.id === id) ? mockFaceOf(id) : null;
 }
@@ -62,8 +63,8 @@ export const faceHandlers: HttpHandler[] = [
     return HttpResponse.json(body);
   }),
 
-  http.post('/api/tutor/students/:id/face/approve', ({ params }) => {
-    const id = String(params['id']);
+  http.post('/api/admin/students/:id/face/approve', ({ params }) => {
+    const id = profileMockId(String(params['id']));
     const face = scoped(id);
     if (!face) return notFound();
     if (face.status !== 'pending')
@@ -73,8 +74,8 @@ export const faceHandlers: HttpHandler[] = [
     return HttpResponse.json(next);
   }),
 
-  http.post('/api/tutor/students/:id/face/reject', async ({ params, request }) => {
-    const id = String(params['id']);
+  http.post('/api/admin/students/:id/face/reject', async ({ params, request }) => {
+    const id = profileMockId(String(params['id']));
     const face = scoped(id);
     if (!face) return notFound();
     const body = (await request.json().catch(() => ({}))) as { reason?: string };
@@ -95,8 +96,8 @@ export const faceHandlers: HttpHandler[] = [
     return HttpResponse.json(next);
   }),
 
-  http.post('/api/tutor/students/:id/face/reset', ({ params }) => {
-    const id = String(params['id']);
+  http.post('/api/admin/students/:id/face/reset', ({ params }) => {
+    const id = profileMockId(String(params['id']));
     const face = scoped(id);
     if (!face) return notFound();
     const next = {

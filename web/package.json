@@ -2,7 +2,7 @@
   "name": "amaliyotchi-web",
   "private": true,
   "version": "0.1.0",
-  "description": "Amaliyotchi frontend workspace: dashboard (admin + tyutor), twa (talaba Telegram Web App), shared (umumiy api/auth mantiqi)",
+  "description": "Amaliyotchi frontend workspace: dashboard (admin), twa (talaba Telegram Web App), shared (umumiy api/auth mantiqi)",
   "workspaces": [
     "shared",
     "dashboard",

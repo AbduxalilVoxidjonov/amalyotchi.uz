@@ -8,22 +8,22 @@ import type {
 } from './types';
 
 /**
- * Tyutor · Arizalar — `TutorApplicationsController`:
- *   GET  /api/tutor/applications?status=submitted|revisionNeeded|approved|rejected → ApplicationListResponse
- *   GET  /api/tutor/applications/:id                                               → ApplicationDetail | 404
- *   POST /api/tutor/applications/:id/decision {decision, radiusM?, checklist?, comment?}
+ * Admin · Arizalar — `AdminApplicationsController`:
+ *   GET  /api/admin/applications?status=submitted|revisionNeeded|approved|rejected → ApplicationListResponse
+ *   GET  /api/admin/applications/:id                                               → ApplicationDetail | 404
+ *   POST /api/admin/applications/:id/decision {decision, radiusM?, checklist?, comment?}
  *        → ApplicationDecisionResponse | 400 errors | 404 | 409 (allaqachon hal qilingan)
  */
 export const applicationsApi = {
   list: (params: { tab: ApplicationTab }) =>
-    api.get<ApplicationListResponse>('/api/tutor/applications', {
+    api.get<ApplicationListResponse>('/api/admin/applications', {
       query: { status: params.tab },
     }),
   detail: (id: string) =>
-    api.get<ApplicationDetail>(`/api/tutor/applications/${encodeURIComponent(id)}`),
+    api.get<ApplicationDetail>(`/api/admin/applications/${encodeURIComponent(id)}`),
   decide: (id: string, body: ApplicationDecisionRequest) =>
     api.post<ApplicationDecisionResponse>(
-      `/api/tutor/applications/${encodeURIComponent(id)}/decision`,
+      `/api/admin/applications/${encodeURIComponent(id)}/decision`,
       body,
     ),
 };

@@ -7,7 +7,7 @@ import {
   shiftMonth,
   toMonthParam,
   todayInTashkent,
-} from '../format';
+} from '../shared/fmt';
 import { CalendarGrid } from './components/CalendarGrid';
 import { useCalendarQuery } from './hooks';
 
@@ -17,7 +17,7 @@ function currentMonth(): { year: number; month: number } {
   return { year: y!, month: m! };
 }
 
-/** Tyutor · Kalendar (SPEC-SCREENS §10) — container. URL: `?month=YYYY-MM`. */
+/** Admin · Kalendar (SPEC-SCREENS §10) — container. URL: `?month=YYYY-MM`. */
 export function CalendarPage() {
   const [params, setParams] = useSearchParams();
   const current = parseMonth(params.get('month')) ?? currentMonth();

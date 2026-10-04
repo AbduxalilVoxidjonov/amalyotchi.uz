@@ -1,5 +1,5 @@
 import { Card } from '@/shared/ui';
-import { fmtDistance } from '../../format';
+import { fmtDistance } from '../../shared/fmt';
 import type { MapPoint } from '../types';
 import styles from './MapPointList.module.css';
 

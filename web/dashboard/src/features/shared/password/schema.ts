@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /**
- * Parol validatsiyasi — tyutor parolini tiklash va talaba parolini o'rnatish modallari uchun umumiy.
+ * Parol validatsiyasi — talaba parolini o'rnatish modallari uchun umumiy.
  * Backend (`Password` qoidasi) bilan bir xil: 8–128 belgi.
  */
 export const PASSWORD_MIN_LENGTH = 8;

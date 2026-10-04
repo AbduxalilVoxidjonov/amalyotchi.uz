@@ -1,6 +1,6 @@
-# API-CONTRACT v3.27
+# API-CONTRACT v3.28
 
-Oxirgi yangilanish: 03.10.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
+Oxirgi yangilanish: 04.10.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
 esa haqiqiy controller/DTO/validator/handler kodidan olingan — har bir maydon, chegara va status kod kodda bor.
 Frontend (`web/dashboard`, `web/twa`, `web/shared`) shu shaklga moslanishi kerak; v1 bilan farqlar §5 da,
@@ -29,7 +29,12 @@ v3.23 (admin dashboard ko'rsatkichlari loyiha qoidalariga moslandi — ochiq dav
 v3.24 ("Xabarlar": admin Telegram orqali talabalarga xabar yuboradi — `/api/admin/messages`) — §6.30,
 v3.25 (bitta talabani forma orqali qo'shish — `POST /api/admin/students`, `GET /api/admin/students/group-options`) — §6.31,
 v3.26 (talabaning o'z ish vaqti — `PUT /api/student/profile/work-hours`; check-in oynasi qisqa kunga moslashadi) — §6.32,
-v3.27 (yuzni tasdiqlash — talaba etalon selfisi, tyutor tasdig'i, check-in selfisini solishtirish — `/api/student/face`, `/api/tutor/face-enrollments`) — §6.33.
+v3.27 (yuzni tasdiqlash — talaba etalon selfisi, tyutor tasdig'i, check-in selfisini solishtirish — `/api/student/face`, `/api/tutor/face-enrollments`) — §6.33,
+v3.28 (**tyutor roli olib tashlandi** — barcha tyutor endpoint'lari adminga ko'chdi; **bosh admin** adminlarni boshqaradi —
+`/api/admin/admins`, `isSuperAdmin`) — §6.34.
+
+> v3.28: tyutor bo'limi (§2.5) va `/api/admin/tutors*` (§2.3.3) olib tashlandi, kundalik nazorat endpoint'lari
+> `/api/admin/*` ga ko'chdi, `/api/admin/admins*` qo'shildi — quyidagi sonlar v3.27 holati; farqi §6.34 da.
 
 Jami **122 ta endpoint**: Auth 9 · Admin 78 · Reports 1 · Tutor 21 · Student (TWA) 11 · Files 1 · Companies 1.
 
@@ -359,9 +364,13 @@ Sidebar badge'lari va header crumb konteksti. Har sahifada chaqiriladi — faqat
 interface AdminNavDto {
   counts: {
     faculties: number; // = GET /api/admin/faculties  (filtrsiz) total
-    tutors: number;    // = GET /api/admin/tutors     (filtrsiz) total — faol va nofaol
     companies: number; // = GET /api/admin/companies  (filtrsiz) total — faol va nofaol
     students: number;  // = GET /api/admin/students   (filtrsiz) total
+    // v3.28 — sobiq `GET /api/tutor/nav` sonlari (kalit nomlari o'zgarmagan); `tutors` olib tashlandi:
+    today: number;                  // = GET /api/admin/today (sukut) total
+    applications: number;           // = GET /api/admin/applications?status=submitted soni
+    diaries: number;                // = GET /api/admin/diaries (sukut) soni
+    pendingFaceEnrollments: number; // = GET /api/admin/face-enrollments?status=pending soni
   };
   context: { academicYear: string | null }; // joriy (faol) o'quv yili nomi, masalan "2026-2027"; yo'q → null
 }
@@ -628,7 +637,10 @@ interface GroupRow {
 hisoblangan (`planned`/`active`/`closed`). Ikki davr oralig'ida tugagan (yoki yopilgan) davr qoladi — `attendancePct`
 kelajakdagi bo'sh davrga o'tib 0 bo'lib qolmaydi. Davri yo'q guruhda `null`.
 
-### 2.3.3 Tyutorlar — `AdminTutorsController` (`/api/admin/tutors`)
+### 2.3.3 ~~Tyutorlar — `AdminTutorsController` (`/api/admin/tutors`)~~ — v3.28 da olib tashlandi
+
+> **v3.28:** tyutor roli olib tashlandi — `/api/admin/tutors*` endpoint'lari yo'q. Uning o'rniga bosh admin
+> adminlarni boshqaradi: `/api/admin/admins*` (§6.34). Quyidagi matn tarix uchun qoldirildi.
 
 Hammasi `AdminOnly`. O'chirish (DELETE) endpoint'i **yo'q** — tyutor faqat faol emas qilinadi (`PATCH .../status`).
 Semantika: tyutor **bir yoki bir nechta fakultetga** biriktiriladi (`faculties[]`, `TutorFaculty`; ro'yxatning
@@ -1666,7 +1678,7 @@ ixtiyoriy (AND).
 
 ---
 
-### 2.4 Reports — `ReportsController` · `TutorOrAdmin`
+### 2.4 Reports — `ReportsController` · ~~`TutorOrAdmin`~~ `AdminOnly` (v3.28)
 
 #### GET `/api/reports`
 
@@ -1696,7 +1708,13 @@ interface ReportCard {
 
 ---
 
-### 2.5 Tutor — `Controllers/Tutor/*` · hammasi `TutorOnly`
+### 2.5 ~~Tutor — `Controllers/Tutor/*` · hammasi `TutorOnly`~~ — v3.28 da olib tashlandi
+
+> **v3.28:** `/api/tutor/*` yo'q. Shakllari o'zgarmagan holda adminga ko'chdi (§6.34): `today`, `calendar`, `map`,
+> `grading` (+ `PUT /{studentId}`), `applications` (+ `/{id}`, `POST /{id}/decision`), `GET diaries`,
+> `face-enrollments`, `students/{id}/face/{approve|reject|reset}` → `/api/admin/...`. `students*`, `companies*`,
+> `nav` — admin ekvivalentlari (`/api/admin/students*`, `/api/admin/companies*`, `/api/admin/nav`) ishlatiladi.
+> Quyidagi matn shakllar uchun ma'lumotnoma sifatida qoldirildi (yo'llarni `/api/admin/` deb o'qing).
 
 Ko'lam — biriktirilgan guruhlar. Hamma ro'yxat (today'dan tashqari) sahifalanmagan massiv.
 
@@ -2908,7 +2926,10 @@ Har qator: **v1 shakl → v2 haqiqiy shakl → nima qilish kerak**. Ustun "Qayer
 | R2  | `ReportCard.fmt:"PDF / Excel"`                                             | `formats:('pdf'\|'xlsx')[]`, + `available:false`, `note`             | tugmani `available` bo'yicha o'chiring |
 | R3  | `GET /reports/{id}/download`                                               | **yo'q**                                                             | chaqirmang                             |
 
-### 5.4 Tyutor (`dashboard/src/features/tutor/*`)
+### 5.4 Tyutor (`dashboard/src/features/tutor/*`) — v3.28 da olib tashlandi
+
+> v3.28: `features/tutor/*` → `features/admin/{today,applications,face,diaries,grading,calendar,map,student-profile}`;
+> `/tutor` marshrutlari → `/admin/...` (§6.34).
 
 | #   | Qayer                                                       | v1                                                                                                                | v2                                                                                                                                                  | Nima qilish                                                             |
 | --- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
@@ -3534,3 +3555,61 @@ server tomonida etalon bilan solishtiriladi; moslik chegaradan past → urinish 
 - Eski server bilan moslik: frontend yangi maydonlarni ixtiyoriy deb o'qiydi (`faceRequired`, `face`, `faceMatchScore`,
   `pendingFaceEnrollments` yo'q → tekshiruv o'chiq / ko'rsatilmaydi); `GET /api/student/face` xatosi darvozani yopmaydi.
 - Endpoint soni **123 → 129** (Student +2, Tutor +4).
+
+### 6.34 v3.27 → v3.28 (04.10.2026): tyutor roli olib tashlandi, bosh admin
+
+Tyutor roli butunlay olib tashlandi — admin hamma ishni qiladi. Adminlar orasida **bosh admin** bor: u boshqa
+adminlarni yaratadi, tahrirlaydi, bloklaydi va parolini tiklaydi.
+
+- **Ko'chirilgan endpoint'lar (so'rov/javob shakli o'zgarmagan, `AdminOnly`):**
+  | Eski (TutorOnly) | Yangi (AdminOnly) |
+  | --- | --- |
+  | `GET /api/tutor/today` | `GET /api/admin/today` |
+  | `GET /api/tutor/calendar` | `GET /api/admin/calendar` |
+  | `GET /api/tutor/map` | `GET /api/admin/map` |
+  | `GET /api/tutor/grading` · `PUT /api/tutor/grading/{studentId}` | `GET /api/admin/grading` · `PUT /api/admin/grading/{studentId}` |
+  | `GET /api/tutor/applications` · `GET .../{id}` · `POST .../{id}/decision` | `/api/admin/applications` (xuddi shu) |
+  | `GET /api/tutor/diaries` | `GET /api/admin/diaries` (baholash — mavjud `POST /api/admin/diaries/{id}/review`) |
+  | `GET /api/tutor/face-enrollments` | `GET /api/admin/face-enrollments` |
+  | `POST /api/tutor/students/{id}/face/{approve\|reject\|reset}` | `POST /api/admin/students/{id}/face/{approve\|reject\|reset}` |
+- **Olib tashlangan:** `/api/tutor/students*`, `/api/tutor/companies*` (admin ekvivalentlari ishlatiladi —
+  `GET /api/admin/students/{id}` tyutor profilidagi hamma narsani, jumladan `face`, `period.customWorkHours`,
+  davomatdagi `faceMatchScore` ni beradi); `/api/tutor/nav` (sonlari `GET /api/admin/nav` → `counts` ga qo'shildi:
+  `today`, `applications`, `diaries`, `pendingFaceEnrollments`; `students` — admin sonining o'zi; `tutors` kaliti olib
+  tashlandi); `/api/admin/tutors*` (§2.3.3). `GET /api/reports` — faqat admin.
+- **Talaba:** `GET /api/student/profile` da `tutor` maydoni yo'q.
+- **Auth:** `UserSummaryDto` (login / refresh / `me`) — yangi `isSuperAdmin: boolean`. Dashboard faqat admin rolini
+  qabul qiladi (boshqa rol — kirish rad etiladi, eski sessiya `/login` ga qaytadi).
+- **Adminlar (faqat bosh admin; boshqalar → 403):**
+  ```ts
+  interface AdminAccountDto {
+    id: string;
+    fullName: string;
+    login: string;
+    phoneNumber: string | null;
+    isActive: boolean;
+    isSuperAdmin: boolean;
+    lastLoginAt: string | null; // ISO
+    createdAt: string;          // ISO
+  }
+  ```
+  - `GET /api/admin/admins` → `{ items: AdminAccountDto[] }`.
+  - `POST /api/admin/admins` `{ fullName, login, phoneNumber?, password? }` → 201 `AdminAccountDto` (+ `temporaryPassword`
+    — parol berilmasa server yaratadi; faqat shu javobda bir marta keladi).
+  - `PUT /api/admin/admins/{id}` `{ fullName, phoneNumber? }` → 200 `AdminAccountDto`.
+  - `PATCH /api/admin/admins/{id}/status` `{ isActive }` → 200 `AdminAccountDto`.
+  - `POST /api/admin/admins/{id}/password` → 200 `{ temporaryPassword }`.
+  - Xatolar: 400 — `errors` maydon kalitlari bilan (frontend `ApiError.fieldError` — camelCase ham, PascalCase ham);
+    409 — login band; bosh adminni yoki o'zini bloklab bo'lmaydi (frontend bu tugmalarni oldindan o'chiradi).
+- **Enum:** `AuditAction` + `adminCreated` ("Admin yaratildi"), `adminUpdated` ("Admin ma'lumotlari o'zgartirildi"),
+  `adminStatusChanged` ("Admin holati o'zgartirildi"), `adminPasswordReset` ("Admin paroli tiklandi"). Eski `tutor*`
+  amallari va audit `userRole: "tutor"` — tarix uchun qoladi (UI: "tyutor (sobiq)").
+- **Frontend (dashboard):** `/tutor/*` marshrutlari yo'q. Yangi admin sahifalari: `/admin/today` (Bugun),
+  `/admin/applications`, `/admin/face`, `/admin/diaries`, `/admin/grading`, `/admin/calendar`, `/admin/map`;
+  talaba/korxona havolalari — `/admin/students/:id`, `/admin/companies/:id`. `/admin/tutors*` olib tashlandi;
+  `/admin/admins` ("Adminlar") — faqat `isSuperAdmin` (sidebar'da ham, marshrut himoyasi bilan). Admin talaba
+  profilida yuzni tasdiqlash/rad etish/bekor qilish amallari bor. Dashboard'dagi "Tyutorlar faolligi" bloki,
+  guruhlar/korxona talabalari jadvalidagi "Tyutor" ustunlari olib tashlandi (server eski maydonlarni yuborsa
+  e'tiborsiz qoldiriladi). `GET /api/admin/today` javobidagi `alerts[].href` eski `/tutor...` yo'l bo'lsa ham frontend
+  uni `/admin/...` ga moslaydi.
+- **Frontend (TWA):** profilda "Tyutor" bloki yo'q; matnlardagi "tyutor" → "admin"/"administrator".

@@ -7,8 +7,8 @@ import { ATTENDANCE_STATUS_LABEL, SUSPICIOUS_LABEL, type AttendanceStatus } from
 /** Backend `StudentState`: davomat < 70% → redFlag; shubhali kunlar bor → suspicious; aks holda active. */
 export type StudentState = 'active' | 'redFlag' | 'suspicious';
 
-/** GET /api/tutor/students → TutorStudent[] */
-export interface TutorStudent {
+/** Talaba profili mock'larining urug' qatori (v3.28 dan oldingi "Talabalarim" ro'yxati shakli). */
+export interface ProfileStudent {
   id: string;
   name: string;
   hemisId: string;
@@ -33,7 +33,7 @@ export const STUDENT_STATE_LABEL: Record<StudentState, { label: string; kind: St
   suspicious: { label: 'Shubhali', kind: 'late' },
 };
 
-export function studentStateLabel(s: Pick<TutorStudent, 'state' | 'suspiciousCount'>): {
+export function studentStateLabel(s: Pick<ProfileStudent, 'state' | 'suspiciousCount'>): {
   label: string;
   kind: StatusKind;
 } {
@@ -42,7 +42,7 @@ export function studentStateLabel(s: Pick<TutorStudent, 'state' | 'suspiciousCou
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
- * Talaba profili (KONTRAKT §2) — GET /api/tutor/students/:id va uning bo'limlari.
+ * Talaba profili (KONTRAKT §2) — GET /api/admin/students/:id va uning bo'limlari.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 /** Backend `StudentStatus` (mavjud domen enum'i, JSON camelCase). */
@@ -85,7 +85,7 @@ export interface StudentApplicationContract {
 }
 
 /**
- * Talabaning OXIRGI arizasi holati — tyutor arizalar ro'yxatidagi to'rtta holatdan tashqari
+ * Talabaning OXIRGI arizasi holati — "Arizalar" ro'yxatidagi to'rtta holatdan tashqari
  * domen enum'ida `draft`, `completed` va `transferred` (admin boshqa korxonaga o'tkazgan) ham bor
  * (`ApplicationStatus.cs`).
  */
@@ -142,8 +142,8 @@ export interface StudentGrade {
   grade: 2 | 3 | 4 | 5 | null;
 }
 
-/** GET /api/tutor/students/:id → TutorStudentDetail (ko'lamdan tashqari → 404). */
-export interface TutorStudentDetail {
+/** GET /api/admin/students/:id → StudentProfileDetail (ko'lamdan tashqari → 404). */
+export interface StudentProfileDetail {
   id: string;
   name: string;
   hemisId: string;
@@ -311,7 +311,7 @@ export interface AttendanceDayDiary {
   score: number | null;
 }
 
-/** GET /api/tutor/students/:id/attendance?from=&to= → StudentAttendanceDay[] */
+/** GET /api/admin/students/:id/attendance?from=&to= → StudentAttendanceDay[] */
 export interface StudentAttendanceDay {
   /** DateOnly "2026-10-12" */
   date: string;
@@ -323,7 +323,7 @@ export interface StudentAttendanceDay {
   autoClosed: boolean;
   suspicious: boolean;
   suspiciousReason: string | null;
-  /** Tyutor qo'lda belgilagan. */
+  /** Admin qo'lda belgilagan. */
   manual: boolean;
   manualReason: string | null;
   leaveRequestId: string | null;
@@ -334,7 +334,7 @@ export interface StudentAttendanceDay {
   rejectedAttempts: number;
   /**
    * Shu kundagi barcha urinishlar (kirish + chiqish, qabul qilingan + rad etilgan), vaqt tartibida.
-   * Eski backend javobida bo'lmasa `studentsApi.attendance` uni `[]` ga to'ldiradi.
+   * Eski backend javobida bo'lmasa `studentProfileApi.attendance` uni `[]` ga to'ldiradi.
    */
   events: AttendanceAttempt[];
   /**
@@ -343,13 +343,6 @@ export interface StudentAttendanceDay {
    */
   faceMatchScore?: number | null;
 }
-
-/**
- * Davomat va kundalik bo'limlari ikkala profilda ham ishlatiladi: tyutorniki
- * (`/api/tutor/students/...`) va adminniki (`/api/admin/students/...`) — shakl bir xil,
- * faqat yo'l va ruxsat farq qiladi.
- */
-export type StudentApiArea = 'tutor' | 'admin';
 
 /** Davomat so'rovi oralig'i (ikkalasi ham null → butun davr). */
 export interface AttendanceRange {
@@ -364,7 +357,7 @@ export const STUDENT_STATUS_LABEL: Record<StudentStatus, { label: string; kind: 
   graduated: { label: 'Bitirgan', kind: 'info' },
 };
 
-/** Ariza holati yorliqlari — tyutor ro'yxatidagilar (`transferred` ham) + `draft`/`completed`. */
+/** Ariza holati yorliqlari — "Arizalar" ro'yxatidagilar (`transferred` ham) + `draft`/`completed`. */
 export const STUDENT_APPLICATION_STATUS_LABEL: Record<
   StudentApplicationStatus,
   { label: string; kind: StatusKind }
@@ -374,7 +367,7 @@ export const STUDENT_APPLICATION_STATUS_LABEL: Record<
   completed: { label: 'Yakunlangan', kind: 'ok' },
 };
 
-/** Korxona faqat shu holatlardagi arizadan keladi (backend `GetTutorStudentDetailQuery`). */
+/** Korxona faqat shu holatlardagi arizadan keladi (backend `GetStudentProfileDetailQuery`). */
 export function isCompanyBoundApplication(status: StudentApplicationStatus): boolean {
   return status === 'approved' || status === 'completed';
 }

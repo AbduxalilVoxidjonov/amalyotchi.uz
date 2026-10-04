@@ -36,7 +36,7 @@ export function FaceGuide({ busy }: { busy: boolean }) {
 /**
  * 2-qadam: yuz (selfi) — presentation. Old kamera (`capture="user"`), yuz uchun oval yo'naltiruvchi.
  * `capture` bosqichi: kamera kutilmoqda · `preview` bosqichi: rasm ko'rib chiqiladi (qayta olish/tasdiqlash).
- * "Tasdiqlash va yuborish" → 3-qadam (joylashuv) va so'rov. Rasm urinish bilan saqlanadi va tyutorga
+ * "Tasdiqlash va yuborish" → 3-qadam (joylashuv) va so'rov. Rasm urinish bilan saqlanadi va adminga
  * ko'rinadi; v3.27 `faceRequired` bo'lsa server uni tasdiqlangan etalon bilan solishtiradi.
  */
 export function SelfieCapture({ flow, onOpenCamera }: SelfieCaptureProps) {
@@ -54,7 +54,7 @@ export function SelfieCapture({ flow, onOpenCamera }: SelfieCaptureProps) {
       </h3>
       <p className={styles.note}>
         Old kamera ochiladi — yuzingizni suratga oling. Rasm urinish bilan birga saqlanadi va
-        tyutorga ko‘rinadi. Keyingi qadamda joylashuvingiz aniqlanadi.
+        adminga ko‘rinadi. Keyingi qadamda joylashuvingiz aniqlanadi.
       </p>
       {requirements.faceRequired && (
         <p className={styles.note}>

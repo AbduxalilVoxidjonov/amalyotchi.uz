@@ -85,12 +85,6 @@ function PersonalCard({ profile: p }: { profile: StudentProfileDto }) {
         <InfoRow k="Yo'nalish">{p.direction}</InfoRow>
         <InfoRow k="Guruh">{p.group}</InfoRow>
         <InfoRow k="Kurs">{p.course}-kurs</InfoRow>
-        <InfoRow k="Tyutor">{p.tutor ? p.tutor.fullName : muted('Biriktirilmagan')}</InfoRow>
-        {p.tutor?.phoneNumber && (
-          <InfoRow k="Tyutor telefoni" mono>
-            <a href={`tel:${p.tutor.phoneNumber}`}>{formatPhone(p.tutor.phoneNumber)}</a>
-          </InfoRow>
-        )}
       </dl>
     </Card>
   );
@@ -376,7 +370,7 @@ function AccountCard({ profile: p }: { profile: StudentProfileDto }) {
           )
         ) : (
           <p className={styles.note}>
-            Parol hali berilmagan — web orqali kirish uchun tyutoringizga murojaat qiling.
+            Parol hali berilmagan — web orqali kirish uchun administratorga murojaat qiling.
           </p>
         )}
         <Button variant="danger" block onClick={() => logout.mutate()} disabled={logout.isPending}>

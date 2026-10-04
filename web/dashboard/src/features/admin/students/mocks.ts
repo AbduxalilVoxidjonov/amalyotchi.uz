@@ -5,9 +5,10 @@ import {
   buildDetail,
   mockAttendanceResponse,
   mockDiariesResponse,
-  mockStudents as tutorMockStudents,
+  mockStudents as profileMockStudents,
   periodNotFound,
-} from '@/features/tutor/students/mocks';
+} from '@/features/admin/student-profile/mocks';
+import { ADMIN_TO_PROFILE_ID } from '@/features/admin/student-profile/mockIds';
 import { mockUsers } from '@/mocks/data';
 import { mockCompanies } from '../companies/mocks';
 import { mockDepartments } from '../faculties/departments/mocks';
@@ -23,7 +24,7 @@ import type {
   StudentApplication,
   StudentCompany,
   StudentPeriodOption,
-} from '@/features/tutor/students/types';
+} from '@/features/admin/student-profile/types';
 import type { Company } from '../companies/types';
 import {
   STUDENTS_ASSIGN_COMPANY_ENDPOINT,
@@ -36,7 +37,6 @@ import {
 } from './api';
 import type {
   AdminStudentDetail,
-  AdminStudentTutor,
   AssignCompanyError,
   AssignCompanyInput,
   SetStudentCompanyInput,
@@ -50,7 +50,7 @@ import { STUDENT_FORM_MESSAGES, STUDENT_FULL_NAME_MAX, normalizeUzPhone } from '
 
 /**
  * Backend `StudentRow` shaklida (SPEC-SCREENS §9.6 raqamlari). `company` — faqat aktiv korxona va
- * profildagi `activeCompany.name` bilan bir xil (manba tyutor profili bo'yicha).
+ * profildagi `activeCompany.name` bilan bir xil (manba — profil mock'i).
  */
 export const mockStudents: Student[] = [
   {
@@ -130,18 +130,12 @@ export const mockStudents: Student[] = [
 const SEED_STUDENT_COUNT = mockStudents.length;
 
 /* ────────────────────────────────────────────────────────────────────────────
- * Talaba profili mock'i. Bloklar tyutor mock'idan quriladi (backend'da ham ayni
+ * Talaba profili mock'i. Bloklar `student-profile` mock'idan quriladi (backend'da ham ayni
  * handler), admin qatori esa unga nom/guruh/fakultet va admin maydonlarini beradi.
  * ──────────────────────────────────────────────────────────────────────────── */
 
-/** Admin qatori → tyutor mock profili (tartib bo'yicha, doimiy juftlik). */
-const SOURCE_PROFILE_ID: Record<string, string> = {
-  s1: 's-341030',
-  s2: 's-341032',
-  s3: 's-341031',
-  s4: 's-341034',
-  s5: 's-341033',
-};
+/** Admin qatori → profil mock'i (tartib bo'yicha, doimiy juftlik). */
+const SOURCE_PROFILE_ID = ADMIN_TO_PROFILE_ID;
 
 const DEPARTMENTS: Record<string, string> = {
   'Axborot texnologiyalari': 'Dasturiy injiniring kafedrasi',
@@ -149,20 +143,26 @@ const DEPARTMENTS: Record<string, string> = {
   'Qurilish va arxitektura': 'Qurilish muhandisligi kafedrasi',
 };
 
-const TUTORS: Record<string, AdminStudentTutor> = {
-  'Axborot texnologiyalari': { id: 't1', fullName: 'Nodira Saidova', phone: '+998907654321' },
-  'Iqtisodiyot va moliya': { id: 't2', fullName: 'Baxtiyor Rasulov', phone: '+998912445102' },
-  'Qurilish va arxitektura': { id: 't3', fullName: 'Dilshod Ergashev', phone: null },
-};
-
 const notFound = () =>
   HttpResponse.json(problem(404, 'Topilmadi', 'Talaba topilmadi.'), { status: 404 });
 
+/**
+ * Admin mock qatori. Kundalik nazorat sahifalari (Bugun, Arizalar, Kundaliklar, Yuz…) mock'lari
+ * profil id'lari (`s-341030`…) bilan havola beradi — ular ham shu juftlik orqali admin qatoriga
+ * moslanadi (backend'da ikkalasi ham bitta `User.Id`).
+ */
+function findRow(id: string): Student | undefined {
+  return (
+    mockStudents.find((s) => s.id === id) ??
+    mockStudents.find((s) => SOURCE_PROFILE_ID[s.id] === id)
+  );
+}
+
 /** Admin mock qatori uchun manba profil id'si (topilmasa — null). */
-function sourceId(adminId: string): string | null {
-  const row = mockStudents.find((s) => s.id === adminId);
+function sourceId(id: string): string | null {
+  const row = findRow(id);
   if (!row) return null;
-  return SOURCE_PROFILE_ID[adminId] ?? tutorMockStudents[0]!.id;
+  return SOURCE_PROFILE_ID[row.id] ?? profileMockStudents[0]!.id;
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -312,7 +312,7 @@ function toStudentCompany(c: Company): StudentCompany {
   };
 }
 
-/** Tyutor mock korxonasi id'si → admin korxonalari id'si (nom bo'yicha moslanadi). */
+/** Profil mock korxonasi id'si → admin korxonalari id'si (nom bo'yicha moslanadi). */
 function adminCompanyId(name: string, fallback: string): string {
   return mockCompanies.find((c) => c.name === name)?.id ?? fallback;
 }
@@ -358,11 +358,24 @@ function buildAdminDetail(
   adminId: string,
   periodId: string | null,
 ): AdminStudentDetail | 'periodNotFound' | null {
-  const row = mockStudents.find((s) => s.id === adminId);
+  const row = findRow(adminId);
   const source = sourceId(adminId);
   const base = source ? buildDetail(source, periodId) : null;
   if (!row || !base) return null;
   if (base === 'periodNotFound') return base;
+
+  // Profil id'si bilan so'ralgan (kundalik nazorat sahifalaridan havola) — profil mock'i o'zgarishsiz,
+  // faqat tashkiliy maydonlar qo'shiladi (sahifalardagi ism/guruh bilan mos bo'lsin).
+  if (adminId !== row.id) {
+    return {
+      ...base,
+      groupId: row.groupId,
+      department: DEPARTMENTS[base.faculty] ?? DEPARTMENTS[row.faculty] ?? 'Umumiy kafedra',
+      adminStatus: row.status,
+      telegramLinked: row.telegramLinked,
+      hasPassword: hasMockStudentPassword(adminId),
+    };
+  }
 
   const override = companyOverrides.get(row.id);
   const defaultPeriod = base.periods.find((p) => p.isDefault) ?? null;
@@ -372,7 +385,8 @@ function buildAdminDetail(
     company: resolveCompany(row, base.company, base.activeCompany, isDefaultPeriod),
     activeCompany: resolveActiveCompany(row, base.activeCompany, defaultPeriod),
     application: override && isDefaultPeriod ? override.application : base.application,
-    id: row.id,
+    // So'ralgan id (admin `s1` yoki profil `s-341030`) — bog'liq so'rovlar ham shu id bilan ketadi.
+    id: adminId,
     name: row.fullName,
     hemisId: row.hemisId,
     group: row.group,
@@ -382,8 +396,7 @@ function buildAdminDetail(
     department: DEPARTMENTS[row.faculty] ?? 'Umumiy kafedra',
     adminStatus: row.status,
     telegramLinked: row.telegramLinked,
-    tutor: TUTORS[row.faculty] ?? null,
-    hasPassword: hasMockStudentPassword(row.id),
+    hasPassword: hasMockStudentPassword(adminId),
   };
 }
 
@@ -543,7 +556,7 @@ export const studentsHandlers: HttpHandler[] = [
   // faol bo'lmagan korxona yoki joriy korxona → 409, korxona tanlanmagan / uzun izoh → 400.
   http.post(`${STUDENTS_ENDPOINT}/:id/company`, async ({ params, request }) => {
     const id = String(params['id']);
-    const row = mockStudents.find((s) => s.id === id);
+    const row = findRow(id);
     if (!row) return notFound();
 
     const body = (await request.json().catch(() => null)) as SetStudentCompanyInput | null;
@@ -574,7 +587,7 @@ export const studentsHandlers: HttpHandler[] = [
     }
 
     const now = new Date().toISOString();
-    companyOverrides.set(id, {
+    companyOverrides.set(row.id, {
       company,
       application: {
         id: `app-${id}-${company.id}`,

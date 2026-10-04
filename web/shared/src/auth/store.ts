@@ -51,6 +51,7 @@ export function mapUser(dto: UserSummaryDto): AuthUser {
     groupName: dto.groupName ?? null,
     course: dto.course ?? null,
     hemisId: dto.hemisId ?? null,
+    isSuperAdmin: dto.isSuperAdmin === true,
   };
 }
 

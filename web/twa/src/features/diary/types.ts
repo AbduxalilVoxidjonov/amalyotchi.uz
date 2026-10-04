@@ -1,6 +1,6 @@
 import type { StatusKind } from '@amaliyotchi/shared/ui';
 
-/** Domain `DiaryStatus`: yuborildi → tyutor ko'rdi → tasdiqlandi (ball bilan) / qayta yozish. */
+/** Domain `DiaryStatus`: yuborildi → admin ko'rdi → tasdiqlandi (ball bilan) / qayta yozish. */
 export type DiaryStatus = 'submitted' | 'seen' | 'rewrite' | 'approved';
 
 export interface DiaryFileDto {
@@ -22,7 +22,7 @@ export interface DiaryEntryDto {
   files: DiaryFileDto[];
   /** 1–5 (tasdiqlanganda) */
   score: number | null;
-  /** Tyutor izohi (qayta yozish / tasdiqlash). */
+  /** Admin izohi (qayta yozish / tasdiqlash). */
   comment: string | null;
   /** v3.5 — yozuv tegishli amaliyot davri. */
   periodId: string;
@@ -39,7 +39,7 @@ export interface DiaryCreate {
 
 export const DIARY_STATUS: Record<DiaryStatus, { label: string; kind: StatusKind }> = {
   submitted: { label: 'Yuborilgan', kind: 'info' },
-  seen: { label: "Tyutor ko'rdi", kind: 'neu' },
+  seen: { label: "Admin ko'rdi", kind: 'neu' },
   rewrite: { label: 'Qayta yozish kerak', kind: 'late' },
   approved: { label: 'Tasdiqlangan', kind: 'ok' },
 };

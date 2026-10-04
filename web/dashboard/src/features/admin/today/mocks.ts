@@ -206,9 +206,14 @@ export function buildTodayResponse(filter: AttendanceFilter, page: number, q = '
   const items = filtered.slice(start, start + PAGE_SIZE);
   const s = stats(mockTodayRows);
   const alerts: TodayAlert[] = [
-    { kind: 'outOfRadius', count: 3, href: '/tutor/map', maxDistanceM: 3400 },
-    { kind: 'notCheckedIn', count: s.absent, href: '/tutor?status=absent', maxDistanceM: null },
-    { kind: 'newApplications', count: 7, href: '/tutor/applications', maxDistanceM: null },
+    { kind: 'outOfRadius', count: 3, href: '/admin/map', maxDistanceM: 3400 },
+    {
+      kind: 'notCheckedIn',
+      count: s.absent,
+      href: '/admin/today?status=absent',
+      maxDistanceM: null,
+    },
+    { kind: 'newApplications', count: 7, href: '/admin/applications', maxDistanceM: null },
   ];
   return {
     date: MOCK_TODAY_DATE,
@@ -219,7 +224,7 @@ export function buildTodayResponse(filter: AttendanceFilter, page: number, q = '
 }
 
 export const todayHandlers: HttpHandler[] = [
-  http.get('/api/tutor/today', ({ request }) => {
+  http.get('/api/admin/today', ({ request }) => {
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
     const page = Number(url.searchParams.get('page') ?? '1') || 1;

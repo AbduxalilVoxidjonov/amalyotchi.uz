@@ -8,7 +8,7 @@ import type { UserRole } from './roles';
 /**
  * Serverdan kelgan xom ko'rinish (role — raqam yoki string bo'lishi mumkin; v2 backend camelCase
  * string beradi: "student"). Kontrakt v2: talaba uchun guruh/kurs/HEMIS ID ham keladi — admin va
- * tyutorda bu maydonlar `null` (eski javoblarda umuman bo'lmasligi mumkin → ixtiyoriy).
+ * adminda bu maydonlar `null` (eski javoblarda umuman bo'lmasligi mumkin → ixtiyoriy).
  */
 export interface UserSummaryDto {
   id: string;
@@ -23,6 +23,11 @@ export interface UserSummaryDto {
   course?: number | null;
   /** Login identifikatori (5–20 raqam). Barcha rollar uchun kelishi mumkin. */
   hemisId?: string | null;
+  /**
+   * v3.28 — bosh admin (adminlarni boshqaradi: `/api/admin/admins`). Eski server yubormasligi
+   * mumkin → ixtiyoriy (yo'q bo'lsa false).
+   */
+  isSuperAdmin?: boolean;
 }
 
 export interface AuthResultDto {
@@ -33,8 +38,8 @@ export interface AuthResultDto {
   refreshToken: string;
   user: UserSummaryDto;
   /**
-   * Talaba admin/tyutor bergan parol bilan kirgan — ilova parolni o'zgartirishni talab qiladi.
-   * Admin/tyutorda doim false. Eski javoblarda bo'lmasligi mumkin (ixtiyoriy).
+   * Talaba admin bergan parol bilan kirgan — ilova parolni o'zgartirishni talab qiladi.
+   * Adminda doim false. Eski javoblarda bo'lmasligi mumkin (ixtiyoriy).
    */
   mustChangePassword?: boolean;
 }
@@ -62,9 +67,11 @@ export interface AuthUser {
   role: UserRole;
   facultyId: string | null;
   phoneNumber: string | null;
-  /** Faqat talabada (TWA "Yana" varag'i: `412-22 · 3-kurs`); admin/tyutorda null. */
+  /** Faqat talabada (TWA "Yana" varag'i: `412-22 · 3-kurs`); adminda null. */
   groupId: string | null;
   groupName: string | null;
   course: number | null;
   hemisId: string | null;
+  /** v3.28 — bosh admin ("Adminlar" bo'limi faqat unga ko'rinadi). */
+  isSuperAdmin: boolean;
 }

@@ -1,13 +1,13 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http } from 'msw';
-import { buildDetail } from '@/features/tutor/students/mocks';
+import { buildDetail } from '@/features/admin/student-profile/mocks';
 import {
   detailWithPeriods,
   ENDED_OPTIONS,
   ENDED_PERIOD,
   mockProfilePeriods,
-} from '@/features/tutor/students/periodTestUtils';
+} from '@/features/admin/student-profile/periodTestUtils';
 import { server } from '@/mocks/server';
 import { problemResponse } from '../shared/mockProblem';
 import { renderHierarchyPage } from '../shared/renderHierarchyPage';
@@ -32,7 +32,6 @@ const ADMIN_EXTRA = {
   department: 'Dasturiy injiniring kafedrasi',
   adminStatus: 'active',
   telegramLinked: true,
-  tutor: null,
 };
 
 const COMPANY_BUTTONS = /^(Korxonaga biriktirish|Boshqa korxonaga o'tkazish)$/;
@@ -84,7 +83,7 @@ describe("Admin talaba profili — korxonaga biriktirish / o'tkazish", () => {
   });
 
   it("tugagan davr (sukut bo'lsa ham) ko'rinishida tugma yashiriladi", async () => {
-    mockProfilePeriods('admin', detailWithPeriods(ENDED_OPTIONS, ENDED_PERIOD), ADMIN_EXTRA);
+    mockProfilePeriods(detailWithPeriods(ENDED_OPTIONS, ENDED_PERIOD), ADMIN_EXTRA);
     renderProfile('s1');
     expect(await screen.findByRole('tab', { name: /Bahorgi amaliyot 2026/ })).toBeInTheDocument();
     expect(metaCard().queryByRole('button', { name: COMPANY_BUTTONS })).not.toBeInTheDocument();
@@ -238,7 +237,7 @@ describe('Admin talaba profili — faqat aktiv korxona (`activeCompany`)', () =>
   it('tanlangan davrda `company` bor, lekin `activeCompany` null → tugma "Korxonaga biriktirish"', async () => {
     const base = buildDetail('s-341030');
     if (!base || base === 'periodNotFound') throw new Error('mock profil topilmadi');
-    mockProfilePeriods('admin', { ...base, activeCompany: null }, ADMIN_EXTRA);
+    mockProfilePeriods({ ...base, activeCompany: null }, ADMIN_EXTRA);
     renderProfile('s1');
     expect(await screen.findByRole('heading', { name: 'Aliyev Akmal' })).toBeInTheDocument();
     expect(metaCard().getByText("Aktiv korxona yo'q")).toBeInTheDocument();

@@ -1,4 +1,4 @@
-/* Tanlangan davr bloklari: ota konteyner oralig'ini meros qiladi (tyutor grid, admin flex) */
+/* Tanlangan davr bloklari: ota konteyner oralig'ini meros qiladi (admin flex) */
 .body {
   display: flex;
   flex-direction: column;

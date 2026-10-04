@@ -37,7 +37,7 @@ import {
   type ButtonVariant,
   type DataTableColumn,
 } from '@/shared/ui';
-import { navForRole, type NavBadges } from '@/app/nav';
+import { adminNav, type NavBadges } from '@/app/nav';
 import { formatClock } from '@/app/layout/useClock';
 import styles from './KitPage.module.css';
 
@@ -133,16 +133,13 @@ const COLUMNS: DataTableColumn<DemoStudent>[] = [
 
 /** Faqat UI kit namoyishi uchun (dizayndagi qiymatlar) — ilovada badge'lar `useNavData` dan keladi. */
 const DEMO_ADMIN_BADGES: NavBadges = {
+  '/admin/today': 38,
+  '/admin/applications': 7,
+  '/admin/face': 3,
+  '/admin/diaries': 12,
   '/admin/faculties': 11,
-  '/admin/tutors': 18,
   '/admin/companies': 412,
   '/admin/students': '1\u2009284',
-};
-const DEMO_TUTOR_BADGES: NavBadges = {
-  '/tutor': 38,
-  '/tutor/applications': 7,
-  '/tutor/students': 38,
-  '/tutor/diaries': 12,
 };
 
 const VARIANTS: ButtonVariant[] = ['primary', 'secondary', 'danger', 'dashed', 'alert'];
@@ -293,9 +290,9 @@ export function KitPage() {
         </PillGroup>
         <PillGroup stretch style={{ maxWidth: 400 }}>
           <Pill shape="wide" active>
-            Tyutor
+            Admin
           </Pill>
-          <Pill shape="wide">Admin</Pill>
+          <Pill shape="wide">Bosh admin</Pill>
           <Pill shape="wide">Talaba</Pill>
         </PillGroup>
       </Section>
@@ -485,24 +482,24 @@ export function KitPage() {
         </div>
       </Section>
 
-      <Section id="sidebar" title="SidebarNav — aktiv (aria-current), badge (tyutor ro'yxati)">
+      <Section id="sidebar" title="SidebarNav — aktiv (aria-current), badge (admin / bosh admin)">
         <div className={styles.grid2}>
           <div className={styles.dark}>
-            <SidebarNav items={navForRole('Tutor', DEMO_TUTOR_BADGES)} />
+            <SidebarNav items={adminNav(DEMO_ADMIN_BADGES)} />
           </div>
           <div className={styles.dark}>
-            <SidebarNav items={navForRole('Admin', DEMO_ADMIN_BADGES)} />
+            <SidebarNav items={adminNav(DEMO_ADMIN_BADGES, { isSuperAdmin: true })} />
           </div>
         </div>
         <p className={styles.code}>
-          To'liq Sidebar (brend + user bloki) — AppShell ichida: /admin yoki /tutor ga kiring.
+          To'liq Sidebar (brend + user bloki) — AppShell ichida: /admin ga kiring.
         </p>
       </Section>
 
       <Section id="topbar" title="Topbar — crumb, h1, sana chipi, actions">
         <div className={styles.demoTopbar}>
           <Topbar
-            crumb="Tyutor · 412-22, 413-22 · 3-kurs amaliyoti"
+            crumb="Admin · 2026-2027"
             title="Bugun"
             clock={formatClock(new Date())}
             actions={<Button size="sm">Eksport</Button>}

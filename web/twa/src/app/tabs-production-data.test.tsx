@@ -31,7 +31,7 @@ const TABS = [
   // Davr tugagan (production: `closed`) — QR sahifasida belgilash o'rniga davr holati.
   ['QR orqali belgilash', /Amaliyot davri tugagan/],
   ['Korxonam', /Demo Korxona MChJ/],
-  ['Profil', /Demo Tyutor/],
+  ['Profil', /Dasturiy injiniring/],
   ['Bosh ekran', /Amaliyot davri tugagan/],
 ] as const;
 

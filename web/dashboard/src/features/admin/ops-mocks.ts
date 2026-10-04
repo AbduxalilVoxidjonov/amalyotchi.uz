@@ -2,38 +2,36 @@ import type { HttpHandler } from 'msw';
 import { resetStudentPasswordMock } from '@/features/shared/student-password/passwordStore';
 import { applicationsHandlers, resetApplicationsMock } from './applications/mocks';
 import { calendarHandlers } from './calendar/mocks';
-import { companiesHandlers } from './companies/mocks';
 import { diariesHandlers, resetDiariesMock } from './diaries/mocks';
 import { resetFaceMock } from './face/mockStore';
 import { faceHandlers } from './face/mocks';
 import { gradingHandlers, resetGradingMock } from './grading/mocks';
 import { mapHandlers } from './map/mocks';
-import { resetStudentDiaryReviewsMock, studentsHandlers } from './students/mocks';
+import { resetStudentDiaryReviewsMock, studentProfileHandlers } from './student-profile/mocks';
 import { todayHandlers } from './today/mocks';
 
 /**
- * Tyutor bo'limi MSW handler'lari — `src/mocks/handlers.ts` ro'yxatiga `...tutorHandlers` sifatida qo'shiladi.
- * Shakl backend v2 DTO'lari bilan bir xil (`src/Amaliyotchi.Application/Features/Tutor/**`); kontrakt — har entity'ning `api.ts` izohida.
+ * Admin kundalik nazorat bo'limlari (Bugun, Arizalar, Yuz tasdiqlash, Kundaliklar, Kalendar,
+ * Xarita, Baholash) va talaba profili (davomat/kundalik) MSW handler'lari — v3.28 dan oldin
+ * tyutor bo'limida edi. `src/mocks/handlers.ts` ro'yxatiga `...opsHandlers` sifatida qo'shiladi.
  */
-export const tutorHandlers: HttpHandler[] = [
+export const opsHandlers: HttpHandler[] = [
   ...todayHandlers,
   ...applicationsHandlers,
-  ...studentsHandlers,
+  ...studentProfileHandlers,
   ...diariesHandlers,
   ...calendarHandlers,
   ...mapHandlers,
   ...gradingHandlers,
-  ...companiesHandlers,
   ...faceHandlers,
 ];
 
 /** Mutatsiyalar o'zgartirgan in-memory holatni tiklash (testlar orasida). */
-export function resetTutorMocks() {
+export function resetOpsMocks() {
   resetApplicationsMock();
   resetDiariesMock();
   resetGradingMock();
   resetStudentDiaryReviewsMock();
   resetFaceMock();
-  // Talaba paroli (admin va tyutor profili umumiy mock holati).
   resetStudentPasswordMock();
 }

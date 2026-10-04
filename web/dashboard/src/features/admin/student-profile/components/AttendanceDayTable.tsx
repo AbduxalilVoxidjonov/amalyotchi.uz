@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
 import { Badge, Chip, ChipRow, DataTable, Eyebrow, Modal, type DataTableColumn } from '@/shared/ui';
 import { errorMessage } from '@/shared/api';
-import { fmtDateOnly, fmtDistance } from '../../format';
+import { fmtDateOnly, fmtDistance } from '../../shared/fmt';
 import { useDiaryReview } from '../../diaries/hooks';
 import { DIARY_STATUS_LABEL, type DiaryEntry } from '../../diaries/types';
 import {
@@ -12,7 +12,6 @@ import {
   rejectReasonText,
   type AttendanceAttempt,
   type AttendancePunch,
-  type StudentApiArea,
   type StudentAttendanceDay,
 } from '../types';
 import { PhotoPreview } from './PhotoPreview';
@@ -175,8 +174,6 @@ export interface AttendanceDayTableProps {
   radiusM: number | null;
   /** Talabaning kundaliklari — kun oynasida o'sha kunga tegishlisi ochiladi. */
   diaries?: readonly DiaryEntry[];
-  /** Kun oynasidagi baholash qaysi rol endpoint'iga borishi (tyutor yoki admin paneli). */
-  area?: StudentApiArea;
 }
 
 /** Bitta belgilanish (kirish/chiqish) — ixcham ustun: sarlavha (vaqt), masofa/aniqlik,
@@ -339,17 +336,12 @@ function AttemptsGallery({
  * (urinishlar · ish kuni · radius), keyin "Urinishlar" galereyasi (kunning har bir urinishi — selfi, vaqt,
  * turi, qabul/rad holati, rad sababi, masofa), oxirida kundalik (qisqartirilgan matn, baholash, fayllar).
  */
-export function AttendanceDayTable({
-  days,
-  radiusM,
-  diaries = [],
-  area = 'tutor',
-}: AttendanceDayTableProps) {
+export function AttendanceDayTable({ days, radiusM, diaries = [] }: AttendanceDayTableProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const selected = days.find((d) => d.date === selectedDate) ?? null;
   const diary = selected ? (diaries.find((e) => e.date === selected.date) ?? null) : null;
   const status = selected ? dayStatusLabel(selected) : null;
-  const review = useDiaryReview(area);
+  const review = useDiaryReview();
 
   const diaryHeadingId = useId();
 

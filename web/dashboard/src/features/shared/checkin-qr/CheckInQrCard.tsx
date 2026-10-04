@@ -12,11 +12,10 @@ import {
   qrPngDataUrl,
   qrSvgDataUrl,
 } from './qrImage';
-import type { CheckInQrArea, CompanyCheckInQr } from './types';
+import type { CompanyCheckInQr } from './types';
 import styles from './CheckInQrCard.module.css';
 
 export interface CheckInQrCardProps {
-  area: CheckInQrArea;
   companyId: string;
 }
 
@@ -41,13 +40,13 @@ function useQrImage(payload: string | undefined): ImageState | null {
 const CARD_TITLE = 'Check-in QR kodi';
 
 /**
- * Korxona check-in QR kartasi (admin va tyutor korxona sahifalari uchun umumiy).
+ * Korxona check-in QR kartasi (admin korxona sahifasi).
  * QR rasmi `payload` dan client tomonda chiziladi; PNG yuklab olish, faqat QR + nom + ko'rsatma
  * bilan chop etish va rotatsiya (tasdiq oynasi bilan — eski QR bekor bo'ladi).
  */
-export function CheckInQrCard({ area, companyId }: CheckInQrCardProps) {
-  const query = useCheckinQrQuery(area, companyId);
-  const rotate = useRotateCheckinQr(area, companyId);
+export function CheckInQrCard({ companyId }: CheckInQrCardProps) {
+  const query = useCheckinQrQuery(companyId);
+  const rotate = useRotateCheckinQr(companyId);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const qr = query.data;

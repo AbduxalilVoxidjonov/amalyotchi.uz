@@ -1,5 +1,5 @@
 import type { StatusKind } from '@/shared/ui';
-import { fmtDistance } from '../format';
+import { fmtDistance } from '../shared/fmt';
 import type { TodayAlert, TodayStats } from './types';
 
 export interface StatTileModel {
@@ -13,8 +13,20 @@ export interface StatTileModel {
 /** SPEC-SCREENS §3 `todayStats` — 5 ta tile; qiymatlar backend `stats` dan, izohlar dizayndagi kabi. */
 export function buildStatTiles(stats: TodayStats): StatTileModel[] {
   return [
-    { key: 'present', label: 'Keldi', value: String(stats.present), note: 'radius ichida', dot: 'ok' },
-    { key: 'late', label: 'Kech keldi', value: String(stats.late), note: '09:15 dan keyin', dot: 'late' },
+    {
+      key: 'present',
+      label: 'Keldi',
+      value: String(stats.present),
+      note: 'radius ichida',
+      dot: 'ok',
+    },
+    {
+      key: 'late',
+      label: 'Kech keldi',
+      value: String(stats.late),
+      note: '09:15 dan keyin',
+      dot: 'late',
+    },
     {
       key: 'absent',
       label: 'Kelmadi',
@@ -46,6 +58,19 @@ export interface AlertModel {
   href: string;
 }
 
+/**
+ * Server `href` ni admin marshrutiga moslash. v3.28 dan oldingi server tyutor yo'llarini
+ * (`/tutor`, `/tutor/map`, `/tutor?status=absent`) yuborishi mumkin — ular endi `/admin/...` da.
+ */
+export function adminHref(href: string): string {
+  const legacy = /^\/tutor(?=$|[/?#])/;
+  if (!legacy.test(href)) return href;
+  const rest = href.replace(legacy, '');
+  return rest === '' || rest.startsWith('?') || rest.startsWith('#')
+    ? `/admin/today${rest}`
+    : `/admin${rest}`;
+}
+
 /** `alerts[].kind` → o'zbekcha matn + tugma (SPEC-SCREENS §17 `showAlerts`). */
 export function presentAlert(alert: TodayAlert): AlertModel {
   const n = alert.count;
@@ -57,7 +82,7 @@ export function presentAlert(alert: TodayAlert): AlertModel {
         id: alert.kind,
         text: `${n} ta talaba radius tashqarisidan belgilanishga urindi${far}`,
         action: "Ko'rish",
-        href: alert.href,
+        href: adminHref(alert.href),
       };
     }
     case 'notCheckedIn':
@@ -65,14 +90,14 @@ export function presentAlert(alert: TodayAlert): AlertModel {
         id: alert.kind,
         text: `${n} ta talaba bugun belgilanmadi — Kelmadi deb qayd etildi`,
         action: "Ko'rish",
-        href: alert.href,
+        href: adminHref(alert.href),
       };
     case 'newApplications':
       return {
         id: alert.kind,
         text: `${n} ta yangi ariza tekshirishni kutmoqda`,
         action: "Ko'rib chiqish",
-        href: alert.href,
+        href: adminHref(alert.href),
       };
   }
 }

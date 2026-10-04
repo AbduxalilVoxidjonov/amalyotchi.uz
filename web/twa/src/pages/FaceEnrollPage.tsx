@@ -25,7 +25,7 @@ const CLIENT_ERRORS = {
 
 /**
  * "Yuzni tasdiqlash" (`/face`, kontrakt v3.27 §6.33): talaba etalon selfi yuboradi (rozilik bilan) →
- * tyutor tasdiqlaydi yoki rad etadi. Holatlar: `none` → forma · `pending` → "Tyutor tekshirmoqda" ·
+ * admin tasdiqlaydi yoki rad etadi. Holatlar: `none` → forma · `pending` → "Admin tekshirmoqda" ·
  * `approved` → tasdiqlangan · `rejected` → sabab + qayta yuborish formasi.
  * Darvoza (`required` va etalon yo'q/rad etilgan) holatida tab-bar yashirin — shu yerda "Chiqish" tugmasi bor.
  */
@@ -65,13 +65,13 @@ function StatusCard({ face, gated }: { face: StudentFaceDto; gated: boolean }) {
       {face.status === 'none' && (
         <p className={styles.text}>
           {face.required
-            ? 'Davomatni belgilashda selfingiz yuz rasmingiz bilan solishtiriladi. Davom etish uchun avval yuzingizni suratga olib yuboring — tyutoringiz tasdiqlaydi.'
-            : 'Yuz rasmingizni yuborib qo‘yishingiz mumkin — tyutoringiz tasdiqlaydi.'}
+            ? 'Davomatni belgilashda selfingiz yuz rasmingiz bilan solishtiriladi. Davom etish uchun avval yuzingizni suratga olib yuboring — administrator tasdiqlaydi.'
+            : 'Yuz rasmingizni yuborib qo‘yishingiz mumkin — administrator tasdiqlaydi.'}
         </p>
       )}
       {face.status === 'pending' && (
         <p className={styles.text} role="status">
-          Rasmingiz yuborildi. Tyutor tekshirmoqda — tasdiqlangach davomatda yuzingiz shu rasm bilan
+          Rasmingiz yuborildi. Admin tekshirmoqda — tasdiqlangach davomatda yuzingiz shu rasm bilan
           solishtiriladi.
         </p>
       )}

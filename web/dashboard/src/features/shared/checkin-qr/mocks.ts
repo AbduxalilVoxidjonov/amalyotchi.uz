@@ -1,5 +1,5 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
-import type { CheckInQrArea, CompanyCheckInQr } from './types';
+import type { CompanyCheckInQr } from './types';
 
 /** Boshlang'ich rotatsiya vaqti (mock'larda qat'iy). */
 const BASE_ROTATED_AT = Date.parse('2026-09-01T09:00:00+05:00');
@@ -49,13 +49,10 @@ function notFound() {
 
 /**
  * `GET …/checkin-qr` va `POST …/checkin-qr/rotate` handler'lari.
- * `lookupName` — korxona shu rol ko'lamida bo'lsa uning nomi, aks holda null (→ 404).
+ * `lookupName` — korxona mavjud bo'lsa uning nomi, aks holda null (→ 404).
  */
-export function checkinQrHandlers(
-  area: CheckInQrArea,
-  lookupName: (companyId: string) => string | null,
-): HttpHandler[] {
-  const base = `/api/${area}/companies/:id/checkin-qr`;
+export function checkinQrHandlers(lookupName: (companyId: string) => string | null): HttpHandler[] {
+  const base = '/api/admin/companies/:id/checkin-qr';
   return [
     http.get(base, ({ params }) => {
       const id = String(params['id']);

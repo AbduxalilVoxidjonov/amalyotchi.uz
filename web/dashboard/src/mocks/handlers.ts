@@ -2,9 +2,9 @@ import { http, HttpResponse, type HttpHandler } from 'msw';
 import type { LoginRequest, LogoutRequest, RefreshRequest } from '@amaliyotchi/shared';
 import { navHandlers } from '@/app/nav-mocks';
 import { adminHandlers } from '@/features/admin/mocks';
+import { opsHandlers } from '@/features/admin/ops-mocks';
 import { reportsHandlers } from '@/features/reports/mocks';
 import { studentPasswordHandlers } from '@/features/shared/student-password/mocks';
-import { tutorHandlers } from '@/features/tutor/mocks';
 import { issueSession, mockSessions, mockUsers, problem } from './data';
 
 /**
@@ -97,6 +97,6 @@ export const handlers: HttpHandler[] = [
   ...navHandlers,
   ...adminHandlers,
   ...reportsHandlers,
-  ...tutorHandlers,
+  ...opsHandlers,
   ...studentPasswordHandlers,
 ];

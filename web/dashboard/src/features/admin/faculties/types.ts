@@ -10,7 +10,8 @@ export interface Faculty {
   directions: number;
   groups: number;
   students: number;
-  tutors: number;
+  /** v3.28 dan ishlatilmaydi (tyutor roli olib tashlandi); eski server yuborishi mumkin. */
+  tutors?: number;
   /** Bugungi davomat (kutilganlardan kelgan/kech kelgan), kutilgan bo'lmasa 0. */
   attendancePct: number;
   status: FacultyStatus;

@@ -1,6 +1,6 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
 import { problem } from '@/mocks/data';
-import { parseMonth, todayInTashkent } from '../format';
+import { parseMonth, todayInTashkent } from '../shared/fmt';
 import { MOCK_TODAY_DATE } from '../today/mocks';
 import type { CalendarDayStatus, CalendarResponse, CalendarRow } from './types';
 
@@ -22,7 +22,11 @@ const CODE_STATUS: Record<string, CalendarDayStatus> = {
   d: 'dayOff',
 };
 
-function toStatuses(pattern: string, daysInMonth: number, todayDay: number | null): CalendarDayStatus[] {
+function toStatuses(
+  pattern: string,
+  daysInMonth: number,
+  todayDay: number | null,
+): CalendarDayStatus[] {
   const out: CalendarDayStatus[] = [];
   for (let i = 0; i < daysInMonth; i++) {
     const day = i + 1;
@@ -55,7 +59,7 @@ export function buildCalendarResponse(month: string): CalendarResponse {
 }
 
 export const calendarHandlers: HttpHandler[] = [
-  http.get('/api/tutor/calendar', ({ request }) => {
+  http.get('/api/admin/calendar', ({ request }) => {
     const month = new URL(request.url).searchParams.get('month');
     if (month !== null && !parseMonth(month))
       return HttpResponse.json(

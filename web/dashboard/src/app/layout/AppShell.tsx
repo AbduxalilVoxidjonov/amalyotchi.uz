@@ -1,19 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { UserRole } from '@amaliyotchi/shared/auth';
 import { useLogout } from '@/features/auth/hooks';
 import { homePathForRole, useAuth } from '@/shared/auth/useAuth';
 import { Topbar } from '@/shared/ui';
-import { navForRole, ROLE_LABEL, titleForPath, type NavRole } from '../nav';
+import { adminNav, roleLabel, titleForPath } from '../nav';
 import { navBadges, navCrumb, useNavData } from '../nav-data';
 import styles from './AppShell.module.css';
 import { PageHeaderContext, type PageHeaderOverride } from './page-header-context';
 import { Sidebar } from './Sidebar';
 import { useClock } from './useClock';
-
-function isNavRole(role: UserRole | undefined): role is NavRole {
-  return role === UserRole.Admin || role === UserRole.Tutor;
-}
 
 /**
  * Kirgan foydalanuvchi qobig'i (SPEC-SCREENS §2): sidebar + sticky Topbar + content.
@@ -21,7 +16,7 @@ function isNavRole(role: UserRole | undefined): role is NavRole {
  * Sahifa sarlavhasi/amallari: `usePageHeader()`.
  */
 export function AppShell() {
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
   const location = useLocation();
   const logout = useLogout();
   const clock = useClock();
@@ -29,15 +24,14 @@ export function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [actionsEl, setActionsEl] = useState<HTMLElement | null>(null);
 
-  const role: NavRole = isNavRole(user?.role) ? user.role : UserRole.Tutor;
-  // Badge/crumb — real API; yuklanish yoki xatoda badge yo'q, crumb faqat rol nomi.
-  const nav = useNavData(role);
+  // Badge/crumb — real API; yuklanish yoki xatoda badge yo'q, crumb faqat "Admin".
+  const nav = useNavData();
   const items = useMemo(
-    () => navForRole(role, nav.data ? navBadges(nav.data) : undefined),
-    [role, nav.data],
+    () => adminNav(nav.data ? navBadges(nav.data) : undefined, { isSuperAdmin }),
+    [nav.data, isSuperAdmin],
   );
   const title = override.title ?? titleForPath(items, location.pathname);
-  const crumb = override.crumb ?? navCrumb(role, nav.data);
+  const crumb = override.crumb ?? navCrumb(nav.data);
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   useEffect(() => {
@@ -53,8 +47,8 @@ export function AppShell() {
         <Sidebar
           items={items}
           userName={user?.fullName ?? ''}
-          userRole={ROLE_LABEL[role]}
-          homePath={homePathForRole(role)}
+          userRole={roleLabel(isSuperAdmin)}
+          homePath={homePathForRole(user?.role)}
           onLogout={() => logout.mutate()}
           logoutPending={logout.isPending}
           open={menuOpen}

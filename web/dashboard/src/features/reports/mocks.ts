@@ -2,7 +2,7 @@ import { http, HttpResponse, type HttpHandler } from 'msw';
 import { REPORTS_ENDPOINT } from './api';
 import type { ReportsCatalog } from './types';
 
-/** Backend `GetReportsCatalogQuery` kartalari (4 ta) — tyutor ko'lami. */
+/** Backend `GetReportsCatalogQuery` kartalari (4 ta) — admin ko'lami. */
 const NOTE = "Fayl generatsiyasi keyingi bosqichda (M14) qo'shiladi.";
 
 export const mockReports: ReportsCatalog = {
@@ -26,7 +26,7 @@ export const mockReports: ReportsCatalog = {
       id: 'portfolio',
       name: 'Talaba portfoliosi',
       formats: ['pdf'],
-      desc: 'Kundalik hisobotlar, davomat statistikasi, baholar va tyutor xulosasi — bitta PDF.',
+      desc: 'Kundalik hisobotlar, davomat statistikasi, baholar va admin xulosasi — bitta PDF.',
       available: false,
       note: NOTE,
     },
@@ -42,7 +42,7 @@ export const mockReports: ReportsCatalog = {
       id: 'diaries',
       name: "Kundaliklar yig'masi",
       formats: ['pdf', 'xlsx'],
-      desc: "Davr bo'yicha barcha kundalik yozuvlari va tyutor baholari.",
+      desc: "Davr bo'yicha barcha kundalik yozuvlari va admin baholari.",
       available: false,
       note: NOTE,
     },

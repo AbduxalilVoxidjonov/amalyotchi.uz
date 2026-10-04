@@ -24,9 +24,9 @@ export interface GroupRow {
   direction: string;
   faculty: string;
   facultyCode: string;
-  tutorId: string | null;
-  /** Tyutor FISH; biriktirilmagan — null. */
-  tutor: string | null;
+  /** v3.28 dan ishlatilmaydi (tyutor roli olib tashlandi); eski server yuborishi mumkin. */
+  tutorId?: string | null;
+  tutor?: string | null;
   students: number;
   /** Faol davr boshidan kechagacha. */
   attendancePct: number;

@@ -2,6 +2,9 @@
  * Rol nomlari — src/Amaliyotchi.Domain/Enums/UserRole.cs (Admin=1, Tutor=2, Student=3).
  * JWT `role` claim'ida STRING ("Admin"), DTO'da esa (JsonStringEnumConverter yo'q) RAQAM keladi.
  * `toUserRole` ikkalasini ham qabul qiladi.
+ *
+ * v3.28: tyutor roli olib tashlandi — `Tutor` faqat eski token/javoblarni tanib olish uchun qoldi
+ * (dashboard bunday sessiyani qabul qilmaydi).
  */
 export const UserRole = {
   Admin: 'Admin',

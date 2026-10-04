@@ -1,14 +1,6 @@
-import { QueryClient } from '@tanstack/react-query';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { UserRole } from '@amaliyotchi/shared/auth';
-import { AppShell } from '@/app/layout';
-import { AppProviders } from '@/app/providers';
-import { issueSession, mockUsers } from '@/mocks/data';
-import { useAuthStore } from '@/shared/auth/store';
-import { RequireRole } from '@/shared/auth/RequireRole';
 import {
   detailWithPeriods,
   ENDED_OPTIONS,
@@ -16,36 +8,11 @@ import {
   mockProfilePeriods,
   recordRequests,
 } from './periodTestUtils';
-import StudentDetailPage from './StudentDetailPage';
+import { renderAdminRoute } from '../shared/renderAdminRoute';
 
-/**
- * `renderTutorRoute` naqshi, lekin marshrut shu yerda e'lon qilinadi:
- * `app/router.tsx` PM hududi (KONTRAKT §4.3), shuning uchun agent uni tahrirlamaydi.
- * PM `/tutor/students/:studentId` ni qo'shgach, bu helper `renderTutorRoute` bilan almashtiriladi.
- */
+/** Talaba profili (`/admin/students/:studentId`) — to'liq ilova marshruti, admin sessiyasi bilan. */
 function renderStudentDetail(path: string) {
-  useAuthStore.getState().setSession(issueSession(mockUsers[1]!));
-  const router = createMemoryRouter(
-    [
-      {
-        path: '/tutor',
-        element: (
-          <RequireRole roles={[UserRole.Tutor]}>
-            <AppShell />
-          </RequireRole>
-        ),
-        children: [{ path: 'students/:studentId', element: <StudentDetailPage /> }],
-      },
-    ],
-    { initialEntries: [path] },
-  );
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
-    <AppProviders queryClient={queryClient}>
-      <RouterProvider router={router} />
-    </AppProviders>,
-  );
-  return router;
+  return renderAdminRoute(path);
 }
 
 // jsdom'da `createObjectURL` yo'q — `AuthImage` ning muvaffaqiyatli yo'lini sinash uchun stub.
@@ -58,9 +25,9 @@ beforeAll(() => {
   url.revokeObjectURL = vi.fn();
 });
 
-describe('StudentDetailPage (/tutor/students/:studentId)', () => {
+describe('Talaba profili (/admin/students/:studentId)', () => {
   it("profil, korxona, ariza va amaliyot davri bloklari ko'rinadi", async () => {
-    renderStudentDetail('/tutor/students/s-341030');
+    renderStudentDetail('/admin/students/s-341030');
 
     const profile = await screen.findByRole('article', { name: 'Talaba: Aliyev Akmal' });
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Aliyev Akmal');
@@ -97,7 +64,7 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
 
   it("kun-bakun davomat jadvali, check-in rasmi va sana oralig'i filtri", async () => {
     const user = userEvent.setup();
-    renderStudentDetail('/tutor/students/s-341030');
+    renderStudentDetail('/admin/students/s-341030');
 
     const table = await screen.findByRole('table', { name: 'Kundalik jadval' });
     // Davr boshi (07.09.2026) dan mock "bugun" (12.10.2026) gacha — 36 kun.
@@ -136,7 +103,7 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
 
   it("kun qatori bosilsa — o'sha kunning lokatsiyasi, rasmi va kundaligi ko'rinadi", async () => {
     const user = userEvent.setup();
-    renderStudentDetail('/tutor/students/s-341030');
+    renderStudentDetail('/admin/students/s-341030');
 
     const table = await screen.findByRole('table', { name: 'Kundalik jadval' });
     await user.click(within(table).getByText('07.09.2026'));
@@ -174,7 +141,7 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
 
   it("kun oynasida kundalikni baholash — ball qo'yilsa holat va jadval yangilanadi", async () => {
     const user = userEvent.setup();
-    renderStudentDetail('/tutor/students/s-341030');
+    renderStudentDetail('/admin/students/s-341030');
 
     const table = await screen.findByRole('table', { name: 'Kundalik jadval' });
     // 14.09.2026 — davrning 7-ish kuni: kundaligi "Yuborilgan" (hali baholanmagan).
@@ -203,7 +170,7 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
 
   it("kun oynasida qayta yozishga qaytarish izohsiz o'tmaydi", async () => {
     const user = userEvent.setup();
-    renderStudentDetail('/tutor/students/s-341030');
+    renderStudentDetail('/admin/students/s-341030');
 
     const table = await screen.findByRole('table', { name: 'Kundalik jadval' });
     await user.click(within(table).getByText('14.09.2026'));
@@ -222,7 +189,7 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
 
   it("kun oynasida kun ma'lumoti, keyin kundalik va uning fayllari — ixcham ro'yxat", async () => {
     const user = userEvent.setup();
-    renderStudentDetail('/tutor/students/s-341030');
+    renderStudentDetail('/admin/students/s-341030');
 
     // 12.10.2026 — mock "bugun", eng yangi kundalik: JPG + PDF biriktirilgan.
     const table = await screen.findByRole('table', { name: 'Kundalik jadval' });
@@ -282,7 +249,7 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
   });
 
   it("ariza tasdiqlanmagan bo'lsa korxona bloki bo'sh holatda", async () => {
-    renderStudentDetail('/tutor/students/s-341032');
+    renderStudentDetail('/admin/students/s-341032');
 
     await screen.findByRole('article', { name: 'Talaba: Sobirov Diyor' });
     const company = screen.getByRole('region', { name: 'Korxona' });
@@ -294,16 +261,8 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
     expect(within(application).getByText(/qayta yuklang/)).toBeInTheDocument();
   });
 
-  it("yopilgan davr korxonasi tyutor profilida o'zgarmagan sarlavha bilan ko'rsatiladi", async () => {
-    renderStudentDetail('/tutor/students/s-341032?period=per-2026-yoz');
-
-    const company = within(await screen.findByRole('region', { name: 'Korxona' }));
-    expect((await company.findAllByText('Uzinfocom')).length).toBeGreaterThan(0);
-    expect(company.queryByText('Korxona (tanlangan davr)')).not.toBeInTheDocument();
-  });
-
   it("rad etilgan urinish va radius tashqarisi belgilari alohida ko'rsatiladi", async () => {
-    renderStudentDetail('/tutor/students/s-341034');
+    renderStudentDetail('/admin/students/s-341034');
 
     const table = await screen.findByRole('table', { name: 'Kundalik jadval' });
     // 09.09 — ichkaridan qabul qilingan, lekin undan oldin 2 urinish rad etilgan.
@@ -327,7 +286,7 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
 
   it('kun oynasida urinishlar galereyasi (mock): rad etilgan va qabul qilingan urinishlar rasm bilan', async () => {
     const user = userEvent.setup();
-    renderStudentDetail('/tutor/students/s-341034');
+    renderStudentDetail('/admin/students/s-341034');
 
     const table = await screen.findByRole('table', { name: 'Kundalik jadval' });
     await user.click(within(table).getByText('09.09.2026'));
@@ -348,12 +307,12 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
     ).toHaveLength(2);
   });
 
-  it("ko'lamdan tashqari talaba → 404 bo'sh holati", async () => {
-    renderStudentDetail('/tutor/students/s-999999');
+  it("mavjud bo'lmagan talaba → 404 bo'sh holati", async () => {
+    renderStudentDetail('/admin/students/s-999999');
     expect(await screen.findByText('Talaba topilmadi.')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Talabalarimga qaytish' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Talabalarga qaytish' })).toHaveAttribute(
       'href',
-      '/tutor/students',
+      '/admin/students',
     );
   });
 
@@ -361,25 +320,25 @@ describe('StudentDetailPage (/tutor/students/:studentId)', () => {
     const { http, HttpResponse } = await import('msw');
     const { server } = await import('@/mocks/server');
     server.use(
-      http.get('/api/tutor/students/:id', () =>
+      http.get('/api/admin/students/:id', () =>
         HttpResponse.json(
           { status: 500, title: 'Server xatosi', detail: 'Kutilmagan xato.' },
           { status: 500 },
         ),
       ),
     );
-    renderStudentDetail('/tutor/students/s-341030');
+    renderStudentDetail('/admin/students/s-341030');
     expect(await screen.findByText("Ma'lumotni yuklab bo'lmadi")).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Qayta urinish' })).toBeInTheDocument();
   });
 });
 
 describe('StudentDetailPage — amaliyot davri tanlagichi (v3.5)', () => {
-  const PROFILE = '/api/tutor/students/s-341030';
+  const PROFILE = '/api/admin/students/s-341030';
 
   it("2 ta davr: tanlagich chiqadi, sukut — joriy faol davr; so'rovlar uning periodId'si bilan", async () => {
     const rec = recordRequests();
-    renderStudentDetail('/tutor/students/s-341030');
+    renderStudentDetail('/admin/students/s-341030');
 
     const tabs = await screen.findByRole('tablist', { name: 'Amaliyot davrlari' });
     const [spring, current] = within(tabs).getAllByRole('tab');
@@ -404,7 +363,7 @@ describe('StudentDetailPage — amaliyot davri tanlagichi (v3.5)', () => {
   it("boshqa davr tanlansa: periodId bilan so'rov, URL yangilanadi, rejadagi davr bo'sh holati", async () => {
     const user = userEvent.setup();
     const rec = recordRequests();
-    const router = renderStudentDetail('/tutor/students/s-341030');
+    const router = renderStudentDetail('/admin/students/s-341030');
 
     await screen.findByRole('table', { name: 'Kundalik jadval' });
     await user.click(screen.getByRole('tab', { name: /Bahorgi amaliyot 2027/ }));
@@ -437,13 +396,13 @@ describe('StudentDetailPage — amaliyot davri tanlagichi (v3.5)', () => {
 
   it("URL'dagi ?period= sahifa ochilganda saqlanadi; begona davr → 404 va sukutga qaytish", async () => {
     const user = userEvent.setup();
-    const router = renderStudentDetail('/tutor/students/s-341030?period=per-2027-bahor');
+    const router = renderStudentDetail('/admin/students/s-341030?period=per-2027-bahor');
     expect(await screen.findByRole('tab', { name: /Bahorgi amaliyot 2027/ })).toHaveAttribute(
       'aria-selected',
       'true',
     );
 
-    await act(() => router.navigate('/tutor/students/s-341030?period=begona'));
+    await act(() => router.navigate('/admin/students/s-341030?period=begona'));
     expect(await screen.findByText('Amaliyot davri topilmadi.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: "Joriy davrni ko'rsatish" }));
     expect(await screen.findByRole('table', { name: 'Kundalik jadval' })).toBeInTheDocument();
@@ -451,7 +410,7 @@ describe('StudentDetailPage — amaliyot davri tanlagichi (v3.5)', () => {
   });
 
   it("1 ta davr: tanlagich yo'q, ma'lumot qatori", async () => {
-    renderStudentDetail('/tutor/students/s-341031');
+    renderStudentDetail('/admin/students/s-341031');
     const info = await screen.findByRole('group', { name: 'Amaliyot davri' });
     expect(info).toHaveTextContent('3-kurs ishlab chiqarish amaliyoti');
     expect(info).toHaveTextContent('07.09 — 18.12.2026');
@@ -461,7 +420,6 @@ describe('StudentDetailPage — amaliyot davri tanlagichi (v3.5)', () => {
 
   it('talaba o\'zi belgilagan ish vaqti → "Kunlik vaqt" yonida "talaba belgilagan" belgisi', async () => {
     mockProfilePeriods(
-      'tutor',
       detailWithPeriods(ENDED_OPTIONS.slice(0, 1), {
         ...ENDED_PERIOD,
         dailyStart: '10:00',
@@ -469,22 +427,22 @@ describe('StudentDetailPage — amaliyot davri tanlagichi (v3.5)', () => {
         customWorkHours: true,
       }),
     );
-    renderStudentDetail('/tutor/students/s-341030');
+    renderStudentDetail('/admin/students/s-341030');
     const card = await screen.findByRole('region', { name: 'Amaliyot davri' });
     expect(await within(card).findByText('10:00 — 19:00')).toBeInTheDocument();
     expect(within(card).getByText('talaba belgilagan')).toBeInTheDocument();
   });
 
   it("davr vaqti amalda (customWorkHours: false) → belgi yo'q", async () => {
-    renderStudentDetail('/tutor/students/s-341031');
+    renderStudentDetail('/admin/students/s-341031');
     const card = await screen.findByRole('region', { name: 'Amaliyot davri' });
     expect(await within(card).findByText('09:00 — 18:00')).toBeInTheDocument();
     expect(within(card).queryByText('talaba belgilagan')).not.toBeInTheDocument();
   });
 
   it("0 ta davr: bo'sh holat, statistika yo'q", async () => {
-    mockProfilePeriods('tutor', detailWithPeriods([], null));
-    renderStudentDetail('/tutor/students/s-341030');
+    mockProfilePeriods(detailWithPeriods([], null));
+    renderStudentDetail('/admin/students/s-341030');
     expect(
       await screen.findByText('Talabaga hali amaliyot davri biriktirilmagan'),
     ).toBeInTheDocument();
@@ -494,8 +452,8 @@ describe('StudentDetailPage — amaliyot davri tanlagichi (v3.5)', () => {
 
   it('"Tugagan" belgisi hisoblanadi; oy navigatsiyasi davr chegarasida to\'xtaydi', async () => {
     const user = userEvent.setup();
-    mockProfilePeriods('tutor', detailWithPeriods(ENDED_OPTIONS, ENDED_PERIOD));
-    renderStudentDetail('/tutor/students/s-341030');
+    mockProfilePeriods(detailWithPeriods(ENDED_OPTIONS, ENDED_PERIOD));
+    renderStudentDetail('/admin/students/s-341030');
 
     const tabs = await screen.findByRole('tablist', { name: 'Amaliyot davrlari' });
     // Backend `active` qaytargan, lekin endDate (30.04.2026) o'tgan → "Tugagan".
@@ -523,7 +481,7 @@ describe('StudentDetailPage — amaliyot davri tanlagichi (v3.5)', () => {
 describe('StudentDetailPage · "Yuz" kartasi (v3.27)', () => {
   it('pending: rasm, holat, Tasdiqlash → holat "Tasdiqlangan" bo‘ladi', async () => {
     const user = userEvent.setup();
-    renderStudentDetail('/tutor/students/s-341031');
+    renderStudentDetail('/admin/students/s-341031');
     const card = await screen.findByRole('region', { name: 'Yuz' });
     expect(within(card).getByText('Tekshirilmoqda')).toHaveAttribute('data-status', 'late');
     expect(within(card).getByText('11.10.2026 09:05')).toBeInTheDocument();
@@ -549,7 +507,7 @@ describe('StudentDetailPage · "Yuz" kartasi (v3.27)', () => {
 
   it('pending: Rad etish — sababsiz yuborilmaydi; sabab bilan → "Rad etilgan" va sabab ko‘rinadi', async () => {
     const user = userEvent.setup();
-    renderStudentDetail('/tutor/students/s-341032');
+    renderStudentDetail('/admin/students/s-341032');
     const card = await screen.findByRole('region', { name: 'Yuz' });
     await user.click(within(card).getByRole('button', { name: 'Rad etish' }));
     const dialog = await screen.findByRole('dialog', { name: 'Yuz rasmini rad etish' });
@@ -565,7 +523,7 @@ describe('StudentDetailPage · "Yuz" kartasi (v3.27)', () => {
 
   it('approved: Bekor qilish — tasdiq dialogi → reset → "Yuborilmagan" bo‘sh holat', async () => {
     const user = userEvent.setup();
-    renderStudentDetail('/tutor/students/s-341030');
+    renderStudentDetail('/admin/students/s-341030');
     const card = await screen.findByRole('region', { name: 'Yuz' });
     expect(within(card).getByText('Tasdiqlangan')).toHaveAttribute('data-status', 'ok');
     expect(within(card).getByText('01.10.2026 10:40')).toBeInTheDocument();
@@ -591,7 +549,7 @@ describe('StudentDetailPage · "Yuz" kartasi (v3.27)', () => {
   });
 
   it("kundalik jadvalda yuz moslik bali ko'rinadi", async () => {
-    renderStudentDetail('/tutor/students/s-341030');
+    renderStudentDetail('/admin/students/s-341030');
     const table = await screen.findByRole('table', { name: 'Kundalik jadval' });
     await waitFor(() =>
       expect(within(table).getAllByText(/^Yuz: \d+%$/).length).toBeGreaterThan(0),

@@ -4,7 +4,6 @@ import { useLocation } from 'react-router-dom';
 import { server } from '@/mocks/server';
 import { FacultiesPage } from '../faculties/FacultiesPage';
 import { renderWithProviders } from '../shared/renderWithProviders';
-import { TutorsPage } from '../tutors/TutorsPage';
 import { STUDENTS_ENDPOINT } from './api';
 import { clampPageSize } from './pageSize';
 import { StudentsPage } from './StudentsPage';
@@ -195,10 +194,7 @@ describe('StudentsPage — sahifa hajmi', () => {
 });
 
 describe("boshqa admin jadvallarida sahifa hajmi boshqaruvi yo'q", () => {
-  it.each([
-    ['Tyutorlar', <TutorsPage key="t" />],
-    ['Fakultetlar', <FacultiesPage key="f" />],
-  ])('%s', async (_name, ui) => {
+  it.each([['Fakultetlar', <FacultiesPage key="f" />]])('%s', async (_name, ui) => {
     renderWithProviders(ui);
     await screen.findByRole('button', { name: 'Keyingi' });
     await screen.findByText(/^\d+–\d+ \/ \d+$/);

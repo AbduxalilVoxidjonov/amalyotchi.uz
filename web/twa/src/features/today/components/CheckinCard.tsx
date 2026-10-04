@@ -131,7 +131,7 @@ export function CheckinCard({ today, mode, flow }: CheckinCardProps) {
 
       <p className={styles.hint}>
         Belgilanish faqat korxona radiusi ichidan qabul qilinadi. Har bir urinish — muvaffaqiyatsizi
-        ham — tyutorga ko'rinadi.
+        ham — adminga ko'rinadi.
       </p>
     </Card>
   );

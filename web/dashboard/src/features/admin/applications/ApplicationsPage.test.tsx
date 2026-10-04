@@ -1,10 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { renderTutorRoute } from '../test-utils';
+import { renderAdminRoute } from '../shared/renderAdminRoute';
 
-describe('ApplicationsPage (/tutor/applications)', () => {
+describe('ApplicationsPage (/admin/applications)', () => {
   it("tab'lar, kartalar va birinchi ariza detail'i ko'rinadi", async () => {
-    renderTutorRoute('/tutor/applications');
+    renderAdminRoute('/admin/applications');
     expect(await screen.findByRole('tab', { name: /Yangi/ })).toHaveAttribute(
       'aria-selected',
       'true',
@@ -30,7 +30,7 @@ describe('ApplicationsPage (/tutor/applications)', () => {
 
   it('karta tanlash → ?id=, radius stepper ±50 m, checkbox lokal', async () => {
     const user = userEvent.setup();
-    const router = renderTutorRoute('/tutor/applications');
+    const router = renderAdminRoute('/admin/applications');
     const list = await screen.findByRole('list', { name: "Arizalar ro'yxati" });
 
     await user.click(within(list).getByRole('button', { name: /Mirzayev Jasur/ }));
@@ -54,7 +54,7 @@ describe('ApplicationsPage (/tutor/applications)', () => {
 
   it("Tasdiqlash → mutation → ro'yxat yangilanadi (ariza Tasdiqlangan tab'ga o'tadi)", async () => {
     const user = userEvent.setup();
-    const router = renderTutorRoute('/tutor/applications?id=app-2');
+    const router = renderAdminRoute('/admin/applications?id=app-2');
     const detail = await screen.findByRole('article', { name: 'Ariza: Mirzayev Jasur' });
     expect(screen.getByRole('tab', { name: /Yangi/ })).toHaveTextContent('7');
 
@@ -63,7 +63,9 @@ describe('ApplicationsPage (/tutor/applications)', () => {
     expect(within(detail).getByRole('alert')).toHaveTextContent(/izoh/i);
     expect(router.state.location.search).toBe('?id=app-2');
 
-    await user.click(within(detail).getByRole('checkbox', { name: 'STIR 9 xonali va haqiqiy korxonaga tegishli' }));
+    await user.click(
+      within(detail).getByRole('checkbox', { name: 'STIR 9 xonali va haqiqiy korxonaga tegishli' }),
+    );
     await user.click(within(detail).getByRole('button', { name: 'Tasdiqlash' }));
 
     const list = screen.getByRole('list', { name: "Arizalar ro'yxati" });
@@ -83,21 +85,27 @@ describe('ApplicationsPage (/tutor/applications)', () => {
     expect(within(approved).getByText('Tasdiqlangan')).toHaveAttribute('data-status', 'ok');
     expect(within(approved).getByRole('button', { name: 'Tasdiqlash' })).toBeDisabled();
     expect(
-      within(approved).getByRole('checkbox', { name: 'STIR 9 xonali va haqiqiy korxonaga tegishli' }),
+      within(approved).getByRole('checkbox', {
+        name: 'STIR 9 xonali va haqiqiy korxonaga tegishli',
+      }),
     ).toBeChecked();
     expect(within(approved).getByText('150 m')).toBeInTheDocument();
   });
 
   it("Rad etish izoh bilan → 'Rad etilgan' tab'da izoh ko'rinadi", async () => {
     const user = userEvent.setup();
-    renderTutorRoute('/tutor/applications?id=app-5');
+    renderAdminRoute('/admin/applications?id=app-5');
     const detail = await screen.findByRole('article', { name: 'Ariza: Saidov Alisher' });
     await user.type(within(detail).getByLabelText('Izoh'), 'Shartnoma muddati tugagan');
     await user.click(within(detail).getByRole('button', { name: 'Rad etish' }));
-    await waitFor(() => expect(screen.getByRole('tab', { name: /Rad etilgan/ })).toHaveTextContent('2'));
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: /Rad etilgan/ })).toHaveTextContent('2'),
+    );
     await user.click(screen.getByRole('tab', { name: /Rad etilgan/ }));
     await user.click(await screen.findByRole('button', { name: /Saidov Alisher/ }));
     const rejected = await screen.findByRole('article', { name: 'Ariza: Saidov Alisher' });
-    expect(within(rejected).getByText(/Oldingi izoh: Shartnoma muddati tugagan/)).toBeInTheDocument();
+    expect(
+      within(rejected).getByText(/Oldingi izoh: Shartnoma muddati tugagan/),
+    ).toBeInTheDocument();
   });
 });

@@ -1,4 +1,5 @@
 import type { HttpHandler } from 'msw';
+import { adminsHandlers } from './admins/mocks';
 import { auditHandlers } from './audit/mocks';
 import { companiesHandlers } from './companies/mocks';
 import { dashboardHandlers } from './dashboard/mocks';
@@ -10,7 +11,6 @@ import { messagesHandlers } from './messages/mocks';
 import { practicePeriodsHandlers } from './practice-periods/mocks';
 import { settingsHandlers } from './settings/mocks';
 import { studentsHandlers } from './students/mocks';
-import { tutorsHandlers } from './tutors/mocks';
 
 /**
  * Admin bo'limi MSW handler'lari (`src/mocks/handlers.ts` ro'yxatiga qo'shiladi).
@@ -22,7 +22,7 @@ export const adminHandlers: HttpHandler[] = [
   ...departmentsHandlers,
   ...directionsHandlers,
   ...groupsHandlers,
-  ...tutorsHandlers,
+  ...adminsHandlers,
   ...studentsHandlers,
   ...companiesHandlers,
   ...practicePeriodsHandlers,

@@ -69,7 +69,7 @@ export function useAutoLogin() {
 export const STAFF_REJECTED_MESSAGE =
   "Bu ilova faqat talabalar uchun. Xodimlar dashboard'dan kiradi.";
 
-/** Xodim (admin/tyutor) hisobi bilan web-login — sessiya saqlanmaydi. */
+/** Xodim (admin) hisobi bilan web-login — sessiya saqlanmaydi. */
 export class StaffAccountError extends Error {
   constructor() {
     super(STAFF_REJECTED_MESSAGE);
@@ -127,7 +127,7 @@ export function useWebLogin() {
 /** 409 (Telegram akkaunti / hisob boshqasiga bog'langan) — `detail` ostidagi qo'shimcha izoh. */
 export function telegramLinkErrorHint(error: unknown): string | undefined {
   return isApiError(error) && error.kind === 'conflict'
-    ? 'Tyutoringizga murojaat qiling.'
+    ? 'Administratorga murojaat qiling.'
     : undefined;
 }
 

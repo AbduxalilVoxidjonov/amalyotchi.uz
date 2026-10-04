@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button, Card, EmptyState, Pill, PillGroup } from '@/shared/ui';
 import { QueryState } from '../components/QueryState';
-import { mutationErrorMessage } from '../errors';
-import { fmtDate, fmtTime } from '../format';
-import { PhotoPreview } from '../students/components/PhotoPreview';
+import { mutationErrorMessage } from '../shared/errors';
+import { fmtDate, fmtTime } from '../shared/fmt';
+import { PhotoPreview } from '../student-profile/components/PhotoPreview';
 import { FaceStatusBadge } from './components/FaceStatusBadge';
 import { RejectFaceModal } from './components/RejectFaceModal';
 import { useFaceAction, useFaceEnrollmentsQuery } from './hooks';
@@ -23,7 +23,7 @@ const EMPTY: Record<FaceEnrollmentTab, { title: string; description: string }> =
 const fmtDateTime = (iso: string | null) => (iso ? `${fmtDate(iso)} ${fmtTime(iso)}` : '—');
 
 /**
- * Tyutor · Yuz tasdiqlash (`/tutor/face`, kontrakt §6.33) — talabalarning etalon yuz rasmlari.
+ * Admin · Yuz tasdiqlash (`/admin/face`, kontrakt §6.33) — talabalarning etalon yuz rasmlari.
  * Tab (`?status=`) bo'yicha ro'yxat; "Kutilmoqda" da — Tasdiqlash va Rad etish (sabab majburiy).
  * Tasdiqlangan rasm keyingi check-in selfilari bilan solishtiriladi.
  */
@@ -123,7 +123,7 @@ export function FaceEnrollmentsPage() {
                     <div className={styles.body}>
                       <div className={styles.head}>
                         <Link
-                          to={`/tutor/students/${encodeURIComponent(item.studentId)}`}
+                          to={`/admin/students/${encodeURIComponent(item.studentId)}`}
                           className={styles.name}
                         >
                           {item.fullName}

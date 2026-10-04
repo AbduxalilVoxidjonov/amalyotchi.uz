@@ -187,7 +187,7 @@ function fromSeed(s: Seed): MockApplication {
   };
 }
 
-/** Testlar orasida `resetTutorMocks()` bilan tiklanadi. */
+/** Testlar orasida `resetOpsMocks()` bilan tiklanadi. */
 export let mockApplications: MockApplication[] = [];
 
 export function resetApplicationsMock() {
@@ -224,7 +224,7 @@ const validation = (errors: Record<string, string[]>) =>
   });
 
 export const applicationsHandlers: HttpHandler[] = [
-  http.get('/api/tutor/applications', ({ request }) => {
+  http.get('/api/admin/applications', ({ request }) => {
     const status = new URL(request.url).searchParams.get('status');
     if (status !== null && !(STATUSES as string[]).includes(status))
       return validation({ Status: [`The value '${status}' is not valid for Status.`] });
@@ -235,14 +235,14 @@ export const applicationsHandlers: HttpHandler[] = [
     return HttpResponse.json(body);
   }),
 
-  http.get('/api/tutor/applications/:id', ({ params }) => {
+  http.get('/api/admin/applications/:id', ({ params }) => {
     const app = mockApplications.find((a) => a.id === params['id']);
     if (!app)
       return HttpResponse.json(problem(404, 'Topilmadi', 'Ariza topilmadi.'), { status: 404 });
     return HttpResponse.json(app);
   }),
 
-  http.post('/api/tutor/applications/:id/decision', async ({ params, request }) => {
+  http.post('/api/admin/applications/:id/decision', async ({ params, request }) => {
     const app = mockApplications.find((a) => a.id === params['id']);
     if (!app)
       return HttpResponse.json(problem(404, 'Topilmadi', 'Ariza topilmadi.'), { status: 404 });

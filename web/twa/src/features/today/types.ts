@@ -32,7 +32,7 @@ export interface TodayCheckInDto {
   /** Korxona radiusi; ariza yo'q bo'lsa null. */
   radiusM: number | null;
   gpsAccuracyM: number | null;
-  /** Shubhali belgilanish (tez ko'chish, bir xil koordinata …) — tyutor tekshiradi. */
+  /** Shubhali belgilanish (tez ko'chish, bir xil koordinata …) — admin tekshiradi. */
   suspicious: boolean;
   /** Check-out qilinmagan — server 18:00 da avtomatik yopgan. */
   autoClosed: boolean;

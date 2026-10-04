@@ -29,8 +29,8 @@ import type {
  * POST /api/admin/students/assign-company     → AssignCompanyResult · 400 · 404 · 409
  * POST /api/admin/students/{id}/company       → AdminStudentDetail · 400 · 404 · 409
  *   (profildan bitta talabani biriktirish yoki boshqa korxonaga o'tkazish)
- * Davomat va kundaliklar (`{id}/attendance`, `{id}/diaries`) — tyutor profilidagi bilan bir xil
- * shakl; ular `features/tutor/students/api.ts` dagi `studentsApi` orqali `area: 'admin'` bilan so'raladi.
+ * Davomat va kundaliklar (`{id}/attendance`, `{id}/diaries`) — `features/admin/student-profile/api.ts`
+ * dagi `studentProfileApi` orqali so'raladi.
  */
 export const STUDENTS_ENDPOINT = '/api/admin/students';
 

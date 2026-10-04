@@ -181,7 +181,7 @@ export function mockPeriodDays(periodId: string | null): StudentPeriodDays | nul
       startDate: option.startDate,
       endDate: option.endDate,
       requiredDays: work.length,
-      // Backend (§6.17): tyutor statistikasi maxraji — o'tgan ish kunlari, sababli kunlarsiz;
+      // Backend (§6.17): admin statistikasi maxraji — o'tgan ish kunlari, sababli kunlarsiz;
       // bugun — belgilangan yoki oyna yopilgan bo'lsa (holat `pending` emas).
       elapsedWorkDays: work.filter(
         (d) =>

@@ -23,7 +23,7 @@ import { forbidden, problem, unauthorized } from './problem';
  *   POST /api/auth/refresh  { refreshToken } → AuthResultDto
  *   GET  /api/auth/me → UserSummaryDto
  *   POST /api/auth/login { hemisId, password } → AuthResultDto (+ mustChangePassword) | 403 `detail` (kontrakt v3.8)
- *        (hisoblar — `mockAccounts` (data.ts): 341030/talaba12345 · 341031/vaqtincha1 · 100000000002/tyutor123)
+ *        (hisoblar — `mockAccounts` (data.ts): 341030/talaba12345 · 341031/vaqtincha1 · 100000000002/xodim12345)
  *   POST /api/auth/logout { refreshToken } → 204
  *   POST /api/auth/change-password { currentPassword, newPassword, refreshToken? } → 204 | 400 errors.CurrentPassword/NewPassword
  * Mock rejimida initData bo'sh bo'lsa ham (oddiy brauzer) kirishga ruxsat beriladi —
@@ -45,7 +45,7 @@ const authHandlers: HttpHandler[] = [
     const linked = accountByUserId(mockTelegramLinks.get(body.initData ?? ''));
     if (linked) return HttpResponse.json(issueSession(linked.user));
     if (body.initData === 'unlinked') {
-      return forbidden('Hisob topilmadi — tyutoringizdan taklif havolasini oling.');
+      return forbidden('Hisob topilmadi — administratordan taklif havolasini oling.');
     }
     return HttpResponse.json(issueSession(mockStudent));
   }),

@@ -16,8 +16,8 @@ import type {
   StudentPeriodOption,
   StudentApplicationStatus,
   StudentStatus,
-  TutorStudent,
-  TutorStudentDetail,
+  ProfileStudent,
+  StudentProfileDetail,
 } from './types';
 import { hasMockStudentPassword } from '@/features/shared/student-password/passwordStore';
 import { mockFaceOf } from '../face/mockStore';
@@ -26,7 +26,7 @@ import { mockFaceOf } from '../face/mockStore';
  * SPEC-SCREENS §5 mock (6 ta). `buildDetail`/`buildAttendance`/`buildDiaries` admin mock'laridan
  * ham ishlatiladi (`features/admin/students/mocks.ts`) — ikkala profil bir xil ma'lumotni ko'rsatadi.
  */
-export const mockStudents: TutorStudent[] = [
+export const mockStudents: ProfileStudent[] = [
   {
     id: 's-341030',
     name: 'Aliyev Akmal',
@@ -314,7 +314,7 @@ interface ProfileSeed {
  * Kod harflari: k — keldi · l — kech keldi · a — kelmadi · s — sababli ·
  * x — keldi (ichkaridan qabul qilindi), lekin undan oldin radius tashqarisidan rad etilgan
  *     urinishlar bo'lgan → shubhali kun · o — qabul qilingan, ammo radius keyin toraytirilgani
- *     uchun `outOfRadius` · m — tyutor qo'lda belgilagan.
+ *     uchun `outOfRadius` · m — admin qo'lda belgilagan.
  */
 const PROFILES: Record<string, ProfileSeed> = {
   's-341030': {
@@ -610,7 +610,7 @@ export function buildAttendance(
           ? `Qabul qilingan belgilanish radius tashqarisida (${Math.round(distanceM)} m > ${radiusM} m)`
           : null,
       manual,
-      manualReason: manual ? 'Korxona rahbari tasdiqlagan — tyutor qo‘lda belgiladi' : null,
+      manualReason: manual ? 'Korxona rahbari tasdiqlagan — admin qo‘lda belgiladi' : null,
       leaveRequestId: status === 'excused' ? `lr-${studentId}-${date}` : null,
       diary: hasDiary ? dayDiary(`sd-${studentId}-${date}`, diaryStatus, w) : null,
       attempts: rejectedBefore ? 3 : hasPunch ? 1 : 0,
@@ -665,7 +665,7 @@ const DIARY_LEARNED: (string | null)[] = [
   'Forma validatsiyasi va xato matnlari',
 ];
 
-/** Mock'da qo'yilgan baholar (`POST /api/{tutor|admin}/diaries/:id/review`) — `buildDiaries` ustiga qo'yiladi. */
+/** Mock'da qo'yilgan baholar (`POST /api/admin/diaries/:id/review`) — `buildDiaries` ustiga qo'yiladi. */
 export type DiaryReviewPatch = Pick<DiaryEntry, 'status' | 'score' | 'comment' | 'reviewedAt'>;
 
 const diaryReviews = new Map<string, DiaryReviewPatch>();
@@ -680,7 +680,7 @@ function dayDiary(id: string, seedStatus: DiaryStatus, w: number): AttendanceDay
   return { id, status: seedStatus, score: seedStatus === 'approved' ? 3 + (w % 3) : null };
 }
 
-/** Mock baholarni tiklash (testlar orasida) — `resetTutorMocks()` chaqiradi. */
+/** Mock baholarni tiklash (testlar orasida) — `resetOpsMocks()` chaqiradi. */
 export function resetStudentDiaryReviewsMock() {
   diaryReviews.clear();
 }
@@ -756,7 +756,7 @@ export function buildDiaries(studentId: string, periodId: string | null = null):
 export function buildDetail(
   studentId: string,
   periodId: string | null = null,
-): TutorStudentDetail | 'periodNotFound' | null {
+): StudentProfileDetail | 'periodNotFound' | null {
   const student = mockStudents.find((s) => s.id === studentId);
   const seed = PROFILES[studentId];
   if (!student || !seed) return null;
@@ -889,9 +889,6 @@ export function buildDetail(
   };
 }
 
-const notFound = () =>
-  HttpResponse.json(problem(404, 'Topilmadi', 'Talaba topilmadi.'), { status: 404 });
-
 /** Begona `periodId` → 404 (backend: "Amaliyot davri topilmadi."). */
 export const periodNotFound = () =>
   HttpResponse.json(problem(404, 'Topilmadi', 'Amaliyot davri topilmadi.'), { status: 404 });
@@ -908,12 +905,7 @@ export function clampAttendanceRange(
   return { from: start, to: end };
 }
 
-const validation = (errors: Record<string, string[]>) =>
-  HttpResponse.json(problem(400, 'One or more validation errors occurred.', '', { errors }), {
-    status: 400,
-  });
-
-/** `…/attendance?periodId=&from=&to=` javobi (tyutor va admin mock'lari uchun umumiy). */
+/** `…/attendance?periodId=&from=&to=` javobi (admin talaba mock'i uchun). */
 export function mockAttendanceResponse(
   studentId: string,
   periodId: string | null,
@@ -957,33 +949,11 @@ function pngBytes(): ArrayBuffer {
   return bytes.buffer;
 }
 
-export const studentsHandlers: HttpHandler[] = [
-  http.get('/api/tutor/students', () => HttpResponse.json(mockStudents)),
-
-  http.get('/api/tutor/students/:id', ({ params, request }) => {
-    const periodId = new URL(request.url).searchParams.get('periodId');
-    const detail = buildDetail(String(params['id']), periodId);
-    if (detail === 'periodNotFound') return periodNotFound();
-    return detail ? HttpResponse.json(detail) : notFound();
-  }),
-
-  http.get('/api/tutor/students/:id/attendance', ({ params, request }) => {
-    const studentId = String(params['id']);
-    if (!PROFILES[studentId]) return notFound();
-    const url = new URL(request.url);
-    const from = url.searchParams.get('from');
-    const to = url.searchParams.get('to');
-    if (from && to && from > to)
-      return validation({ From: ["`from` `to` dan katta bo'lmasligi kerak."] });
-    return mockAttendanceResponse(studentId, url.searchParams.get('periodId'), from, to);
-  }),
-
-  http.get('/api/tutor/students/:id/diaries', ({ params, request }) => {
-    const studentId = String(params['id']);
-    if (!PROFILES[studentId]) return notFound();
-    return mockDiariesResponse(studentId, new URL(request.url).searchParams.get('periodId'));
-  }),
-
+/**
+ * Talaba profili bloklari (`buildDetail`, davomat, kundalik) — admin talaba mock'i
+ * (`features/admin/students/mocks.ts`) shu manbadan quradi. Bu yerda faqat fayl xizmati.
+ */
+export const studentProfileHandlers: HttpHandler[] = [
   /**
    * Fayl xizmati mock'i (`/api/files/{id}`) — Bearer token bilan so'raladi
    * (`AuthImage`, `AuthFileButton`). `doc-`/`contract-` id'lari PDF qaytaradi: talaba kundalikni

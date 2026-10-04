@@ -1,5 +1,5 @@
 import { pctKind, StatGrid, StatTile } from '@/shared/ui';
-import { fmtDecimal } from '@/features/tutor/format';
+import { fmtDecimal } from '@/features/admin/shared/fmt';
 import { formatCount, formatPct } from '../../shared/format';
 import type { GroupMetrics } from '../types';
 import { GradeDistributionView } from './GradeDistributionView';

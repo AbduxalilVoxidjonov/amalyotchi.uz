@@ -188,7 +188,7 @@ describe('FacultiesPage', () => {
     await user.click(within(dialog).getByRole('button', { name: "O'chirish" }));
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'Fakultetga guruhlar, tyutorlar yoki talabalar biriktirilgan',
+      'Fakultetga guruhlar yoki talabalar biriktirilgan',
     );
     expect(screen.getByText('Iqtisodiyot va moliya')).toBeInTheDocument();
   });

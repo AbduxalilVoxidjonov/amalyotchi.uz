@@ -1,4 +1,4 @@
-import { PERIOD_SEARCH_PARAM } from '@/features/tutor/students/periods';
+import { PERIOD_SEARCH_PARAM } from '@/features/admin/student-profile/periods';
 import type { PracticePeriodListItem } from './types';
 
 export const PRACTICE_PERIODS_HREF = '/admin/practice-periods';

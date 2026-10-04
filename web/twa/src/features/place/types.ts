@@ -29,7 +29,7 @@ export interface PracticeContractDto {
 /** GET /api/student/place (`PracticePlaceDto`). Ariza yo'q → 404. */
 export interface PracticePlaceDto {
   status: ApplicationStatus;
-  /** Tyutor izohi (qaytarilgan/rad etilgan arizada). */
+  /** Admin izohi (qaytarilgan/rad etilgan arizada). */
   comment: string | null;
   company: string;
   /** STIR "304512889" — UI 3-3-3 qilib ko'rsatadi. */

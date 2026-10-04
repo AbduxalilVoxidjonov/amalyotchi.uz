@@ -1,8 +1,8 @@
 import type { StatusKind } from '@/shared/ui';
-import { daysSince, fmtDate, fmtRelative } from '../format';
+import { daysSince, fmtDate, fmtRelative } from '../shared/fmt';
 
 /**
- * Backend `ApplicationStatus` (tyutor ko'radigan qismi; JSON camelCase). `transferred` — admin talabani
+ * Backend `ApplicationStatus` (arizalar sahifasida ko'rinadigan qismi; JSON camelCase). `transferred` — admin talabani
  * boshqa korxonaga o'tkazgan (yakuniy holat, faqat ko'rish); u alohida tab emas.
  */
 export type ApplicationStatus =
@@ -49,14 +49,14 @@ export interface ApplicationContract {
   url: string;
 }
 
-/** GET /api/tutor/applications/:id */
+/** GET /api/admin/applications/:id */
 export interface ApplicationDetail extends ApplicationSummary {
   coords: GeoCoords;
-  /** Joriy taklif (tasdiqlangach — tyutor qiymati). */
+  /** Joriy taklif (tasdiqlangach — admin qiymati). */
   radiusM: number;
   companyDetails: ApplicationCompany;
   contract: ApplicationContract | null;
-  /** Tyutor izohi (qaytarish/rad etish sababi yoki tasdiqlash izohi). */
+  /** Admin izohi (qaytarish/rad etish sababi yoki tasdiqlash izohi). */
   comment: string | null;
   /** Belgilangan tekshiruv punktlari (0..6). */
   checklist: number[];
@@ -65,7 +65,7 @@ export interface ApplicationDetail extends ApplicationSummary {
 
 export type ApplicationCounts = Record<ApplicationTab, number>;
 
-/** GET /api/tutor/applications?status= */
+/** GET /api/admin/applications?status= */
 export interface ApplicationListResponse {
   counts: ApplicationCounts;
   items: ApplicationSummary[];
@@ -74,7 +74,7 @@ export interface ApplicationListResponse {
 export type ApplicationDecision = 'approve' | 'return' | 'reject';
 
 /**
- * POST /api/tutor/applications/:id/decision
+ * POST /api/admin/applications/:id/decision
  * approve → `radiusM` majburiy (50–1000, 50 qadam), `checklist` ixtiyoriy;
  * return/reject → `comment` majburiy. Xato → 400 `errors`; hal qilingan → 409.
  */

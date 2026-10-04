@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { Badge, Button, Card, CardBody, CardHeader, FactGrid, type FactItem } from '@/shared/ui';
-import { formatPhone } from '../../shared/format';
 import { STUDENT_STATUS_LABEL, type ActiveCompanyRef, type AdminStudentDetail } from '../types';
 import styles from './AdminStudentMetaCard.module.css';
 
@@ -31,8 +30,8 @@ function ActiveCompanyValue({ company }: { company: ActiveCompanyRef | null }) {
 /**
  * Admin profilidagi qo'shimcha blok: HOZIRGI aktiv korxona — `activeCompany`, tanlangan davrdan
  * mustaqil (biriktirish / o'tkazish tugmasi bilan),
- * tyutor bilan aloqa, kafedra, Telegram holati va ro'yxatdagi holat. Qolgan bloklar tyutor
- * profilidagi `StudentDetailView` bilan bir xil.
+ * kafedra, yo'nalish, Telegram holati va ro'yxatdagi holat. Qolgan bloklar —
+ * `student-profile/components/StudentDetailView`.
  */
 export function AdminStudentMetaCard({
   detail,
@@ -47,15 +46,6 @@ export function AdminStudentMetaCard({
 
   const items: FactItem[] = [
     { k: 'Korxona', v: <ActiveCompanyValue company={detail.activeCompany ?? null} /> },
-    {
-      k: 'Tyutor',
-      v: detail.tutor ? (
-        <Link to={`/admin/tutors/${detail.tutor.id}`}>{detail.tutor.fullName}</Link>
-      ) : (
-        'Biriktirilmagan'
-      ),
-    },
-    { k: 'Tyutor telefoni', v: detail.tutor?.phone ? formatPhone(detail.tutor.phone) : '—' },
     { k: 'Kafedra', v: detail.department },
     { k: "Yo'nalish", v: detail.direction },
     { k: 'Telegram', v: <Badge status={telegram.kind}>{telegram.label}</Badge> },

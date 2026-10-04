@@ -52,11 +52,11 @@ describe("DiaryPage — davr bo'yicha guruhlash (v3.5)", () => {
 });
 
 describe('DiaryPage (kundaligim)', () => {
-  it("o'z yozuvlari ro'yxati — tyutor tugmalarisiz", async () => {
+  it("o'z yozuvlari ro'yxati — admin tugmalarisiz", async () => {
     renderApp('/kundalik');
     expect(await screen.findByText('Yozuvlarim · 4')).toBeInTheDocument();
     expect(screen.getByText('Yuborilgan')).toBeInTheDocument();
-    expect(screen.getByText("Tyutor ko'rdi")).toBeInTheDocument();
+    expect(screen.getByText("Admin ko'rdi")).toBeInTheDocument();
     expect(screen.getByText('Qayta yozish kerak')).toBeInTheDocument();
     expect(screen.getByText('Tasdiqlangan')).toBeInTheDocument();
     expect(screen.getByText('11.10.2026 · 17:42')).toBeInTheDocument();
@@ -65,7 +65,7 @@ describe('DiaryPage (kundaligim)', () => {
       '/files/ekran_surati_1.png',
     );
     expect(screen.queryByRole('button', { name: 'Tasdiqlash' })).not.toBeInTheDocument();
-    expect(screen.getByText(/Tyutor izohi:/)).toBeInTheDocument();
+    expect(screen.getByText(/Admin izohi:/)).toBeInTheDocument();
   });
 
   it("qisqa matn — mijoz validatsiyasi; to'liq matn → yangi yozuv ro'yxat boshida", async () => {

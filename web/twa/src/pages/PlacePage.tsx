@@ -104,12 +104,12 @@ export function PlacePage() {
         />
         {p.comment && canResubmit && (
           <p className={styles.pendingNote} role="status">
-            Tyutor izohi: {p.comment}
+            Admin izohi: {p.comment}
           </p>
         )}
         {!isPast && p.status === 'submitted' && (
           <p className={styles.pendingNote} role="status">
-            Ariza tyutorga yuborildi — ko'rib chiqilmoqda.
+            Ariza adminga yuborildi — ko'rib chiqilmoqda.
           </p>
         )}
         <dl className={styles.fields}>
@@ -127,7 +127,7 @@ export function PlacePage() {
         ) : (
           <p className={styles.note}>
             Tasdiqlangandan keyin koordinatani o'zgartirish mumkin emas. Korxona manzili o'zgargan
-            bo'lsa tyutorga murojaat qiling.
+            bo'lsa administratorga murojaat qiling.
           </p>
         )}
       </Card>
@@ -148,7 +148,7 @@ export function PlacePage() {
             />
             {p.contract.approvedAt && (
               <p className={styles.approved}>
-                {formatDate(p.contract.approvedAt)} da tyutor {p.contract.approvedBy} tasdiqladi
+                {formatDate(p.contract.approvedAt)} da {p.contract.approvedBy} tasdiqladi
               </p>
             )}
           </Card>
@@ -167,10 +167,10 @@ export function PlacePage() {
               />
               {p.contract.approvedAt ? (
                 <p className={styles.approved}>
-                  {formatDate(p.contract.approvedAt)} da tyutor {p.contract.approvedBy} tasdiqladi
+                  {formatDate(p.contract.approvedAt)} da {p.contract.approvedBy} tasdiqladi
                 </p>
               ) : (
-                <p className={styles.pendingNote}>Tyutor tasdig'i kutilmoqda</p>
+                <p className={styles.pendingNote}>Admin tasdig'i kutilmoqda</p>
               )}
               {p.contract.templateUrl && (
                 <Button
@@ -186,7 +186,7 @@ export function PlacePage() {
             <EmptyState
               className={styles.emptyContract}
               title="Shartnoma hali yuklanmagan"
-              description="Shartnomani tyutor orqali yuklang."
+              description="Shartnomani administrator orqali yuklang."
             />
           )}
         </Card>

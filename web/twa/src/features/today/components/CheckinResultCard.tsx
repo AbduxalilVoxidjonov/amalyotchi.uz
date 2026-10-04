@@ -64,7 +64,7 @@ export function CheckinResultCard({
 
       {checkin.suspicious && (
         <p className={styles.warn} role="note">
-          Belgilanish shubhali deb belgilandi — tyutor tekshiradi.
+          Belgilanish shubhali deb belgilandi — admin tekshiradi.
         </p>
       )}
       {action && <div className={styles.action}>{action}</div>}

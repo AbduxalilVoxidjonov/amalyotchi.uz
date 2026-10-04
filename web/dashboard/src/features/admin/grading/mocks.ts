@@ -54,7 +54,7 @@ const SPEC: Seed[] = [
 ];
 
 /**
- * Backend `GradeCalculator`: jami = davomat + hisobot + tyutor + tavsifnoma (null → 0);
+ * Backend `GradeCalculator`: jami = davomat + hisobot + admin bali + tavsifnoma (null → 0);
  * davomat < 70% → null (qayta topshiradi); ≥86 → 5, ≥71 → 4, ≥56 → 3, aks holda 2.
  */
 function compute(seed: Seed): GradingRow {
@@ -78,9 +78,9 @@ export function resetGradingMock() {
 resetGradingMock();
 
 export const gradingHandlers: HttpHandler[] = [
-  http.get('/api/tutor/grading', () => HttpResponse.json(mockGrading)),
+  http.get('/api/admin/grading', () => HttpResponse.json(mockGrading)),
 
-  http.put('/api/tutor/grading/:studentId', async ({ params, request }) => {
+  http.put('/api/admin/grading/:studentId', async ({ params, request }) => {
     const idx = mockGrading.findIndex((r) => r.studentId === params['studentId']);
     const row = mockGrading[idx];
     if (!row)
@@ -92,7 +92,7 @@ export const gradingHandlers: HttpHandler[] = [
       return HttpResponse.json(
         problem(400, 'One or more validation errors occurred.', '', {
           errors: {
-            TutorPoints: ["Tyutor bali 0–20 oralig'ida bo'lishi kerak."],
+            TutorPoints: ["Admin bali 0–20 oralig'ida bo'lishi kerak."],
             ReferencePoints: ["Tavsifnoma bali 0–10 oralig'ida bo'lishi kerak."],
           },
         }),
