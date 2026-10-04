@@ -37,6 +37,10 @@ public sealed class AttendanceEvent : BaseEntity, IAuditExempt
     /// Rad etilgan urinishning rasmi ham saqlanadi: tyutor shubhani shu bo'yicha tekshiradi.</summary>
     public Guid? PhotoFileId { get; private set; }
 
+    /// <summary>Yuzni tasdiqlash ishlagan urinishda — selfi va etalon o'xshashligi (0–100; rad etilgan
+    /// <c>FaceMismatch</c> urinishniki ham), aks holda null.</summary>
+    public int? FaceMatchScore { get; private set; }
+
     public static AttendanceEvent Record(
         Guid studentUserId,
         Guid companyId,
@@ -69,7 +73,8 @@ public sealed class AttendanceEvent : BaseEntity, IAuditExempt
             RadiusM = radiusM,
             Accepted = verdict.Accepted,
             RejectReason = verdict.Reason,
-            PhotoFileId = photoFileId
+            PhotoFileId = photoFileId,
+            FaceMatchScore = verdict.FaceMatchScore
         };
     }
 }

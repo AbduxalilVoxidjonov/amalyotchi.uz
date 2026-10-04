@@ -32,6 +32,9 @@ public sealed class ApiFactory(string connectionString) : WebApplicationFactory<
     /// <summary>Telegram o'rniga (<c>ITelegramMessenger</c>) — "Xabarlar" testlari natijalarni shu yerda skriptlaydi.</summary>
     public FakeTelegramMessenger Messenger { get; } = new();
 
+    /// <summary>Yuz dvigateli o'rniga (<c>IFaceEngine</c>) — deterministik soxta (<see cref="FakeFaceEngine"/>).</summary>
+    public FakeFaceEngine FaceEngine { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -39,6 +42,7 @@ public sealed class ApiFactory(string connectionString) : WebApplicationFactory<
         {
             services.Replace(ServiceDescriptor.Singleton<IClock>(Clock));
             services.Replace(ServiceDescriptor.Singleton<ITelegramMessenger>(Messenger));
+            services.Replace(ServiceDescriptor.Singleton<IFaceEngine>(FaceEngine));
         });
 
         builder.UseSetting("ConnectionStrings:Postgres", connectionString);

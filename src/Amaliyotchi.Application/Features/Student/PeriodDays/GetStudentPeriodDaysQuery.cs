@@ -22,6 +22,7 @@ public sealed record StudentPeriodDayDiaryDto(Guid Id, DiaryStatus Status, int? 
 /// <param name="Status">Talaba kalendari (<c>GET /api/student/calendar</c>) bilan AYNAN bir xil holat.</param>
 /// <param name="CheckInAt">"HH:mm" (Toshkent) yoki null.</param>
 /// <param name="CheckOutAt">"HH:mm" (Toshkent) yoki null.</param>
+/// <param name="FaceMatchScore">Qabul qilingan check-in selfisining etalon yuzga o'xshashligi (0–100) yoki null.</param>
 public sealed record StudentPeriodDayDto(
     DateOnly Date,
     int Weekday,
@@ -33,7 +34,8 @@ public sealed record StudentPeriodDayDto(
     bool AutoClosed,
     bool Suspicious,
     bool Manual,
-    StudentPeriodDayDiaryDto? Diary);
+    StudentPeriodDayDiaryDto? Diary,
+    int? FaceMatchScore);
 
 /// <param name="Status">Ko'rinadigan holat (<see cref="PracticePeriod.EffectiveStatus"/>).</param>
 /// <param name="RequiredDays">Davrdagi ish kunlari (bayramsiz) — <see cref="PracticePeriod.RequiredDays"/>.</param>
@@ -115,7 +117,8 @@ internal sealed class GetStudentPeriodDaysQueryHandler(
                 detail?.AutoClosed ?? false,
                 detail?.Suspicious ?? false,
                 detail?.Manual ?? false,
-                detail?.Diary is { } diary ? new StudentPeriodDayDiaryDto(diary.Id, diary.Status, diary.Score) : null));
+                detail?.Diary is { } diary ? new StudentPeriodDayDiaryDto(diary.Id, diary.Status, diary.Score) : null,
+                detail?.FaceMatchScore));
         }
 
         var defaultId = practice.Periods.Default(today, PeriodPurpose.Current)?.Id ?? practice.Periods.Default(today)?.Id;

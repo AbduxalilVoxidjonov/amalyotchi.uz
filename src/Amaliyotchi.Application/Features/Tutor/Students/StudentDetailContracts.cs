@@ -1,5 +1,6 @@
 using System.Globalization;
 using Amaliyotchi.Application.Common.Practice;
+using Amaliyotchi.Application.Features.Faces;
 using Amaliyotchi.Application.Features.Tutor.Applications;
 using Amaliyotchi.Domain.Practice;
 using Amaliyotchi.Domain.Students;
@@ -68,7 +69,7 @@ public sealed record StudentGrade(double Total, int? Grade);
 /// davr hali boshlanmagan bo'lsa ham null). <c>periods</c> — davr tanlagichi (<c>startDate</c> kamayish tartibida).
 /// <c>hasPassword</c> — talabaga brauzer orqali kirish uchun parol o'rnatilganmi.
 /// <c>activeCompany</c> — tanlangan davrdan MUSTAQIL: talabaning hozir amaliyot o'tayotgan korxonasi
-/// (<see cref="ActiveCompanyQueries"/>), bo'lmasa null.</summary>
+/// (<see cref="ActiveCompanyQueries"/>), bo'lmasa null. <c>face</c> — etalon yuz rasmi holati ("Yuzni tasdiqlash").</summary>
 public sealed record TutorStudentDetail(
     Guid Id,
     string Name,
@@ -90,7 +91,8 @@ public sealed record TutorStudentDetail(
     IReadOnlyList<StudentPeriodOption> Periods,
     Guid? SelectedPeriodId,
     bool HasPassword,
-    ActiveCompanyRef? ActiveCompany);
+    ActiveCompanyRef? ActiveCompany,
+    StudentFaceDto Face);
 
 internal static class WorkDayNumbers
 {

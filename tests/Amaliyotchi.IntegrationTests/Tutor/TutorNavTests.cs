@@ -52,7 +52,7 @@ public sealed class TutorNavTests(ApiFixture fixture)
         }
 
         var nav = JsonSerializer.Deserialize<TutorNavDto>(body, JsonDefaults.Options)!;
-        nav.Counts.Should().Be(new TutorNavCounts(Today: 2, Applications: 1, Students: 2, Diaries: 1));
+        nav.Counts.Should().Be(new TutorNavCounts(Today: 2, Applications: 1, Students: 2, Diaries: 1, PendingFaceEnrollments: 0));
         nav.Context.Groups.Should().Equal(s.Group.GroupName);
         nav.Context.PeriodName.Should().Be(s.Period.Name);
 
@@ -68,7 +68,7 @@ public sealed class TutorNavTests(ApiFixture fixture)
 
         // Begona tyutor o'zinikini ko'radi (2 talaba, 1 ariza, 1 kundalik).
         var otherNav = (await (await other.Client.GetAsync("/api/tutor/nav")).Content.ReadAsync<TutorNavDto>())!;
-        otherNav.Counts.Should().Be(new TutorNavCounts(2, 1, 2, 1));
+        otherNav.Counts.Should().Be(new TutorNavCounts(2, 1, 2, 1, 0));
         otherNav.Context.Groups.Should().Equal(other.Group.GroupName);
     }
 
@@ -88,7 +88,7 @@ public sealed class TutorNavTests(ApiFixture fixture)
 
         nav.Context.Groups.Should().Equal(new[] { groupA.GroupName, groupB.GroupName }.Order(StringComparer.Ordinal));
         nav.Context.PeriodName.Should().Be(ongoing.Name).And.NotBe(ended.Name);
-        nav.Counts.Should().Be(new TutorNavCounts(0, 0, 0, 0));
+        nav.Counts.Should().Be(new TutorNavCounts(0, 0, 0, 0, 0));
     }
 
     [Fact]
@@ -105,7 +105,7 @@ public sealed class TutorNavTests(ApiFixture fixture)
         using var json = JsonDocument.Parse(body);
         json.RootElement.GetProperty("context").GetProperty("periodName").ValueKind.Should().Be(JsonValueKind.Null);
         var nav = JsonSerializer.Deserialize<TutorNavDto>(body, JsonDefaults.Options)!;
-        nav.Counts.Should().Be(new TutorNavCounts(0, 0, 0, 0));
+        nav.Counts.Should().Be(new TutorNavCounts(0, 0, 0, 0, 0));
         nav.Context.Groups.Should().BeEmpty();
     }
 

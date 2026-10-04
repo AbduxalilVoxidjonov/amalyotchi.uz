@@ -36,6 +36,7 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         var problem = exception switch
         {
             ValidationException validation => Validation(validation),
+            ServiceUnavailableException unavailable => Problem(StatusCodes.Status503ServiceUnavailable, "Xizmat vaqtincha ishlamayapti", unavailable.Message),
             UnauthorizedException unauthorized => Problem(StatusCodes.Status401Unauthorized, "Avtorizatsiya talab qilinadi", unauthorized.Message),
             NotFoundException notFound => Problem(StatusCodes.Status404NotFound, "Topilmadi", notFound.Message),
             ConflictException conflict => Problem(StatusCodes.Status409Conflict, "Ziddiyat", conflict.Message),
@@ -58,9 +59,18 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
                 "Kutilmagan xatolik yuz berdi. Iltimos, qayta urinib ko'ring.")
         };
 
+        // Domain xatosining mashina o'qiydigan maydonlari (masalan check-in rad etilganda rejectReason).
+        if (exception is DomainException { Extensions.Count: > 0 } withExtensions)
+        {
+            foreach (var (key, value) in withExtensions.Extensions)
+                problem.Extensions[key] = value;
+        }
+
         problem.Extensions["traceId"] = traceId;
 
-        if (problem.Status == StatusCodes.Status500InternalServerError)
+        if (problem.Status == StatusCodes.Status503ServiceUnavailable)
+            logger.LogWarning("Xizmat ishlamayapti: {Detail} traceId={TraceId}", problem.Detail, traceId);
+        else if (problem.Status == StatusCodes.Status500InternalServerError)
             logger.LogError(exception, "Ishlov berilmagan xatolik. traceId={TraceId}", traceId);
         else
             logger.LogInformation("Xatolik: {Title} ({Status}) traceId={TraceId}", problem.Title, problem.Status, traceId);

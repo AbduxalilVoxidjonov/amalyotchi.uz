@@ -25,7 +25,13 @@ public enum CheckInRejectReason
     /// <summary>Bu kunga tasdiqlangan ruxsat bor — davomat "sababli", belgilanish shart emas.</summary>
     OnLeave = 12,
     /// <summary>Skanerlangan QR kod talabaning amaliyot joyiga tegishli emas (yoki format noto'g'ri / eskirgan).</summary>
-    QrInvalid = 13
+    QrInvalid = 13,
+    /// <summary>Yuzni tasdiqlash yoqilgan, talabaning ishlatiladigan etaloni yo'q (yubormagan yoki rad etilgan).</summary>
+    FaceNotEnrolled = 14,
+    /// <summary>Check-in selfisida yuz topilmadi (yoki rasmni o'qib bo'lmadi).</summary>
+    FaceNotDetected = 15,
+    /// <summary>Selfidagi yuz etalonga mos kelmadi (ball chegaradan past) — ball <see cref="AttendanceEvent.FaceMatchScore"/> da.</summary>
+    FaceMismatch = 16
 }
 
 public static class CheckInRejectReasonExtensions
@@ -47,18 +53,50 @@ public static class CheckInRejectReasonExtensions
         CheckInRejectReason.AlreadyCheckedOut => "Ketish allaqachon belgilangan.",
         CheckInRejectReason.OnLeave => "Bu kunga ruxsat tasdiqlangan — belgilanish shart emas.",
         CheckInRejectReason.QrInvalid => "QR kod bu amaliyot joyiga tegishli emas.",
+        CheckInRejectReason.FaceNotEnrolled => "Avval yuzingizni tasdiqlang.",
+        CheckInRejectReason.FaceNotDetected => "Rasmda yuz topilmadi. Qayta suratga oling.",
+        CheckInRejectReason.FaceMismatch => "Yuz etalonga mos kelmadi. Qayta suratga oling.",
         _ => "Belgilanish rad etildi."
     };
 
-    /// <summary>Rad sababini API xatosiga aylantiradi: holat ziddiyatlari (radius, QR, takror, check-in'siz) → 409,
-    /// qolganlari → 400.</summary>
-    public static DomainException ToException(this CheckInRejectReason reason) => reason switch
+    /// <summary>Ball bilan xabar: <see cref="CheckInRejectReason.FaceMismatch"/> uchun
+    /// "Yuz etalonga mos kelmadi (NN%). Qayta suratga oling."; boshqalari — <see cref="Message(CheckInRejectReason)"/>.</summary>
+    public static string Message(this CheckInRejectReason reason, int? faceMatchScore)
+        => reason == CheckInRejectReason.FaceMismatch && faceMatchScore is { } score
+            ? $"Yuz etalonga mos kelmadi ({score.ToString(System.Globalization.CultureInfo.InvariantCulture)}%). Qayta suratga oling."
+            : reason.Message();
+
+    /// <summary>JSON'dagi nomi (camelCase): <c>faceMismatch</c>, <c>outOfRadius</c> … — ProblemDetails
+    /// <c>rejectReason</c> kengaytmasi shu.</summary>
+    public static string ToCode(this CheckInRejectReason reason)
     {
-        CheckInRejectReason.OutOfRadius
-            or CheckInRejectReason.QrInvalid
-            or CheckInRejectReason.AlreadyCheckedIn
-            or CheckInRejectReason.AlreadyCheckedOut
-            or CheckInRejectReason.NoCheckIn => new ConflictException(reason.Message()),
-        _ => new DomainException(reason.Message())
-    };
+        var name = reason.ToString();
+        return char.ToLowerInvariant(name[0]) + name[1..];
+    }
+
+    /// <summary>Rad sababini API xatosiga aylantiradi: holat ziddiyatlari (radius, QR, takror, check-in'siz) → 409,
+    /// qolganlari (yuz sabablari ham) → 400. Xatoga <c>rejectReason</c> kengaytmasi (camelCase) qo'shiladi —
+    /// klient matnni emas, kodni o'qiydi.</summary>
+    public static DomainException ToException(this CheckInRejectReason reason, int? faceMatchScore = null)
+    {
+        var message = reason.Message(faceMatchScore);
+        DomainException exception = reason switch
+        {
+            CheckInRejectReason.OutOfRadius
+                or CheckInRejectReason.QrInvalid
+                or CheckInRejectReason.AlreadyCheckedIn
+                or CheckInRejectReason.AlreadyCheckedOut
+                or CheckInRejectReason.NoCheckIn => new ConflictException(message),
+            _ => new DomainException(message)
+        };
+        if (reason != CheckInRejectReason.None)
+            exception.Extensions[RejectReasonExtension] = reason.ToCode();
+        if (faceMatchScore is { } score)
+            exception.Extensions[FaceMatchScoreExtension] = score;
+        return exception;
+    }
+
+    /// <summary>ProblemDetails kengaytmalari nomlari.</summary>
+    public const string RejectReasonExtension = "rejectReason";
+    public const string FaceMatchScoreExtension = "faceMatchScore";
 }

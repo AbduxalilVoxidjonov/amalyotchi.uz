@@ -63,6 +63,8 @@ public static class SettingKeys
     public const string CheckInQrRequired = "checkinQrRequired";
     public const string DiaryPdfRequired = "diaryPdfRequired";
     public const string MaxStudentsPerCompany = "maxStudentsPerCompany";
+    public const string FaceVerificationEnabled = "faceVerificationEnabled";
+    public const string FaceMatchThreshold = "faceMatchThreshold";
 
     public const string UnitMeters = "m";
     public const string UnitMinutes = "min";
@@ -94,7 +96,12 @@ public static class SettingKeys
         new(CheckInQrRequired, "Check-in uchun QR kod majburiy", SettingType.Bool, null,
             "Yoqilgan bo'lsa check-in/check-out uchun korxona QR kodi skanerlanishi shart.", "true"),
         new(MaxStudentsPerCompany, "Korxonaga maksimal talaba", SettingType.Int, null,
-            "Shu sondan ko'p talaba bitta korxonaga biriktirilsa ogohlantirish chiqadi.", "10", 1, 200)
+            "Shu sondan ko'p talaba bitta korxonaga biriktirilsa ogohlantirish chiqadi.", "10", 1, 200),
+        new(FaceVerificationEnabled, "Check-in'da yuzni tasdiqlash", SettingType.Bool, null,
+            "Yoqilgan bo'lsa check-in selfisi (rasm majburiy bo'ladi) talabaning etalon yuz rasmi bilan solishtiriladi; mos kelmasa urinish rad etiladi.", "false"),
+        // 36% — SFace modeli mualliflari tavsiya etgan kosinus chegarasi (~0.363). Pastroq — yumshoqroq, balandroq — qat'iyroq.
+        new(FaceMatchThreshold, "Yuz mosligi chegarasi (%)", SettingType.Int, null,
+            "Selfi va etalon o'xshashligi (0–100%) shundan past bo'lsa check-in rad etiladi. Tavsiya: 36.", "36", 0, 100)
     ];
 
     private static readonly Dictionary<string, SettingDefinition> ByKey =

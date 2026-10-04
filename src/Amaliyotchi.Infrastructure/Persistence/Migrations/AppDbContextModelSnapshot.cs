@@ -51,6 +51,10 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("distance_m");
 
+                    b.Property<int?>("FaceMatchScore")
+                        .HasColumnType("integer")
+                        .HasColumnName("face_match_score");
+
                     b.Property<int>("Kind")
                         .HasColumnType("integer")
                         .HasColumnName("kind");
@@ -160,6 +164,10 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date")
                         .HasColumnName("date");
+
+                    b.Property<int?>("FaceMatchScore")
+                        .HasColumnType("integer")
+                        .HasColumnName("face_match_score");
 
                     b.Property<bool>("IsManual")
                         .HasColumnType("boolean")
@@ -579,6 +587,91 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_diary_entries_student_user_id_date");
 
                     b.ToTable("diary_entries", (string)null);
+                });
+
+            modelBuilder.Entity("Amaliyotchi.Domain.Faces.StudentFaceEnrollment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("ConsentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consent_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.PrimitiveCollection<float[]>("Embedding")
+                        .IsRequired()
+                        .HasColumnType("real[]")
+                        .HasColumnName("embedding");
+
+                    b.Property<Guid>("PhotoFileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("photo_file_id");
+
+                    b.Property<string>("RejectReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reject_reason");
+
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewed_by_user_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("StudentUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_user_id");
+
+                    b.Property<DateTimeOffset>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_student_face_enrollments");
+
+                    b.HasIndex("PhotoFileId")
+                        .HasDatabaseName("ix_student_face_enrollments_photo_file_id");
+
+                    b.HasIndex("ReviewedByUserId")
+                        .HasDatabaseName("ix_student_face_enrollments_reviewed_by_user_id");
+
+                    b.HasIndex("StudentUserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_student_face_enrollments_student_user_id");
+
+                    b.HasIndex("Status", "SubmittedAt")
+                        .HasDatabaseName("ix_student_face_enrollments_status_submitted_at");
+
+                    b.ToTable("student_face_enrollments", (string)null);
                 });
 
             modelBuilder.Entity("Amaliyotchi.Domain.Files.StoredFile", b =>
@@ -2150,6 +2243,29 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_diary_entries_users_student_user_id");
+                });
+
+            modelBuilder.Entity("Amaliyotchi.Domain.Faces.StudentFaceEnrollment", b =>
+                {
+                    b.HasOne("Amaliyotchi.Domain.Files.StoredFile", null)
+                        .WithMany()
+                        .HasForeignKey("PhotoFileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_student_face_enrollments_stored_files_photo_file_id");
+
+                    b.HasOne("Amaliyotchi.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_student_face_enrollments_users_reviewed_by_user_id");
+
+                    b.HasOne("Amaliyotchi.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("StudentUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_student_face_enrollments_users_student_user_id");
                 });
 
             modelBuilder.Entity("Amaliyotchi.Domain.Files.StoredFile", b =>

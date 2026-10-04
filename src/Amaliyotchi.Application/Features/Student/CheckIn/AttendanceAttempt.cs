@@ -1,11 +1,13 @@
 using Amaliyotchi.Application.Common.Exceptions;
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Time;
+using Amaliyotchi.Application.Features.Faces;
 using Amaliyotchi.Application.Features.Student.Common;
 using Amaliyotchi.Application.Features.Student.Today;
 using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Companies;
 using Amaliyotchi.Domain.Exceptions;
+using Amaliyotchi.Domain.Faces;
 using Amaliyotchi.Domain.Files;
 using Amaliyotchi.Domain.Practice;
 using Amaliyotchi.Domain.ValueObjects;
@@ -16,8 +18,13 @@ namespace Amaliyotchi.Application.Features.Student.CheckIn;
 /// <summary>Check-in va check-out urinishlarining umumiy qismi: talaba → faol davr → tasdiqlangan ariza → korxona →
 /// masofa (Haversine) → QR mosligi → policy → selfi (bo'lsa) → <see cref="AttendanceEvent"/> (HAR urinish, rad etilgani ham) →
 /// davomat → tranzaksiya. Rad etilganda hodisa avval saqlanadi, keyin xato tashlanadi
-/// (Login'dagi <c>LoginFailedAsync</c> uslubi) — shuning uchun rad etilgan urinishning rasmi ham qoladi.</summary>
-internal sealed class AttendanceAttempt(IApplicationDbContext db, IClock clock, IFileStorage storage, Guid studentUserId)
+/// (Login'dagi <c>LoginFailedAsync</c> uslubi) — shuning uchun rad etilgan urinishning rasmi ham qoladi.
+/// Yuzni tasdiqlash (<c>faceVerificationEnabled</c>, faqat check-in): selfi majburiy, tranzaksiyadan OLDIN tahlil qilinadi
+/// (modellar yo'q → 503, hodisa yozilmaydi); policy qabul qilsa — etalon bilan solishtiriladi: etalon yo'q/rad etilgan →
+/// <c>FaceNotEnrolled</c>, selfida yuz yo'q → <c>FaceNotDetected</c>, ball chegaradan past → <c>FaceMismatch</c>
+/// (hammasi oddiy rad kabi hodisa + rasm bilan yoziladi, ball ham). Qabul qilinganda ball davomatga yoziladi.</summary>
+internal sealed class AttendanceAttempt(
+    IApplicationDbContext db, IClock clock, IFileStorage storage, Guid studentUserId, IFaceEngine? faceEngine = null)
 {
     /// <summary>Urinish sharoiti — konkret qaror (check-in yoki check-out) shu asosda beriladi.</summary>
     public sealed record Situation(
@@ -44,7 +51,16 @@ internal sealed class AttendanceAttempt(IApplicationDbContext db, IClock clock, 
     {
         // Sozlama yoqilgan bo'lsa rasmsiz yoki QR'siz urinish umuman qabul qilinmaydi (hodisa ham yozilmaydi):
         // 400, detail — birinchi aniq sabab, errors.Photo / errors.Qr.
-        await EnsureRequiredPartsAsync(request, kind, cancellationToken);
+        var settings = await EnsureRequiredPartsAsync(request, kind, cancellationToken);
+
+        // Yuz tahlili — og'ir CPU ishi, shuning uchun tranzaksiya (qulflar) tashqarisida.
+        FaceAnalysis? face = null;
+        if (FaceCheckApplies(kind, settings))
+        {
+            if (faceEngine is null)
+                throw new ServiceUnavailableException(FaceEngineExtensions.UnavailableMessage);
+            face = await faceEngine.AnalyzeOrThrowAsync(request.Photo!, cancellationToken);
+        }
 
         // Rasm saqlovchiga tranzaksiya ichida yoziladi; baza xatosida (tranzaksiya qaytsa) fayl o'chiriladi.
         // Rad etilgan urinish esa MUVAFFAQIYATLI commit — fayl qoladi, xato keyin tashlanadi.
@@ -62,6 +78,8 @@ internal sealed class AttendanceAttempt(IApplicationDbContext db, IClock clock, 
                     return CheckInVerdict.Accept();
 
                 var result = decide(situation);
+                if (result.Accepted && face is not null)
+                    result = await VerifyFaceAsync(result, face, settings.FaceMatchThreshold, ct);
                 var photoFileId = await SavePhotoAsync(request.Photo, situation.ReceivedAt, key => savedKey = key, ct);
                 var attempt = AttendanceEvent.Record(
                     studentUserId, situation.Company.Id, situation.Today, kind,
@@ -84,20 +102,46 @@ internal sealed class AttendanceAttempt(IApplicationDbContext db, IClock clock, 
         }
 
         if (!verdict.Accepted)
-            throw verdict.Reason.ToException();
+            throw verdict.ToException();
 
         return await TodayBuilder.BuildAsync(db, clock, studentUserId, cancellationToken);
     }
 
     public const string QrRequiredMessage = "Amaliyot joyidagi QR kodni skanerlang.";
 
-    private async Task EnsureRequiredPartsAsync(IGeoRequest request, AttendanceEventKind kind, CancellationToken cancellationToken)
+    /// <summary>Yuzni tasdiqlash faqat check-in'ga qo'llanadi (check-out — yo'q).</summary>
+    private static bool FaceCheckApplies(AttendanceEventKind kind, StudentSettings settings)
+        => kind == AttendanceEventKind.CheckIn && settings.FaceVerificationEnabled;
+
+    /// <summary>Policy qabul qilgan check-in'ni etalon yuz bilan tekshiradi. Etalon — pending yoki approved
+    /// (tyutor ko'rmagan bo'lsa ham ishlatiladi).</summary>
+    private async Task<CheckInVerdict> VerifyFaceAsync(
+        CheckInVerdict accepted, FaceAnalysis face, int threshold, CancellationToken cancellationToken)
+    {
+        var reference = await db.StudentFaceEnrollments.AsNoTracking()
+            .Where(f => f.StudentUserId == studentUserId)
+            .Select(f => new { f.Status, f.Embedding })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (reference is null || reference.Status is not (FaceEnrollmentStatus.Pending or FaceEnrollmentStatus.Approved))
+            return CheckInVerdict.Reject(CheckInRejectReason.FaceNotEnrolled);
+        if (face.Embedding is null)
+            return CheckInVerdict.Reject(CheckInRejectReason.FaceNotDetected);
+
+        var score = FaceMatch.Score(face.Embedding, reference.Embedding);
+        return FaceMatch.IsMatch(score, threshold)
+            ? accepted with { FaceMatchScore = score }
+            : CheckInVerdict.Reject(CheckInRejectReason.FaceMismatch) with { FaceMatchScore = score };
+    }
+
+    private async Task<StudentSettings> EnsureRequiredPartsAsync(
+        IGeoRequest request, AttendanceEventKind kind, CancellationToken cancellationToken)
     {
         var settings = await db.LoadStudentSettingsAsync(cancellationToken);
         var errors = new Dictionary<string, string[]>();
         string? detail = null;
 
-        if (request.Photo is null && settings.CheckInPhotoRequired)
+        // Yuzni tasdiqlash yoqilgan bo'lsa check-in selfisi checkinPhotoRequired'dan qat'i nazar majburiy.
+        if (request.Photo is null && (settings.CheckInPhotoRequired || FaceCheckApplies(kind, settings)))
         {
             var message = kind == AttendanceEventKind.CheckIn
                 ? "Check-in uchun rasm majburiy."
@@ -114,6 +158,8 @@ internal sealed class AttendanceAttempt(IApplicationDbContext db, IClock clock, 
 
         if (detail is not null)
             throw new ValidationException(errors, detail);
+
+        return settings;
     }
 
     /// <summary>Yuborilgan QR doim tekshiriladi (sozlama o'chiq bo'lsa ham); yuborilmagan bo'lsa — to'siq emas

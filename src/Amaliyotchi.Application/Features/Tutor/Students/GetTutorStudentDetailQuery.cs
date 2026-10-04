@@ -2,6 +2,8 @@ using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Common.Scoping;
 using Amaliyotchi.Application.Common.Time;
+using Amaliyotchi.Application.Features.Faces;
+using Amaliyotchi.Application.Features.Student.Common;
 using Amaliyotchi.Application.Features.Tutor.Applications;
 using Amaliyotchi.Application.Features.Tutor.Common;
 using Amaliyotchi.Domain.Common;
@@ -119,6 +121,10 @@ internal sealed class GetTutorStudentDetailQueryHandler(IApplicationDbContext db
             grade = new StudentGrade(computed.Total, computed.Grade);
         }
 
+        var faceEnrollment = await db.StudentFaceEnrollments.AsNoTracking().InScope(scope)
+            .FirstOrDefaultAsync(f => f.StudentUserId == request.Id, cancellationToken);
+        var settings = await db.LoadStudentSettingsAsync(cancellationToken);
+
         return new TutorStudentDetail(
             profile.UserId,
             profile.User.FullName,
@@ -149,7 +155,8 @@ internal sealed class GetTutorStudentDetailQueryHandler(IApplicationDbContext db
             periodSet.Options(today, defaultPeriod?.Id),
             periodId,
             profile.User.PasswordHash != null,
-            activeCompany);
+            activeCompany,
+            StudentFaceDto.From(faceEnrollment, settings.FaceVerificationEnabled));
     }
 
     /// <summary>Davr bloki; <c>dailyStart</c>/<c>dailyEnd</c> — talabaning bugun amaldagi soatlari (o'zi belgilagan

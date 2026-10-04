@@ -28,6 +28,9 @@ public sealed class DailyAttendance : AuditableEntity
     /// <summary>Qabul qilingan check-out selfisi; rasm yuborilmagan bo'lsa — null.</summary>
     public Guid? CheckOutPhotoFileId { get; private set; }
 
+    /// <summary>Check-in selfisi va etalon yuz o'xshashligi (0–100); yuzni tasdiqlash o'chiq bo'lgan kunlarda — null.</summary>
+    public int? FaceMatchScore { get; private set; }
+
     /// <summary>Check-out qilinmagani uchun tizim avtomatik yopgan.</summary>
     public bool AutoClosed { get; private set; }
 
@@ -62,6 +65,7 @@ public sealed class DailyAttendance : AuditableEntity
         attendance.CheckInDistanceM = distanceM;
         attendance.CheckInAccuracyM = accuracyM;
         attendance.CheckInPhotoFileId = photoFileId;
+        attendance.FaceMatchScore = verdict.FaceMatchScore;
         return attendance;
     }
 

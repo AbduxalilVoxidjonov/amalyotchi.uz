@@ -3,6 +3,7 @@ using Amaliyotchi.Application.Features.Admin.Companies;
 using Amaliyotchi.Application.Features.Admin.Students;
 using Amaliyotchi.Infrastructure.Bot;
 using Amaliyotchi.Infrastructure.Excel;
+using Amaliyotchi.Infrastructure.Faces;
 using Amaliyotchi.Infrastructure.Identity;
 using Amaliyotchi.Infrastructure.Messaging;
 using Amaliyotchi.Infrastructure.Persistence;
@@ -84,6 +85,10 @@ public static class DependencyInjection
         services.AddSingleton<IStudentImportExcel, StudentImportExcel>();
         services.AddSingleton<ICompanyImportExcel, CompanyImportExcel>();
 
+        // "Yuzni tasdiqlash": YuNet + SFace (ONNX). Modellar yo'q bo'lsa ilova ishlaydi, dvigatel IsReady=false.
+        services.AddOptions<FaceOptions>().Bind(configuration.GetSection(FaceOptions.SectionName));
+        services.AddSingleton<IFaceEngine, OnnxFaceEngine>();
+
         services.AddOptions<SeedOptions>().Bind(configuration.GetSection(SeedOptions.SectionName));
         services.AddScoped<DbSeeder>();
         services.AddScoped<DemoDataSeeder>();
@@ -106,6 +111,14 @@ public static class DependencyInjection
     public static IServiceCollection AddBroadcastDispatcher(this IServiceCollection services)
     {
         services.AddHostedService<BroadcastDispatcherService>();
+        return services;
+    }
+
+    /// <summary>Yuz dvigatelini startup'da yuklash va holatini log'ga yozish (modellar yo'q → ogohlantirish) —
+    /// faqat API host'ida (yuz tahlili faqat API so'rovlarida ishlaydi).</summary>
+    public static IServiceCollection AddFaceEngineStartupCheck(this IServiceCollection services)
+    {
+        services.AddHostedService<FaceEngineStartupCheck>();
         return services;
     }
 

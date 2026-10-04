@@ -396,6 +396,7 @@ public sealed class DemoDataPurgeTests(DemoPurgeFixture fixture) : IClassFixture
             ["diary_attachments"] = await db.DiaryAttachments.CountAsync(),
             ["leave_requests"] = await db.LeaveRequests.CountAsync(),
             ["practice_grades"] = await db.PracticeGrades.CountAsync(),
+            ["student_face_enrollments"] = await db.StudentFaceEnrollments.CountAsync(),
             ["app_settings"] = await db.AppSettings.CountAsync(),
             ["holidays"] = await db.Holidays.IgnoreQueryFilters().CountAsync(),
             ["document_templates"] = await db.DocumentTemplates.IgnoreQueryFilters().CountAsync(),

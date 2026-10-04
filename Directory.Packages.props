@@ -12,6 +12,11 @@
     <PackageVersion Include="ClosedXML" Version="0.105.1" />
     <!-- Telegram bot (long polling: /start, /help, Menu Button) -->
     <PackageVersion Include="Telegram.Bot" Version="22.10.3.1" />
+    <!-- Yuzni tasdiqlash: ONNX inference (MIT; osx-arm64 + linux-x64 native'lari paket ichida) va rasm decode (MIT).
+         SkiaSharp Linux'da NoDependencies varianti — fontconfig talab qilinmaydi (aspnet image'da yo'q). -->
+    <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.30.0" />
+    <PackageVersion Include="SkiaSharp" Version="3.119.4" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.4" />
     <!-- Application -->
     <PackageVersion Include="MediatR" Version="12.4.1" />
     <PackageVersion Include="FluentValidation" Version="11.11.0" />

@@ -539,6 +539,14 @@ public sealed class DemoDataPurger(
             .Select(x => new { x.Id, x.StudentUserId, x.PeriodId })
             .ToListAsync(ct);
         Classify("practice_grades", grades.Select(x => (x.Id, x.StudentUserId, (Guid?)x.PeriodId)), plan.Grades);
+
+        // Etalon yuz rasmlari — davrsiz, faqat talaba bo'yicha (o'zi va fayli).
+        var faces = await db.StudentFaceEnrollments.AsNoTracking()
+            .Where(x => s.Contains(x.StudentUserId))
+            .Select(x => new { x.Id, x.PhotoFileId })
+            .ToListAsync(ct);
+        plan.FaceEnrollments.UnionWith(faces.Select(x => x.Id));
+        plan.ReferencedFiles.UnionWith(faces.Select(x => x.PhotoFileId));
     }
 
     private async Task CheckActorReferencesAsync(Plan plan, CancellationToken ct)
@@ -560,6 +568,8 @@ public sealed class DemoDataPurger(
             .CountAsync(x => x.ReviewedByUserId != null && u.Contains(x.ReviewedByUserId.Value) && !s.Contains(x.StudentUserId), ct));
         Check("qaror qilgan ruxsat (leave_requests)", await db.LeaveRequests
             .CountAsync(x => x.DecidedByUserId != null && u.Contains(x.DecidedByUserId.Value) && !s.Contains(x.StudentUserId), ct));
+        Check("ko'rib chiqqan yuz rasmi (student_face_enrollments)", await db.StudentFaceEnrollments
+            .CountAsync(x => x.ReviewedByUserId != null && u.Contains(x.ReviewedByUserId.Value) && !s.Contains(x.StudentUserId), ct));
         Check("yakunlagan baho (practice_grades)", await db.PracticeGrades
             .CountAsync(x => x.FinalizedByUserId != null && u.Contains(x.FinalizedByUserId.Value) && !s.Contains(x.StudentUserId), ct));
         var periods = plan.Periods;
@@ -600,6 +610,9 @@ public sealed class DemoDataPurger(
         foreign.UnionWith(await db.LeaveRequests
             .Where(x => x.DocumentFileId != null && candidates.Contains(x.DocumentFileId.Value) && !plan.Leaves.Contains(x.Id))
             .Select(x => x.DocumentFileId!.Value).ToListAsync(ct));
+        foreign.UnionWith(await db.StudentFaceEnrollments
+            .Where(x => candidates.Contains(x.PhotoFileId) && !plan.FaceEnrollments.Contains(x.Id))
+            .Select(x => x.PhotoFileId).ToListAsync(ct));
         foreign.UnionWith(await db.DocumentTemplates.IgnoreQueryFilters()
             .Where(x => candidates.Contains(x.FileId))
             .Select(x => x.FileId).ToListAsync(ct));
@@ -640,6 +653,7 @@ public sealed class DemoDataPurger(
         await Delete("daily_attendances", plan.Attendances, ids => db.DailyAttendances.Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
         await Delete("leave_requests", plan.Leaves, ids => db.LeaveRequests.Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
         await Delete("diary_entries", plan.Diaries, ids => db.DiaryEntries.Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
+        await Delete("student_face_enrollments", plan.FaceEnrollments, ids => db.StudentFaceEnrollments.Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
         await Delete("practice_grades", plan.Grades, ids => db.PracticeGrades.Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
         await Delete("practice_applications", plan.Applications, ids => db.PracticeApplications.Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
         await Delete("stored_files", plan.Files, ids => db.StoredFiles.Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
@@ -704,6 +718,7 @@ public sealed class DemoDataPurger(
         public HashSet<Guid> DiaryAttachments { get; } = [];
         public HashSet<Guid> Leaves { get; } = [];
         public HashSet<Guid> Grades { get; } = [];
+        public HashSet<Guid> FaceEnrollments { get; } = [];
         public HashSet<Guid> ReferencedFiles { get; } = [];
         public HashSet<Guid> Files { get; } = [];
         public List<string> StoragePaths { get; } = [];
@@ -761,6 +776,7 @@ public sealed class DemoDataPurger(
             new("diary_attachments", DiaryAttachments.Count),
             new("leave_requests", Leaves.Count),
             new("practice_grades", Grades.Count),
+            new("student_face_enrollments", FaceEnrollments.Count),
             new("stored_files", Files.Count),
             new("broadcast_deliveries", BroadcastDeliveries.Count),
             new("audit_logs", AuditLogs.Count)

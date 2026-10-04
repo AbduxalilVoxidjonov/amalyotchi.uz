@@ -15,6 +15,10 @@ web/
 tests/
 docs/
 deploy/
+# Yuz modellarini yuklash skripti image build'ida kerak (Dockerfile 'models' bosqichi).
+!deploy/scripts/fetch-face-models.sh
+# Lokal yuz modellari (Docker o'zi yuklaydi).
+.models/
 scratchpad/
 graphify-out/
 .claude/

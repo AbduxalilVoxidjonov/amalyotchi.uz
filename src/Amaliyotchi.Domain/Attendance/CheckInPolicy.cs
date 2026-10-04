@@ -1,3 +1,4 @@
+using Amaliyotchi.Domain.Exceptions;
 using Amaliyotchi.Domain.Practice;
 
 namespace Amaliyotchi.Domain.Attendance;
@@ -50,11 +51,15 @@ public sealed record CheckOutContext(
     bool QrValid = true);
 
 /// <summary>Siyosat qarori: qabul qilindi (kech/kech emas) yoki rad (sabab bilan).</summary>
-public sealed record CheckInVerdict(bool Accepted, CheckInRejectReason Reason, bool IsLate)
+/// <param name="FaceMatchScore">Yuzni tasdiqlash ishlagan bo'lsa — selfi va etalon o'xshashligi (0–100), aks holda null.</param>
+public sealed record CheckInVerdict(bool Accepted, CheckInRejectReason Reason, bool IsLate, int? FaceMatchScore = null)
 {
     public static CheckInVerdict Accept(bool isLate = false) => new(true, CheckInRejectReason.None, isLate);
 
     public static CheckInVerdict Reject(CheckInRejectReason reason) => new(false, reason, false);
+
+    /// <summary>Rad etilgan urinishni API xatosiga aylantiradi (yuz balli bilan).</summary>
+    public DomainException ToException() => Reason.ToException(FaceMatchScore);
 
     /// <summary>Qabul qilingan check-in uchun davomat holati.</summary>
     public AttendanceStatus Status => IsLate ? AttendanceStatus.Late : AttendanceStatus.Present;

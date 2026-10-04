@@ -33,6 +33,8 @@ public sealed record TodayWindowDto(string Start, string End, string ClosesAt, s
 /// <param name="Note">Amal hozir mumkin bo'lmasa — o'zbekcha sabab (ariza yo'q, ish kuni emas, oyna yopiq …).</param>
 /// <param name="PhotoRequired">Sozlama <c>checkinPhotoRequired</c>: <c>true</c> bo'lsa check-in/check-out selfisiz qabul qilinmaydi.</param>
 /// <param name="QrRequired">Sozlama <c>checkinQrRequired</c>: <c>true</c> bo'lsa check-in/check-out uchun korxona QR kodi skanerlanishi shart.</param>
+/// <param name="FaceRequired">Sozlama <c>faceVerificationEnabled</c>: <c>true</c> bo'lsa check-in selfisi MAJBURIY
+/// (<see cref="PhotoRequired"/> dan qat'i nazar) va etalon yuz bilan solishtiriladi (avval <c>POST /api/student/face</c>).</param>
 public sealed record TodayCheckInDto(
     AttendanceStatus Status,
     DateTimeOffset? CheckInAt,
@@ -44,7 +46,8 @@ public sealed record TodayCheckInDto(
     bool AutoClosed,
     string? Note,
     bool PhotoRequired,
-    bool QrRequired);
+    bool QrRequired,
+    bool FaceRequired);
 
 public sealed record TodayPlaceDto(
     string Company,

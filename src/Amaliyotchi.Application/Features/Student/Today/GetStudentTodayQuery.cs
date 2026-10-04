@@ -61,7 +61,8 @@ internal static class TodayBuilder
         {
             var noPeriod = new TodayCheckInDto(
                 AttendanceStatus.Pending, null, null, null, null, null, false, false, StudentPractice.NoPeriodMessage,
-                practice.Settings.CheckInPhotoRequired, practice.Settings.CheckInQrRequired);
+                practice.Settings.CheckInPhotoRequired, practice.Settings.CheckInQrRequired,
+                practice.Settings.FaceVerificationEnabled);
             return new TodayDto(today, window, noPeriod, null, diaryDto, null, canWriteDiary, diaryBlockedReason);
         }
 
@@ -96,7 +97,8 @@ internal static class TodayBuilder
             todayRow?.AutoClosed ?? false,
             note,
             practice.Settings.CheckInPhotoRequired,
-            practice.Settings.CheckInQrRequired);
+            practice.Settings.CheckInQrRequired,
+            practice.Settings.FaceVerificationEnabled);
 
         var diaries = await db.DiaryEntries
             .AsNoTracking()

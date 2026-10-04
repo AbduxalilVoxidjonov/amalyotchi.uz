@@ -40,6 +40,8 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddTelegramBot();
 // "Xabarlar" yetkazish dispetcheri (DB-navbat, ≤ 25 xabar/s) — faqat Telegram:BotToken'ga bog'liq, BotEnabled'ga emas.
 builder.Services.AddBroadcastDispatcher();
+// "Yuzni tasdiqlash" modellari startup'da yuklanadi; yo'q bo'lsa — ogohlantirish (check-in 503, jim o'tkazilmaydi).
+builder.Services.AddFaceEngineStartupCheck();
 // Fon xizmati (bot) kutilmagan xato bilan yiqilsa butun API to'xtamasin — xato log'ga yoziladi, HTTP ishlashda davom etadi.
 builder.Services.Configure<HostOptions>(options =>
     options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore);

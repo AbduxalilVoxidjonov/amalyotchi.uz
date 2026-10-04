@@ -1,6 +1,7 @@
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Diary;
+using Amaliyotchi.Domain.Faces;
 using Amaliyotchi.Domain.Exceptions;
 using Amaliyotchi.Domain.Grading;
 using Amaliyotchi.Domain.Leave;
@@ -75,6 +76,15 @@ public static class ScopeQueries
             ScopeKind.Unrestricted => query,
             ScopeKind.Groups => query.Where(a => scope.StudentUserIds.Contains(a.StudentUserId)),
             ScopeKind.Self => query.Where(a => a.StudentUserId == scope.UserId),
+            _ => query.Where(_ => false)
+        };
+
+    public static IQueryable<StudentFaceEnrollment> InScope(this IQueryable<StudentFaceEnrollment> query, DataScope scope)
+        => scope.Kind switch
+        {
+            ScopeKind.Unrestricted => query,
+            ScopeKind.Groups => query.Where(f => scope.StudentUserIds.Contains(f.StudentUserId)),
+            ScopeKind.Self => query.Where(f => f.StudentUserId == scope.UserId),
             _ => query.Where(_ => false)
         };
 

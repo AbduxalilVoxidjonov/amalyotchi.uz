@@ -60,7 +60,7 @@ internal sealed class GetStudentAttendanceQueryHandler(IApplicationDbContext db,
                 .Select(a => new AttendanceDayRow(
                     a.Date, a.Status, a.CheckInAt, a.CheckInDistanceM, a.CheckInAccuracyM,
                     a.CheckOutAt, a.CheckOutDistanceM, a.AutoClosed, a.IsSuspicious, a.SuspiciousReason,
-                    a.IsManual, a.ManualReason, a.LeaveRequestId, a.CheckInPhotoFileId, a.CheckOutPhotoFileId))
+                    a.IsManual, a.ManualReason, a.LeaveRequestId, a.CheckInPhotoFileId, a.CheckOutPhotoFileId, a.FaceMatchScore))
                 .ToListAsync(cancellationToken))
             .ToDictionary(r => r.Date);
 
@@ -69,7 +69,7 @@ internal sealed class GetStudentAttendanceQueryHandler(IApplicationDbContext db,
                 .OrderBy(e => e.ReceivedAt).ThenBy(e => e.Id)
                 .Select(e => new AttendanceEventRow(
                     e.Id, e.Date, e.Kind, e.ReceivedAt, e.Accepted, e.RejectReason,
-                    e.Location.Latitude, e.Location.Longitude, e.AccuracyM, e.DistanceM, e.RadiusM, e.PhotoFileId))
+                    e.Location.Latitude, e.Location.Longitude, e.AccuracyM, e.DistanceM, e.RadiusM, e.PhotoFileId, e.FaceMatchScore))
                 .ToListAsync(cancellationToken))
             .ToLookup(e => e.Date);
 
@@ -124,7 +124,8 @@ internal sealed class GetStudentAttendanceQueryHandler(IApplicationDbContext db,
                 diaries.GetValueOrDefault(date),
                 checkIns.Count,
                 checkIns.Count(e => !e.Accepted),
-                dayEvents.Select(ToEvent).ToList()));
+                dayEvents.Select(ToEvent).ToList(),
+                row?.FaceMatchScore));
         }
 
         return days;
@@ -147,7 +148,8 @@ internal sealed class GetStudentAttendanceQueryHandler(IApplicationDbContext db,
             e.RadiusM,
             e.Latitude,
             e.Longitude,
-            e.PhotoFileId is { } id ? FileUrls.For(id) : null);
+            e.PhotoFileId is { } id ? FileUrls.For(id) : null,
+            e.FaceMatchScore);
     }
 
     /// <summary>Kunlik qatordagi vaqt/masofa + hodisadagi koordinata va aniqlikni birlashtiradi.
@@ -186,7 +188,8 @@ internal sealed record AttendanceDayRow(
     string? ManualReason,
     Guid? LeaveRequestId,
     Guid? CheckInPhotoFileId,
-    Guid? CheckOutPhotoFileId);
+    Guid? CheckOutPhotoFileId,
+    int? FaceMatchScore);
 
 /// <summary>Urinish yozuvi — koordinata va aniqlik faqat shu yerda bor.</summary>
 internal sealed record AttendanceEventRow(
@@ -201,4 +204,5 @@ internal sealed record AttendanceEventRow(
     double AccuracyM,
     double DistanceM,
     int RadiusM,
-    Guid? PhotoFileId);
+    Guid? PhotoFileId,
+    int? FaceMatchScore);

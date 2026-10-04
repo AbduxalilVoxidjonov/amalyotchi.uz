@@ -13,4 +13,8 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="FluentAssertions" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Real yuz dvigateli testi uchun public-domain rasmlar (TestData/Faces/SOURCES.txt) -->
+    <None Include="TestData\Faces\*.jpg" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

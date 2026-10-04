@@ -27,6 +27,7 @@ public sealed record AttendancePunch(
 /// <param name="RejectMessage">Rad sababining o'zbekcha matni; qabul qilinganda null.</param>
 /// <param name="RadiusM">Urinish paytidagi korxona radiusi.</param>
 /// <param name="PhotoUrl">Selfie havolasi ("/api/files/&lt;guid&gt;") yoki null.</param>
+/// <param name="FaceMatchScore">Yuzni tasdiqlash ishlagan urinishda selfi va etalon o'xshashligi (0–100), aks holda null.</param>
 public sealed record StudentAttendanceEvent(
     Guid Id,
     AttendanceEventKind Kind,
@@ -40,7 +41,8 @@ public sealed record StudentAttendanceEvent(
     int RadiusM,
     double Lat,
     double Lng,
-    string? PhotoUrl);
+    string? PhotoUrl,
+    int? FaceMatchScore);
 
 /// <summary>Kunga tegishli kundalik yozuvi (bo'lsa).</summary>
 public sealed record StudentAttendanceDiary(Guid Id, DiaryStatus Status, int? Score);
@@ -50,6 +52,8 @@ public sealed record StudentAttendanceDiary(Guid Id, DiaryStatus Status, int? Sc
 /// <param name="Attempts">Shu kundagi check-in urinishlari soni (<c>AttendanceEvent</c>).</param>
 /// <param name="RejectedAttempts">Ulardan rad etilganlari.</param>
 /// <param name="Events">Shu kundagi barcha check-in/check-out urinishlari vaqt bo'yicha o'sish tartibida (bo'lmasa — bo'sh).</param>
+/// <param name="FaceMatchScore">Qabul qilingan check-in selfisi va etalon yuz o'xshashligi (0–100); yuzni tasdiqlash
+/// o'chiq bo'lgan / check-in yo'q kunda — null.</param>
 public sealed record StudentAttendanceDay(
     DateOnly Date,
     AttendanceStatus Status,
@@ -65,4 +69,5 @@ public sealed record StudentAttendanceDay(
     StudentAttendanceDiary? Diary,
     int Attempts,
     int RejectedAttempts,
-    IReadOnlyList<StudentAttendanceEvent> Events);
+    IReadOnlyList<StudentAttendanceEvent> Events,
+    int? FaceMatchScore);

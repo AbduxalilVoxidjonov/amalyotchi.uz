@@ -3,6 +3,7 @@ using Amaliyotchi.Application.Common.Scoping;
 using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Application.Features.Tutor.Common;
 using Amaliyotchi.Application.Features.Tutor.Diaries;
+using Amaliyotchi.Application.Features.Tutor.Faces;
 using Amaliyotchi.Domain.Practice;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -14,9 +15,10 @@ namespace Amaliyotchi.Application.Features.Tutor.Nav;
 /// <item><paramref name="Today"/> — <c>GET /api/tutor/today</c> → <c>stats.total</c> (bugungi jadval qatorlari = ko'lamdagi talabalar);</item>
 /// <item><paramref name="Applications"/> — <c>GET /api/tutor/applications</c> → <c>counts.submitted</c> (ko'rib chiqilishi kerak);</item>
 /// <item><paramref name="Students"/> — <c>GET /api/tutor/students</c> ro'yxati uzunligi;</item>
-/// <item><paramref name="Diaries"/> — tekshirilmagan kundaliklar (<see cref="DiaryQueue.Unreviewed"/>: submitted/seen).</item>
+/// <item><paramref name="Diaries"/> — tekshirilmagan kundaliklar (<see cref="DiaryQueue.Unreviewed"/>: submitted/seen);</item>
+/// <item><paramref name="PendingFaceEnrollments"/> — <c>GET /api/tutor/face-enrollments</c> sukut (pending) ro'yxati uzunligi.</item>
 /// </list></summary>
-public sealed record TutorNavCounts(int Today, int Applications, int Students, int Diaries);
+public sealed record TutorNavCounts(int Today, int Applications, int Students, int Diaries, int PendingFaceEnrollments);
 
 /// <summary>Header crumb: <paramref name="Groups"/> — ko'lamdagi guruh nomlari (ordinal tartibda);
 /// <paramref name="PeriodName"/> — guruhlar uchun joriy davr nomi yoki <c>null</c>.</summary>
@@ -48,6 +50,8 @@ internal sealed class GetTutorNavQueryHandler(IApplicationDbContext db, IScopeRe
             .Join(db.StudentProfiles, d => d.StudentUserId, p => p.UserId, (d, p) => d.Id)
             .CountAsync(cancellationToken);
 
+        var pendingFaces = await db.CountPendingFaceEnrollmentsAsync(scope, cancellationToken);
+
         var groupIds = scope.StudentGroupIds;
         var groups = groupIds.Count == 0
             ? []
@@ -61,7 +65,7 @@ internal sealed class GetTutorNavQueryHandler(IApplicationDbContext db, IScopeRe
         var periodName = groupIds.Count == 0 ? null : await CurrentPeriodNameAsync(groupIds, cancellationToken);
 
         return new TutorNavDto(
-            new TutorNavCounts(students, applications, students, diaries),
+            new TutorNavCounts(students, applications, students, diaries, pendingFaces),
             new TutorNavContext(groups, periodName));
     }
 

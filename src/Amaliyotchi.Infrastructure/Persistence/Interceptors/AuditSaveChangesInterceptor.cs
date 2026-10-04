@@ -17,7 +17,9 @@ public sealed class AuditSaveChangesInterceptor(ICurrentUser currentUser, IClock
     /// <summary>Bu maydonlar audit yozuviga hech qachon tushmaydi.</summary>
     private static readonly HashSet<string> SensitiveProperties =
     [
-        "PasswordHash", "Token", "ReplacedByToken"
+        "PasswordHash", "Token", "ReplacedByToken",
+        // Biometrik embedding (StudentFaceEnrollment) — audit jurnaliga tushmaydi.
+        "Embedding"
     ];
 
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(

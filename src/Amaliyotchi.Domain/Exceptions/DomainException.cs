@@ -4,6 +4,10 @@ namespace Amaliyotchi.Domain.Exceptions;
 public class DomainException : Exception
 {
     public DomainException(string message) : base(message) { }
+
+    /// <summary>ProblemDetails'ga qo'shiladigan mashina o'qiydigan maydonlar (masalan check-in rad etilganda
+    /// <c>rejectReason</c>). Kalitlar camelCase.</summary>
+    public IDictionary<string, object?> Extensions { get; } = new Dictionary<string, object?>(StringComparer.Ordinal);
 }
 
 public sealed class NotFoundException : DomainException

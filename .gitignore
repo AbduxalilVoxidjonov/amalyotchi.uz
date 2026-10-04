@@ -17,6 +17,9 @@ TestResults/
 data/
 scratchpad/
 
+# Yuz modellari (deploy/scripts/fetch-face-models.sh yuklaydi, repoda saqlanmaydi)
+.models/
+
 # graphify (lokal bilim grafi) va mashinaga xos Claude sozlamalari
 graphify-out/
 .claude/

@@ -2,6 +2,7 @@ using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Auditing;
 using Amaliyotchi.Domain.Companies;
 using Amaliyotchi.Domain.Diary;
+using Amaliyotchi.Domain.Faces;
 using Amaliyotchi.Domain.Files;
 using Amaliyotchi.Domain.Grading;
 using Amaliyotchi.Domain.Identity;
@@ -48,6 +49,7 @@ public interface IApplicationDbContext
     DbSet<StoredFile> StoredFiles { get; }
     DbSet<BroadcastMessage> BroadcastMessages { get; }
     DbSet<BroadcastDelivery> BroadcastDeliveries { get; }
+    DbSet<StudentFaceEnrollment> StudentFaceEnrollments { get; }
 
     /// <summary>Tranzaksiya va execution strategy (<c>CreateExecutionStrategy</c> / <c>BeginTransactionAsync</c>) uchun.
     /// Npgsql retry yoqilgan — foydalanuvchi tranzaksiyasi doimo strategy ichida ochilishi kerak

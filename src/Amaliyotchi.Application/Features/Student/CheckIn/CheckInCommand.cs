@@ -20,13 +20,13 @@ public sealed class CheckInCommandValidator : GeoRequestValidator<CheckInCommand
 }
 
 internal sealed class CheckInCommandHandler(
-    IApplicationDbContext db, ICurrentUser currentUser, IClock clock, IFileStorage storage)
+    IApplicationDbContext db, ICurrentUser currentUser, IClock clock, IFileStorage storage, IFaceEngine faceEngine)
     : IRequestHandler<CheckInCommand, TodayDto>
 {
     public Task<TodayDto> Handle(CheckInCommand request, CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId ?? throw new ForbiddenException("Avtorizatsiya talab qilinadi.");
-        var attempt = new AttendanceAttempt(db, clock, storage, userId);
+        var attempt = new AttendanceAttempt(db, clock, storage, userId, faceEngine);
 
         return attempt.RunAsync(
             request,

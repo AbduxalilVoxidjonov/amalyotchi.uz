@@ -69,6 +69,16 @@ internal sealed class GetFileQueryHandler(
             return fromAttendance ?? file.UploadedByUserId;
         }
 
+        // Etalon yuz rasmi — joriy etalon bo'lsa uning talabasi; almashtirilgan eski rasm — yuklagan talaba.
+        if (file.Kind == StoredFileKind.FacePhoto)
+        {
+            var fromFace = await db.StudentFaceEnrollments
+                .Where(f => f.PhotoFileId == fileId)
+                .Select(f => (Guid?)f.StudentUserId)
+                .FirstOrDefaultAsync(cancellationToken);
+            return fromFace ?? file.UploadedByUserId;
+        }
+
         var fromApplication = await db.PracticeApplications
             .Where(a => a.ContractFileId == fileId)
             .Select(a => (Guid?)a.StudentUserId)

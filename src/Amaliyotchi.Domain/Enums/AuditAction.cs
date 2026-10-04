@@ -120,5 +120,18 @@ public enum AuditAction
 
     /// <summary>Talaba o'z ish vaqtini (kelish/ketish) o'zgartirdi (<c>PUT /api/student/profile/work-hours</c>).
     /// <c>changes</c> — <c>{ from: { start, end }, to: { start, end }, effectiveFrom }</c>; null — davr soatlari.</summary>
-    StudentWorkHoursChanged = 70
+    StudentWorkHoursChanged = 70,
+
+    /// <summary>Talaba etalon yuz rasmini yubordi (<c>POST /api/student/face</c>, rozilik bilan). <c>changes</c> —
+    /// <c>{ photoFileId, replaced }</c>; embedding audit'ga yozilmaydi.</summary>
+    FaceEnrollmentSubmitted = 71,
+
+    /// <summary>Tyutor/admin talabaning etalon yuz rasmini tasdiqladi.</summary>
+    FaceEnrollmentApproved = 72,
+
+    /// <summary>Tyutor/admin etalon yuz rasmini rad etdi; <c>reason</c> — sabab.</summary>
+    FaceEnrollmentRejected = 73,
+
+    /// <summary>Tyutor/admin etalonni bekor qildi (holat "none" — talaba qayta yuboradi).</summary>
+    FaceEnrollmentReset = 74
 }

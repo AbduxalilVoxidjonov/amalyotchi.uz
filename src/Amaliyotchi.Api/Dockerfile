@@ -2,8 +2,21 @@
 # Amaliyotchi API — multi-stage build. Context: loyiha ildizi (../.. shu fayldan), qarang deploy/docker-compose.yml.
 #   docker build -f src/Amaliyotchi.Api/Dockerfile -t amaliyotchi-api .
 
+# ---------- 0. Yuz modellari (YuNet + SFace ONNX) ----------
+# Repoda saqlanmaydi: qat'iy commit URL + SHA256 (deploy/scripts/fetch-face-models.sh). BuildKit cache — keyingi
+# build'larda qayta yuklanmaydi (~39 MB).
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS models
+COPY deploy/scripts/fetch-face-models.sh /tmp/fetch-face-models.sh
+RUN --mount=type=cache,target=/cache/face-models \
+    bash /tmp/fetch-face-models.sh /cache/face-models \
+ && mkdir -p /models \
+ && cp /cache/face-models/*.onnx /models/
+
 # ---------- 1. Build ----------
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# SDK build mashinasi arxitekturasida ishlaydi (QEMU emulyatsiyasisiz), natija -r bilan TARGETARCH uchun.
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# Native kutubxonalar (ONNX Runtime, SkiaSharp) faqat image arxitekturasi uchun: amd64 → linux-x64, arm64 → linux-arm64.
+ARG TARGETARCH
 WORKDIR /src
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_NOLOGO=1
@@ -17,11 +30,13 @@ COPY src/Amaliyotchi.Infrastructure/Amaliyotchi.Infrastructure.csproj src/Amaliy
 COPY src/Amaliyotchi.Api/Amaliyotchi.Api.csproj                       src/Amaliyotchi.Api/
 # NuGet paketlari layer ichida qoladi (cache mount EMAS): aks holda restore layer'i keshdan olinib, mount
 # tozalangan bo'lsa `publish --no-restore` paketlarni topmay yiqiladi.
-RUN dotnet restore src/Amaliyotchi.Api
+RUN RID="linux-$([ "${TARGETARCH:-amd64}" = "arm64" ] && echo arm64 || echo x64)" \
+ && dotnet restore src/Amaliyotchi.Api -r "$RID"
 
 COPY src/ src/
 # UseAppHost=false — native launcher kerak emas (ENTRYPOINT `dotnet *.dll`), image kichikroq.
-RUN dotnet publish src/Amaliyotchi.Api -c Release -o /app --no-restore -p:UseAppHost=false
+RUN RID="linux-$([ "${TARGETARCH:-amd64}" = "arm64" ] && echo arm64 || echo x64)" \
+ && dotnet publish src/Amaliyotchi.Api -c Release -o /app --no-restore -r "$RID" --self-contained false -p:UseAppHost=false
 
 # ---------- 2. Runtime ----------
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
@@ -32,6 +47,8 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY --from=build /app .
+# Yuz modellari (Face:ModelsPath). Yo'q bo'lsa ilova ishlaydi, lekin yoqilgan "Yuzni tasdiqlash" 503 beradi.
+COPY --from=models /models /app/models/face
 
 # Hostdagi fayl rejimi (masalan 0600) COPY da saqlanadi — non-root "app" o'qiy olishi uchun a+rX.
 # Storage:RootPath=/app/data/files — volume; "app" (image'da tayyor) yoza olishi uchun egalik.
@@ -44,7 +61,8 @@ USER app
 ENV ASPNETCORE_HTTP_PORTS=8080 \
     ASPNETCORE_ENVIRONMENT=Production \
     DOTNET_EnableDiagnostics=0 \
-    DOTNET_NOLOGO=1
+    DOTNET_NOLOGO=1 \
+    Face__ModelsPath=/app/models/face
 
 EXPOSE 8080
 

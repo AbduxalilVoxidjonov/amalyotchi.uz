@@ -11,9 +11,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Student.Common;
 
-/// <summary>Tizim sozlamalaridan talaba oqimiga kerakli qismi (yo'q kalit → domain default).</summary>
+/// <summary>Tizim sozlamalaridan talaba oqimiga kerakli qismi (yo'q kalit → domain default).
+/// <see cref="FaceVerificationEnabled"/> yoqilgan bo'lsa check-in selfisi <see cref="CheckInPhotoRequired"/> dan qat'i nazar majburiy.</summary>
 internal sealed record StudentSettings(
-    double MinGpsAccuracyM, int MinReportLength, bool CheckInPhotoRequired, bool DiaryPdfRequired, bool CheckInQrRequired);
+    double MinGpsAccuracyM, int MinReportLength, bool CheckInPhotoRequired, bool DiaryPdfRequired, bool CheckInQrRequired,
+    bool FaceVerificationEnabled = false, int FaceMatchThreshold = 36);
 
 /// <summary>Bitta talabaning amaliyot holati: profil (foydalanuvchi + guruh), sirt maqsadiga ko'ra tanlangan davr
 /// (<see cref="PeriodSelection"/>), shu davr bo'yicha ariza (korxona bilan), talabaning barcha davrlari, bayramlar,
@@ -136,7 +138,8 @@ internal static class StudentPracticeLoader
         string[] keys =
         [
             SettingKeys.MinGpsAccuracy, SettingKeys.MinReportLength,
-            SettingKeys.CheckInPhotoRequired, SettingKeys.DiaryPdfRequired, SettingKeys.CheckInQrRequired
+            SettingKeys.CheckInPhotoRequired, SettingKeys.DiaryPdfRequired, SettingKeys.CheckInQrRequired,
+            SettingKeys.FaceVerificationEnabled, SettingKeys.FaceMatchThreshold
         ];
         var values = await db.AppSettings
             .AsNoTracking()
@@ -148,7 +151,9 @@ internal static class StudentPracticeLoader
             Int(values, SettingKeys.MinReportLength),
             Bool(values, SettingKeys.CheckInPhotoRequired),
             Bool(values, SettingKeys.DiaryPdfRequired),
-            Bool(values, SettingKeys.CheckInQrRequired));
+            Bool(values, SettingKeys.CheckInQrRequired),
+            Bool(values, SettingKeys.FaceVerificationEnabled),
+            Int(values, SettingKeys.FaceMatchThreshold));
     }
 
     /// <summary>Mantiqiy sozlama: yo'q yoki buzuq qiymat → ta'rifdagi standart.</summary>

@@ -1,6 +1,7 @@
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Features.Admin.Common;
+using Amaliyotchi.Application.Features.Faces;
 using Amaliyotchi.Application.Features.Tutor.Students;
 using Amaliyotchi.Domain.Students;
 using MediatR;
@@ -41,7 +42,8 @@ public sealed record AdminStudentDetail(
     IReadOnlyList<StudentPeriodOption> Periods,
     Guid? SelectedPeriodId,
     bool HasPassword,
-    ActiveCompanyRef? ActiveCompany);
+    ActiveCompanyRef? ActiveCompany,
+    StudentFaceDto Face);
 
 /// <summary><c>GET /api/admin/students/{id}?periodId=</c> — talaba profili (davrga bog'liq bloklar tanlangan davr bo'yicha).
 /// Talaba topilmasa yoki <c>periodId</c> talabaga tegishli bo'lmasa → 404.</summary>
@@ -106,6 +108,7 @@ internal sealed class GetAdminStudentDetailQueryHandler(IApplicationDbContext db
             profile.Periods,
             profile.SelectedPeriodId,
             profile.HasPassword,
-            profile.ActiveCompany);
+            profile.ActiveCompany,
+            profile.Face);
     }
 }
