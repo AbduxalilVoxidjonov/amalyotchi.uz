@@ -19,6 +19,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.PasswordHash).HasMaxLength(500);
         builder.Property(u => u.Role).HasConversion<int>().IsRequired();
         builder.Property(u => u.MustChangePassword).IsRequired();
+        builder.Property(u => u.IsSuperAdmin).IsRequired().HasDefaultValue(false);
         builder.Property(u => u.TelegramLinkedAt);
         builder.Property(u => u.TelegramBotBlockedAt);
 
@@ -27,7 +28,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .IsUnique()
             .HasFilter("is_deleted = false AND phone_number IS NOT NULL");
 
-        // Xodim (admin/tyutor) login identifikatori — HEMIS ID. Talabada bu maydon null.
+        // Admin login identifikatori — HEMIS ID. Talabada bu maydon null.
         builder.HasIndex(u => u.HemisId)
             .IsUnique()
             .HasFilter("is_deleted = false AND hemis_id IS NOT NULL");
@@ -36,7 +37,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .IsUnique()
             .HasFilter("telegram_user_id IS NOT NULL");
 
-        // Tyutor/talaba ro'yxatlari doimo fakultet bo'yicha filtrlanadi.
+        // Talaba ro'yxatlari fakultet bo'yicha filtrlanadi.
         builder.HasIndex(u => new { u.FacultyId, u.Role });
 
         builder.HasMany(u => u.RefreshTokens)
@@ -45,14 +46,6 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Navigation(u => u.RefreshTokens).UsePropertyAccessMode(PropertyAccessMode.Field);
-
-        // Tyutor ↔ fakultetlar (ko'p-ko'pga). Oddiy qatorlar: foydalanuvchi bilan birga o'chadi.
-        builder.HasMany(u => u.Faculties)
-            .WithOne()
-            .HasForeignKey(f => f.TutorUserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.Navigation(u => u.Faculties).UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.Property<uint>("xmin").IsRowVersion();
     }

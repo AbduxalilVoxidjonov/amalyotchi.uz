@@ -3,7 +3,7 @@ using Amaliyotchi.Domain.Exceptions;
 
 namespace Amaliyotchi.Domain.Diary;
 
-/// <summary>Talabaning kunlik hisoboti. Bir kunga bitta yozuv. Tyutor ko'radi, 1–5 ball qo'yadi yoki
+/// <summary>Talabaning kunlik hisoboti. Bir kunga bitta yozuv. Admin ko'radi, 1–5 ball qo'yadi yoki
 /// qayta yozishga qaytaradi. Minimal matn uzunligi sozlamadan (<c>minReportLength</c>) keladi.</summary>
 public sealed class DiaryEntry : AuditableEntity
 {
@@ -88,7 +88,7 @@ public sealed class DiaryEntry : AuditableEntity
         ReviewedAt = null;
     }
 
-    /// <summary>Tyutor ochib ko'rdi — faqat <c>Submitted</c> holatidan; boshqa holatlarda o'zgarish yo'q.</summary>
+    /// <summary>Admin ochib ko'rdi — faqat <c>Submitted</c> holatidan; boshqa holatlarda o'zgarish yo'q.</summary>
     public void MarkSeen(Guid byUserId, DateTimeOffset at)
     {
         if (Status != DiaryStatus.Submitted)

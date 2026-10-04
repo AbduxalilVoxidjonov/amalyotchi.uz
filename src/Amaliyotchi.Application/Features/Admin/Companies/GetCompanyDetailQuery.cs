@@ -17,6 +17,6 @@ internal sealed class GetCompanyDetailQueryHandler(IApplicationDbContext db, ISc
     {
         // Admin ko'lami cheklanmagan — shu bois `students` = `totalStudents`, ko'lam sharti ham qo'yilmaydi.
         var scope = await scopeResolver.ResolveAsync(cancellationToken);
-        return await CompanyQueries.LoadDetailAsync(db, scope, request.Id, requireScopedStudents: false, clock.LocalToday(), cancellationToken);
+        return await CompanyQueries.LoadDetailAsync(db, scope, request.Id, clock.LocalToday(), cancellationToken);
     }
 }

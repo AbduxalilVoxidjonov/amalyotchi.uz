@@ -9,7 +9,7 @@ public interface ICurrentUser
     Guid? UserId { get; }
     UserRole? Role { get; }
 
-    /// <summary>Tyutor va talabaning ko'lami. Admin uchun null — cheklov yo'q.</summary>
+    /// <summary>Talabaning fakulteti. Admin uchun null — cheklov yo'q.</summary>
     Guid? FacultyId { get; }
 
     bool IsAuthenticated { get; }

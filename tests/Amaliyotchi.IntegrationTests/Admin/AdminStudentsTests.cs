@@ -17,7 +17,7 @@ public sealed class AdminStudentsTests(ApiFixture fixture)
     public async Task Talabalar_200_Shakl_Holatlar()
     {
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group);
+        var tutor = await Factory.CreateAdminAsync();
         var period = await Factory.CreateActivePeriodAsync(group, tutor.Id);
         var company = await Factory.CreateCompanyAsync(name: "Talaba Korxonasi");
         var today = Factory.Today();
@@ -71,7 +71,7 @@ public sealed class AdminStudentsTests(ApiFixture fixture)
     public async Task Talabalar_PastDavomat_Flagged_HemisBoyichaQidiruv()
     {
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group);
+        var tutor = await Factory.CreateAdminAsync();
         var period = await Factory.CreateActivePeriodAsync(group, tutor.Id);
         var company = await Factory.CreateCompanyAsync();
         var student = await Factory.CreateStudentAsync(group: group);
@@ -91,9 +91,9 @@ public sealed class AdminStudentsTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Talabalar_Tyutor_403()
+    public async Task Talabalar_Talaba_403()
     {
-        var client = await Factory.LoginAsTutorAsync();
+        var client = await Factory.LoginAsNewStudentAsync();
 
         (await client.GetAsync("/api/admin/students")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }

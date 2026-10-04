@@ -78,7 +78,7 @@ public sealed class DiaryWriteRuleTests(ApiFixture fixture)
         await Factory.WithDbAsync(async db =>
         {
             var entry = await db.DiaryEntries.SingleAsync(d => d.Id == created!.Id);
-            entry.RequestRewrite(scene.Tutor.Id, "Batafsilroq yozing", DateTimeOffset.UtcNow);
+            entry.RequestRewrite(scene.Admin.Id, "Batafsilroq yozing", DateTimeOffset.UtcNow);
             await db.SaveChangesAsync();
         });
 

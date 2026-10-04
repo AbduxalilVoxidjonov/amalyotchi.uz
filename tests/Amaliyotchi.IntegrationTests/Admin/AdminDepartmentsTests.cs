@@ -101,10 +101,10 @@ public sealed class AdminDepartmentsTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Yaratish_TyutorTokeni_403()
+    public async Task Yaratish_TalabaTokeni_403()
     {
         var facultyId = await Factory.CreateFacultyAsync("Tyutor Fakulteti");
-        var client = await Factory.LoginAsTutorAsync();
+        var client = await Factory.LoginAsNewStudentAsync();
 
         var response = await client.PostJsonAsync(
             $"/api/admin/faculties/{facultyId}/departments", new { name = "Kafedra", code = "KOD" });
@@ -183,11 +183,11 @@ public sealed class AdminDepartmentsTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Ochirish_TyutorTokeni_403()
+    public async Task Ochirish_TalabaTokeni_403()
     {
         var facultyId = await Factory.CreateFacultyAsync("Tyutor Ochirish Fakulteti");
         var departmentId = await Factory.CreateDepartmentAsync(facultyId);
-        var client = await Factory.LoginAsTutorAsync();
+        var client = await Factory.LoginAsNewStudentAsync();
 
         var response = await client.DeleteAsync($"/api/admin/departments/{departmentId}");
 

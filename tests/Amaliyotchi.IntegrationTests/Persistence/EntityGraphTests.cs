@@ -63,7 +63,7 @@ public sealed class EntityGraphTests(ApiFixture fixture)
     [Fact]
     public async Task User_IssueRefreshToken_NavigatsiyaOrqali_InsertBoladi()
     {
-        var tutor = await Factory.CreateTutorAsync();
+        var tutor = await Factory.CreateAdminAsync();
 
         await Factory.WithDbAsync(async db =>
         {

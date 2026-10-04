@@ -40,16 +40,16 @@ public sealed class StudentPeriodDaysTests(ApiFixture fixture)
             present.MarkSuspicious("Joylashuv shubhali");
             present.AutoClose(PracticeTime.At(presentDay, new TimeOnly(18, 0)));
             var manual = DailyAttendance.Manual(scene.Student.Id, scene.Period.Id, manualDay, AttendanceStatus.Present,
-                scene.Tutor.Id, "Telefon buzilgan", PracticeTime.At(manualDay, new TimeOnly(9, 0)));
+                scene.Admin.Id, "Telefon buzilgan", PracticeTime.At(manualDay, new TimeOnly(9, 0)));
             db.DailyAttendances.AddRange(late, present, manual);
 
             var leave = LeaveRequest.Create(scene.Student.Id, scene.Period.Id, excusedDay, excusedDay, "Shifokor ko'rigi, ma'lumotnoma bor");
-            leave.Approve(scene.Tutor.Id, null, PracticeTime.At(excusedDay, new TimeOnly(8, 0)));
+            leave.Approve(scene.Admin.Id, null, PracticeTime.At(excusedDay, new TimeOnly(8, 0)));
             db.LeaveRequests.Add(leave);
 
             var diary = DiaryEntry.Create(scene.Student.Id, scene.Period.Id, lateDay, StudentTestData.LongText(), null,
                 PracticeTime.At(lateDay, new TimeOnly(18, 0)));
-            diary.Approve(scene.Tutor.Id, 5, null, PracticeTime.At(day, new TimeOnly(8, 0)));
+            diary.Approve(scene.Admin.Id, 5, null, PracticeTime.At(day, new TimeOnly(8, 0)));
             db.DiaryEntries.Add(diary);
             await db.SaveChangesAsync();
             return diary.Id;
@@ -153,7 +153,7 @@ public sealed class StudentPeriodDaysTests(ApiFixture fixture)
         {
             var period = PracticePeriod.Create(
                 $"Eski {Guid.NewGuid():N}"[..16], scene.Group.AcademicYearId, holidayDate.AddDays(-7), holidayDate.AddDays(7),
-                scene.Tutor.Id, CheckInRules.Default, WorkDays.MondayToFriday, 10, dailyReportRequired: true);
+                scene.Admin.Id, CheckInRules.Default, WorkDays.MondayToFriday, 10, dailyReportRequired: true);
             period.AttachGroup(scene.Group.GroupId);
             period.Activate();
             db.PracticePeriods.Add(period);
@@ -193,7 +193,7 @@ public sealed class StudentPeriodDaysTests(ApiFixture fixture)
     {
         var scene = await Factory.CreateSceneAsync();
         var otherGroup = await Factory.CreateGroupAsync();
-        var foreign = await Factory.CreatePeriodAtAsync(otherGroup, scene.Tutor.Id, Factory.LocalToday());
+        var foreign = await Factory.CreatePeriodAtAsync(otherGroup, scene.Admin.Id, Factory.LocalToday());
 
         (await scene.Client.GetAsync($"/api/student/period-days?periodId={foreign.Id}"))
             .StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -218,11 +218,8 @@ public sealed class StudentPeriodDaysTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task TyutorVaAdmin_403()
+    public async Task Admin_403()
     {
-        var tutor = await Factory.LoginAsTutorAsync();
-        (await tutor.GetAsync("/api/student/period-days")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-
         var admin = await Factory.LoginAsAdminAsync();
         (await admin.GetAsync("/api/student/period-days")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }

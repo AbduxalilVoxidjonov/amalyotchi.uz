@@ -5,7 +5,6 @@ using Amaliyotchi.Application.Features.Admin.Companies;
 using Amaliyotchi.Application.Features.Admin.Faculties;
 using Amaliyotchi.Application.Features.Admin.Groups;
 using Amaliyotchi.Application.Features.Admin.Students;
-using Amaliyotchi.Application.Features.Admin.Tutors;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Domain.Practice;
 using MediatR;
@@ -67,23 +66,10 @@ public sealed record FacultyAttendanceDto(
     int AttendedToday,
     int AttendancePct);
 
-public sealed record TutorActivityDto(
-    Guid Id,
-    string Name,
-    string? FacultyCode,
-    IReadOnlyList<string> Groups,
-    int StudentCount,
-    int PendingCount,
-    DateTimeOffset? OldestPendingAt,
-    double? AvgDecisionHours,
-    DateTimeOffset? LastActiveAt,
-    TutorStatus Status);
-
 public sealed record AdminDashboardDto(
     DateOnly Date,
     DashboardStatsDto Stats,
     IReadOnlyList<FacultyAttendanceDto> Faculties,
-    IReadOnlyList<TutorActivityDto> Tutors,
     IReadOnlyList<AuditEntryDto> Audit);
 
 /// <summary><c>GET /api/admin/dashboard</c>. Bo'sh bazada ham 200 — hamma qiymat 0 / bo'sh ro'yxat.</summary>
@@ -104,7 +90,6 @@ internal sealed class GetAdminDashboardQueryHandler(IApplicationDbContext db, IC
 
         var stats = await LoadStatsAsync(calendar, todayByFaculty, now, cancellationToken);
         var faculties = await LoadFacultiesAsync(todayByFaculty, cancellationToken);
-        var tutors = await LoadTutorsAsync(now, cancellationToken);
 
         var audit = await db.AuditLogs
             .AsNoTracking()
@@ -113,7 +98,7 @@ internal sealed class GetAdminDashboardQueryHandler(IApplicationDbContext db, IC
             .Take(AdminThresholds.DashboardAuditCount)
             .ToListAsync(cancellationToken);
 
-        return new AdminDashboardDto(today, stats, faculties, tutors, audit);
+        return new AdminDashboardDto(today, stats, faculties, audit);
     }
 
     private async Task<DashboardStatsDto> LoadStatsAsync(
@@ -229,38 +214,5 @@ internal sealed class GetAdminDashboardQueryHandler(IApplicationDbContext db, IC
                 f.Id, f.Name, f.Code, studentsByFaculty.GetValueOrDefault(f.Id),
                 tally.Expected, tally.Attended, tally.Pct);
         }).ToList();
-    }
-
-    private async Task<List<TutorActivityDto>> LoadTutorsAsync(DateTimeOffset now, CancellationToken cancellationToken)
-    {
-        var tutors = await db.Users.AsNoTracking()
-            .Where(u => u.Role == UserRole.Tutor && u.IsActive)
-            .OrderBy(u => u.FullName)
-            .Select(u => new { u.Id, u.FullName, u.LastLoginAt })
-            .ToListAsync(cancellationToken);
-
-        if (tutors.Count == 0)
-            return [];
-
-        var ids = tutors.Select(t => t.Id).ToList();
-        var stats = await TutorStatsLoader.LoadAsync(db, ids, now, cancellationToken);
-        // Tyutor bir nechta fakultetga biriktirilishi mumkin — kodlar vergul bilan ("AT, IM"), nom bo'yicha tartib.
-        var faculties = await TutorFacultyQueries.LoadRefsAsync(db, ids, cancellationToken);
-
-        return tutors
-            .Select(t =>
-            {
-                var s = stats.GetValueOrDefault(t.Id) ?? TutorStats.Empty;
-                var facultyCode = faculties.TryGetValue(t.Id, out var refs)
-                    ? string.Join(", ", refs.Select(f => f.Code))
-                    : null;
-                return new TutorActivityDto(
-                    t.Id, t.FullName, facultyCode, s.Groups, s.StudentCount, s.PendingCount, s.OldestPendingAt,
-                    s.AvgDecisionHours, GetTutorsQueryHandler.Latest(t.LastLoginAt, s.LastAuditAt), s.Status(now));
-            })
-            .OrderByDescending(t => t.Status == TutorStatus.Late)
-            .ThenByDescending(t => t.PendingCount)
-            .ThenBy(t => t.Name, StringComparer.Ordinal)
-            .ToList();
     }
 }

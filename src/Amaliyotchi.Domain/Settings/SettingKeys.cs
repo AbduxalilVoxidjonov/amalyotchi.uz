@@ -74,7 +74,7 @@ public static class SettingKeys
     public static IReadOnlyList<SettingDefinition> All { get; } =
     [
         new(GeofenceRadius, "Standart geofence radiusi", SettingType.Int, UnitMeters,
-            "Yangi korxona uchun standart radius; tyutor har korxona uchun o'zgartira oladi.", "200", 50, 1000),
+            "Yangi korxona uchun standart radius; administrator har korxona uchun o'zgartira oladi.", "200", 50, 1000),
         new(LateTolerance, "Kechikish chegarasi", SettingType.Int, UnitMinutes,
             "Ish boshlanishidan shuncha daqiqa o'tgach check-in \"kech keldi\" bo'ladi.", "15", 0, 120),
         new(MinGpsAccuracy, "Minimal GPS aniqligi", SettingType.Int, UnitMeters,

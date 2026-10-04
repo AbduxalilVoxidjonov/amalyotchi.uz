@@ -115,7 +115,7 @@ public sealed class StudentFaceEnrollmentTests(ApiFixture fixture)
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await response.ProblemAsync()).GetProperty("detail").GetString()
-            .Should().Be("Yuz allaqachon tasdiqlangan. O'zgartirish uchun tyutoringizga murojaat qiling.");
+            .Should().Be("Yuz allaqachon tasdiqlangan. O'zgartirish uchun administratorga murojaat qiling.");
     }
 
     [Theory]
@@ -193,10 +193,10 @@ public sealed class StudentFaceEnrollmentTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Tyutor_TalabaEndpointigaKirmaydi_403()
+    public async Task Admin_TalabaEndpointigaKirmaydi_403()
     {
-        var tutor = await Factory.LoginAsTutorAsync();
-        (await tutor.GetAsync("/api/student/face")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var admin = await Factory.LoginAsAdminAsync();
+        (await admin.GetAsync("/api/student/face")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 }
 

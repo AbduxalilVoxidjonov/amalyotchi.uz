@@ -74,7 +74,7 @@ Stack (`deploy/docker-compose.yml`, production rejimi):
 |-------------|-----------------------------------------|------------------------------------------------------------------|
 | postgres    | `postgis/postgis:16-3.4`                | PostgreSQL 16 + PostGIS, volume `postgres-data`                  |
 | api         | `amaliyotchi-api:local` (build)         | .NET 10 API, fayllar volume `api-data` (`/app/data/files`)      |
-| dashboard   | `amaliyotchi-dashboard:local` (build)   | nginx: admin/tyutor SPA, `/api/` → `api:8080`                   |
+| dashboard   | `amaliyotchi-dashboard:local` (build)   | nginx: admin SPA, `/api/` → `api:8080`                          |
 | twa         | `amaliyotchi-twa:local` (build)         | nginx: talaba Telegram Mini App, `/api/` → `api:8080`           |
 | cloudflared | `cloudflare/cloudflared:2026.9.3`       | Cloudflare Tunnel — **yagona tashqi kirish**                     |
 | seq         | `datalust/seq:2026.1.17182`             | markazlashgan loglar (UI faqat `127.0.0.1:5341`)                |
@@ -358,8 +358,8 @@ docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.dev.yml --p
 | postgres  | `127.0.0.1:55432`               | `POSTGRES_PORT`; `amaliyotchi` / `POSTGRES_PASSWORD`  |
 | seq       | <http://127.0.0.1:5341>         | `SEQ_PORT`                                            |
 
-Demo login'lar: admin — `.env` dagi `ADMIN_HEMIS_ID`/`ADMIN_PASSWORD`; tyutor HEMIS ID `100000000002` / `tutor12345`;
-talaba HEMIS ID `341030` / `talaba12345`. Bazani noldan: `... down -v`.
+Demo login'lar: admin (bosh admin) — `.env` dagi `ADMIN_HEMIS_ID`/`ADMIN_PASSWORD`;
+talaba HEMIS ID `341030` / `talaba12345`. Tyutor roli yo'q (barcha amallar — admin). Bazani noldan: `... down -v`.
 
 Telegram Mini App faqat HTTPS ochadi — lokal sinash uchun vaqtinchalik tunnel:
 `cloudflared tunnel --url http://127.0.0.1:8091` (chiqqan `https://...trycloudflare.com` ni `TWA_PUBLIC_URL` ga).

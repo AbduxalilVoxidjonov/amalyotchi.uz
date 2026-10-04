@@ -31,7 +31,7 @@ internal sealed class GetCompanyByTinQueryHandler(IApplicationDbContext db)
     : IRequestHandler<GetCompanyByTinQuery, CompanyLookupDto>
 {
     public const string NotFoundMessage =
-        "Bu STIR bilan faol korxona topilmadi. Korxona avval tizimga kiritilishi kerak — tyutoringizga murojaat qiling.";
+        "Bu STIR bilan faol korxona topilmadi. Korxona avval tizimga kiritilishi kerak — administratorga murojaat qiling.";
 
     public async Task<CompanyLookupDto> Handle(GetCompanyByTinQuery request, CancellationToken cancellationToken)
     {

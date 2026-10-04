@@ -9,7 +9,7 @@ using Microsoft.Extensions.Caching.Memory;
 namespace Amaliyotchi.Infrastructure.Identity;
 
 /// <summary>Access token "security stamp" tekshiruvi: hisob o'chirilsa/faolsizlantirilsa yoki parol, login
-/// (HEMIS ID), rol yoki fakultet o'zgarsa — avval berilgan access tokenlar darhol ishlamay qoladi.
+/// (HEMIS ID), rol, fakultet yoki bosh admin belgisi o'zgarsa — avval berilgan access tokenlar darhol ishlamay qoladi.
 /// Stamp alohida ustunsiz (migratsiyasiz) shu maydonlardan hisoblanadi: <c>PasswordHash</c> har almashishda yangi tuz
 /// bilan yaratiladi, shuning uchun parol (hatto o'sha qiymatga) qayta o'rnatilsa ham stamp o'zgaradi.
 /// Har so'rovda og'ir query bo'lmasligi uchun natija <see cref="IMemoryCache"/> da qisqa muddat saqlanadi;
@@ -26,11 +26,16 @@ public sealed class UserSessionValidator(AppDbContext db, IMemoryCache cache)
     public static string CacheKey(Guid userId) => $"user-session-stamp:{userId:N}";
 
     public static string ComputeStamp(User user)
-        => ComputeStamp(user.PasswordHash, user.HemisId, user.Role, user.FacultyId);
+        => ComputeStamp(user.PasswordHash, user.HemisId, user.Role, user.FacultyId, user.IsSuperAdmin);
 
-    public static string ComputeStamp(string? passwordHash, string? hemisId, UserRole role, Guid? facultyId)
+    /// <summary><paramref name="isSuperAdmin"/> faqat <c>true</c> bo'lganda material'ga qo'shiladi — oddiy foydalanuvchilarning
+    /// stamp'i (va deploy oldidan berilgan tokenlari) o'zgarmaydi; bosh admin belgisi o'zgarsa token qayta olinadi va
+    /// <c>is_super_admin</c> claim'i yangilanadi.</summary>
+    public static string ComputeStamp(string? passwordHash, string? hemisId, UserRole role, Guid? facultyId, bool isSuperAdmin)
     {
         var material = string.Join('\n', passwordHash ?? "-", hemisId ?? "-", role.ToString(), facultyId?.ToString("N") ?? "-");
+        if (isSuperAdmin)
+            material += "\nsuper-admin";
         // 128 bit yetarli: stamp sir emas (tokenning o'zi imzolangan), faqat o'zgarishni aniqlash uchun.
         return Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(material)), 0, 16);
     }
@@ -47,13 +52,13 @@ public sealed class UserSessionValidator(AppDbContext db, IMemoryCache cache)
             var user = await db.Users
                 .AsNoTracking()
                 .Where(u => u.Id == userId)
-                .Select(u => new { u.IsActive, u.PasswordHash, u.HemisId, u.Role, u.FacultyId })
+                .Select(u => new { u.IsActive, u.PasswordHash, u.HemisId, u.Role, u.FacultyId, u.IsSuperAdmin })
                 .FirstOrDefaultAsync(cancellationToken);
 
             // O'chirilgan (soft delete filtri) yoki faolsiz hisob — hech qanday token qabul qilinmaydi.
             return user is null || !user.IsActive
                 ? Inactive
-                : ComputeStamp(user.PasswordHash, user.HemisId, user.Role, user.FacultyId);
+                : ComputeStamp(user.PasswordHash, user.HemisId, user.Role, user.FacultyId, user.IsSuperAdmin);
         }) ?? Inactive;
 
         return current.Length > 0

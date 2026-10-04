@@ -1,6 +1,6 @@
 namespace Amaliyotchi.Domain.Diary;
 
-/// <summary>Kundalik yozuvi holati: yuborildi → tyutor ko'rdi → tasdiqlandi (ball bilan) / qayta yozish.</summary>
+/// <summary>Kundalik yozuvi holati: yuborildi → admin ko'rdi → tasdiqlandi (ball bilan) / qayta yozish.</summary>
 public enum DiaryStatus
 {
     Submitted = 1,

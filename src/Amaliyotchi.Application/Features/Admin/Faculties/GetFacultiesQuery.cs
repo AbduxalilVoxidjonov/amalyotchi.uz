@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Admin.Faculties;
 
-/// <summary>Kontrakt <c>Faculty</c> + qo'shimcha <c>code</c>, <c>tutors</c>. <paramref name="AttendancePct"/> — bugungi
+/// <summary>Kontrakt <c>Faculty</c> + qo'shimcha <c>code</c>. <paramref name="AttendancePct"/> — bugungi
 /// (kutilgan talabalardan kelgan/kech kelganlar); bugun hech kim kutilmasa 0 va holat <c>active</c>.</summary>
 public sealed record FacultyRow(
     Guid Id,
@@ -17,7 +17,6 @@ public sealed record FacultyRow(
     int Directions,
     int Groups,
     int Students,
-    int Tutors,
     int AttendancePct,
     FacultyStatus Status);
 
@@ -70,15 +69,6 @@ internal sealed class GetFacultiesQueryHandler(IApplicationDbContext db, IClock 
                                        select new { FacultyId = grp.Key, Count = grp.Count() })
             .ToDictionaryAsync(x => x.FacultyId, x => x.Count, cancellationToken);
 
-        var tutorsByFaculty = await (from a in db.TutorAssignments.AsNoTracking()
-                                     join g in db.StudentGroups on a.StudentGroupId equals g.Id
-                                     join d in db.Directions on g.DirectionId equals d.Id
-                                     join dept in db.Departments on d.DepartmentId equals dept.Id
-                                     where a.IsActive && ids.Contains(dept.FacultyId)
-                                     group a by dept.FacultyId into grp
-                                     select new { FacultyId = grp.Key, Count = grp.Select(a => a.TutorUserId).Distinct().Count() })
-            .ToDictionaryAsync(x => x.FacultyId, x => x.Count, cancellationToken);
-
         // Bugungi davomat — dashboard bilan bitta hisob (DailyAttendanceTally): faqat bugun davom etayotgan davr guruhlari,
         // foiz = keldi / (kutilgan − sababli).
         var calendar = await PracticeCalendar.LoadAsync(db, clock, cancellationToken);
@@ -96,7 +86,6 @@ internal sealed class GetFacultiesQueryHandler(IApplicationDbContext db, IClock 
             return new FacultyRow(
                 f.Id, f.Name, f.Code, f.IsActive, f.Directions, f.Groups,
                 studentsByFaculty.GetValueOrDefault(f.Id),
-                tutorsByFaculty.GetValueOrDefault(f.Id),
                 pct, status);
         }).ToList();
 

@@ -17,14 +17,15 @@ public sealed class LoginFlowTests(ApiFixture fixture)
     [Fact]
     public async Task Login_Me_Refresh_Logout_ToliqOqim()
     {
-        var tutor = await Factory.CreateTutorAsync();
+        var tutor = await Factory.CreateAdminAsync();
 
         // 1. Login
         var (client, first) = await Factory.LoginWithResultAsync(tutor);
         first.User.Id.Should().Be(tutor.Id);
-        first.User.Role.Should().Be(UserRole.Tutor);
-        first.User.FacultyId.Should().Be(tutor.FacultyId);
-        first.User.GroupId.Should().BeNull("tyutorda profil yo'q");
+        first.User.Role.Should().Be(UserRole.Admin);
+        first.User.FacultyId.Should().BeNull();
+        first.User.GroupId.Should().BeNull("adminda profil yo'q");
+        first.User.IsSuperAdmin.Should().BeFalse();
         first.User.HemisId.Should().Be(tutor.HemisId);
         first.RefreshToken.Should().NotBeNullOrEmpty();
 
@@ -60,7 +61,7 @@ public sealed class LoginFlowTests(ApiFixture fixture)
     [Fact]
     public async Task RefreshToken_BazadaOchiqEmas_FaqatXeshSaqlanadi()
     {
-        var tutor = await Factory.CreateTutorAsync();
+        var tutor = await Factory.CreateAdminAsync();
         var (_, auth) = await Factory.LoginWithResultAsync(tutor);
 
         var stored = await Factory.WithDbAsync(db =>

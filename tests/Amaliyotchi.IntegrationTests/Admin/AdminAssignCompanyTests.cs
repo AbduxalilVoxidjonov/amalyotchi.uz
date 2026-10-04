@@ -22,7 +22,7 @@ public sealed class AdminAssignCompanyTests(ApiFixture fixture)
     public async Task Biriktirish_200_ArizaTasdiqlangan_TalabaJoyiniKoradi()
     {
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group);
+        var tutor = await Factory.CreateAdminAsync();
         await Factory.CreateActivePeriodAsync(group, tutor.Id);
         var company = await Factory.CreateCompanyAsync(name: "Biriktirish Korxonasi");
         var first = await Factory.CreateStudentAsync(group: group, fullName: "Biriktirish Birinchi");
@@ -61,7 +61,7 @@ public sealed class AdminAssignCompanyTests(ApiFixture fixture)
     public async Task Biriktirish_TakrorVaDavrsizTalaba_SababBilanTashlanadi()
     {
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group);
+        var tutor = await Factory.CreateAdminAsync();
         await Factory.CreateActivePeriodAsync(group, tutor.Id);
         var company = await Factory.CreateCompanyAsync();
         var student = await Factory.CreateStudentAsync(group: group, fullName: "Takror Talaba");
@@ -90,7 +90,7 @@ public sealed class AdminAssignCompanyTests(ApiFixture fixture)
     public async Task Biriktirish_BoshqaKorxonagaBiriktirilgan_SababBilanTashlanadi()
     {
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group);
+        var tutor = await Factory.CreateAdminAsync();
         var period = await Factory.CreateActivePeriodAsync(group, tutor.Id);
         var first = await Factory.CreateCompanyAsync(name: "Birinchi Korxona");
         var second = await Factory.CreateCompanyAsync(name: "Ikkinchi Korxona");
@@ -124,10 +124,10 @@ public sealed class AdminAssignCompanyTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Biriktirish_Tyutor_403()
+    public async Task Biriktirish_Talaba_403()
     {
         var company = await Factory.CreateCompanyAsync();
-        var client = await Factory.LoginAsTutorAsync();
+        var client = await Factory.LoginAsNewStudentAsync();
 
         (await client.PostJsonAsync(Url, new { studentIds = new[] { Guid.NewGuid() }, companyId = company.Id }))
             .StatusCode.Should().Be(HttpStatusCode.Forbidden);

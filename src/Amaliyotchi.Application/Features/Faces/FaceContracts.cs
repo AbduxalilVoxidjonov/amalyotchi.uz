@@ -1,9 +1,9 @@
-using Amaliyotchi.Application.Features.Tutor.Common;
+using Amaliyotchi.Application.Features.Supervision.Common;
 using Amaliyotchi.Domain.Faces;
 
 namespace Amaliyotchi.Application.Features.Faces;
 
-/// <summary>Etalon yuz holati API'da: <c>none</c> — yuborilmagan (yoki tyutor bekor qilgan).</summary>
+/// <summary>Etalon yuz holati API'da: <c>none</c> — yuborilmagan (yoki admin bekor qilgan).</summary>
 public enum StudentFaceStatus
 {
     None = 0,
@@ -12,10 +12,10 @@ public enum StudentFaceStatus
     Rejected = 3
 }
 
-/// <summary><c>GET/POST /api/student/face</c>, tyutor approve/reject/reset javobi va talaba profilidagi <c>face</c> bloki.</summary>
+/// <summary><c>GET/POST /api/student/face</c>, admin approve/reject/reset javobi va talaba profilidagi <c>face</c> bloki.</summary>
 /// <param name="Required">Sozlama <c>faceVerificationEnabled</c>: <c>true</c> bo'lsa check-in selfisi etalon bilan solishtiriladi.</param>
 /// <param name="PhotoUrl">Etalon rasm havolasi ("/api/files/&lt;guid&gt;") yoki null.</param>
-/// <param name="RejectReason">Tyutor rad etgan bo'lsa — sabab.</param>
+/// <param name="RejectReason">Admin rad etgan bo'lsa — sabab.</param>
 public sealed record StudentFaceDto(
     StudentFaceStatus Status,
     bool Required,
@@ -44,7 +44,7 @@ public sealed record StudentFaceDto(
     };
 }
 
-/// <summary><c>GET /api/tutor/face-enrollments</c> qatori.</summary>
+/// <summary><c>GET /api/admin/face-enrollments</c> qatori.</summary>
 public sealed record FaceEnrollmentItem(
     Guid StudentId,
     string FullName,
@@ -56,5 +56,5 @@ public sealed record FaceEnrollmentItem(
     DateTimeOffset? ReviewedAt,
     string? RejectReason);
 
-/// <summary><c>GET /api/tutor/face-enrollments?status=</c> javobi.</summary>
+/// <summary><c>GET /api/admin/face-enrollments?status=</c> javobi.</summary>
 public sealed record FaceEnrollmentList(IReadOnlyList<FaceEnrollmentItem> Items);

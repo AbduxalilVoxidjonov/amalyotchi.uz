@@ -114,7 +114,7 @@ internal sealed class AttendanceAttempt(
         => kind == AttendanceEventKind.CheckIn && settings.FaceVerificationEnabled;
 
     /// <summary>Policy qabul qilgan check-in'ni etalon yuz bilan tekshiradi. Etalon — pending yoki approved
-    /// (tyutor ko'rmagan bo'lsa ham ishlatiladi).</summary>
+    /// (admin ko'rmagan bo'lsa ham ishlatiladi).</summary>
     private async Task<CheckInVerdict> VerifyFaceAsync(
         CheckInVerdict accepted, FaceAnalysis face, int threshold, CancellationToken cancellationToken)
     {

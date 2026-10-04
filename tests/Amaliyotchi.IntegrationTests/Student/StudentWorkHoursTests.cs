@@ -3,8 +3,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Amaliyotchi.Application.Features.Student;
 using Amaliyotchi.Application.Features.Student.Profile;
-using Amaliyotchi.Application.Features.Tutor.Students;
-using Amaliyotchi.Application.Features.Tutor.Today;
+using Amaliyotchi.Application.Features.Supervision.Students;
+using Amaliyotchi.Application.Features.Supervision.Today;
 using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Common;
 using Amaliyotchi.Domain.Enums;
@@ -35,11 +35,11 @@ public sealed class StudentWorkHoursTests(ApiFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Belgilash_200_ErtadanKuchgaKiradi_CheckInVaTyutorShuSoatlardan()
+    public async Task Belgilash_200_ErtadanKuchgaKiradi_CheckInVaAdminShuSoatlardan()
     {
         var day = await Factory.NextWorkDayAsync();
         var scene = await Factory.CreateSceneAsync(day);
-        var tutorClient = await Factory.LoginAsync(scene.Tutor);
+        var tutorClient = await Factory.LoginAsync(scene.Admin);
         var next = await NextWorkDayAfterAsync(day);
 
         try
@@ -68,7 +68,7 @@ public sealed class StudentWorkHoursTests(ApiFixture fixture) : IAsyncLifetime
             // Profil GET ham xuddi shu blokni qaytaradi.
             (await ProfileAsync(scene.Client)).WorkHours.Should().Be(dto);
 
-            // Bugun tyutor profili — davr soatlari.
+            // Bugun admin profili — davr soatlari.
             var detailToday = await DetailAsync(tutorClient, scene.Student.Id);
             detailToday.Period!.DailyStart.Should().Be("09:00");
             detailToday.Period.CustomWorkHours.Should().BeFalse();
@@ -85,7 +85,11 @@ public sealed class StudentWorkHoursTests(ApiFixture fixture) : IAsyncLifetime
             detail.Period.DailyEnd.Should().Be("18:00");
             detail.Period.CustomWorkHours.Should().BeTrue();
 
-            var tutorToday = (await (await tutorClient.GetAsync("/api/tutor/today")).Content.ReadAsync<TodayResponse>())!;
+            var marker = "Soat" + Guid.NewGuid().ToString("N")[..8];
+            await Factory.WithDbAsync(db => db.Users.Where(u => u.Id == scene.Student.Id)
+                .ExecuteUpdateAsync(u => u.SetProperty(x => x.FullName, marker)));
+            var tutorToday = (await (await tutorClient.GetAsync($"/api/admin/today?q={marker}"))
+                .Content.ReadAsync<TodayResponse>())!;
             tutorToday.Rows.Items.Single(r => r.StudentId == scene.Student.Id).Status
                 .Should().Be(AttendanceStatus.Pending, "talabaning o'z oynasi hali ochilmagan");
 
@@ -174,10 +178,10 @@ public sealed class StudentWorkHoursTests(ApiFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Tyutor_403()
+    public async Task Admin_403()
     {
         var scene = await Factory.CreateSceneAsync();
-        var tutorClient = await Factory.LoginAsync(scene.Tutor);
+        var tutorClient = await Factory.LoginAsync(scene.Admin);
 
         var response = await tutorClient.PutAsJsonAsync(Url, new { start = "09:00", end = "17:00" });
 
@@ -192,8 +196,8 @@ public sealed class StudentWorkHoursTests(ApiFixture fixture) : IAsyncLifetime
         return JsonSerializer.Deserialize<StudentProfileDto>(body, JsonDefaults.Options)!;
     }
 
-    private static async Task<TutorStudentDetail> DetailAsync(HttpClient client, Guid studentId)
-        => (await client.GetFromJsonAsync<TutorStudentDetail>($"/api/tutor/students/{studentId}", JsonDefaults.Options))!;
+    private static async Task<StudentDetail> DetailAsync(HttpClient client, Guid studentId)
+        => (await client.GetFromJsonAsync<StudentDetail>($"/api/admin/students/{studentId}", JsonDefaults.Options))!;
 
     private Task<DateOnly> NextWorkDayAfterAsync(DateOnly day) =>
         Factory.WithDbAsync(async db =>

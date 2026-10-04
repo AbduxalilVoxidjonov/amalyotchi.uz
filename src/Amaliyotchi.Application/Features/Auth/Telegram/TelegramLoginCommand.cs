@@ -45,7 +45,7 @@ internal sealed class TelegramLoginCommandHandler(
         {
             throw await sessions.LoginFailedAsync(
                 user, "Hisob faol emas",
-                "Hisobingiz faol emas. Tyutoringizga murojaat qiling.", cancellationToken);
+                "Hisobingiz faol emas. Administratorga murojaat qiling.", cancellationToken);
         }
 
         // Mini App'dan kirdi va bot unga yoza oladi — "botni bloklagan" belgisi eskirgan (xabarlar yana yetkaziladi).
@@ -55,5 +55,5 @@ internal sealed class TelegramLoginCommandHandler(
         return await sessions.IssueSessionAsync(user, now, auditReason: "Telegram", cancellationToken);
     }
 
-    private const string AccountNotFound = "Hisob topilmadi — tyutoringizdan taklif havolasini oling.";
+    private const string AccountNotFound = "Hisob topilmadi — administratordan taklif havolasini oling.";
 }

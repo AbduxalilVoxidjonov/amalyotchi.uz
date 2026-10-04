@@ -6,7 +6,7 @@ using Amaliyotchi.Application.Features.Admin.Companies;
 using Amaliyotchi.Application.Features.Admin.PracticePeriods;
 using Amaliyotchi.Application.Features.Admin.Students;
 using Amaliyotchi.Application.Features.Student;
-using Amaliyotchi.Application.Features.Tutor.Applications;
+using Amaliyotchi.Application.Features.Supervision.Applications;
 using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Common;
 using Amaliyotchi.Domain.Enums;
@@ -36,7 +36,7 @@ public sealed class AdminStudentCompanyTests(ApiFixture fixture)
     private async Task<(TestGroup Group, TestUser Tutor, PracticePeriod Period)> GroupWithPeriodAsync()
     {
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group);
+        var tutor = await Factory.CreateAdminAsync();
         var period = await Factory.CreateActivePeriodAsync(group, tutor.Id);
         return (group, tutor, period);
     }
@@ -125,9 +125,9 @@ public sealed class AdminStudentCompanyTests(ApiFixture fixture)
         row.Company.Should().Be(newCompany.Name);
         row.ApplicationStatus.Should().Be(ApplicationStatus.Approved);
 
-        // Tyutor moderatsiya navbati (statussiz) o'tkazilgan arizani ko'rsatmaydi.
+        // Moderatsiya navbati (statussiz) o'tkazilgan arizani ko'rsatmaydi.
         var tutorClient = await Factory.LoginAsync(tutor);
-        var queue = (await (await tutorClient.GetAsync("/api/tutor/applications")).Content.ReadAsync<ApplicationListResponse>())!;
+        var queue = (await (await tutorClient.GetAsync("/api/admin/applications")).Content.ReadAsync<ApplicationListResponse>())!;
         queue.Items.Where(i => i.StudentId == student.Id).Should().ContainSingle()
             .Which.Status.Should().Be(ApplicationStatus.Approved);
 
@@ -229,9 +229,9 @@ public sealed class AdminStudentCompanyTests(ApiFixture fixture)
             .Should().Be(ReassignCompanyMessages.AlreadyHereMessage);
         (await ApplicationsAsync(student.Id)).Should().ContainSingle(a => a.Status == ApplicationStatus.Approved);
 
-        // 403 — tyutor.
-        var tutorClient = await Factory.LoginAsync(tutor);
-        (await tutorClient.PostJsonAsync(Url(student.Id), new { companyId = company.Id }))
+        // 403 — talaba.
+        var studentClient = await Factory.LoginAsNewStudentAsync();
+        (await studentClient.PostJsonAsync(Url(student.Id), new { companyId = company.Id }))
             .StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 

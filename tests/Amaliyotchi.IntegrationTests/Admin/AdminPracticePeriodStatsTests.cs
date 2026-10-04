@@ -5,7 +5,7 @@ using Amaliyotchi.Domain.Grading;
 using Amaliyotchi.Domain.Practice;
 using Amaliyotchi.Domain.Settings;
 using Amaliyotchi.IntegrationTests.Infrastructure;
-using Amaliyotchi.IntegrationTests.Tutor;
+using Amaliyotchi.IntegrationTests.Supervision;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 
@@ -299,7 +299,7 @@ public sealed class AdminPracticePeriodStatsTests(ApiFixture fixture)
         var group = await Factory.CreateGroupAsync();
         var admin = await Factory.CreateAdminAsync();
         var period = await Factory.CreateActivePeriodAsync(group, admin.Id);
-        var tutor = await Factory.LoginAsTutorAsync(group);
+        var tutor = await Factory.LoginAsNewStudentAsync();
         var student = await Factory.CreateStudentAsync(group: group);
         var studentClient = await Factory.LoginAsStudentAsync(student);
 

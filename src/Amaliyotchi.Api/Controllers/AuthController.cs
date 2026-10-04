@@ -19,7 +19,7 @@ namespace Amaliyotchi.Api.Controllers;
 [Route("api/auth")]
 public sealed class AuthController(ISender sender) : ControllerBase
 {
-    /// <summary>HEMIS ID + parol bilan kirish: admin, tyutor va (xodim parol o'rnatgan) talaba.</summary>
+    /// <summary>HEMIS ID + parol bilan kirish: admin va (admin parol o'rnatgan) talaba.</summary>
     [HttpPost("login")]
     [AllowAnonymous]
     [EnableRateLimiting(RateLimitPolicies.Auth)]

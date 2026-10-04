@@ -58,7 +58,7 @@ public static class DependencyInjection
         services.AddScoped<UserSessionValidator>();
 
         // Telegram Mini App: bot token bo'sh bo'lsa ilova ishga tushadi, lekin /auth/telegram 403 qaytaradi
-        // (validator "sozlanmagan" deb rad etadi) — admin/tyutor oqimi tokensiz ham ishlashi kerak.
+        // (validator "sozlanmagan" deb rad etadi) — admin oqimi tokensiz ham ishlashi kerak.
         services.AddOptions<TelegramOptions>()
             .Bind(configuration.GetSection(TelegramOptions.SectionName))
             .Validate(o => o.MaxAgeSeconds > 0, "Telegram:MaxAgeSeconds musbat bo'lishi kerak.")

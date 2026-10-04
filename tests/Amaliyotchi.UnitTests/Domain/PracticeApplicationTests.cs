@@ -7,7 +7,7 @@ namespace Amaliyotchi.UnitTests.Domain;
 
 public sealed class PracticeApplicationTests
 {
-    private static readonly Guid Tutor = Guid.CreateVersion7();
+    private static readonly Guid Decider = Guid.CreateVersion7();
     private static readonly DateTimeOffset Now = DateTimeOffset.UtcNow;
 
     private static PracticeApplication Submitted()
@@ -28,19 +28,19 @@ public sealed class PracticeApplicationTests
     {
         var app = Submitted();
 
-        app.Approve(Tutor, 150, [3, 0, 3, 6], "OK", Now);
+        app.Approve(Decider, 150, [3, 0, 3, 6], "OK", Now);
 
         app.Status.Should().Be(ApplicationStatus.Approved);
         app.ProposedRadiusM.Should().Be(150);
         app.Checklist.Should().Equal(0, 3, 6);
-        app.DecidedByUserId.Should().Be(Tutor);
+        app.DecidedByUserId.Should().Be(Decider);
         app.DecisionComment.Should().Be("OK");
     }
 
     [Fact]
     public void Approve_NotogriChecklistIndeksi_XatoBeradi()
     {
-        var act = () => Submitted().Approve(Tutor, 200, [7], null, Now);
+        var act = () => Submitted().Approve(Decider, 200, [7], null, Now);
 
         act.Should().Throw<DomainException>();
     }
@@ -50,7 +50,7 @@ public sealed class PracticeApplicationTests
     [InlineData(1001)]
     public void Approve_RadiusOraliqdanTashqari_XatoBeradi(int radius)
     {
-        var act = () => Submitted().Approve(Tutor, radius, [], null, Now);
+        var act = () => Submitted().Approve(Decider, radius, [], null, Now);
 
         act.Should().Throw<DomainException>();
     }
@@ -59,11 +59,11 @@ public sealed class PracticeApplicationTests
     public void HalQilinganAriza_QaytaHalQilinmaydi()
     {
         var app = Submitted();
-        app.Approve(Tutor, 200, [], null, Now);
+        app.Approve(Decider, 200, [], null, Now);
 
-        var approve = () => app.Approve(Tutor, 200, [], null, Now);
-        var reject = () => app.Reject(Tutor, "sabab", Now);
-        var back = () => app.ReturnForRevision(Tutor, "sabab", Now);
+        var approve = () => app.Approve(Decider, 200, [], null, Now);
+        var reject = () => app.Reject(Decider, "sabab", Now);
+        var back = () => app.ReturnForRevision(Decider, "sabab", Now);
 
         approve.Should().Throw<ConflictException>();
         reject.Should().Throw<ConflictException>();
@@ -73,7 +73,7 @@ public sealed class PracticeApplicationTests
     [Fact]
     public void Reject_IzohsizBolmaydi()
     {
-        var act = () => Submitted().Reject(Tutor, " ", Now);
+        var act = () => Submitted().Reject(Decider, " ", Now);
 
         act.Should().Throw<DomainException>();
     }
@@ -84,7 +84,7 @@ public sealed class PracticeApplicationTests
         var app = Submitted();
         var newCompany = Guid.CreateVersion7();
 
-        app.ReturnForRevision(Tutor, "Shartnoma imzosiz", Now);
+        app.ReturnForRevision(Decider, "Shartnoma imzosiz", Now);
         app.Status.Should().Be(ApplicationStatus.RevisionNeeded);
         app.RevisionCount.Should().Be(1);
 
@@ -111,7 +111,7 @@ public sealed class PracticeApplicationTests
         var early = () => app.Complete();
         early.Should().Throw<ConflictException>();
 
-        app.Approve(Tutor, 200, [], null, Now);
+        app.Approve(Decider, 200, [], null, Now);
         app.Complete();
 
         app.Status.Should().Be(ApplicationStatus.Completed);
@@ -121,7 +121,7 @@ public sealed class PracticeApplicationTests
     public void Transfer_TasdiqlanganAriza_TransferredBoladi()
     {
         var app = Submitted();
-        app.Approve(Tutor, 150, [0], "OK", Now);
+        app.Approve(Decider, 150, [0], "OK", Now);
         var admin = Guid.CreateVersion7();
         var at = Now.AddDays(1);
 
@@ -139,13 +139,13 @@ public sealed class PracticeApplicationTests
     public void Transfer_YuborilganVaQaytarilgan_Mumkin_IzohIxtiyoriy()
     {
         var submitted = Submitted();
-        submitted.Transfer(Tutor, null, Now);
+        submitted.Transfer(Decider, null, Now);
         submitted.Status.Should().Be(ApplicationStatus.Transferred);
         submitted.DecisionComment.Should().BeNull();
 
         var revision = Submitted();
-        revision.ReturnForRevision(Tutor, "Tuzating", Now);
-        revision.Transfer(Tutor, null, Now);
+        revision.ReturnForRevision(Decider, "Tuzating", Now);
+        revision.Transfer(Decider, null, Now);
         revision.Status.Should().Be(ApplicationStatus.Transferred);
     }
 
@@ -153,19 +153,19 @@ public sealed class PracticeApplicationTests
     public void Transfer_YopilganAriza_409()
     {
         var rejected = Submitted();
-        rejected.Reject(Tutor, "Yo'q", Now);
-        rejected.Invoking(a => a.Transfer(Tutor, null, Now)).Should().Throw<ConflictException>();
+        rejected.Reject(Decider, "Yo'q", Now);
+        rejected.Invoking(a => a.Transfer(Decider, null, Now)).Should().Throw<ConflictException>();
 
         var completed = Submitted();
-        completed.Approve(Tutor, 150, [], null, Now);
+        completed.Approve(Decider, 150, [], null, Now);
         completed.Complete();
-        completed.Invoking(a => a.Transfer(Tutor, null, Now)).Should().Throw<ConflictException>();
+        completed.Invoking(a => a.Transfer(Decider, null, Now)).Should().Throw<ConflictException>();
 
         var transferred = Submitted();
-        transferred.Transfer(Tutor, null, Now);
-        transferred.Invoking(a => a.Transfer(Tutor, null, Now)).Should().Throw<ConflictException>();
+        transferred.Transfer(Decider, null, Now);
+        transferred.Invoking(a => a.Transfer(Decider, null, Now)).Should().Throw<ConflictException>();
         // O'tkazilgan arizani tyutor tasdiqlay olmaydi.
-        transferred.Invoking(a => a.Approve(Tutor, 150, [], null, Now)).Should().Throw<ConflictException>();
+        transferred.Invoking(a => a.Approve(Decider, 150, [], null, Now)).Should().Throw<ConflictException>();
     }
 
     [Fact]

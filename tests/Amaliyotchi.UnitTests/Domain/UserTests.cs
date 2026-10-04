@@ -14,152 +14,70 @@ public sealed class UserTests
     [Fact]
     public void CreateWithPassword_TalabaUchun_XatoBeradi()
     {
-        var act = () => User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Student, FacultyId);
+        var act = () => User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Student);
 
         act.Should().Throw<DomainException>()
             .WithMessage("*Telegram*");
     }
 
     [Fact]
-    public void CreateWithPassword_TyutorFakultetsiz_XatoBeradi()
-    {
-        var act = () => User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Tutor);
-
-        act.Should().Throw<DomainException>().WithMessage(User.FacultyRequiredMessage);
-    }
-
-    [Fact]
-    public void CreateWithPassword_TyutorBittaFakultet_FaculiesVaFacultyIdToldiriladi()
-    {
-        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Tutor, FacultyId);
-
-        user.FacultyId.Should().Be(FacultyId);
-        var link = user.Faculties.Should().ContainSingle().Subject;
-        link.FacultyId.Should().Be(FacultyId);
-        link.TutorUserId.Should().Be(user.Id);
-    }
-
-    [Fact]
-    public void CreateWithPassword_TyutorBirNechaFakultet_BirinchisiAsosiy()
-    {
-        var second = Guid.CreateVersion7();
-
-        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Tutor, [FacultyId, second]);
-
-        user.FacultyId.Should().Be(FacultyId);
-        user.Faculties.Select(f => f.FacultyId).Should().Equal(FacultyId, second);
-    }
-
-    [Fact]
-    public void CreateWithPassword_AdminFakultetBilan_XatoBeradi()
-    {
-        var act = () => User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Admin, FacultyId);
-
-        act.Should().Throw<DomainException>().WithMessage("*Admin*");
-    }
-
-    // ---------- SetFaculties ----------
-
-    [Fact]
-    public void SetFaculties_Bosh_XatoBeradi_ToplamOzgarmaydi()
-    {
-        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Tutor, FacultyId);
-
-        var act = () => user.SetFaculties([]);
-
-        act.Should().Throw<DomainException>().WithMessage(User.FacultyRequiredMessage);
-        user.Faculties.Select(f => f.FacultyId).Should().Equal(FacultyId);
-        user.FacultyId.Should().Be(FacultyId);
-    }
-
-    [Fact]
-    public void SetFaculties_BoshGuid_XatoBeradi()
-    {
-        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Tutor, FacultyId);
-
-        var act = () => user.SetFaculties([FacultyId, Guid.Empty]);
-
-        act.Should().Throw<DomainException>();
-        user.Faculties.Should().ContainSingle();
-    }
-
-    [Fact]
-    public void SetFaculties_Takrorlar_BittagaKeltiriladi()
-    {
-        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Tutor, FacultyId);
-        var second = Guid.CreateVersion7();
-
-        user.SetFaculties([second, FacultyId, second, FacultyId]);
-
-        user.Faculties.Select(f => f.FacultyId).Should().BeEquivalentTo([FacultyId, second]);
-        user.Faculties.Should().HaveCount(2);
-    }
-
-    [Fact]
-    public void SetFaculties_FacultyId_RoyxatdagiBirinchisi()
-    {
-        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Tutor, FacultyId);
-        var second = Guid.CreateVersion7();
-
-        user.SetFaculties([second, FacultyId]);
-
-        user.FacultyId.Should().Be(second, "asosiy fakultet — ro'yxatning birinchisi");
-    }
-
-    [Fact]
-    public void SetFaculties_OlibTashlashVaQoshish_MavjudYozuvSaqlanadi()
-    {
-        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Tutor, FacultyId);
-        var originalLinkId = user.Faculties.Single().Id;
-        var second = Guid.CreateVersion7();
-        var third = Guid.CreateVersion7();
-
-        user.SetFaculties([FacultyId, second]);
-        user.Faculties.Select(f => f.FacultyId).Should().Equal(FacultyId, second);
-        user.Faculties.First().Id.Should().Be(originalLinkId, "mavjud bog'lanish qayta yaratilmaydi");
-
-        user.SetFaculties([third, second]);
-        user.Faculties.Select(f => f.FacultyId).Should().BeEquivalentTo([second, third]);
-        user.Faculties.Should().NotContain(f => f.FacultyId == FacultyId, "ro'yxatda yo'q — olib tashlandi");
-        user.FacultyId.Should().Be(third);
-    }
-
-    [Fact]
-    public void SetFaculties_Talabaga_XatoBeradi()
+    public void AssignToFaculty_Talaba_Ozgaradi_Adminga_XatoBeradi()
     {
         var student = User.CreateStudent("Karimov Bek", FacultyId);
-
-        var act = () => student.SetFaculties([FacultyId]);
-
-        act.Should().Throw<DomainException>().WithMessage("*tyutorga*");
-        student.Faculties.Should().BeEmpty();
-        student.FacultyId.Should().Be(FacultyId);
-    }
-
-    [Fact]
-    public void SetFaculties_Adminga_XatoBeradi()
-    {
         var admin = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Admin);
+        var other = Guid.CreateVersion7();
 
-        var act = () => admin.SetFaculties([FacultyId]);
+        student.AssignToFaculty(other);
+        var act = () => admin.AssignToFaculty(other);
 
+        student.FacultyId.Should().Be(other);
         act.Should().Throw<DomainException>();
         admin.FacultyId.Should().BeNull();
     }
 
+    // ---------- Bosh admin ----------
+
     [Fact]
-    public void AssignToFaculty_Talaba_Ozgaradi_Tyutorga_XatoBeradi()
+    public void MakeSuperAdmin_FaqatFaolAdmin()
     {
+        var admin = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Admin);
+        admin.IsSuperAdmin.Should().BeFalse("sukut bo'yicha oddiy admin");
+
+        admin.MakeSuperAdmin();
+        admin.IsSuperAdmin.Should().BeTrue();
+
         var student = User.CreateStudent("Karimov Bek", FacultyId);
-        var tutor = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Tutor, FacultyId);
-        var other = Guid.CreateVersion7();
+        ((Action)student.MakeSuperAdmin).Should().Throw<DomainException>();
 
-        student.AssignToFaculty(other);
-        var act = () => tutor.AssignToFaculty(other);
+        var blocked = User.CreateWithPassword("Valiyev Vali", "100000000009", null, "hash", UserRole.Admin);
+        blocked.Deactivate();
+        ((Action)blocked.MakeSuperAdmin).Should().Throw<DomainException>();
+    }
 
-        student.FacultyId.Should().Be(other);
-        act.Should().Throw<DomainException>();
-        tutor.FacultyId.Should().Be(FacultyId);
+    [Fact]
+    public void BoshAdmin_Bloklanmaydi_TokenlariSaqlanadi()
+    {
+        var admin = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Admin);
+        admin.MakeSuperAdmin();
+        admin.IssueRefreshToken("token-1", DateTimeOffset.UtcNow.AddDays(7), null);
+
+        var act = () => admin.Deactivate();
+
+        act.Should().Throw<ConflictException>().WithMessage(User.SuperAdminBlockMessage);
+        admin.IsActive.Should().BeTrue();
+        admin.RefreshTokens.Should().OnlyContain(t => t.IsActive(DateTimeOffset.UtcNow));
+    }
+
+    [Fact]
+    public void SetTemporaryPassword_Admin_MustChangePassword()
+    {
+        var admin = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Admin);
+        admin.MustChangePassword.Should().BeFalse();
+
+        admin.SetTemporaryPassword("temp-hash");
+
+        admin.PasswordHash.Should().Be("temp-hash");
+        admin.MustChangePassword.Should().BeTrue();
     }
 
     [Theory]
@@ -180,7 +98,7 @@ public sealed class UserTests
     [InlineData("998901234567")]
     public void TelefonRaqami_BittaKorinishgaKeltiriladi(string input)
     {
-        var user = User.CreateWithPassword("Aliyev Ali", HemisId, input, "hash", UserRole.Tutor, FacultyId);
+        var user = User.CreateWithPassword("Aliyev Ali", HemisId, input, "hash", UserRole.Admin);
 
         user.PhoneNumber.Should().Be("+998901234567");
     }
@@ -259,7 +177,7 @@ public sealed class UserTests
     public void RevokeRefreshTokens_HisobFaolQoladi_TokenlarBekorBoladi()
     {
         var now = DateTimeOffset.UtcNow;
-        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Tutor, FacultyId);
+        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Admin);
         user.IssueRefreshToken("token-1", now.AddDays(7), null);
         user.IssueRefreshToken("token-2", now.AddDays(7), null);
 
@@ -273,7 +191,7 @@ public sealed class UserTests
     public void RevokeRefreshTokens_AvvalBekorQilinganTokenniQaytaYozmaydi()
     {
         var now = DateTimeOffset.UtcNow;
-        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Tutor, FacultyId);
+        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Admin);
         var earlier = now.AddHours(-1);
         user.IssueRefreshToken("old", now.AddDays(7), null).Revoke(earlier, "Chiqdi");
 
@@ -289,7 +207,7 @@ public sealed class UserTests
     [InlineData("+998 90 765 43 21", "+998907654321")]
     public void ChangePhoneNumber_Normallashtiradi(string input, string expected)
     {
-        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Tutor, FacultyId);
+        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Admin);
 
         user.ChangePhoneNumber(input);
 
@@ -302,7 +220,7 @@ public sealed class UserTests
     [InlineData("   ")]
     public void ChangePhoneNumber_Bosh_NullQiladi(string? input)
     {
-        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Tutor, FacultyId);
+        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Admin);
 
         user.ChangePhoneNumber(input);
 
@@ -312,7 +230,7 @@ public sealed class UserTests
     [Fact]
     public void ChangePhoneNumber_NotogriFormat_XatoBeradi()
     {
-        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Tutor, FacultyId);
+        var user = User.CreateWithPassword("Aliyev Ali", HemisId, "901234567", "hash", UserRole.Admin);
 
         var act = () => user.ChangePhoneNumber("12345");
 

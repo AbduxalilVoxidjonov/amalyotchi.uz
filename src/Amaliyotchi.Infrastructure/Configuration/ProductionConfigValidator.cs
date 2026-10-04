@@ -22,7 +22,9 @@ public static class ProductionConfigValidator
     /// <summary>Repo/README/compose'da ochiq yozilgan parollar.</summary>
     private static readonly string[] KnownWeakPasswords =
     [
-        SeedOptions.DevelopmentAdminPassword, DemoDataSeeder.TutorPassword, DemoDataSeeder.StudentPassword,
+        SeedOptions.DevelopmentAdminPassword, DemoDataSeeder.StudentPassword,
+        // Eski demo seed'ning tyutor paroli (repo tarixida ochiq).
+        "tutor12345",
         "password", "password123", "123456789012", "admin", "administrator", "amaliyotchi"
     ];
 
@@ -96,7 +98,7 @@ public static class ProductionConfigValidator
         if (configuration.GetValue<bool>($"{SeedOptions.SectionName}:{nameof(SeedOptions.Demo)}"))
         {
             errors.Add("Seed:Demo=true Production'da taqiqlangan: demo hisoblar ochiq parollar bilan yaratiladi " +
-                       $"({DemoDataSeeder.TutorPassword}, {DemoDataSeeder.StudentPassword}). Seed__Demo=false qiling " +
+                       $"({DemoDataSeeder.StudentPassword}). Seed__Demo=false qiling " +
                        "(demo stend uchun ASPNETCORE_ENVIRONMENT=Staging).");
         }
 

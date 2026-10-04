@@ -12,7 +12,7 @@ namespace Amaliyotchi.Api.Controllers.Student;
 [Authorize(Policy = Policies.StudentOnly)]
 public sealed class StudentPortfolioController(ISender sender) : ControllerBase
 {
-    /// <summary>Amaliyot portfoliosi: statistika, baho tarkibi, tyutor xulosasi + talabaning barcha davrlari.
+    /// <summary>Amaliyot portfoliosi: statistika, baho tarkibi, xulosa + talabaning barcha davrlari.
     /// <c>?periodId=</c> — davr (berilmasa sukut bo'yicha). Davr yo'q yoki begona <c>periodId</c> → 404.</summary>
     [HttpGet]
     [ProducesResponseType<PortfolioDto>(StatusCodes.Status200OK)]

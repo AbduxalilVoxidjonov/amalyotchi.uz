@@ -2,11 +2,11 @@ using System.Net;
 using Amaliyotchi.Application.Features.Admin.Common;
 using Amaliyotchi.Application.Features.Admin.Companies;
 using Amaliyotchi.Application.Features.Admin.Settings;
-using Amaliyotchi.Application.Features.Tutor.Students;
+using Amaliyotchi.Application.Features.Supervision.Students;
 using Amaliyotchi.Domain.Practice;
 using Amaliyotchi.Domain.Settings;
 using Amaliyotchi.IntegrationTests.Infrastructure;
-using Amaliyotchi.IntegrationTests.Tutor;
+using Amaliyotchi.IntegrationTests.Supervision;
 using FluentAssertions;
 
 namespace Amaliyotchi.IntegrationTests.Admin;
@@ -21,7 +21,7 @@ public sealed class AdminCompanyDetailTests(ApiFixture fixture)
     public async Task Detal_200_Shakl_VaDavrlarKesimi()
     {
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group);
+        var tutor = await Factory.CreateAdminAsync();
         var period = await Factory.CreateActivePeriodAsync(group, tutor.Id);
         var company = await Factory.CreateCompanyAsync(radiusM: 250);
         var a = await Factory.CreateStudentAsync(group: group, fullName: "Anvar Detal");
@@ -80,7 +80,7 @@ public sealed class AdminCompanyDetailTests(ApiFixture fixture)
     public async Task Talabalar_200_FISHTartibi_VaKorsatkichlar()
     {
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group, fullName: "Tolib Tyutorov");
+        var tutor = await Factory.CreateAdminAsync();
         var period = await Factory.CreateActivePeriodAsync(group, tutor.Id);
         var company = await Factory.CreateCompanyAsync();
         var active = await Factory.CreateStudentAsync(group: group, fullName: "Anvar Faolov");
@@ -107,7 +107,6 @@ public sealed class AdminCompanyDetailTests(ApiFixture fixture)
         first.Group.Should().Be(group.GroupName);
         first.Course.Should().Be(group.Course);
         first.Faculty.Should().NotBeNullOrEmpty();
-        first.TutorName.Should().Be("Tolib Tyutorov");
         first.ApplicationStatus.Should().Be(ApplicationStatus.Approved);
         first.PeriodName.Should().Be(period.Name);
         first.AttendedDays.Should().Be(days.Count);
@@ -129,7 +128,7 @@ public sealed class AdminCompanyDetailTests(ApiFixture fixture)
     {
         var marker = Guid.NewGuid().ToString("N")[..6];
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group);
+        var tutor = await Factory.CreateAdminAsync();
         var period = await Factory.CreateActivePeriodAsync(group, tutor.Id);
         // Radius 600 — "tooManyStudents" aynan "largeRadius" dan ustunligini ko'rsatish uchun.
         var company = await Factory.CreateCompanyAsync(radiusM: 600, name: $"Korxona {marker} Chegara");

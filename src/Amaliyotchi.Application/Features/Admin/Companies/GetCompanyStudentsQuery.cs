@@ -17,6 +17,6 @@ internal sealed class GetCompanyStudentsQueryHandler(IApplicationDbContext db, I
     {
         var scope = await scopeResolver.ResolveAsync(cancellationToken);
         return await CompanyQueries.LoadStudentsAsync(
-            db, scope, request.Id, requireScopedStudents: false, clock.LocalToday(), clock.LocalTime(), cancellationToken);
+            db, scope, request.Id, clock.LocalToday(), clock.LocalTime(), cancellationToken);
     }
 }

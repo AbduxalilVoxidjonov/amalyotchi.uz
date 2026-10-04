@@ -21,7 +21,7 @@ public sealed class StudentPlaceSubmitTests(ApiFixture fixture)
     public async Task Stir_201_KorxonaMalumoti_Avtomatik_Toldiriladi()
     {
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group);
+        var tutor = await Factory.CreateAdminAsync();
         await Factory.CreateActivePeriodAsync(group, tutor.Id);
         var company = await Factory.CreateCompanyAsync(name: "STIR Korxonasi");
         var student = await Factory.CreateStudentAsync(group: group);
@@ -38,7 +38,7 @@ public sealed class StudentPlaceSubmitTests(ApiFixture fixture)
 
         // Tyutorning arizalar ro'yxatiga tushadi.
         var tutorClient = await Factory.LoginAsync(tutor);
-        var applications = await tutorClient.GetAsync("/api/tutor/applications?status=submitted");
+        var applications = await tutorClient.GetAsync("/api/admin/applications?status=submitted");
         (await applications.Content.ReadAsStringAsync()).Should().Contain("STIR Korxonasi");
     }
 
@@ -46,7 +46,7 @@ public sealed class StudentPlaceSubmitTests(ApiFixture fixture)
     public async Task Stir_TakrorYuborish_409()
     {
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group);
+        var tutor = await Factory.CreateAdminAsync();
         await Factory.CreateActivePeriodAsync(group, tutor.Id);
         var company = await Factory.CreateCompanyAsync();
         var student = await Factory.CreateStudentAsync(group: group);
@@ -63,7 +63,7 @@ public sealed class StudentPlaceSubmitTests(ApiFixture fixture)
     public async Task Stir_FaolBolmaganKorxona_404()
     {
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group);
+        var tutor = await Factory.CreateAdminAsync();
         await Factory.CreateActivePeriodAsync(group, tutor.Id);
         var company = await Factory.CreateCompanyAsync();
         var student = await Factory.CreateStudentAsync(group: group);
@@ -95,9 +95,9 @@ public sealed class StudentPlaceSubmitTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Stir_Tyutor_403()
+    public async Task Stir_Admin_403()
     {
-        var client = await Factory.LoginAsTutorAsync();
+        var client = await Factory.LoginAsAdminAsync();
 
         (await client.PostJsonAsync(Url, new { tin = "123456789" })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }

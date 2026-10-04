@@ -37,7 +37,7 @@ public sealed class AdminGroupsController(ISender sender) : ControllerBase
         Guid id, UpdateGroupCommand command, CancellationToken cancellationToken)
         => Ok(await sender.Send(command with { Id = id }, cancellationToken));
 
-    /// <summary>Soft delete. O'chirilmagan talabasi yoki faol tyutor biriktiruvi bo'lsa → 409.</summary>
+    /// <summary>Soft delete. O'chirilmagan talabasi bo'lsa → 409.</summary>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

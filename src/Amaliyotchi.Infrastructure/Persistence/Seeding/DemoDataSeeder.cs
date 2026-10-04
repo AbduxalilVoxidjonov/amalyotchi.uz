@@ -20,11 +20,12 @@ using Microsoft.Extensions.Logging;
 namespace Amaliyotchi.Infrastructure.Persistence.Seeding;
 
 /// <summary>Demo ma'lumot (<c>Seed:Demo=true</c> — faqat demo/stend uchun) — frontend mock'lariga mos:
-/// AT fakulteti, 412-22/413-22 guruhlari, tyutor Nodira Saidova, 38 talaba, 6 korxona, joriy amaliyot davri,
+/// AT fakulteti, 412-22/413-22 guruhlari, 38 talaba, 6 korxona, joriy amaliyot davri,
 /// so'nggi ish kunlari davomati (+ har check-in/check-out uchun <see cref="AttendanceEvent"/>, bugun 3 ta radius
-/// tashqarisidagi rad etilgan urinish — tyutor xaritasi va ogohlantirishlar uchun), kundaliklar, ruxsat so'rovlari va baholar.
-/// Idempotent: demo tyutor mavjud bo'lsa faqat yetishmayotgan davomat hodisalari to'ldiriladi (eski seed'dan qolgan baza),
-/// boshqa hech narsa qilinmaydi. Barcha sanalar <see cref="PracticeTime"/> bo'yicha.</summary>
+/// tashqarisidagi rad etilgan urinish — admin xaritasi va ogohlantirishlar uchun), kundaliklar, ruxsat so'rovlari va baholar.
+/// Qarorlar (ariza, kundalik, ruxsat) DbSeeder admini nomidan yoziladi.
+/// Idempotent: demo talaba (<see cref="StudentHemisId"/>) yoki eski seed'ning demo tyutori (<see cref="LegacyTutorPhone"/>,
+/// o'chirilgan bo'lsa ham) mavjud bo'lsa faqat yetishmayotgan davomat hodisalari to'ldiriladi, boshqa hech narsa qilinmaydi. Barcha sanalar <see cref="PracticeTime"/> bo'yicha.</summary>
 public sealed class DemoDataSeeder(
     AppDbContext db,
     IPasswordHasher passwordHasher,
@@ -32,9 +33,10 @@ public sealed class DemoDataSeeder(
     IFileStorage storage,
     ILogger<DemoDataSeeder> logger)
 {
-    public const string TutorPhone = "+998907654321";
-    public const string TutorHemisId = "100000000002";
-    public const string TutorPassword = "tutor12345";
+    /// <summary>Eski (tyutorli) demo seed'ning langar tyutori telefoni — faqat idempotentlik va purge-demo uchun.
+    /// Tyutor roli olib tashlangan; bunday yozuvlar <c>RemoveTutors</c> migratsiyasida soft-delete qilingan.</summary>
+    public const string LegacyTutorPhone = "+998907654321";
+    public const string LegacyTutorHemisId = "100000000002";
 
     /// <summary>Brauzer orqali (HEMIS ID + parol) kirishni darhol sinash uchun demo talaba — Aliyev Akmal (412-22).
     /// Parol "o'zi o'rnatgan" kabi saqlanadi (<c>MustChangePassword=false</c>).</summary>
@@ -51,7 +53,7 @@ public sealed class DemoDataSeeder(
     private const long FirstTelegramId = 100_000_001;
 
     /// <summary>Bugun belgilanmaydigan va radius tashqarisidan rad etilgan urinish qiladigan "shubhali" talabalar
-    /// (HEMIS ID): Rahimov Sardor, Abdullayev Jasur, Boboyeva Madina — tyutor xaritasida "bad" nuqtalar.</summary>
+    /// (HEMIS ID): Rahimov Sardor, Abdullayev Jasur, Boboyeva Madina — xaritada "bad" nuqtalar.</summary>
     private static readonly string[] SuspiciousHemisIds = ["341034", "341040", "341041"];
 
     internal static readonly (string Name, string HemisId, int GroupIndex, int CompanyIndex)[] MainStudents =
@@ -104,11 +106,13 @@ public sealed class DemoDataSeeder(
         var today = PracticeTime.LocalDate(clock.UtcNow);
         var random = new Random(42);
 
-        if (await db.Users.AnyAsync(u => u.PhoneNumber == TutorPhone, cancellationToken))
+        var seeded = await db.StudentProfiles.IgnoreQueryFilters().AnyAsync(p => p.HemisId == StudentHemisId, cancellationToken)
+                     || await db.Users.IgnoreQueryFilters().AnyAsync(u => u.PhoneNumber == LegacyTutorPhone, cancellationToken);
+        if (seeded)
         {
             await TopUpAttendanceEventsAsync(today, random, cancellationToken);
             await EnsureDemoStudentPasswordAsync(cancellationToken);
-            logger.LogInformation("Demo seed: demo tyutor ({Phone}) allaqachon mavjud — o'tkazib yuborildi", TutorPhone);
+            logger.LogInformation("Demo seed: demo ma'lumot (talaba {HemisId}) allaqachon mavjud — o'tkazib yuborildi", StudentHemisId);
             return;
         }
 
@@ -143,24 +147,6 @@ public sealed class DemoDataSeeder(
             db.AcademicYears.Add(year);
         db.Faculties.AddRange(it, economics, construction, philology);
         await db.SaveChangesAsync(cancellationToken);
-
-        // 2. Tyutorlar + biriktiruvlar
-        var tutorHash = passwordHasher.Hash(TutorPassword);
-        var tutor = User.CreateWithPassword("Nodira Saidova", TutorHemisId, TutorPhone, tutorHash, UserRole.Tutor, it.Id);
-        var tutorEconomics = User.CreateWithPassword("Baxtiyor Rasulov", "100000000003", "+998912445102", tutorHash, UserRole.Tutor, economics.Id);
-        var tutorConstruction = User.CreateWithPassword("Dilshod Ergashev", "100000000004", "+998937001845", tutorHash, UserRole.Tutor, construction.Id);
-        db.Users.AddRange(tutor, tutorEconomics, tutorConstruction);
-        db.TutorAssignments.AddRange(
-            TutorAssignment.Create(tutor.Id, group412.Id, year.Id),
-            TutorAssignment.Create(tutor.Id, group413.Id, year.Id),
-            TutorAssignment.Create(tutorEconomics.Id, group221.Id, year.Id),
-            TutorAssignment.Create(tutorConstruction.Id, group318.Id, year.Id));
-        // Ko'lamlar (guruh darajasi) — biriktiruvlarning "nima tanlangan" manbai; ikkalasi mos bo'lishi shart.
-        db.TutorScopes.AddRange(
-            TutorScope.Create(tutor.Id, TutorScopeLevel.Group, it.Id, itSoftware.Id, group412.DirectionId, group412.Id),
-            TutorScope.Create(tutor.Id, TutorScopeLevel.Group, it.Id, itComputer.Id, group413.DirectionId, group413.Id),
-            TutorScope.Create(tutorEconomics.Id, TutorScopeLevel.Group, economics.Id, economicsBanking.Id, group221.DirectionId, group221.Id),
-            TutorScope.Create(tutorConstruction.Id, TutorScopeLevel.Group, construction.Id, constructionEngineering.Id, group318.DirectionId, group318.Id));
 
         // 3. Korxonalar (Toshkent). Har biri Create paytida o'z check-in QR tokenini oladi (AMLQR:1:{token}).
         var companies = new[]
@@ -254,16 +240,16 @@ public sealed class DemoDataSeeder(
             switch (extraIndex)
             {
                 case < 24:
-                    application.Approve(tutor.Id, student.Company.RadiusM, Enumerable.Range(0, PracticeApplication.ChecklistItemCount),
+                    application.Approve(admin.Id, student.Company.RadiusM, Enumerable.Range(0, PracticeApplication.ChecklistItemCount),
                         "Hujjatlar to'liq", decidedAt);
                     break;
                 case < 28:
-                    break; // Submitted — tyutor kutmoqda
+                    break; // Submitted — admin qarorini kutmoqda
                 case < 30:
-                    application.ReturnForRevision(tutor.Id, "Shartnomada imzo yo'q", decidedAt);
+                    application.ReturnForRevision(admin.Id, "Shartnomada imzo yo'q", decidedAt);
                     break;
                 default:
-                    application.Reject(tutor.Id, "Korxona amaliyot yo'nalishiga mos emas", decidedAt);
+                    application.Reject(admin.Id, "Korxona amaliyot yo'nalishiga mos emas", decidedAt);
                     break;
             }
 
@@ -347,15 +333,15 @@ public sealed class DemoDataSeeder(
                     if (reviewRoll < 0.5)
                     {
                         var score = isYusupova ? 5 : 3 + random.Next(0, 3);
-                        entry.Approve(tutor.Id, score, score >= 5 ? "Ajoyib hisobot" : null, reviewedAt);
+                        entry.Approve(admin.Id, score, score >= 5 ? "Ajoyib hisobot" : null, reviewedAt);
                     }
                     else if (reviewRoll < 0.75)
                     {
-                        entry.MarkSeen(tutor.Id, reviewedAt);
+                        entry.MarkSeen(admin.Id, reviewedAt);
                     }
                     else if (rewriteCount < 2 && reviewRoll > 0.95)
                     {
-                        entry.RequestRewrite(tutor.Id, "Batafsilroq yozing", reviewedAt);
+                        entry.RequestRewrite(admin.Id, "Batafsilroq yozing", reviewedAt);
                         rewriteCount++;
                     }
                 }
@@ -374,13 +360,13 @@ public sealed class DemoDataSeeder(
         {
             var approved = LeaveRequest.Create(yusupova.User.Id, period.Id, excused, excused,
                 "Universitet konferensiyasi", "xat.pdf");
-            approved.Approve(tutor.Id, "Tasdiqlandi", At(excused.AddDays(-1), new TimeOnly(15, 0)));
+            approved.Approve(admin.Id, "Tasdiqlandi", At(excused.AddDays(-1), new TimeOnly(15, 0)));
             leaves.Add(approved);
             db.DailyAttendances.Add(DailyAttendance.Excuse(yusupova.User.Id, period.Id, excused, approved.Id));
             attendanceCount++;
 
             var rejected = LeaveRequest.Create(rahimov.User.Id, period.Id, excused, excused, "Sabab ko'rsatilmagan — shaxsiy");
-            rejected.Reject(tutor.Id, "Sabab yetarli emas", decisionAt);
+            rejected.Reject(admin.Id, "Sabab yetarli emas", decisionAt);
             leaves.Add(rejected);
         }
 
@@ -451,7 +437,7 @@ public sealed class DemoDataSeeder(
     }
 
     /// <summary>Kundaliklarga fayl biriktirish (eski bazada ham): talaba daftardagi kundalikni rasmga olib
-    /// PDF qilib yuboradi — tyutor/admin profilidagi kun oynasida shu fayl ochiladi. Har 3-kundalikka bittadan,
+    /// PDF qilib yuboradi — admin profilidagi kun oynasida shu fayl ochiladi. Har 3-kundalikka bittadan,
     /// allaqachon fayli borlari o'tkazib yuboriladi.</summary>
     private async Task TopUpDiaryAttachmentsAsync(Guid periodId, CancellationToken cancellationToken)
     {
@@ -550,7 +536,7 @@ public sealed class DemoDataSeeder(
     /// <summary>Davr davomatidan hodisalar: har check-in (kech kelgan bo'lsa <c>IsLate</c>) va check-out uchun
     /// qabul qilingan urinish — nuqta korxona atrofida davomatdagi masofada (20–80 m, Rahimov uchun 410 m), aniqlik 8–25 m.
     /// Bugun (yoki oxirgi ish kuni) belgilanmagan uchta talaba — avval <see cref="SuspiciousHemisIds"/> — radius tashqarisidan
-    /// (1.2–3.4 km) rad etilgan check-in urinishi qiladi: <c>GET /api/tutor/map</c> da "bad", <c>today.alerts</c> da outOfRadius.</summary>
+    /// (1.2–3.4 km) rad etilgan check-in urinishi qiladi: <c>GET /api/admin/map</c> da "bad", <c>today.alerts</c> da outOfRadius.</summary>
     private async Task<(int Accepted, int Rejected)> SeedAttendanceEventsAsync(
         PracticePeriod period, DateOnly today, Random random, CancellationToken cancellationToken,
         HashSet<(Guid StudentUserId, DateOnly Date, AttendanceEventKind Kind)>? existing = null)

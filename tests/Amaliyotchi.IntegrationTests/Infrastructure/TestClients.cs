@@ -18,8 +18,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Amaliyotchi.IntegrationTests.Infrastructure;
 
 /// <summary>Test foydalanuvchisi: bazaga yozilgan hisob + kirish uchun kerakli sirlar.
-/// Talaba uchun <see cref="GroupId"/> — profil guruhi; tyutor uchun — birinchi biriktirilgan guruh.
-/// <see cref="HemisId"/> — parol bilan kiradiganlar (admin/tyutor) uchun login identifikatori;
+/// Talaba uchun <see cref="GroupId"/> — profil guruhi.
+/// <see cref="HemisId"/> — parol bilan kiradigan admin uchun login identifikatori;
 /// talabada bo'sh (u Telegram orqali kiradi, <c>StudentProfile.HemisId</c> alohida).</summary>
 public sealed record TestUser(
     Guid Id,
@@ -37,45 +37,17 @@ public sealed record TestGroup(
     Guid AcademicYearId, Guid FacultyId, Guid DepartmentId, Guid DirectionId, Guid GroupId, string GroupName, int Course);
 
 /// <summary>Har test o'ziga kerakli foydalanuvchini yaratadi (tasodifiy telefon/HEMIS ID) — testlar bir bazada
-/// bir-biriga xalaqit bermaydi. Keyingi agentlar: <c>fixture.Factory.LoginAsTutorAsync()</c> → Bearer bilan tayyor <c>HttpClient</c>.</summary>
+/// bir-biriga xalaqit bermaydi. Keyingi agentlar: <c>fixture.Factory.LoginAsAdminAsync()</c> → Bearer bilan tayyor <c>HttpClient</c>.</summary>
 public static class TestClients
 {
     public const string DefaultPassword = "Parol-12345";
 
     public static Task<TestUser> CreateAdminAsync(this ApiFactory factory, string? fullName = null) =>
-        factory.CreatePasswordUserAsync(UserRole.Admin, fullName ?? "Test Admin", facultyId: null);
+        factory.CreatePasswordUserAsync(fullName ?? "Test Admin", superAdmin: false);
 
-    /// <summary>Tyutor: fakultetga biriktirilgan + kamida bitta guruhga guruh darajasidagi faol <c>TutorScope</c>
-    /// va unga mos <c>TutorAssignment</c> (materializatsiya). Guruh berilmasa — yangi fakultet/yo'nalish/guruh yaratiladi.</summary>
-    public static async Task<TestUser> CreateTutorAsync(
-        this ApiFactory factory, TestGroup? group = null, string? fullName = null, params Guid[] extraGroupIds)
-    {
-        group ??= await factory.CreateGroupAsync();
-        var tutor = await factory.CreatePasswordUserAsync(UserRole.Tutor, fullName ?? "Test Tyutor", group.FacultyId);
-
-        await factory.WithDbAsync(async db =>
-        {
-            var groupIds = new[] { group.GroupId }.Concat(extraGroupIds).ToList();
-            var chains = await (from g in db.StudentGroups
-                                join d in db.Directions on g.DirectionId equals d.Id
-                                join dept in db.Departments on d.DepartmentId equals dept.Id
-                                where groupIds.Contains(g.Id)
-                                select new { g.Id, DirectionId = d.Id, DepartmentId = dept.Id, dept.FacultyId })
-                .ToListAsync();
-
-            foreach (var groupId in groupIds)
-            {
-                var chain = chains.Single(c => c.Id == groupId);
-                db.TutorScopes.Add(TutorScope.Create(
-                    tutor.Id, TutorScopeLevel.Group, chain.FacultyId, chain.DepartmentId, chain.DirectionId, groupId));
-                db.TutorAssignments.Add(TutorAssignment.Create(tutor.Id, groupId, group.AcademicYearId));
-            }
-
-            await db.SaveChangesAsync();
-        });
-
-        return tutor with { GroupId = group.GroupId };
-    }
+    /// <summary>Bosh admin (<c>IsSuperAdmin=true</c>) — <c>/api/admin/admins</c> testlari uchun.</summary>
+    public static Task<TestUser> CreateSuperAdminAsync(this ApiFactory factory, string? fullName = null) =>
+        factory.CreatePasswordUserAsync(fullName ?? "Test Bosh Admin", superAdmin: true);
 
     /// <summary>Talaba: parolsiz, Telegram hisobi bog'langan, <c>StudentProfile</c> guruh bilan.
     /// <paramref name="telegramId"/> berilmasa tasodifiy; <paramref name="group"/> berilmasa yangi zanjir yaratiladi.
@@ -208,12 +180,12 @@ public static class TestClients
 
     /// <summary>Tasdiqlangan ariza (check-in uchun shart).</summary>
     public static Task<PracticeApplication> CreateApprovedApplicationAsync(
-        this ApiFactory factory, TestUser student, PracticePeriod period, Company company, Guid tutorUserId) =>
+        this ApiFactory factory, TestUser student, PracticePeriod period, Company company, Guid decidedByUserId) =>
         factory.WithDbAsync(async db =>
         {
             var now = factory.Services.GetRequiredService<IClock>().UtcNow;
             var application = PracticeApplication.Create(student.Id, period.Id, company.Id, company.RadiusM, null, now.AddDays(-10));
-            application.Approve(tutorUserId, company.RadiusM, Enumerable.Range(0, PracticeApplication.ChecklistItemCount), "OK", now.AddDays(-9));
+            application.Approve(decidedByUserId, company.RadiusM, Enumerable.Range(0, PracticeApplication.ChecklistItemCount), "OK", now.AddDays(-9));
             db.PracticeApplications.Add(application);
             await db.SaveChangesAsync();
             return application;
@@ -245,10 +217,11 @@ public static class TestClients
         return await factory.LoginAsync(admin);
     }
 
-    public static async Task<HttpClient> LoginAsTutorAsync(this ApiFactory factory, TestGroup? group = null)
+    /// <summary>Yangi talaba yaratib, u sifatida kirgan klient — admin endpoint'lari uchun 403 testlarida.</summary>
+    public static async Task<HttpClient> LoginAsNewStudentAsync(this ApiFactory factory)
     {
-        var tutor = await factory.CreateTutorAsync(group);
-        return await factory.LoginAsync(tutor);
+        var student = await factory.CreateStudentAsync();
+        return await factory.LoginAsStudentAsync(student);
     }
 
     /// <summary>Talaba sifatida (Telegram orqali) kirgan klient.</summary>
@@ -304,14 +277,16 @@ public static class TestClients
 
     private static string Suffix() => Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
 
-    private static async Task<TestUser> CreatePasswordUserAsync(this ApiFactory factory, UserRole role, string fullName, Guid? facultyId)
+    private static async Task<TestUser> CreatePasswordUserAsync(this ApiFactory factory, string fullName, bool superAdmin)
     {
         var phone = RandomPhone();
         var hemisId = RandomHemisId();
 
         using var scope = factory.Services.CreateScope();
         var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
-        var user = User.CreateWithPassword(fullName, hemisId, phone, hasher.Hash(DefaultPassword), role, facultyId);
+        var user = User.CreateWithPassword(fullName, hemisId, phone, hasher.Hash(DefaultPassword), UserRole.Admin);
+        if (superAdmin)
+            user.MakeSuperAdmin();
 
         await factory.WithDbAsync(async db =>
         {
@@ -319,6 +294,6 @@ public static class TestClients
             await db.SaveChangesAsync();
         });
 
-        return new TestUser(user.Id, user.FullName, role, phone, DefaultPassword, facultyId, null, GroupId: null, HemisId: hemisId);
+        return new TestUser(user.Id, user.FullName, UserRole.Admin, phone, DefaultPassword, null, null, GroupId: null, HemisId: hemisId);
     }
 }

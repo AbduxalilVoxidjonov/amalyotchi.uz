@@ -4,7 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Amaliyotchi.Application.Features.Admin.Students;
 using Amaliyotchi.Application.Features.Auth;
-using Amaliyotchi.Application.Features.Tutor.Students;
+using Amaliyotchi.Application.Features.Supervision.Students;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.IntegrationTests.Infrastructure;
 using FluentAssertions;
@@ -161,7 +161,7 @@ public sealed class StudentWebLoginTests(ApiFixture fixture)
     public async Task AdminParolOrnatish_Qisqa_400_Topilmasa_404_TyutorId_404()
     {
         var student = await Factory.CreateStudentAsync();
-        var tutor = await Factory.CreateTutorAsync();
+        var tutor = await Factory.CreateAdminAsync();
         var admin = await Factory.LoginAsAdminAsync();
 
         var shortPassword = await admin.PostJsonAsync($"/api/admin/students/{student.Id}/password", new { password = "1234567" });
@@ -175,23 +175,23 @@ public sealed class StudentWebLoginTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task TyutorParolOrnatadi_KolamIchida_204_Tashqarisida_404_Talaba_403()
+    public async Task AdminParolOrnatadi_204_YoqTalaba_404_Talaba_403()
     {
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group);
+        var tutor = await Factory.CreateAdminAsync();
         var own = await Factory.CreateStudentAsync(group: group);
         var foreign = await Factory.CreateStudentAsync();
         var tutorClient = await Factory.LoginAsync(tutor);
 
-        (await tutorClient.GetFromJsonAsync<TutorStudentDetail>($"/api/tutor/students/{own.Id}", JsonDefaults.Options))!
+        (await tutorClient.GetFromJsonAsync<StudentDetail>($"/api/admin/students/{own.Id}", JsonDefaults.Options))!
             .HasPassword.Should().BeFalse();
 
-        (await tutorClient.PostJsonAsync($"/api/tutor/students/{own.Id}/password", new { password = TempPassword }))
+        (await tutorClient.PostJsonAsync($"/api/admin/students/{own.Id}/password", new { password = TempPassword }))
             .StatusCode.Should().Be(HttpStatusCode.NoContent);
-        (await tutorClient.PostJsonAsync($"/api/tutor/students/{foreign.Id}/password", new { password = TempPassword }))
-            .StatusCode.Should().Be(HttpStatusCode.NotFound, "ko'lamdan tashqari");
+        (await tutorClient.PostJsonAsync($"/api/admin/students/{Guid.NewGuid()}/password", new { password = TempPassword }))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound, "talaba yo'q");
 
-        (await tutorClient.GetFromJsonAsync<TutorStudentDetail>($"/api/tutor/students/{own.Id}", JsonDefaults.Options))!
+        (await tutorClient.GetFromJsonAsync<StudentDetail>($"/api/admin/students/{own.Id}", JsonDefaults.Options))!
             .HasPassword.Should().BeTrue();
 
         var hemisId = await ProfileHemisIdAsync(own.Id);
@@ -200,12 +200,9 @@ public sealed class StudentWebLoginTests(ApiFixture fixture)
         (await login.Content.ReadAsync<AuthResultDto>())!.MustChangePassword.Should().BeTrue();
 
         var studentClient = await Factory.LoginAsStudentAsync(foreign);
-        (await studentClient.PostJsonAsync($"/api/tutor/students/{own.Id}/password", new { password = TempPassword }))
-            .StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await studentClient.PostJsonAsync($"/api/admin/students/{own.Id}/password", new { password = TempPassword }))
             .StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await tutorClient.PostJsonAsync($"/api/admin/students/{own.Id}/password", new { password = TempPassword }))
-            .StatusCode.Should().Be(HttpStatusCode.Forbidden, "tyutor admin endpoint'iga kira olmaydi");
+
     }
 
     // ---------- change-password ----------
@@ -263,7 +260,7 @@ public sealed class StudentWebLoginTests(ApiFixture fixture)
     [Fact]
     public async Task ParolAlmashtirish_Tyutor_204_ParolsizTalaba_400_Tokensiz_401()
     {
-        var tutor = await Factory.CreateTutorAsync();
+        var tutor = await Factory.CreateAdminAsync();
         var tutorClient = await Factory.LoginAsync(tutor);
         (await tutorClient.PostJsonAsync("/api/auth/change-password", new { currentPassword = tutor.Password, newPassword = NewPassword }))
             .StatusCode.Should().Be(HttpStatusCode.NoContent);

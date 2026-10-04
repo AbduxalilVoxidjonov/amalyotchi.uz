@@ -244,7 +244,7 @@ public sealed class CheckInPhotoTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task FaylKolami_Tyutor_OzGuruhi_200_BoshqaGuruh_404()
+    public async Task FaylKolami_Admin_200_BoshqaTalaba_404()
     {
         var day = await Factory.NextWorkDayAsync();
         var scene = await Factory.CreateSceneAsync(day);
@@ -263,21 +263,15 @@ public sealed class CheckInPhotoTests(ApiFixture fixture)
         var photoId = (await Factory.WithDbAsync(db =>
             db.AttendanceEvents.SingleAsync(e => e.StudentUserId == scene.Student.Id))).PhotoFileId!.Value;
 
-        var ownTutor = await Factory.LoginAsync(scene.Tutor);
-        (await ownTutor.GetAsync($"/api/files/{photoId}")).StatusCode
-            .Should().Be(HttpStatusCode.OK, "tyutor o'z ko'lamidagi talabaning selfisini ko'radi");
+        var admin = await Factory.LoginAsAdminAsync();
+        (await admin.GetAsync($"/api/files/{photoId}")).StatusCode
+            .Should().Be(HttpStatusCode.OK, "admin istalgan talabaning selfisini ko'radi");
 
         var otherGroup = await Factory.CreateGroupAsync();
-        var otherTutorClient = await Factory.LoginAsTutorAsync(otherGroup);
-        (await otherTutorClient.GetAsync($"/api/files/{photoId}")).StatusCode
-            .Should().Be(HttpStatusCode.NotFound, "ko'lamdan tashqari — mavjudligi oshkor qilinmaydi");
 
         var otherStudent = await Factory.CreateStudentAsync(group: otherGroup);
         var otherStudentClient = await Factory.LoginAsStudentAsync(otherStudent);
         (await otherStudentClient.GetAsync($"/api/files/{photoId}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
-
-        var admin = await Factory.LoginAsAdminAsync();
-        (await admin.GetAsync($"/api/files/{photoId}")).StatusCode.Should().Be(HttpStatusCode.OK, "admin — hammasi");
     }
 
     [Fact]

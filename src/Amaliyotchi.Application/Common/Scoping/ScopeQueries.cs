@@ -20,7 +20,6 @@ public static class ScopeQueries
         => scope.Kind switch
         {
             ScopeKind.Unrestricted => query,
-            ScopeKind.Groups => query.Where(p => scope.StudentGroupIds.Contains(p.StudentGroupId)),
             ScopeKind.Self => query.Where(p => p.UserId == scope.UserId),
             _ => query.Where(_ => false)
         };
@@ -29,7 +28,6 @@ public static class ScopeQueries
         => scope.Kind switch
         {
             ScopeKind.Unrestricted => query,
-            ScopeKind.Groups => query.Where(a => scope.StudentUserIds.Contains(a.StudentUserId)),
             ScopeKind.Self => query.Where(a => a.StudentUserId == scope.UserId),
             _ => query.Where(_ => false)
         };
@@ -38,7 +36,6 @@ public static class ScopeQueries
         => scope.Kind switch
         {
             ScopeKind.Unrestricted => query,
-            ScopeKind.Groups => query.Where(e => scope.StudentUserIds.Contains(e.StudentUserId)),
             ScopeKind.Self => query.Where(e => e.StudentUserId == scope.UserId),
             _ => query.Where(_ => false)
         };
@@ -47,7 +44,6 @@ public static class ScopeQueries
         => scope.Kind switch
         {
             ScopeKind.Unrestricted => query,
-            ScopeKind.Groups => query.Where(d => scope.StudentUserIds.Contains(d.StudentUserId)),
             ScopeKind.Self => query.Where(d => d.StudentUserId == scope.UserId),
             _ => query.Where(_ => false)
         };
@@ -56,7 +52,6 @@ public static class ScopeQueries
         => scope.Kind switch
         {
             ScopeKind.Unrestricted => query,
-            ScopeKind.Groups => query.Where(l => scope.StudentUserIds.Contains(l.StudentUserId)),
             ScopeKind.Self => query.Where(l => l.StudentUserId == scope.UserId),
             _ => query.Where(_ => false)
         };
@@ -65,7 +60,6 @@ public static class ScopeQueries
         => scope.Kind switch
         {
             ScopeKind.Unrestricted => query,
-            ScopeKind.Groups => query.Where(g => scope.StudentUserIds.Contains(g.StudentUserId)),
             ScopeKind.Self => query.Where(g => g.StudentUserId == scope.UserId),
             _ => query.Where(_ => false)
         };
@@ -74,7 +68,6 @@ public static class ScopeQueries
         => scope.Kind switch
         {
             ScopeKind.Unrestricted => query,
-            ScopeKind.Groups => query.Where(a => scope.StudentUserIds.Contains(a.StudentUserId)),
             ScopeKind.Self => query.Where(a => a.StudentUserId == scope.UserId),
             _ => query.Where(_ => false)
         };
@@ -83,7 +76,6 @@ public static class ScopeQueries
         => scope.Kind switch
         {
             ScopeKind.Unrestricted => query,
-            ScopeKind.Groups => query.Where(f => scope.StudentUserIds.Contains(f.StudentUserId)),
             ScopeKind.Self => query.Where(f => f.StudentUserId == scope.UserId),
             _ => query.Where(_ => false)
         };

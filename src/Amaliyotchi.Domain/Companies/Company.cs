@@ -32,7 +32,7 @@ public sealed class Company : AuditableEntity, ISoftDeletable
     /// <summary>Korxonaning geografik nuqtasi. Infrastructure PostGIS geography'ga map qiladi.</summary>
     public GeoPoint Location { get; private set; }
 
-    /// <summary>Geofence radiusi (m). Tyutor arizani tasdiqlashda o'zgartira oladi.</summary>
+    /// <summary>Geofence radiusi (m). Admin arizani tasdiqlashda o'zgartira oladi.</summary>
     public int RadiusM { get; private set; }
 
     /// <summary>Korxona tomonidan amaliyot rahbari.</summary>

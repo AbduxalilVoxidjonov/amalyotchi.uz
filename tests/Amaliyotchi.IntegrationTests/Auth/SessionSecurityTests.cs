@@ -21,7 +21,7 @@ public sealed class SessionSecurityTests(ApiFixture fixture)
     [Fact]
     public async Task Lockout_KopNotogriParol_ToGriParolHamRad_XabarBirXil_OynadanKeyinOchiladi()
     {
-        var tutor = await Factory.CreateTutorAsync();
+        var tutor = await Factory.CreateAdminAsync();
         var client = Factory.CreateClient();
 
         string? wrongDetail = null;
@@ -38,7 +38,7 @@ public sealed class SessionSecurityTests(ApiFixture fixture)
         (await locked.Content.ReadAsync<ProblemDetails>())!.Detail.Should().Be(wrongDetail);
 
         // Boshqa hisob bloklanmaydi.
-        var other = await Factory.CreateTutorAsync();
+        var other = await Factory.CreateAdminAsync();
         (await LoginAsync(client, other, other.Password)).StatusCode.Should().Be(HttpStatusCode.OK);
 
         fixture.Clock.Set(DateTimeOffset.UtcNow + AuthSecurity.LockoutWindow + TimeSpan.FromMinutes(1));
@@ -55,7 +55,7 @@ public sealed class SessionSecurityTests(ApiFixture fixture)
     [Fact]
     public async Task Lockout_MuvaffaqiyatliKirish_HisoblagichniNollaydi()
     {
-        var tutor = await Factory.CreateTutorAsync();
+        var tutor = await Factory.CreateAdminAsync();
         var client = Factory.CreateClient();
 
         for (var i = 0; i < AuthSecurity.LockoutThreshold - 1; i++)
@@ -70,7 +70,7 @@ public sealed class SessionSecurityTests(ApiFixture fixture)
     [Fact]
     public async Task RefreshReuse_GraceDanKeyin_BarchaSessiyalarBekor()
     {
-        var tutor = await Factory.CreateTutorAsync();
+        var tutor = await Factory.CreateAdminAsync();
         var (_, first) = await Factory.LoginWithResultAsync(tutor);
         var (_, otherDevice) = await Factory.LoginWithResultAsync(tutor);
         var anonymous = Factory.CreateClient();
@@ -104,7 +104,7 @@ public sealed class SessionSecurityTests(ApiFixture fixture)
     [Fact]
     public async Task AccessToken_HisobFaolsizlantirilsa_Darhol401()
     {
-        var tutor = await Factory.CreateTutorAsync();
+        var tutor = await Factory.CreateAdminAsync();
         var client = await Factory.LoginAsync(tutor);
         (await client.GetAsync("/api/auth/me")).StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -121,7 +121,7 @@ public sealed class SessionSecurityTests(ApiFixture fixture)
     [Fact]
     public async Task AccessToken_ParolAlmashtirilsa_Eskisi401_JoriySessiyaRefreshBilanDavomEtadi()
     {
-        var tutor = await Factory.CreateTutorAsync();
+        var tutor = await Factory.CreateAdminAsync();
         var (client, auth) = await Factory.LoginWithResultAsync(tutor);
         var (otherClient, _) = await Factory.LoginWithResultAsync(tutor);
 

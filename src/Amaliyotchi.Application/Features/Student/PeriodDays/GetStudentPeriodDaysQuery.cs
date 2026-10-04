@@ -2,8 +2,8 @@ using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Application.Features.Student.Common;
-using Amaliyotchi.Application.Features.Tutor.Common;
-using Amaliyotchi.Application.Features.Tutor.Students;
+using Amaliyotchi.Application.Features.Supervision.Common;
+using Amaliyotchi.Application.Features.Supervision.Students;
 using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Diary;
 using Amaliyotchi.Domain.Exceptions;
@@ -39,7 +39,7 @@ public sealed record StudentPeriodDayDto(
 
 /// <param name="Status">Ko'rinadigan holat (<see cref="PracticePeriod.EffectiveStatus"/>).</param>
 /// <param name="RequiredDays">Davrdagi ish kunlari (bayramsiz) — <see cref="PracticePeriod.RequiredDays"/>.</param>
-/// <param name="ElapsedWorkDays">Hisobga olingan ish kunlari — tyutor statistikasi (<see cref="StudentStats.TotalDays"/>)
+/// <param name="ElapsedWorkDays">Hisobga olingan ish kunlari — admin statistikasi (<see cref="StudentStats.TotalDays"/>)
 /// maxraji: o'tgan ish kunlari (bugun — oyna yopilgan yoki belgilangan bo'lsa), sababli kunlarsiz.</param>
 public sealed record StudentPeriodDaysPeriodDto(
     Guid Id,
@@ -63,7 +63,7 @@ public sealed record StudentPeriodDaysDto(
 public sealed record GetStudentPeriodDaysQuery(Guid? PeriodId) : IRequest<StudentPeriodDaysDto>;
 
 /// <summary>Holat — talaba kalendari mantiqi (<see cref="AttendanceCalendar.DayStatus"/>); check-in/out vaqti, avto-yopish,
-/// shubhali, qo'lda, kundalik — tyutor/admin kun-bakun davomati (<see cref="GetStudentAttendanceQuery"/>, talaba
+/// shubhali, qo'lda, kundalik — admin kun-bakun davomati (<see cref="GetStudentAttendanceQuery"/>, talaba
 /// ko'lami <c>ScopeKind.Self</c>) dan; <c>elapsedWorkDays</c> — <see cref="StudentStatsCalculator"/>.</summary>
 internal sealed class GetStudentPeriodDaysQueryHandler(
     IApplicationDbContext db, ICurrentUser currentUser, ISender sender, IClock clock)
@@ -87,7 +87,7 @@ internal sealed class GetStudentPeriodDaysQueryHandler(
         var leaves = await db.ApprovedLeavesAsync(userId, period.Id, cancellationToken);
         var rowsByDate = rows.ToDictionary(r => r.Date);
 
-        // Batafsil maydonlar tyutor/admin profili bilan bir manbadan (talaba ko'lami — faqat o'zi).
+        // Batafsil maydonlar admin profili bilan bir manbadan (talaba ko'lami — faqat o'zi).
         var details = (await sender.Send(new GetStudentAttendanceQuery(userId, null, null, period.Id), cancellationToken))
             .ToDictionary(d => d.Date);
 

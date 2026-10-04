@@ -20,7 +20,7 @@ public sealed class StudentPlaceController(ISender sender) : ControllerBase
         => Ok(await sender.Send(new GetPracticePlaceQuery(), cancellationToken));
 
     /// <summary>Amaliyot joyini tanlash: talaba faqat <c>{ tin }</c> (STIR) yuboradi, korxona
-    /// ma'lumoti admin oldindan kiritgan yozuvdan olinadi. Ariza tyutorga <c>Submitted</c> holatida
+    /// ma'lumoti admin oldindan kiritgan yozuvdan olinadi. Ariza adminga <c>Submitted</c> holatida
     /// boradi. Faol korxona topilmasa → 404; faol davr yo'q yoki ariza allaqachon bor → 409.</summary>
     [HttpPost]
     [ProducesResponseType<PracticePlaceDto>(StatusCodes.Status201Created)]

@@ -4,12 +4,12 @@ namespace Amaliyotchi.Domain.Faces;
 /// "Yuborilmagan" (none) holati qator yo'qligi bilan ifodalanadi.</summary>
 public enum FaceEnrollmentStatus
 {
-    /// <summary>Talaba yubordi, tyutor hali ko'rmagan. Check-in'da etalon sifatida ISHLATILADI.</summary>
+    /// <summary>Talaba yubordi, admin hali ko'rmagan. Check-in'da etalon sifatida ISHLATILADI.</summary>
     Pending = 1,
 
-    /// <summary>Tyutor tasdiqladi — talaba o'zi almashtira olmaydi (faqat tyutor "reset" qiladi).</summary>
+    /// <summary>Admin tasdiqladi — talaba o'zi almashtira olmaydi (faqat admin "reset" qiladi).</summary>
     Approved = 2,
 
-    /// <summary>Tyutor rad etdi (sabab bilan) — talaba qayta yuborishi kerak; check-in'da ishlatilmaydi.</summary>
+    /// <summary>Admin rad etdi (sabab bilan) — talaba qayta yuborishi kerak; check-in'da ishlatilmaydi.</summary>
     Rejected = 3
 }

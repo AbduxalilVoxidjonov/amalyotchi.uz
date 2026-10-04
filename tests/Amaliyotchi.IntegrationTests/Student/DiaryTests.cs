@@ -79,7 +79,7 @@ public sealed class DiaryTests(ApiFixture fixture)
         await Factory.WithDbAsync(async db =>
         {
             var entry = await db.DiaryEntries.SingleAsync(d => d.Id == created!.Id);
-            entry.RequestRewrite(scene.Tutor.Id, "Batafsilroq yozing", DateTimeOffset.UtcNow);
+            entry.RequestRewrite(scene.Admin.Id, "Batafsilroq yozing", DateTimeOffset.UtcNow);
             await db.SaveChangesAsync();
         });
 
@@ -168,7 +168,7 @@ public sealed class DiaryTests(ApiFixture fixture)
         await Factory.WithDbAsync(async db =>
         {
             var entry = await db.DiaryEntries.SingleAsync(d => d.Id == created!.Id);
-            entry.RequestRewrite(scene.Tutor.Id, "Batafsilroq yozing", DateTimeOffset.UtcNow);
+            entry.RequestRewrite(scene.Admin.Id, "Batafsilroq yozing", DateTimeOffset.UtcNow);
             await db.SaveChangesAsync();
         });
         await using var setting = await Factory.UseSettingAsync(SettingKeys.DiaryPdfRequired, "true");
@@ -222,7 +222,7 @@ public sealed class DiaryTests(ApiFixture fixture)
     {
         var sceneA = await Factory.CreateSceneAsync();
         var studentB = await Factory.CreateStudentAsync(group: sceneA.Group);
-        await Factory.CreateApprovedApplicationAsync(studentB, sceneA.Period, sceneA.Company, sceneA.Tutor.Id);
+        await Factory.CreateApprovedApplicationAsync(studentB, sceneA.Period, sceneA.Company, sceneA.Admin.Id);
         var clientB = await Factory.LoginAsStudentAsync(studentB);
 
         using var formA = StudentTestData.DiaryForm(StudentTestData.LongText(), null, ("a.pdf", "application/pdf", Pdf));
@@ -239,9 +239,9 @@ public sealed class DiaryTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Tyutor_403()
+    public async Task Admin_403()
     {
-        var tutor = await Factory.LoginAsTutorAsync();
-        (await tutor.GetAsync("/api/student/diary")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var admin = await Factory.LoginAsAdminAsync();
+        (await admin.GetAsync("/api/student/diary")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 }

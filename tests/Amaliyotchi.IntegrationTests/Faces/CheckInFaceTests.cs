@@ -1,6 +1,6 @@
 using System.Net;
 using Amaliyotchi.Application.Features.Student;
-using Amaliyotchi.Application.Features.Tutor.Students;
+using Amaliyotchi.Application.Features.Supervision.Students;
 using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Common;
 using Amaliyotchi.Domain.Settings;
@@ -108,9 +108,9 @@ public sealed class CheckInFaceTests(ApiFixture fixture)
         (await EventsAsync(scene)).Single().FaceMatchScore.Should().Be(81);
 
         // Tyutor kun-bakun davomatida: kun va urinish balli.
-        var tutor = await Factory.LoginAsync(scene.Tutor);
+        var tutor = await Factory.LoginAsync(scene.Admin);
         var days = await tutor.GetFromJsonSafeAsync<List<StudentAttendanceDay>>(
-            $"/api/tutor/students/{scene.Student.Id}/attendance?from={day:yyyy-MM-dd}&to={day:yyyy-MM-dd}");
+            $"/api/admin/students/{scene.Student.Id}/attendance?from={day:yyyy-MM-dd}&to={day:yyyy-MM-dd}");
         var row = days.Single();
         row.FaceMatchScore.Should().Be(81);
         row.Events.Single().FaceMatchScore.Should().Be(81);
@@ -146,9 +146,9 @@ public sealed class CheckInFaceTests(ApiFixture fixture)
         retry.StatusCode.Should().Be(HttpStatusCode.OK, await retry.Content.ReadAsStringAsync());
 
         // Tyutor rad etilgan urinishni ball bilan ko'radi.
-        var tutor = await Factory.LoginAsync(scene.Tutor);
+        var tutor = await Factory.LoginAsync(scene.Admin);
         var row = (await tutor.GetFromJsonSafeAsync<List<StudentAttendanceDay>>(
-            $"/api/tutor/students/{scene.Student.Id}/attendance?from={day:yyyy-MM-dd}&to={day:yyyy-MM-dd}")).Single();
+            $"/api/admin/students/{scene.Student.Id}/attendance?from={day:yyyy-MM-dd}&to={day:yyyy-MM-dd}")).Single();
         row.Events.Should().HaveCount(2);
         row.Events[0].RejectReason.Should().Be(CheckInRejectReason.FaceMismatch);
         row.Events[0].FaceMatchScore.Should().Be(20);
@@ -201,7 +201,7 @@ public sealed class CheckInFaceTests(ApiFixture fixture)
         await Factory.WithDbAsync(async db =>
         {
             var e = await db.StudentFaceEnrollments.SingleAsync(f => f.StudentUserId == scene.Student.Id);
-            e.Reject(scene.Tutor.Id, "Boshqa odam", DateTimeOffset.UtcNow);
+            e.Reject(scene.Admin.Id, "Boshqa odam", DateTimeOffset.UtcNow);
             await db.SaveChangesAsync();
         });
         await using var faceOn = await Factory.UseSettingAsync(SettingKeys.FaceVerificationEnabled, "true");

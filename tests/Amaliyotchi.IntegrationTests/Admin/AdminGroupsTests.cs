@@ -1,9 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Amaliyotchi.Application.Features.Admin.Groups;
-using Amaliyotchi.Application.Features.Admin.Tutors;
 using Amaliyotchi.Domain.Practice;
-using Amaliyotchi.Domain.Students;
 using Amaliyotchi.IntegrationTests.Infrastructure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -16,14 +14,14 @@ public sealed class AdminGroupsTests(ApiFixture fixture)
     private ApiFactory Factory => fixture.Factory;
 
     [Fact]
-    public async Task Guruhlar_200_Shakl_TyutorVaDavr()
+    public async Task Guruhlar_200_Shakl_Davr()
     {
         var group = await Factory.CreateGroupAsync(course: 4);
-        var tutor = await Factory.CreateTutorAsync(group, "Guruh Tyutori");
-        var period = await Factory.CreateActivePeriodAsync(group, tutor.Id);
+        var admin = await Factory.CreateAdminAsync();
+        var period = await Factory.CreateActivePeriodAsync(group, admin.Id);
         var company = await Factory.CreateCompanyAsync();
         var student = await Factory.CreateStudentAsync(group: group);
-        await Factory.CreateApprovedApplicationAsync(student, period, company, tutor.Id);
+        await Factory.CreateApprovedApplicationAsync(student, period, company, admin.Id);
         var today = Factory.Today();
         // O'tgan 14 kunning har birida "keldi" — foiz 100 atrofida (ish kunlari bo'yicha).
         for (var d = 1; d <= 14; d++)
@@ -47,8 +45,6 @@ public sealed class AdminGroupsTests(ApiFixture fixture)
         row.Id.Should().Be(group.GroupId);
         row.Code.Should().Be(group.GroupName);
         row.Course.Should().Be(4);
-        row.TutorId.Should().Be(tutor.Id);
-        row.Tutor.Should().Be("Guruh Tyutori");
         row.Students.Should().Be(1);
         row.Period.Should().NotBeNull();
         row.Period!.Id.Should().Be(period.Id);
@@ -58,14 +54,13 @@ public sealed class AdminGroupsTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Guruhlar_TyutorIsmiBoyichaQidiruv_DavrsizGuruhNull()
+    public async Task Guruhlar_YonalishNomiBoyichaQidiruv_DavrsizGuruhNull()
     {
-        var marker = "Tyutor" + Guid.NewGuid().ToString("N")[..6];
         var group = await Factory.CreateGroupAsync();
-        await Factory.CreateTutorAsync(group, marker);
+        var direction = await Factory.WithDbAsync(db => db.Directions.Where(d => d.Id == group.DirectionId).Select(d => d.Name).SingleAsync());
 
         var client = await Factory.LoginAsAdminAsync();
-        var page = await client.GetPagedAsync<GroupRow>($"/api/admin/groups?q={marker.ToLowerInvariant()}");
+        var page = await client.GetPagedAsync<GroupRow>($"/api/admin/groups?q={Uri.EscapeDataString(direction.ToLowerInvariant())}");
 
         page.Total.Should().Be(1);
         page.Items.Single().Id.Should().Be(group.GroupId);
@@ -74,9 +69,9 @@ public sealed class AdminGroupsTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Guruhlar_Tyutor_403()
+    public async Task Guruhlar_Talaba_403()
     {
-        var client = await Factory.LoginAsTutorAsync();
+        var client = await Factory.LoginAsNewStudentAsync();
 
         (await client.GetAsync("/api/admin/groups")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -157,12 +152,12 @@ public sealed class AdminGroupsTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Yaratish_TyutorTokeni_403()
+    public async Task Yaratish_TalabaTokeni_403()
     {
         var facultyId = await Factory.CreateFacultyAsync("Guruh Tyutor Fakulteti");
         var departmentId = await Factory.CreateDepartmentAsync(facultyId);
         var directionId = await Factory.CreateDirectionAsync(departmentId);
-        var client = await Factory.LoginAsTutorAsync();
+        var client = await Factory.LoginAsNewStudentAsync();
 
         var response = await client.PostJsonAsync(
             $"/api/admin/directions/{directionId}/groups", new { name = "G-1", course = 1 });
@@ -273,45 +268,10 @@ public sealed class AdminGroupsTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Ochirish_GuruhDarajasidagiKolamBolsa_409()
+    public async Task Ochirish_TalabaTokeni_403()
     {
         var group = await Factory.CreateGroupAsync();
-        await Factory.CreateTutorAsync(group); // guruh darajasidagi ko'lam
-        var client = await Factory.LoginAsAdminAsync();
-
-        var response = await client.DeleteAsync($"/api/admin/groups/{group.GroupId}");
-
-        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
-    }
-
-    [Fact]
-    public async Task Ochirish_OtaKolamdanKelganBiriktiruv_204_BiriktiruvFaolsizlanadi()
-    {
-        var group = await Factory.CreateGroupAsync();
-        var sibling = await Factory.CreateGroupAsync(group.FacultyId);
-        var tutor = await Factory.CreateTutorAsync(sibling);
-        var client = await Factory.LoginAsAdminAsync();
-        var scoped = await client.PutAsJsonAsync($"/api/admin/tutors/{tutor.Id}/scopes",
-            new { scopes = new[] { new { level = "department", id = group.DepartmentId } } });
-        scoped.StatusCode.Should().Be(HttpStatusCode.OK, await scoped.Content.ReadAsStringAsync());
-        (await scoped.Content.ReadAsync<TutorDetail>())!.Groups.Select(g => g.GroupId).Should().Contain(group.GroupId);
-
-        var response = await client.DeleteAsync($"/api/admin/groups/{group.GroupId}");
-
-        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
-        var detail = (await client.GetFromJsonAsync<TutorDetail>($"/api/admin/tutors/{tutor.Id}"))!;
-        detail.Groups.Select(g => g.GroupId).Should().BeEquivalentTo([sibling.GroupId]);
-        detail.Scopes.Should().ContainSingle(s => s.Level == TutorScopeLevel.Department, "ko'lamning o'zi qoladi");
-        var assignment = await Factory.WithDbAsync(db =>
-            db.TutorAssignments.SingleAsync(a => a.TutorUserId == tutor.Id && a.StudentGroupId == group.GroupId));
-        assignment.IsActive.Should().BeFalse("tarix saqlanadi, faolsizlantiriladi");
-    }
-
-    [Fact]
-    public async Task Ochirish_TyutorTokeni_403()
-    {
-        var group = await Factory.CreateGroupAsync();
-        var client = await Factory.LoginAsTutorAsync();
+        var client = await Factory.LoginAsNewStudentAsync();
 
         var response = await client.DeleteAsync($"/api/admin/groups/{group.GroupId}");
 

@@ -81,7 +81,7 @@ public sealed class BotReplyPlannerTests
 
         reply!.Text.Should().Be(BotReplyPlanner.HelpText);
         reply.Text.Should().Contain("QR").And.Contain("selfi").And.Contain("Kundalik")
-            .And.Contain("Ruxsat so'rovi").And.Contain("tyutor");
+            .And.Contain("Ruxsat so'rovi").And.Contain("administrator");
         reply.Button!.Url.Should().Be(WebAppUrl);
     }
 

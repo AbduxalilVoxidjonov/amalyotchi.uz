@@ -198,7 +198,7 @@ public sealed class AdminStudentFiltersTests(ApiFixture fixture)
     [Fact]
     public async Task Tyutor_403_Anonim_401()
     {
-        var tutor = await Factory.LoginAsTutorAsync();
+        var tutor = await Factory.LoginAsNewStudentAsync();
         (await tutor.GetAsync("/api/admin/students/filters")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await tutor.GetAsync("/api/admin/students?course=2")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
 

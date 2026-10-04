@@ -4,8 +4,8 @@ using Amaliyotchi.Application.Features.Admin.Common;
 using Amaliyotchi.Application.Features.Admin.Groups;
 using Amaliyotchi.Application.Features.Admin.Students;
 using Amaliyotchi.Application.Features.Student;
-using Amaliyotchi.Application.Features.Tutor.Diaries;
-using Amaliyotchi.Application.Features.Tutor.Students;
+using Amaliyotchi.Application.Features.Supervision.Diaries;
+using Amaliyotchi.Application.Features.Supervision.Students;
 using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Common;
 using Amaliyotchi.Domain.Companies;
@@ -15,7 +15,7 @@ using Amaliyotchi.Domain.Settings;
 using Amaliyotchi.IntegrationTests.Admin;
 using Amaliyotchi.IntegrationTests.Infrastructure;
 using Amaliyotchi.IntegrationTests.Student;
-using Amaliyotchi.IntegrationTests.Tutor;
+using Amaliyotchi.IntegrationTests.Supervision;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 
@@ -34,20 +34,20 @@ public sealed class MultiPeriodTests(ApiFixture fixture)
 
     private sealed record Scene(
         TestGroup Group,
-        TestUser Tutor,
+        TestUser Staff,
         TestUser Student,
         Company Company,
         PracticePeriod Autumn,
         PracticePeriod Spring,
         HttpClient Admin,
-        HttpClient TutorClient,
+        HttpClient StaffClient,
         HttpClient StudentClient);
 
     private async Task<Scene> CreateSceneAsync()
     {
         var today = Factory.LocalToday();
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group);
+        var tutor = await Factory.CreateAdminAsync();
         var student = await Factory.CreateStudentAsync(group: group);
         var company = await Factory.CreateCompanyAsync(StudentTestData.CompanyLat, StudentTestData.CompanyLng);
 
@@ -109,25 +109,24 @@ public sealed class MultiPeriodTests(ApiFixture fixture)
         admin.Application.Should().NotBeNull();
         admin.Grade.Should().NotBeNull();
 
-        var tutor = await GetOkAsync<TutorStudentDetail>(s.TutorClient, $"/api/tutor/students/{s.Student.Id}");
+        var tutor = await GetOkAsync<StudentDetail>(s.StaffClient, $"/api/admin/students/{s.Student.Id}");
         tutor.SelectedPeriodId.Should().Be(s.Autumn.Id);
         tutor.Periods.Should().HaveCount(2);
         tutor.ActiveCompany.Should().BeNull();
         tutor.Attendance.AttendedDays.Should().Be(AttendedDays);
 
         // Alohida endpoint'lar ham sukut bo'yicha kuzgi davr.
-        var days = await GetOkAsync<List<StudentAttendanceDay>>(s.TutorClient, $"/api/tutor/students/{s.Student.Id}/attendance");
+        var days = await GetOkAsync<List<StudentAttendanceDay>>(s.StaffClient, $"/api/admin/students/{s.Student.Id}/attendance");
         days.First().Date.Should().Be(s.Autumn.StartDate);
         days.Last().Date.Should().Be(s.Autumn.EndDate);
         days.Count(d => d.Status == AttendanceStatus.Present).Should().Be(AttendedDays);
-        var diaries = await GetOkAsync<List<TutorDiaryEntry>>(s.Admin, $"/api/admin/students/{s.Student.Id}/diaries");
+        var diaries = await GetOkAsync<List<DiaryReviewEntry>>(s.Admin, $"/api/admin/students/{s.Student.Id}/diaries");
         diaries.Should().HaveCount(1);
 
-        // Tyutor ro'yxati statistikasi kuzgi davr bo'yicha (kelgusi bo'sh davrga o'tib ketmaydi); korxona ustuni esa
-        // faqat aktiv korxona — kuzgi davr yopilgan, bahorgi boshlanmagan → null (oldingi korxonaga fallback yo'q).
-        var list = await GetOkAsync<List<TutorStudent>>(s.TutorClient, "/api/tutor/students");
-        list.Single(r => r.Id == s.Student.Id).AttendedDays.Should().Be(AttendedDays);
-        list.Single(r => r.Id == s.Student.Id).Company.Should().BeNull();
+        // Ro'yxatdagi korxona ustuni faqat aktiv korxona — kuzgi davr yopilgan, bahorgi boshlanmagan → null
+        // (oldingi korxonaga fallback yo'q).
+        var page = await s.Admin.GetPagedAsync<StudentRow>($"/api/admin/students?q={Uri.EscapeDataString(s.Group.GroupName)}");
+        page.Items.Single(r => r.Id == s.Student.Id).Company.Should().BeNull();
     }
 
     [Fact]
@@ -138,11 +137,11 @@ public sealed class MultiPeriodTests(ApiFixture fixture)
         foreach (var url in new[]
                  {
                      $"/api/admin/students/{s.Student.Id}?periodId={s.Spring.Id}",
-                     $"/api/tutor/students/{s.Student.Id}?periodId={s.Spring.Id}"
+                     $"/api/admin/students/{s.Student.Id}?periodId={s.Spring.Id}"
                  })
         {
-            var client = url.StartsWith("/api/admin", StringComparison.Ordinal) ? s.Admin : s.TutorClient;
-            var detail = await GetOkAsync<TutorStudentDetail>(client, url);
+            var client = url.StartsWith("/api/admin", StringComparison.Ordinal) ? s.Admin : s.StaffClient;
+            var detail = await GetOkAsync<StudentDetail>(client, url);
             detail.SelectedPeriodId.Should().Be(s.Spring.Id);
             detail.Period!.Id.Should().Be(s.Spring.Id);
             detail.Periods.Single(p => p.IsDefault).Id.Should().Be(s.Autumn.Id, "sukut o'zgarmaydi");
@@ -156,7 +155,7 @@ public sealed class MultiPeriodTests(ApiFixture fixture)
 
         (await GetOkAsync<List<StudentAttendanceDay>>(s.Admin, $"/api/admin/students/{s.Student.Id}/attendance?periodId={s.Spring.Id}"))
             .Should().BeEmpty();
-        (await GetOkAsync<List<TutorDiaryEntry>>(s.TutorClient, $"/api/tutor/students/{s.Student.Id}/diaries?periodId={s.Spring.Id}"))
+        (await GetOkAsync<List<DiaryReviewEntry>>(s.StaffClient, $"/api/admin/students/{s.Student.Id}/diaries?periodId={s.Spring.Id}"))
             .Should().BeEmpty();
 
         // Oy navigatsiyasi davr chegarasidan chiqmaydi: kuzgi davr uchun so'ralgan kengroq oraliq qisiladi.
@@ -280,17 +279,17 @@ public sealed class MultiPeriodTests(ApiFixture fixture)
     {
         var s = await CreateSceneAsync();
         var otherGroup = await Factory.CreateGroupAsync();
-        var foreign = await CreatePeriodAsync(otherGroup, s.Tutor.Id, "Begona", Factory.LocalToday().AddDays(-5), Factory.LocalToday().AddDays(5));
+        var foreign = await CreatePeriodAsync(otherGroup, s.Staff.Id, "Begona", Factory.LocalToday().AddDays(-5), Factory.LocalToday().AddDays(5));
 
         foreach (var periodId in new[] { Guid.NewGuid(), foreign.Id })
         {
             (await s.Admin.GetAsync($"/api/admin/students/{s.Student.Id}?periodId={periodId}")).StatusCode
                 .Should().Be(HttpStatusCode.NotFound);
-            (await s.TutorClient.GetAsync($"/api/tutor/students/{s.Student.Id}?periodId={periodId}")).StatusCode
+            (await s.StaffClient.GetAsync($"/api/admin/students/{s.Student.Id}?periodId={periodId}")).StatusCode
                 .Should().Be(HttpStatusCode.NotFound);
             (await s.Admin.GetAsync($"/api/admin/students/{s.Student.Id}/attendance?periodId={periodId}")).StatusCode
                 .Should().Be(HttpStatusCode.NotFound);
-            (await s.TutorClient.GetAsync($"/api/tutor/students/{s.Student.Id}/diaries?periodId={periodId}")).StatusCode
+            (await s.StaffClient.GetAsync($"/api/admin/students/{s.Student.Id}/diaries?periodId={periodId}")).StatusCode
                 .Should().Be(HttpStatusCode.NotFound);
             (await s.StudentClient.GetAsync($"/api/student/portfolio?periodId={periodId}")).StatusCode
                 .Should().Be(HttpStatusCode.NotFound);

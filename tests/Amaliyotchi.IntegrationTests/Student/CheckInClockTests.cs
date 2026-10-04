@@ -33,7 +33,7 @@ public sealed class CheckInClockTests(ApiFixture fixture) : IAsyncLifetime
     {
         var day = await Factory.NextWorkDayAsync();
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group);
+        var tutor = await Factory.CreateAdminAsync();
         var company = await Factory.CreateCompanyAsync();
         var period = await Factory.CreatePeriodAtAsync(group, tutor.Id, day);
 

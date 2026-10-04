@@ -47,7 +47,7 @@ public sealed class AdminFacultiesController(ISender sender) : ControllerBase
         Guid id, UpdateFacultyCommand command, CancellationToken cancellationToken)
         => Ok(await sender.Send(command with { Id = id }, cancellationToken));
 
-    /// <summary>Soft delete. Bog'liq guruh/tyutor/talaba bo'lsa → 409.</summary>
+    /// <summary>Soft delete. Bog'liq guruh/talaba bo'lsa → 409.</summary>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

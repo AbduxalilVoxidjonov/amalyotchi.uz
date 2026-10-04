@@ -50,7 +50,7 @@ public sealed class StudentGroup : AuditableEntity, ISoftDeletable
 
     public void Deactivate() => IsActive = false;
 
-    /// <summary>O'zini arxivlaydi. Chaqiruvchi oldindan talaba/faol tyutor biriktiruvi yo'qligini
+    /// <summary>O'zini arxivlaydi. Chaqiruvchi oldindan talaba yo'qligini
     /// tekshirishi shart (409 qoidasi Application qatlamida).</summary>
     public void Delete(DateTimeOffset now)
     {

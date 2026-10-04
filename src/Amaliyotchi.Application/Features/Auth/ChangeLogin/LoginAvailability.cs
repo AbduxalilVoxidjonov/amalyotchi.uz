@@ -33,7 +33,7 @@ internal static class LoginAvailability
 
     /// <summary>Login tizimda kimdadir bormi: xodimlar (<c>users.hemis_id</c>) va talaba profillari
     /// (<c>student_profiles.hemis_id</c>). O'chirilgan (soft delete) yozuvlar ham band hisoblanadi — login identifikatori
-    /// qayta ishlatilmaydi (tyutor yaratishdagi qoida bilan bir xil). <paramref name="exceptUserId"/> — o'zini hisobga
+    /// qayta ishlatilmaydi (admin yaratishdagi qoida bilan bir xil). <paramref name="exceptUserId"/> — o'zini hisobga
     /// olmaslik uchun.</summary>
     public static async Task<bool> IsTakenAsync(
         IApplicationDbContext db, string normalized, Guid? exceptUserId, CancellationToken cancellationToken)

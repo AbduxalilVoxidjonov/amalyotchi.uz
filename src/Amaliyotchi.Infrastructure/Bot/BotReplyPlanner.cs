@@ -59,7 +59,7 @@ public static class BotReplyPlanner
 
         return greeting + " Amaliyotchi — amaliyot davomati va kundaligi uchun ilova. " +
                "Pastdagi tugma orqali ilovani oching. Birinchi marta kirsangiz, " +
-               "tyutoringiz bergan HEMIS ID va parolni kiriting.";
+               "administrator bergan HEMIS ID va parolni kiriting.";
     }
 
     public const string HelpText =
@@ -67,7 +67,7 @@ public static class BotReplyPlanner
         "• Kelish va ketish — korxonadagi QR kodni skanerlab, selfi bilan belgilanadi.\n" +
         "• Kundalik — har kuni bajarilgan ishlarni yozib borasiz.\n" +
         "• Ruxsat so'rovi — kela olmasangiz, sababini ko'rsatib so'rov yuborasiz.\n\n" +
-        "Muammo bo'lsa (kira olmasangiz, parolni unutsangiz), tyutoringizga murojaat qiling.";
+        "Muammo bo'lsa (kira olmasangiz, parolni unutsangiz), administratorga murojaat qiling.";
 
     public const string FallbackText =
         "Men faqat ilovani ochishga yordam beraman. Pastdagi tugmani bosing yoki /help yozing.";

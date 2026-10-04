@@ -59,11 +59,12 @@ public static class AuthorizationSetup
 
         services.AddAuthorizationBuilder()
             .AddPolicy(Policies.AdminOnly, p => p.RequireRole(nameof(UserRole.Admin)))
-            // Baholash, kundalik tekshiruvi, ariza/ruxsat qarorlari — RBAC bo'yicha faqat tyutor (admin baho qo'ymaydi).
-            .AddPolicy(Policies.TutorOnly, p => p.RequireRole(nameof(UserRole.Tutor)))
+            // Bosh admin: claim login/refresh'da bazadan yoziladi; belgi o'zgarsa stamp o'zgaradi → eski token 401,
+            // mijoz refresh qiladi va yangi claim oladi. Handler'lar bazadan qo'shimcha tekshiradi.
+            .AddPolicy(Policies.SuperAdminOnly, p => p
+                .RequireRole(nameof(UserRole.Admin))
+                .RequireClaim(JwtTokenService.SuperAdminClaim, "true"))
             .AddPolicy(Policies.StudentOnly, p => p.RequireRole(nameof(UserRole.Student)))
-            // Tyutor GET'lari: admin ham ko'radi (ko'lami — hammasi).
-            .AddPolicy(Policies.TutorOrAdmin, p => p.RequireRole(nameof(UserRole.Admin), nameof(UserRole.Tutor)))
             .AddPolicy(Policies.Authenticated, p => p.RequireAuthenticatedUser());
 
         return services;

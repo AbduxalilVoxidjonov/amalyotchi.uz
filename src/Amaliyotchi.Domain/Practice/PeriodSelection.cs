@@ -32,7 +32,7 @@ public readonly record struct PeriodSpan(DateOnly StartDate, DateOnly EndDate, b
 /// muddatidan oldin yopilgan (<c>Closed</c>, <c>StartDate &lt;= D</c>) — yopilganlari ham kiradi;</item>
 /// <item><b>upcoming</b> — <c>StartDate &gt; D</c> bo'lgan eng yaqin yopilmagan davr.</item>
 /// </list>
-/// Sirtlar <see cref="PeriodPurpose"/> orqali tartibni tanlaydi. Barcha iste'molchilar (tyutor/admin statistikasi,
+/// Sirtlar <see cref="PeriodPurpose"/> orqali tartibni tanlaydi. Barcha iste'molchilar (admin statistikasi,
 /// talaba ilovasi, check-in, ariza) shu yerdan foydalanadi.</summary>
 public static class PeriodSelection
 {

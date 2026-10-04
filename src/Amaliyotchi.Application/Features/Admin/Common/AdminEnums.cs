@@ -8,13 +8,6 @@ public enum FacultyStatus
     Attention = 2
 }
 
-public enum TutorStatus
-{
-    Active = 1,
-    /// <summary>Kutilayotgan ariza <see cref="AdminThresholds.PendingApplicationLateAfter"/> dan eski.</summary>
-    Late = 2
-}
-
 /// <summary>Domain'dagi <c>StudentStatus</c> bilan adashmaslik uchun nomi boshqa.</summary>
 public enum AdminStudentStatus
 {

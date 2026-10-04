@@ -2,8 +2,8 @@ using Amaliyotchi.Application.Common.Models;
 using Amaliyotchi.Application.Common.Security;
 using Amaliyotchi.Application.Features.Admin.Students;
 using Amaliyotchi.Application.Features.Student.Common;
-using Amaliyotchi.Application.Features.Tutor.Diaries;
-using Amaliyotchi.Application.Features.Tutor.Students;
+using Amaliyotchi.Application.Features.Supervision.Diaries;
+using Amaliyotchi.Application.Features.Supervision.Students;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -103,7 +103,7 @@ public sealed class AdminStudentsController(ISender sender) : ControllerBase
         AssignStudentsToCompanyCommand command, CancellationToken cancellationToken)
         => Ok(await sender.Send(command, cancellationToken));
 
-    /// <summary>Talaba profili: akademik ma'lumot, tyutor, korxona, ariza, amaliyot davri,
+    /// <summary>Talaba profili: akademik ma'lumot, korxona, ariza, amaliyot davri,
     /// davomat/kundalik statistikasi va baho — tanlangan davr bo'yicha (<c>?periodId=</c>, berilmasa sukut
     /// bo'yicha davr). Talaba topilmasa yoki begona <c>periodId</c> → 404.</summary>
     [HttpGet("{id:guid}")]
@@ -127,7 +127,7 @@ public sealed class AdminStudentsController(ISender sender) : ControllerBase
         Guid id, ReassignStudentCompanyCommand command, CancellationToken cancellationToken)
         => Ok(await sender.Send(command with { Id = id }, cancellationToken));
 
-    /// <summary>Talabaning kun-bakun davomati (tyutor profilidagi bilan bir xil shakl):
+    /// <summary>Talabaning kun-bakun davomati:
     /// holat, check-in/out vaqti, masofa, koordinata, selfi va urinishlar soni.
     /// <c>?from=&amp;to=</c> — ixtiyoriy (berilmasa davr boshidan bugungacha); teskari yoki
     /// 400 kundan uzun oraliq → 400. <c>?periodId=</c> — davr (berilmasa sukut bo'yicha), oraliq davr chegaralariga qisiladi.
@@ -147,12 +147,12 @@ public sealed class AdminStudentsController(ISender sender) : ControllerBase
 
     /// <summary>Talabaning tanlangan davrdagi (<c>?periodId=</c>) kundaliklari — sana bo'yicha kamayish tartibida. Talaba topilmasa → 404.</summary>
     [HttpGet("{id:guid}/diaries")]
-    [ProducesResponseType<IReadOnlyList<TutorDiaryEntry>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<IReadOnlyList<DiaryReviewEntry>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<IReadOnlyList<TutorDiaryEntry>>> Diaries(
+    public async Task<ActionResult<IReadOnlyList<DiaryReviewEntry>>> Diaries(
         Guid id, [FromQuery] Guid? periodId, CancellationToken cancellationToken)
-        => Ok(await sender.Send(new GetTutorStudentDiariesQuery(id, periodId), cancellationToken));
+        => Ok(await sender.Send(new GetStudentDiariesQuery(id, periodId), cancellationToken));
 
     /// <summary>Talabaga brauzer orqali (HEMIS ID + parol) kirish uchun vaqtinchalik parol o'rnatish: <c>{ password }</c> → 204.
     /// Talaba keyingi kirishda parolini almashtirishi kerak (<c>mustChangePassword=true</c>); barcha refresh tokenlari

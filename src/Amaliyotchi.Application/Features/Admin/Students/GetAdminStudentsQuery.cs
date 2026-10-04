@@ -13,7 +13,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Amaliyotchi.Application.Features.Admin.Students;
 
 /// <summary>Kontrakt <c>Student</c> + <c>hemisId</c>, <c>groupId</c>, <c>course</c>, <c>telegramLinked</c>, <c>suspiciousDays</c>.
-/// <paramref name="Id"/> — talabaning <c>User.Id</c> (tyutor endpoint'laridagi <c>studentId</c> bilan bir xil).
+/// <paramref name="Id"/> — talabaning <c>User.Id</c> (admin endpoint'laridagi <c>studentId</c> bilan bir xil).
 /// <paramref name="Company"/> — talabaning HOZIRDA aktiv korxonasi nomi (<see cref="ActiveCompanyQueries"/>: tasdiqlangan
 /// ariza, yopilmagan va bugun davom etayotgan davr, guruh hali davrga biriktirilgan); aktivi bo'lmasa <c>null</c> —
 /// oldingi (yopilgan/tugagan davrdagi) korxonaga fallback yo'q.</summary>

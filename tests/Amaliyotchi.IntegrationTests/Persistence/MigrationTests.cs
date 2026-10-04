@@ -1,4 +1,4 @@
-using Amaliyotchi.Domain.Students;
+using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Infrastructure.Persistence.Migrations;
 using Amaliyotchi.IntegrationTests.Infrastructure;
 using FluentAssertions;
@@ -62,64 +62,84 @@ public sealed class MigrationTests(ApiFixture fixture)
         });
     }
 
+    /// <summary><c>RemoveTutors</c>: tarixiy rol 2 (tyutor) — refresh tokenlari bekor qilinadi, hisob soft-delete;
+    /// SQL qayta ishga tushirilsa ham natija o'zgarmaydi; admin/talabaga tegilmaydi. Enum'da yo'q rolni o'qish xato bermaydi.</summary>
     [Fact]
-    public async Task TutorScopes_Backfill_FaolBiriktiruvdanGuruhKolami_Idempotent()
+    public async Task RemoveTutors_Rol2_SoftDelete_TokenlarBekor_Idempotent()
     {
-        // Ko'lamsiz eski uslubdagi biriktiruvlar: faol va faolsizlantirilgan.
-        var groupA = await Factory.CreateGroupAsync();
-        var groupB = await Factory.CreateGroupAsync(groupA.FacultyId);
-        var tutor = await Factory.CreateAdminAsync("Backfill Tyutor"); // rol muhim emas — faqat users.id kerak
+        var bystander = await Factory.CreateAdminAsync();
+        var legacyId = Guid.CreateVersion7();
+        var tokenId = Guid.CreateVersion7();
         await Factory.WithDbAsync(async db =>
         {
-            var active = TutorAssignment.Create(tutor.Id, groupA.GroupId, groupA.AcademicYearId);
-            var inactive = TutorAssignment.Create(tutor.Id, groupB.GroupId, groupB.AcademicYearId);
-            inactive.Deactivate();
-            db.TutorAssignments.AddRange(active, inactive);
-            await db.SaveChangesAsync();
+            var hemis = TestClients.RandomHemisId();
+            var phone = TestClients.RandomPhone();
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO users (id, full_name, phone_number, hemis_id, password_hash, role, is_active, must_change_password,
+                                   is_super_admin, created_at, is_deleted)
+                VALUES ({legacyId}, 'Eski Tyutor', {phone}, {hemis}, 'hash', 2, true, false, false, now(), false)
+                """);
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO refresh_tokens (id, user_id, token, expires_at, created_at)
+                VALUES ({tokenId}, {legacyId}, {"legacy-" + tokenId}, now() + interval '7 days', now())
+                """);
+
+            // Enum'da yo'q rol (2) — o'qish xato bermaydi (EF int → enum cast).
+            var legacy = await db.Users.IgnoreQueryFilters().AsNoTracking().SingleAsync(u => u.Id == legacyId);
+            ((int)legacy.Role).Should().Be(2);
         });
 
         await Factory.WithDbAsync(async db =>
         {
-            await db.Database.ExecuteSqlRawAsync(TutorScopes.BackfillGroupScopesSql);
-            await db.Database.ExecuteSqlRawAsync(TutorScopes.BackfillGroupScopesSql); // ikkinchi marta — takror yaratmaydi
+            for (var i = 0; i < 2; i++)
+            {
+                await db.Database.ExecuteSqlRawAsync(RemoveTutors.RevokeTutorRefreshTokensSql);
+                await db.Database.ExecuteSqlRawAsync(RemoveTutors.SoftDeleteTutorsSql);
+            }
 
-            var scopes = await db.TutorScopes.Where(s => s.TutorUserId == tutor.Id).ToListAsync();
-            var scope = scopes.Should().ContainSingle("faqat faol biriktiruv ko'chiriladi, bir marta").Subject;
-            scope.Level.Should().Be(TutorScopeLevel.Group);
-            scope.FacultyId.Should().Be(groupA.FacultyId);
-            scope.DepartmentId.Should().Be(groupA.DepartmentId);
-            scope.DirectionId.Should().Be(groupA.DirectionId);
-            scope.StudentGroupId.Should().Be(groupA.GroupId);
-            scope.IsActive.Should().BeTrue();
+            var legacy = await db.Users.IgnoreQueryFilters().AsNoTracking().SingleAsync(u => u.Id == legacyId);
+            legacy.IsDeleted.Should().BeTrue();
+            legacy.DeletedAt.Should().NotBeNull();
+            legacy.IsActive.Should().BeFalse();
+            (await db.Users.AnyAsync(u => u.Id == legacyId)).Should().BeFalse("soft-delete filtri — login/ro'yxatlarda ko'rinmaydi");
+
+            var token = await db.RefreshTokens.AsNoTracking().SingleAsync(t => t.Id == tokenId);
+            token.RevokedAt.Should().NotBeNull();
+
+            var other = await db.Users.AsNoTracking().SingleAsync(u => u.Id == bystander.Id);
+            other.IsDeleted.Should().BeFalse();
+            other.IsActive.Should().BeTrue();
         });
     }
 
+    /// <summary><c>RemoveTutors</c> va DbSeeder bir xil qoida: faol bosh admin yo'q bo'lsa — eng eski faol admin bosh admin;
+    /// bor bo'lsa — hech narsa o'zgarmaydi (idempotent). Umumiy baza — tranzaksiya ichida, oxirida qaytariladi.</summary>
     [Fact]
-    public async Task TutorFaculties_Backfill_UsersFacultyIdDanKochadi_Idempotent()
+    public async Task RemoveTutors_EngEskiFaolAdmin_BoshAdmin_Idempotent()
     {
-        // Eski uslub: tyutor faqat users.faculty_id bilan, tutor_faculties qatori yo'q (backfill'dan oldingi holat).
-        var tutor = await Factory.CreateTutorAsync();
-        var admin = await Factory.CreateAdminAsync();
-        var deletedTutor = await Factory.CreateTutorAsync();
-        await Factory.WithDbAsync(async db =>
+        await Factory.CreateAdminAsync();
+        await Factory.WithDbAsync(db => db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
-            await db.TutorFaculties.Where(tf => tf.TutorUserId == tutor.Id || tf.TutorUserId == deletedTutor.Id).ExecuteDeleteAsync();
-            var user = await db.Users.SingleAsync(u => u.Id == deletedTutor.Id);
-            user.IsDeleted = true;
-            user.DeletedAt = DateTimeOffset.UtcNow;
-            await db.SaveChangesAsync();
-        });
+            await using var transaction = await db.Database.BeginTransactionAsync();
 
-        await Factory.WithDbAsync(async db =>
-        {
-            await db.Database.ExecuteSqlRawAsync(TutorFaculties.BackfillTutorFacultiesSql);
-            await db.Database.ExecuteSqlRawAsync(TutorFaculties.BackfillTutorFacultiesSql); // ikkinchi marta — takror yaratmaydi
+            var before = await db.Users.Where(u => u.IsSuperAdmin).Select(u => u.Id).ToListAsync();
+            before.Should().NotBeEmpty("DbSeeder birinchi adminni bosh admin qiladi");
+            await db.Database.ExecuteSqlRawAsync(RemoveTutors.PromoteOldestAdminSql);
+            (await db.Users.Where(u => u.IsSuperAdmin).Select(u => u.Id).ToListAsync())
+                .Should().BeEquivalentTo(before, "bosh admin bor — o'zgarmaydi");
 
-            var rows = await db.TutorFaculties.Where(tf => tf.TutorUserId == tutor.Id).ToListAsync();
-            rows.Should().ContainSingle().Which.FacultyId.Should().Be(tutor.FacultyId!.Value);
-            (await db.TutorFaculties.AnyAsync(tf => tf.TutorUserId == admin.Id)).Should().BeFalse("admin — fakultetsiz, rol tyutor emas");
-            (await db.TutorFaculties.AnyAsync(tf => tf.TutorUserId == deletedTutor.Id)).Should().BeFalse("o'chirilgan tyutor ko'chirilmaydi");
-        });
+            await db.Database.ExecuteSqlRawAsync("UPDATE users SET is_super_admin = false");
+            var oldest = await db.Users.AsNoTracking()
+                .Where(u => u.Role == UserRole.Admin && u.IsActive)
+                .OrderBy(u => u.CreatedAt).ThenBy(u => u.Id)
+                .Select(u => u.Id).FirstAsync();
+            await db.Database.ExecuteSqlRawAsync(RemoveTutors.PromoteOldestAdminSql);
+            await db.Database.ExecuteSqlRawAsync(RemoveTutors.PromoteOldestAdminSql);
+            (await db.Users.AsNoTracking().Where(u => u.IsSuperAdmin).Select(u => u.Id).ToListAsync())
+                .Should().Equal(oldest);
+
+            await transaction.RollbackAsync();
+        }));
     }
 
     [Fact]
@@ -131,10 +151,11 @@ public sealed class MigrationTests(ApiFixture fixture)
                 .SqlQueryRaw<string>("SELECT tablename AS \"Value\" FROM pg_tables WHERE schemaname = 'public'")
                 .ToListAsync();
 
-            tables.Should().Contain(["users", "student_profiles", "tutor_assignments", "tutor_scopes", "tutor_faculties", "companies", "practice_periods",
+            tables.Should().Contain(["users", "student_profiles", "companies", "practice_periods",
                 "practice_period_groups", "practice_applications", "daily_attendances", "attendance_events",
                 "diary_entries", "diary_attachments", "leave_requests", "practice_grades", "app_settings",
                 "holidays", "document_templates", "stored_files", "broadcast_messages", "broadcast_deliveries", "__migrations"]);
+            tables.Should().NotContain(["tutor_assignments", "tutor_scopes", "tutor_faculties"], "RemoveTutors migratsiyasi");
 
             var badNames = await db.Database
                 .SqlQueryRaw<string>(

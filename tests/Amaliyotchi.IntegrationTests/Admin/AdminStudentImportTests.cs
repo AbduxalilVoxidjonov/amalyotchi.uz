@@ -206,9 +206,9 @@ public sealed class AdminStudentImportTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Import_Tyutor_403()
+    public async Task Import_Talaba_403()
     {
-        var client = await Factory.LoginAsTutorAsync();
+        var client = await Factory.LoginAsNewStudentAsync();
 
         (await client.GetAsync(TemplateUrl)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await client.PostAsync(ImportUrl, ImportForm(Workbook(Header)))).StatusCode

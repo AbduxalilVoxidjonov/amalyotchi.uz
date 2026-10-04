@@ -6,10 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Amaliyotchi.Api.Controllers;
 
-/// <summary>Hisobotlar katalogi (admin + tyutor, ko'lam Bearer'dan). Yuklab olish — keyingi bosqich (M14).</summary>
+/// <summary>Hisobotlar katalogi (faqat admin). Yuklab olish — keyingi bosqich (M14).</summary>
 [ApiController]
 [Route("api/reports")]
-[Authorize(Policy = Policies.TutorOrAdmin)]
+[Authorize(Policy = Policies.AdminOnly)]
 public sealed class ReportsController(ISender sender) : ControllerBase
 {
     [HttpGet]

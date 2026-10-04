@@ -70,7 +70,7 @@ internal static class AttendanceCalendar
         var byDate = rows.ToDictionary(r => r.Date);
         int total = 0, present = 0, late = 0, excused = 0, absent = 0;
 
-        // Ish kunlari + yozuvi bor kunlar (tyutor dam olish kuniga qo'lda "keldi" qo'ygan bo'lishi mumkin).
+        // Ish kunlari + yozuvi bor kunlar (admin dam olish kuniga qo'lda "keldi" qo'ygan bo'lishi mumkin).
         var dates = new SortedSet<DateOnly>(practice.WorkDaysUntil(today));
         foreach (var row in rows)
         {

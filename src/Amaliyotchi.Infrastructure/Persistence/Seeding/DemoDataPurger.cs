@@ -36,12 +36,12 @@ public sealed class DemoPurgeReport
 /// <para><b>Identifikatsiya</b> — nom bo'yicha emas, birgalikdagi belgilar bo'yicha (haqiqiy universitetda ham "AT" fakulteti
 /// yoki "412-22" guruhi bo'lishi mumkin):</para>
 /// <list type="number">
-/// <item>Langar — demo tyutor: rol Tutor + telefon <see cref="DemoDataSeeder.TutorPhone"/> + FISH "Nodira Saidova" + HEMIS ID
-/// <see cref="DemoDataSeeder.TutorHemisId"/> (eng eski seed'da null) + <c>CreatedBy IS NULL</c> (seed HTTP so'rovsiz — audit
-/// interceptor foydalanuvchini yozmaydi; admin yaratgan yozuvda doim admin Id). Langar yo'q → "demo ma'lumot topilmadi".</item>
+/// <item>Langar — demo talaba: rol Student + profil HEMIS ID <see cref="DemoDataSeeder.StudentHemisId"/> + FISH
+/// <see cref="AnchorStudentName"/> + <c>CreatedBy IS NULL</c> (seed HTTP so'rovsiz — audit interceptor foydalanuvchini
+/// yozmaydi; admin yaratgan yozuvda doim admin Id). Langar yo'q → "demo ma'lumot topilmadi".</item>
 /// <item>Seed bir necha <c>SaveChanges</c> bilan yozadi, interceptor bitta <c>SaveChanges</c> dagi barcha yozuvlarga AYNAN bir xil
 /// <c>CreatedAt</c> qo'yadi. 1-paket (fakultet→kafedra→yo'nalish→guruh) vaqti = langar fakultetining <c>CreatedAt</c>;
-/// 2-paket (tyutorlar, korxonalar, talabalar) vaqti = langar tyutorning <c>CreatedAt</c>. Har demo yozuv: seed'dagi aniq
+/// 2-paket (korxonalar, talabalar; eski seed'da tyutorlar ham) vaqti = langar talabaning <c>CreatedAt</c>. Har demo yozuv: seed'dagi aniq
 /// (nom, kod / STIR / HEMIS ID) jufti + o'z paketining vaqt belgisi + <c>CreatedBy IS NULL</c>.</item>
 /// <item>Davrlar — demo nomli, <c>CreatedBy IS NULL</c> va faqat demo guruhlarga biriktirilgan.</item>
 /// <item>Talabaga tegishli qatorlar (ariza, davomat, hodisa, kundalik, ruxsat, baho) — demo talabaniki; fayllar — demo
@@ -49,11 +49,11 @@ public sealed class DemoPurgeReport
 /// yoki o'chirilayotgan yozuv Id'siga tegishli.</item>
 /// </list>
 /// <para><b>To'siqlar</b> (hech narsa o'chirilmaydi): demo ierarxiyada seed'da bo'lmagan kafedra/yo'nalish/guruh; demo guruhda
-/// demo bo'lmagan talaba; demo fakultetga bog'langan boshqa foydalanuvchi/tyutor (asosiy fakultet, tutor_faculties, ko'lam,
-/// biriktiruv); demo tyutorning demo bo'lmagan guruh/fakultetga biriktiruvi; demo guruh demo bo'lmagan davrda yoki demo
+/// demo bo'lmagan talaba; demo fakultetga bog'langan boshqa foydalanuvchi (asosiy fakultet); eski seed'ning demo tyutori
+/// (tarixiy rol <c>2</c>, soft-delete qilingan) demo bo'lmagan fakultetda; demo guruh demo bo'lmagan davrda yoki demo
 /// davrda demo bo'lmagan guruh; demo davr/korxonada boshqa talabaning yozuvi; demo talabaning demo bo'lmagan davrdagi yozuvi;
 /// demo foydalanuvchi qaror qilgan/tasdiqlagan/yaratgan demo bo'lmagan yozuv; demo foydalanuvchi yuklagan faylning demo
-/// bo'lmagan yozuvda ishlatilishi. Shu tufayli kaskad (refresh_tokens, tutor_faculties, diary_attachments,
+/// bo'lmagan yozuvda ishlatilishi. Shu tufayli kaskad (refresh_tokens, diary_attachments,
 /// practice_period_groups) haqiqiy ma'lumotga yetib bormaydi; qolgan FK'lar Restrict — kutilmagan bog'lanish bo'lsa
 /// DELETE xato beradi va tranzaksiya to'liq qaytariladi.</para>
 /// <para>DbSeeder ma'lumoti (admin, sozlamalar, bayramlar, o'quv yili, hujjat shablonlari) hech qachon o'chirilmaydi — demo
@@ -67,7 +67,11 @@ public sealed class DemoDataPurger(
     IClock clock,
     ILogger<DemoDataPurger> logger)
 {
-    public const string AnchorTutorName = "Nodira Saidova";
+    public const string AnchorStudentName = "Aliyev Akmal";
+
+    /// <summary>Tarixiy tyutor roli bazadagi qiymati (<c>UserRole</c> enum'idan olib tashlangan). Eski seed'ning demo
+    /// tyutorlari shu qiymat bilan qolgan (soft-delete) — purge ularni ham o'chiradi.</summary>
+    private const UserRole LegacyTutorRole = (UserRole)2;
 
     private const string LegacyDepartmentName = "Umumiy kafedra"; // DepartmentsHierarchy migratsiyasi yaratgan
     private const int MaxListed = 15;
@@ -92,7 +96,7 @@ public sealed class DemoDataPurger(
 
     private static readonly (string Name, string? HemisId, string Phone, string FacultyCode)[] DemoTutors =
     [
-        (AnchorTutorName, DemoDataSeeder.TutorHemisId, DemoDataSeeder.TutorPhone, "AT"),
+        ("Nodira Saidova", DemoDataSeeder.LegacyTutorHemisId, DemoDataSeeder.LegacyTutorPhone, "AT"),
         ("Baxtiyor Rasulov", "100000000003", "+998912445102", "IM"),
         ("Dilshod Ergashev", "100000000004", "+998937001845", "QA")
     ];
@@ -185,23 +189,24 @@ public sealed class DemoDataPurger(
     {
         var plan = new Plan();
 
-        // 1. Langar — demo tyutor.
-        var anchors = await db.Users.IgnoreQueryFilters().AsNoTracking()
-            .Where(u => u.Role == UserRole.Tutor && u.PhoneNumber == DemoDataSeeder.TutorPhone
-                        && u.FullName == AnchorTutorName && u.CreatedBy == null)
-            .Select(u => new { u.Id, u.HemisId, u.FacultyId, u.CreatedAt })
+        // 1. Langar — demo talaba.
+        var anchors = await (
+                from p in db.StudentProfiles.IgnoreQueryFilters()
+                join u in db.Users.IgnoreQueryFilters() on p.UserId equals u.Id
+                where p.HemisId == DemoDataSeeder.StudentHemisId && u.Role == UserRole.Student
+                      && u.FullName == AnchorStudentName && u.CreatedBy == null
+                select new { u.Id, u.FacultyId, u.CreatedAt })
+            .AsNoTracking()
             .ToListAsync(ct);
         if (anchors.Count == 0)
             return plan;
 
         plan.Found = true;
         if (anchors.Count > 1)
-            return plan.Block($"Demo tyutor belgilariga mos {anchors.Count} ta foydalanuvchi bor — kutilmagan holat, qo'lda tekshiring.");
+            return plan.Block($"Demo talaba belgilariga mos {anchors.Count} ta foydalanuvchi bor — kutilmagan holat, qo'lda tekshiring.");
 
         var anchor = anchors[0];
-        plan.Anchor = $"demo tyutor {AnchorTutorName} ({DemoDataSeeder.TutorPhone}, Id {anchor.Id})";
-        if (anchor.HemisId is not null && anchor.HemisId != DemoDataSeeder.TutorHemisId)
-            return plan.Block($"Demo tyutor telefoni/FISH mos, lekin HEMIS ID '{anchor.HemisId}' (kutilgan {DemoDataSeeder.TutorHemisId}) — qo'lda tekshiring.");
+        plan.Anchor = $"demo talaba {AnchorStudentName} (HEMIS {DemoDataSeeder.StudentHemisId}, Id {anchor.Id})";
 
         var userBatch = anchor.CreatedAt;
 
@@ -215,7 +220,7 @@ public sealed class DemoDataPurger(
         if (anchorFaculty is null || anchorFaculty.CreatedBy is not null
             || (anchorFaculty.Name, anchorFaculty.Code) != DemoFaculties[0])
         {
-            return plan.Block("Demo tyutorning fakulteti seed'dagi 'Axborot texnologiyalari' (AT) emas yoki admin yaratgan — " +
+            return plan.Block("Demo talabaning fakulteti seed'dagi 'Axborot texnologiyalari' (AT) emas yoki admin yaratgan — " +
                               "demo ierarxiyani ishonchli aniqlab bo'lmadi, qo'lda tekshiring.");
         }
 
@@ -284,10 +289,10 @@ public sealed class DemoDataPurger(
             }
         }
 
-        // 4. Tyutorlar (2-paket).
+        // 4. Eski seed'ning demo tyutorlari (2-paket; tarixiy rol 2, soft-delete qilingan).
         var tutorPhones = DemoTutors.Select(t => t.Phone).ToArray();
         var tutorCandidates = await db.Users.IgnoreQueryFilters().AsNoTracking()
-            .Where(u => u.Role == UserRole.Tutor && u.PhoneNumber != null && tutorPhones.Contains(u.PhoneNumber)
+            .Where(u => u.Role == LegacyTutorRole && u.PhoneNumber != null && tutorPhones.Contains(u.PhoneNumber)
                         && u.CreatedAt == userBatch && u.CreatedBy == null)
             .Select(u => new { u.Id, u.FullName, u.PhoneNumber, u.HemisId, u.FacultyId })
             .ToListAsync(ct);
@@ -335,55 +340,6 @@ public sealed class DemoDataPurger(
             .ToListAsync(ct);
         foreach (var u in foreignFacultyUsers)
             plan.Block("foreign-faculty-user", $"Demo fakultet {facultyNameById[u.FacultyId!.Value]} ga demo bo'lmagan foydalanuvchi biriktirilgan: {u.FullName} ({u.Role})");
-
-        var tutorFaculties = await db.TutorFaculties.AsNoTracking()
-            .Where(x => plan.Faculties.Contains(x.FacultyId) || plan.Tutors.Contains(x.TutorUserId))
-            .Select(x => new { x.Id, x.TutorUserId, x.FacultyId })
-            .ToListAsync(ct);
-        foreach (var x in tutorFaculties)
-        {
-            if (plan.Tutors.Contains(x.TutorUserId) && plan.Faculties.Contains(x.FacultyId))
-                plan.TutorFaculties.Add(x.Id);
-            else if (!plan.Tutors.Contains(x.TutorUserId))
-                plan.Block("foreign-faculty-user", $"Demo bo'lmagan tyutor (Id {x.TutorUserId}) demo fakultet {facultyNameById[x.FacultyId]} ga biriktirilgan (tutor_faculties)");
-            else
-                plan.Block("demo-tutor", $"Demo tyutor (Id {x.TutorUserId}) demo bo'lmagan fakultetga biriktirilgan (tutor_faculties, fakultet Id {x.FacultyId})");
-        }
-
-        var scopes = await db.TutorScopes.IgnoreQueryFilters().AsNoTracking()
-            .Where(x => plan.Tutors.Contains(x.TutorUserId) || plan.Faculties.Contains(x.FacultyId)
-                        || (x.DepartmentId != null && plan.Departments.Contains(x.DepartmentId.Value))
-                        || (x.DirectionId != null && plan.Directions.Contains(x.DirectionId.Value))
-                        || (x.StudentGroupId != null && plan.Groups.Contains(x.StudentGroupId.Value)))
-            .Select(x => new { x.Id, x.TutorUserId, x.FacultyId, x.DepartmentId, x.DirectionId, x.StudentGroupId })
-            .ToListAsync(ct);
-        foreach (var x in scopes)
-        {
-            var orgIsDemo = plan.Faculties.Contains(x.FacultyId)
-                            && (x.DepartmentId is null || plan.Departments.Contains(x.DepartmentId.Value))
-                            && (x.DirectionId is null || plan.Directions.Contains(x.DirectionId.Value))
-                            && (x.StudentGroupId is null || plan.Groups.Contains(x.StudentGroupId.Value));
-            if (plan.Tutors.Contains(x.TutorUserId) && orgIsDemo)
-                plan.TutorScopes.Add(x.Id);
-            else if (!plan.Tutors.Contains(x.TutorUserId))
-                plan.Block("foreign-faculty-user", $"Demo bo'lmagan tyutor (Id {x.TutorUserId}) demo ierarxiyaga ko'lam bilan biriktirilgan (tutor_scopes)");
-            else
-                plan.Block("demo-tutor", $"Demo tyutor (Id {x.TutorUserId}) demo bo'lmagan fakultet/kafedra/yo'nalish/guruhga ko'lam bilan biriktirilgan (tutor_scopes)");
-        }
-
-        var assignments = await db.TutorAssignments.IgnoreQueryFilters().AsNoTracking()
-            .Where(x => plan.Tutors.Contains(x.TutorUserId) || plan.Groups.Contains(x.StudentGroupId))
-            .Select(x => new { x.Id, x.TutorUserId, x.StudentGroupId })
-            .ToListAsync(ct);
-        foreach (var x in assignments)
-        {
-            if (plan.Tutors.Contains(x.TutorUserId) && plan.Groups.Contains(x.StudentGroupId))
-                plan.TutorAssignments.Add(x.Id);
-            else if (!plan.Tutors.Contains(x.TutorUserId))
-                plan.Block("foreign-faculty-user", $"Demo bo'lmagan tyutor (Id {x.TutorUserId}) demo guruh {groupNameById[x.StudentGroupId]} ga biriktirilgan (tutor_assignments)");
-            else
-                plan.Block("demo-tutor", $"Demo tyutor (Id {x.TutorUserId}) demo bo'lmagan guruhga biriktirilgan (tutor_assignments, guruh Id {x.StudentGroupId})");
-        }
 
         // 7. Davrlar: demo nomli + CreatedBy null + faqat demo guruhlar (guruhsiz qolgan bo'lsa — demo talaba yozuvlari bor).
         var studentRowPeriods = await StudentRowPeriodIdsAsync(plan.Students, ct);
@@ -659,9 +615,6 @@ public sealed class DemoDataPurger(
         await Delete("stored_files", plan.Files, ids => db.StoredFiles.Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
         await Delete("practice_period_groups", plan.PeriodGroups, ids => db.PracticePeriodGroups.Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
         await Delete("practice_periods", plan.Periods, ids => db.PracticePeriods.IgnoreQueryFilters().Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
-        await Delete("tutor_assignments", plan.TutorAssignments, ids => db.TutorAssignments.IgnoreQueryFilters().Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
-        await Delete("tutor_scopes", plan.TutorScopes, ids => db.TutorScopes.IgnoreQueryFilters().Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
-        await Delete("tutor_faculties", plan.TutorFaculties, ids => db.TutorFaculties.Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
         await Delete("refresh_tokens", plan.RefreshTokens, ids => db.RefreshTokens.Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
         await Delete("broadcast_deliveries", plan.BroadcastDeliveries, ids => db.BroadcastDeliveries.Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
         await Delete("student_profiles", plan.StudentProfiles, ids => db.StudentProfiles.IgnoreQueryFilters().Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync(ct));
@@ -705,9 +658,6 @@ public sealed class DemoDataPurger(
         public HashSet<Guid> Tutors { get; } = [];
         public HashSet<Guid> Students { get; } = [];
         public HashSet<Guid> StudentProfiles { get; } = [];
-        public HashSet<Guid> TutorFaculties { get; } = [];
-        public HashSet<Guid> TutorScopes { get; } = [];
-        public HashSet<Guid> TutorAssignments { get; } = [];
         public HashSet<Guid> Periods { get; } = [];
         public HashSet<Guid> PeriodGroups { get; } = [];
         public HashSet<Guid> Companies { get; } = [];
@@ -750,7 +700,7 @@ public sealed class DemoDataPurger(
 
         public IEnumerable<Guid> AllEntityIds() =>
             Faculties.Concat(Departments).Concat(Directions).Concat(Groups).Concat(DemoUsers).Concat(StudentProfiles)
-                .Concat(TutorFaculties).Concat(TutorScopes).Concat(TutorAssignments).Concat(Periods).Concat(PeriodGroups)
+                .Concat(Periods).Concat(PeriodGroups)
                 .Concat(Companies).Concat(Applications).Concat(Attendances).Concat(Events).Concat(Diaries)
                 .Concat(DiaryAttachments).Concat(Leaves).Concat(Grades).Concat(Files).Concat(RefreshTokens);
 
@@ -763,9 +713,6 @@ public sealed class DemoDataPurger(
             new("departments", Departments.Count),
             new("directions", Directions.Count),
             new("student_groups", Groups.Count),
-            new("tutor_faculties", TutorFaculties.Count),
-            new("tutor_scopes", TutorScopes.Count),
-            new("tutor_assignments", TutorAssignments.Count),
             new("companies", Companies.Count),
             new("practice_periods", Periods.Count),
             new("practice_period_groups", PeriodGroups.Count),

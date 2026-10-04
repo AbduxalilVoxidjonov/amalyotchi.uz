@@ -160,7 +160,7 @@ public sealed class AdminCompaniesWriteTests(ApiFixture fixture)
     public async Task Ochirish_TalabaBiriktirilgan_409()
     {
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group);
+        var tutor = await Factory.CreateAdminAsync();
         var period = await Factory.CreateActivePeriodAsync(group, tutor.Id);
         var company = await Factory.CreateCompanyAsync(name: "Biriktirilgan Korxona");
         var student = await Factory.CreateStudentAsync(group: group);
@@ -231,9 +231,9 @@ public sealed class AdminCompaniesWriteTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Yozish_Tyutor_403()
+    public async Task Yozish_Talaba_403()
     {
-        var client = await Factory.LoginAsTutorAsync();
+        var client = await Factory.LoginAsNewStudentAsync();
 
         (await client.PostJsonAsync(Url, NewCompany(RandomTin()))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await client.GetAsync($"{Url}/import/template")).StatusCode.Should().Be(HttpStatusCode.Forbidden);

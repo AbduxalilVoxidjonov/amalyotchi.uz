@@ -18,7 +18,7 @@ public sealed class AdminFacultiesTests(ApiFixture fixture)
     {
         var facultyId = await Factory.CreateFacultyAsync("Fakultet Sinov Alpha");
         var group = await Factory.CreateGroupAsync(facultyId);
-        var tutor = await Factory.CreateTutorAsync(group);
+        var tutor = await Factory.CreateAdminAsync();
         var company = await Factory.CreateCompanyAsync();
         var period = await Factory.CreateActivePeriodAsync(group, tutor.Id);
         var s1 = await Factory.CreateStudentAsync(group: group);
@@ -47,7 +47,6 @@ public sealed class AdminFacultiesTests(ApiFixture fixture)
         row.Directions.Should().Be(1);
         row.Groups.Should().Be(1);
         row.Students.Should().Be(2);
-        row.Tutors.Should().Be(1);
         row.AttendancePct.Should().BeInRange(0, 100);
         row.Status.Should().BeOneOf(FacultyStatus.Active, FacultyStatus.Attention);
         if (row.AttendancePct > 0)
@@ -83,9 +82,9 @@ public sealed class AdminFacultiesTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Fakultetlar_Tyutor_403()
+    public async Task Fakultetlar_Talaba_403()
     {
-        var client = await Factory.LoginAsTutorAsync();
+        var client = await Factory.LoginAsNewStudentAsync();
 
         (await client.GetAsync("/api/admin/faculties")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -219,7 +218,7 @@ public sealed class AdminFacultiesTests(ApiFixture fixture)
     {
         var client = await Factory.LoginAsAdminAsync();
         var group = await Factory.CreateGroupAsync();
-        await Factory.CreateTutorAsync(group);
+        await Factory.CreateAdminAsync();
 
         var response = await client.DeleteAsync($"/api/admin/faculties/{group.FacultyId}");
 
@@ -227,10 +226,10 @@ public sealed class AdminFacultiesTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Ochirish_TyutorTokeni_403()
+    public async Task Ochirish_TalabaTokeni_403()
     {
         var facultyId = await Factory.CreateFacultyAsync("Tyutor Uchun");
-        var client = await Factory.LoginAsTutorAsync();
+        var client = await Factory.LoginAsNewStudentAsync();
 
         var response = await client.DeleteAsync($"/api/admin/faculties/{facultyId}");
 

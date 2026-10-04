@@ -1,6 +1,6 @@
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Time;
-using Amaliyotchi.Application.Features.Tutor.Common;
+using Amaliyotchi.Application.Features.Supervision.Common;
 using Amaliyotchi.Domain.Diary;
 using Amaliyotchi.Domain.Exceptions;
 using Amaliyotchi.Domain.Grading;
@@ -33,7 +33,7 @@ internal sealed record PeriodStatsData(
 
 /// <summary>Admin davr statistikasi uchun yagona hisob manbai: faqat ANIQ shu davr (<c>PeriodId == id</c>) yozuvlari,
 /// sukut bo'yicha davr tanlash (<c>PeriodSelection</c>) ishlatilmaydi. Davomat — <see cref="StudentStatsCalculator"/>,
-/// ballar — <see cref="GradeCalculator"/> (tyutor baholash jadvali bilan bir xil formula). Talabalar — guruhdagi joriy
+/// ballar — <see cref="GradeCalculator"/> (admin baholash jadvali bilan bir xil formula). Talabalar — guruhdagi joriy
 /// faol (<c>StudentStatus.Active</c>, o'chirilmagan) profillar (<c>PracticePeriodDetail.StudentsCount</c> bilan bir xil).
 /// Ma'lumot guruh bo'yicha emas, bir necha batch so'rov bilan yuklanadi.</summary>
 internal static class PeriodStatsCalculator

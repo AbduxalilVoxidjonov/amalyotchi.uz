@@ -13,7 +13,8 @@ using Microsoft.Extensions.Options;
 namespace Amaliyotchi.Infrastructure.Persistence.Seeding;
 
 /// <summary>Har startup'da ishlaydigan idempotent seed: sozlama default'lari (yo'q kalitlar),
-/// birinchi admin (admin bo'lmasa), O'zbekiston bayramlari (bo'sh bo'lsa), faol o'quv yili (yo'q bo'lsa).
+/// birinchi admin (admin bo'lmasa — bosh admin sifatida), bosh admin invarianti (faol bosh admin yo'q bo'lsa — eng eski
+/// faol admin bosh admin qilinadi; <c>RemoveTutors</c> migratsiyasidagi qoida bilan bir xil), O'zbekiston bayramlari (bo'sh bo'lsa), faol o'quv yili (yo'q bo'lsa).
 /// Hujjat shablonlari — bo'sh (admin yuklaydi).</summary>
 public sealed class DbSeeder(
     AppDbContext db,
@@ -42,6 +43,7 @@ public sealed class DbSeeder(
 
         changed |= await SeedSettingsAsync(now, cancellationToken);
         changed |= await SeedAdminAsync(cancellationToken);
+        changed |= await EnsureSuperAdminAsync(cancellationToken);
         changed |= await SeedHolidaysAsync(cancellationToken);
         changed |= await SeedAcademicYearAsync(cancellationToken);
 
@@ -77,8 +79,31 @@ public sealed class DbSeeder(
 
         var admin = User.CreateWithPassword(
             options.Value.AdminFullName, hemisId, phoneNumber: null, passwordHasher.Hash(password), UserRole.Admin);
+        admin.MakeSuperAdmin();
         db.Users.Add(admin);
-        logger.LogInformation("Seed: birinchi admin yaratildi (HEMIS ID {HemisId})", HemisId.Normalize(hemisId));
+        logger.LogInformation("Seed: birinchi admin (bosh admin) yaratildi (HEMIS ID {HemisId})", HemisId.Normalize(hemisId));
+        return true;
+    }
+
+    /// <summary>Kamida bitta faol bosh admin bo'lishi kerak. Yo'q bo'lsa — eng eski (<c>CreatedAt</c>) faol admin bosh admin
+    /// qilinadi. Shu so'rovda yangi qo'shilgan (hali saqlanmagan) admin — <see cref="SeedAdminAsync"/> o'zi belgilaydi.</summary>
+    private async Task<bool> EnsureSuperAdminAsync(CancellationToken cancellationToken)
+    {
+        if (db.ChangeTracker.Entries<User>().Any(e => e.State == EntityState.Added && e.Entity.IsSuperAdmin))
+            return false;
+
+        if (await db.Users.AnyAsync(u => u.Role == UserRole.Admin && u.IsActive && u.IsSuperAdmin, cancellationToken))
+            return false;
+
+        var oldest = await db.Users
+            .Where(u => u.Role == UserRole.Admin && u.IsActive)
+            .OrderBy(u => u.CreatedAt).ThenBy(u => u.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (oldest is null)
+            return false;
+
+        oldest.MakeSuperAdmin();
+        logger.LogInformation("Seed: faol bosh admin yo'q edi — {UserId} bosh admin qilindi", oldest.Id);
         return true;
     }
 

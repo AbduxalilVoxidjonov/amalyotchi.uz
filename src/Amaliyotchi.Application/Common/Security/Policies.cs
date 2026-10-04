@@ -5,8 +5,11 @@ namespace Amaliyotchi.Application.Common.Security;
 public static class Policies
 {
     public const string AdminOnly = "admin.only";
-    public const string TutorOnly = "tutor.only";
+
+    /// <summary>Bosh admin: rol Admin + <c>is_super_admin</c> claim'i (login/refresh'da bazadan yoziladi).
+    /// Handler'lar qo'shimcha ravishda bazadan ham tekshiradi.</summary>
+    public const string SuperAdminOnly = "super.admin.only";
+
     public const string StudentOnly = "student.only";
-    public const string TutorOrAdmin = "tutor.or.admin";
     public const string Authenticated = "authenticated";
 }

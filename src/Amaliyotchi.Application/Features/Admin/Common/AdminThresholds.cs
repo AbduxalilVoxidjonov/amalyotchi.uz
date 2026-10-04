@@ -6,7 +6,7 @@ public static class AdminThresholds
     /// <summary>Fakultet: bugungi davomat shundan past → <c>attention</c>.</summary>
     public const int AttentionAttendancePct = 70;
 
-    /// <summary>Tyutor: kutilayotgan ariza shundan uzoq javobsiz → <c>late</c>.</summary>
+    /// <summary>Ariza: shundan uzoq javobsiz kutilayotgan ariza — muddati o'tgan (<c>applicationsOverdue</c>).</summary>
     public static readonly TimeSpan PendingApplicationLateAfter = TimeSpan.FromHours(48);
 
     /// <summary>Talaba: davomat shundan past → <c>flagged</c>.</summary>
@@ -23,7 +23,4 @@ public static class AdminThresholds
 
     /// <summary>Dashboard'da ko'rsatiladigan so'nggi audit yozuvlari soni.</summary>
     public const int DashboardAuditCount = 8;
-
-    /// <summary>Tyutorning o'rtacha qaror tezligi shu oynadagi qarorlardan hisoblanadi.</summary>
-    public static readonly TimeSpan DecisionSpeedWindow = TimeSpan.FromDays(60);
 }

@@ -146,7 +146,7 @@ public sealed class StudentProfile : AuditableEntity, ISoftDeletable
         if (InviteToken is null || !string.Equals(InviteToken, token, StringComparison.Ordinal))
             throw new DomainException("Taklif havolasi noto'g'ri.");
         if (InviteTokenExpiresAt is not null && InviteTokenExpiresAt <= now)
-            throw new DomainException("Taklif havolasining muddati o'tgan — tyutordan yangisini oling.");
+            throw new DomainException("Taklif havolasining muddati o'tgan — administratordan yangisini oling.");
 
         InviteToken = null;
         InviteTokenExpiresAt = null;

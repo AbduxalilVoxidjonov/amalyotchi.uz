@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Time;
-using Amaliyotchi.Application.Features.Tutor.Common;
+using Amaliyotchi.Application.Features.Supervision.Common;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Domain.Exceptions;
 using Amaliyotchi.Domain.Practice;
@@ -20,7 +20,7 @@ public sealed record AssignCompanyResult(
 
 /// <summary><c>POST /api/admin/students/assign-company</c>: <c>{ studentIds[], companyId }</c> → 200.
 /// Admin talabalar ro'yxatidan bir nechtasini belgilab, ularni korxonaga BIRIKTIRADI: har biriga
-/// tasdiqlangan ariza yaratiladi (talaba o'zi ariza bermaydi, tyutor moderatsiyasi ham talab qilinmaydi).
+/// tasdiqlangan ariza yaratiladi (talaba o'zi ariza bermaydi, admin moderatsiyasi ham talab qilinmaydi).
 /// Korxona topilmasa → 404, faol bo'lmasa → 409. Alohida talaba biriktirilmasa — hisobotdagi sabab bilan
 /// tashlab yuboriladi (qisman bajarilish).</summary>
 public sealed record AssignStudentsToCompanyCommand(IReadOnlyList<Guid> StudentIds, Guid CompanyId)
@@ -33,7 +33,7 @@ public static class AssignCompanyMessages
     public const string InactiveMessage = "Talaba hisobi faol emas.";
     public const string NoPeriodMessage = "Guruhiga faol amaliyot davri biriktirilmagan.";
     public const string AlreadyHereMessage = "Allaqachon shu korxonaga biriktirilgan.";
-    public const string PendingMessage = "Ko'rib chiqilmagan arizasi bor — avval tyutor qaror qabul qilsin.";
+    public const string PendingMessage = "Ko'rib chiqilmagan arizasi bor — avval arizani ko'rib chiqing.";
     public const string CompanyInactiveMessage = "Korxona faol emas — avval uni faollashtiring.";
 
     public static string OtherCompanyMessage(string company) =>
@@ -44,7 +44,7 @@ internal sealed class AssignStudentsToCompanyCommandHandler(
     IApplicationDbContext db, ICurrentUser currentUser, IClock clock, IAuditWriter audit)
     : IRequestHandler<AssignStudentsToCompanyCommand, AssignCompanyResult>
 {
-    /// <summary>Tyutor qarorining izohi — talaba profilida shu matn ko'rinadi.</summary>
+    /// <summary>Admin qarorining izohi — talaba profilida shu matn ko'rinadi.</summary>
     public const string DecisionComment = StudentPlacement.DefaultComment;
 
     public async Task<AssignCompanyResult> Handle(

@@ -74,11 +74,7 @@ internal sealed class AuthSessionService(
         if (!user.IsActive)
         {
             throw await LoginFailedAsync(
-                user, "Hisob faol emas",
-                user.IsStudent
-                    ? "Hisobingiz faol emas. Tyutoringizga murojaat qiling."
-                    : "Hisobingiz faol emas. Administratorga murojaat qiling.",
-                cancellationToken);
+                user, "Hisob faol emas", "Hisobingiz faol emas. Administratorga murojaat qiling.", cancellationToken);
         }
 
         if (needsRehash)

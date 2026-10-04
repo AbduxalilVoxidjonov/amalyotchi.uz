@@ -34,11 +34,11 @@ public sealed class DailyAttendance : AuditableEntity
     /// <summary>Check-out qilinmagani uchun tizim avtomatik yopgan.</summary>
     public bool AutoClosed { get; private set; }
 
-    /// <summary>Soxta lokatsiya belgisi — avtomatik jazolamaydi, faqat tyutorga ko'rsatiladi.</summary>
+    /// <summary>Soxta lokatsiya belgisi — avtomatik jazolamaydi, faqat adminga ko'rsatiladi.</summary>
     public bool IsSuspicious { get; private set; }
     public string? SuspiciousReason { get; private set; }
 
-    /// <summary>Tyutor qo'lda kiritgan/tuzatgan (sabab bilan).</summary>
+    /// <summary>Admin qo'lda kiritgan/tuzatgan (sabab bilan).</summary>
     public bool IsManual { get; private set; }
     public string? ManualReason { get; private set; }
     public Guid? ManualByUserId { get; private set; }
@@ -101,7 +101,7 @@ public sealed class DailyAttendance : AuditableEntity
         LeaveRequestId = leaveRequestId;
     }
 
-    /// <summary>Tyutor qo'lda kiritgan kun (sabab majburiy, audit <c>ManualCheckIn</c>).</summary>
+    /// <summary>Admin qo'lda kiritgan kun (sabab majburiy, audit <c>ManualCheckIn</c>).</summary>
     public static DailyAttendance Manual(
         Guid studentUserId, Guid periodId, DateOnly date, AttendanceStatus status, Guid byUserId, string reason, DateTimeOffset at)
     {
@@ -110,7 +110,7 @@ public sealed class DailyAttendance : AuditableEntity
         return attendance;
     }
 
-    /// <summary>Tyutor holatni qo'lda tuzatadi. Faqat Present/Late/Absent/Excused — Pending/DayOff saqlanmaydi.</summary>
+    /// <summary>Admin holatni qo'lda tuzatadi. Faqat Present/Late/Absent/Excused — Pending/DayOff saqlanmaydi.</summary>
     public void ManualFix(AttendanceStatus status, Guid byUserId, string reason, DateTimeOffset at)
     {
         if (status is AttendanceStatus.Pending or AttendanceStatus.DayOff)

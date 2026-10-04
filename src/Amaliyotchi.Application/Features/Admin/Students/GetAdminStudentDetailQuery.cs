@@ -2,18 +2,15 @@ using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Features.Admin.Common;
 using Amaliyotchi.Application.Features.Faces;
-using Amaliyotchi.Application.Features.Tutor.Students;
+using Amaliyotchi.Application.Features.Supervision.Students;
 using Amaliyotchi.Domain.Students;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Admin.Students;
 
-/// <summary>Talabaning guruhiga biriktirilgan tyutor (bir nechta bo'lsa — FISH bo'yicha birinchisi).</summary>
-public sealed record AdminStudentTutor(Guid Id, string FullName, string? Phone);
-
-/// <summary><c>GET /api/admin/students/{id}</c> javobi — tyutor profili bilan bir xil bloklar
-/// (<see cref="TutorStudentDetail"/>) + adminga xos maydonlar: kafedra, tyutor, Telegram bog'lanishi,
+/// <summary><c>GET /api/admin/students/{id}</c> javobi — umumiy talaba profili bloklari
+/// (<see cref="StudentDetail"/>) + adminga xos maydonlar: kafedra, Telegram bog'lanishi,
 /// ro'yxatdagi holat va guruh identifikatori. <c>activeCompany</c> — tanlangan davrdan mustaqil aktiv korxona
 /// (ro'yxatdagi <c>company</c> bilan bir xil qoida), <c>company</c> esa tanlangan davr bo'yicha.</summary>
 public sealed record AdminStudentDetail(
@@ -32,7 +29,6 @@ public sealed record AdminStudentDetail(
     bool TelegramLinked,
     StudentState State,
     int SuspiciousCount,
-    AdminStudentTutor? Tutor,
     StudentCompany? Company,
     StudentApplication? Application,
     StudentPeriod? Period,
@@ -49,7 +45,7 @@ public sealed record AdminStudentDetail(
 /// Talaba topilmasa yoki <c>periodId</c> talabaga tegishli bo'lmasa → 404.</summary>
 public sealed record GetAdminStudentDetailQuery(Guid Id, Guid? PeriodId = null) : IRequest<AdminStudentDetail>;
 
-/// <summary>Umumiy bloklarni <see cref="GetTutorStudentDetailQuery"/> hisoblaydi (admin ko'lami cheklovsiz,
+/// <summary>Umumiy bloklarni <see cref="GetStudentDetailQuery"/> hisoblaydi (admin ko'lami cheklovsiz,
 /// shuning uchun ayni handler adminga ham to'g'ri keladi — topilmasa 404 ni ham o'sha beradi),
 /// bu yerda faqat adminga xos maydonlar qo'shiladi.</summary>
 internal sealed class GetAdminStudentDetailQueryHandler(IApplicationDbContext db, ISender sender)
@@ -57,7 +53,7 @@ internal sealed class GetAdminStudentDetailQueryHandler(IApplicationDbContext db
 {
     public async Task<AdminStudentDetail> Handle(GetAdminStudentDetailQuery request, CancellationToken cancellationToken)
     {
-        var profile = await sender.Send(new GetTutorStudentDetailQuery(request.Id, request.PeriodId), cancellationToken);
+        var profile = await sender.Send(new GetStudentDetailQuery(request.Id, request.PeriodId), cancellationToken);
 
         var org = await (from p in db.StudentProfiles.AsNoTracking()
                          where p.UserId == request.Id
@@ -71,13 +67,6 @@ internal sealed class GetAdminStudentDetailQueryHandler(IApplicationDbContext db
                              TelegramLinked = p.User.TelegramUserId != null
                          })
             .FirstAsync(cancellationToken);
-
-        var tutor = await (from a in db.TutorAssignments.AsNoTracking()
-                           where a.IsActive && a.StudentGroupId == org.GroupId
-                           join u in db.Users on a.TutorUserId equals u.Id
-                           orderby u.FullName, u.Id
-                           select new AdminStudentTutor(u.Id, u.FullName, u.PhoneNumber))
-            .FirstOrDefaultAsync(cancellationToken);
 
         var adminStatus = AdminStudentStatusRule.For(
             org.TelegramLinked, profile.Attendance.AttendancePct, profile.Attendance.TotalDays, profile.Attendance.SuspiciousDays);
@@ -98,7 +87,6 @@ internal sealed class GetAdminStudentDetailQueryHandler(IApplicationDbContext db
             org.TelegramLinked,
             profile.State,
             profile.SuspiciousCount,
-            tutor,
             profile.Company,
             profile.Application,
             profile.Period,

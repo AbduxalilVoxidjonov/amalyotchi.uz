@@ -35,7 +35,7 @@ public sealed class AdminDashboardRulesTests(ApiFixture fixture)
 
             // --- Ochiq (davom etayotgan) davr: 5 talaba ---
             var openGroup = await Factory.CreateGroupAsync();
-            var openTutor = await Factory.CreateTutorAsync(openGroup, "Ochiq Tyutor");
+            var openTutor = await Factory.CreateAdminAsync();
             var openPeriod = await CreatePeriodAsync(openGroup, openTutor.Id, closed: false);
             var companyA = await Factory.CreateCompanyAsync();
             var companyB = await Factory.CreateCompanyAsync();
@@ -60,7 +60,7 @@ public sealed class AdminDashboardRulesTests(ApiFixture fixture)
 
             // --- Yopilgan davr (sanalari hali tugamagan): 2 talaba, bugun ham yozuvi bor ---
             var closedGroup = await Factory.CreateGroupAsync();
-            var closedTutor = await Factory.CreateTutorAsync(closedGroup, "Yopiq Tyutor");
+            var closedTutor = await Factory.CreateAdminAsync();
             var closedPeriod = await CreatePeriodAsync(closedGroup, closedTutor.Id, closed: true);
             var companyClosed = await Factory.CreateCompanyAsync();
             var closedStudent = await Factory.CreateStudentAsync(group: closedGroup, fullName: "Yopiq Keldi");
@@ -108,15 +108,6 @@ public sealed class AdminDashboardRulesTests(ApiFixture fixture)
             closedFaculty.AttendedToday.Should().Be(0);
             closedFaculty.AttendancePct.Should().Be(0);
 
-            // Tyutorlar: kutilayotgan — faqat ochiq davr arizalari.
-            var openTutorRow = after.Tutors.Single(t => t.Id == openTutor.Id);
-            openTutorRow.PendingCount.Should().Be(1);
-            openTutorRow.Status.Should().Be(TutorStatus.Late);
-            var closedTutorRow = after.Tutors.Single(t => t.Id == closedTutor.Id);
-            closedTutorRow.PendingCount.Should().Be(0, "yopilgan davr arizasi tyutor navbatida emas");
-            closedTutorRow.OldestPendingAt.Should().BeNull();
-            closedTutorRow.Status.Should().Be(TutorStatus.Active);
-
             // Fakultetlar ro'yxati bilan bir xil foiz.
             var facultiesPage = await client.GetFromJsonAsync<System.Text.Json.JsonElement>($"/api/admin/faculties?pageSize=100&q={openFaculty.Code}");
             facultiesPage.GetProperty("items").EnumerateArray()
@@ -139,7 +130,7 @@ public sealed class AdminDashboardRulesTests(ApiFixture fixture)
         try
         {
             var group = await Factory.CreateGroupAsync();
-            var tutor = await Factory.CreateTutorAsync(group, "Kecha Tyutor");
+            var tutor = await Factory.CreateAdminAsync();
             var period = await CreatePeriodAsync(group, tutor.Id, closed: false, day);
             var a = await Factory.CreateStudentAsync(group: group);
             var b = await Factory.CreateStudentAsync(group: group);

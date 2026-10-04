@@ -1,9 +1,9 @@
-using Amaliyotchi.Application.Features.Admin.Tutors;
+using Amaliyotchi.Application.Features.Admin.Common;
 using FluentValidation;
 
 namespace Amaliyotchi.Application.Features.Admin.Students;
 
-/// <summary>Parol qoidalari tyutor paroli bilan bir xil (<see cref="TutorValidationRules"/>).</summary>
+/// <summary>Parol qoidalari admin paroli bilan bir xil (<see cref="AccountValidationRules"/>).</summary>
 public sealed class SetStudentPasswordCommandValidator : AbstractValidator<SetStudentPasswordCommand>
 {
     public SetStudentPasswordCommandValidator()
@@ -12,7 +12,7 @@ public sealed class SetStudentPasswordCommandValidator : AbstractValidator<SetSt
 
         RuleFor(x => x.Password)
             .Cascade(CascadeMode.Stop)
-            .NotEmpty().WithMessage(TutorValidationRules.PasswordRequiredMessage)
-            .Must(TutorValidationRules.IsValidPassword).WithMessage(TutorValidationRules.PasswordLengthMessage);
+            .NotEmpty().WithMessage(AccountValidationRules.PasswordRequiredMessage)
+            .Must(AccountValidationRules.IsValidPassword).WithMessage(AccountValidationRules.PasswordLengthMessage);
     }
 }

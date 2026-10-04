@@ -552,7 +552,7 @@ public sealed class AdminPracticePeriodsTests(ApiFixture fixture)
     [Fact]
     public async Task Auth_AdminBolmagan403_Anonim401()
     {
-        var tutor = await Factory.LoginAsTutorAsync();
+        var tutor = await Factory.LoginAsNewStudentAsync();
         var today = Factory.Today();
 
         (await tutor.GetAsync(Url)).StatusCode.Should().Be(HttpStatusCode.Forbidden);

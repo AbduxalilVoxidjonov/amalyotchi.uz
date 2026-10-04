@@ -61,6 +61,6 @@ internal sealed class UpdateCompanyCommandHandler(
         await db.SaveChangesAsync(cancellationToken);
 
         var scope = await scopeResolver.ResolveAsync(cancellationToken);
-        return await CompanyQueries.LoadDetailAsync(db, scope, company.Id, requireScopedStudents: false, clock.LocalToday(), cancellationToken);
+        return await CompanyQueries.LoadDetailAsync(db, scope, company.Id, clock.LocalToday(), cancellationToken);
     }
 }

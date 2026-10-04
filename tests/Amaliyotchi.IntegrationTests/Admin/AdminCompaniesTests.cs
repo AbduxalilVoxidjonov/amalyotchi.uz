@@ -21,7 +21,7 @@ public sealed class AdminCompaniesTests(ApiFixture fixture)
         var suspicious = await Factory.CreateCompanyAsync(radiusM: 600, name: $"Korxona {marker} Shubhali");
 
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group);
+        var tutor = await Factory.CreateAdminAsync();
         var period = await Factory.CreateActivePeriodAsync(group, tutor.Id);
         var s1 = await Factory.CreateStudentAsync(group: group);
         var s2 = await Factory.CreateStudentAsync(group: group);
@@ -79,9 +79,9 @@ public sealed class AdminCompaniesTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Korxonalar_Tyutor_403()
+    public async Task Korxonalar_Talaba_403()
     {
-        var client = await Factory.LoginAsTutorAsync();
+        var client = await Factory.LoginAsNewStudentAsync();
 
         (await client.GetAsync("/api/admin/companies")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }

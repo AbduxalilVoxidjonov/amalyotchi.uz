@@ -169,13 +169,13 @@ public sealed class TelegramLinkTests(ApiFixture fixture)
         var response = await PostLinkAsync(InitData(NewTelegramId()), student.HemisId, TempPassword);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await Detail(response)).Should().Be("Hisobingiz faol emas. Tyutoringizga murojaat qiling.");
+        (await Detail(response)).Should().Be("Hisobingiz faol emas. Administratorga murojaat qiling.");
     }
 
     [Fact]
     public async Task XodimHisobi_403()
     {
-        var tutor = await Factory.CreateTutorAsync();
+        var tutor = await Factory.CreateAdminAsync();
 
         var response = await PostLinkAsync(InitData(NewTelegramId()), tutor.HemisId, tutor.Password);
 

@@ -19,7 +19,7 @@ internal static class StudentPlacement
             .ThenByDescending(a => a.SubmittedAt)
             .FirstOrDefault();
 
-    /// <summary>Korxonaga darhol tasdiqlangan ariza (talaba ariza bermaydi, tyutor moderatsiyasi talab qilinmaydi).</summary>
+    /// <summary>Korxonaga darhol tasdiqlangan ariza (talaba ariza bermaydi, admin moderatsiyasi talab qilinmaydi).</summary>
     public static PracticeApplication CreateApproved(
         Guid studentUserId, Guid periodId, Company company, Guid adminId, string? comment, DateTimeOffset now)
     {

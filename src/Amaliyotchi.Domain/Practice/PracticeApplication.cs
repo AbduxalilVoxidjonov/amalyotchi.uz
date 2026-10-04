@@ -4,11 +4,11 @@ using Amaliyotchi.Domain.Exceptions;
 
 namespace Amaliyotchi.Domain.Practice;
 
-/// <summary>Talabaning amaliyot joyi arizasi: korxona, shartnoma fayli, taklif qilingan radius va tyutor qarori.
+/// <summary>Talabaning amaliyot joyi arizasi: korxona, shartnoma fayli, taklif qilingan radius va admin qarori.
 /// Faqat <c>Approved</c> ariza check-in'ga ruxsat beradi.</summary>
 public sealed class PracticeApplication : AuditableEntity
 {
-    /// <summary>Tyutor tekshiruv ro'yxati punktlari soni (indekslar 0..6).</summary>
+    /// <summary>Admin tekshiruv ro'yxati punktlari soni (indekslar 0..6).</summary>
     public const int ChecklistItemCount = 7;
     public const int CommentMaxLength = 1000;
 
@@ -20,7 +20,7 @@ public sealed class PracticeApplication : AuditableEntity
     public Company Company { get; private set; } = null!;
     public ApplicationStatus Status { get; private set; }
 
-    /// <summary>Talaba taklif qilgan radius; tasdiqlashda tyutor o'z qiymatini beradi (Company'ga yoziladi).</summary>
+    /// <summary>Talaba taklif qilgan radius; tasdiqlashda admin o'z qiymatini beradi (Company'ga yoziladi).</summary>
     public int ProposedRadiusM { get; private set; }
     public Guid? ContractFileId { get; private set; }
     public DateTimeOffset SubmittedAt { get; private set; }
@@ -28,7 +28,7 @@ public sealed class PracticeApplication : AuditableEntity
     public Guid? DecidedByUserId { get; private set; }
     public string? DecisionComment { get; private set; }
 
-    /// <summary>Tyutor belgilagan tekshiruv punktlari indekslari (0..6). Npgsql <c>integer[]</c>.</summary>
+    /// <summary>Admin belgilagan tekshiruv punktlari indekslari (0..6). Npgsql <c>integer[]</c>.</summary>
     public int[] Checklist { get; private set; } = [];
 
     /// <summary>Necha marta qayta ishlashga qaytarilgan.</summary>

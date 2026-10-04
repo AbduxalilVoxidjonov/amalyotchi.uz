@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Application.Features.Student.Common;
-using Amaliyotchi.Application.Features.Tutor.Common;
+using Amaliyotchi.Application.Features.Supervision.Common;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Domain.Exceptions;
 using Amaliyotchi.Domain.Identity;

@@ -1,5 +1,4 @@
 using Amaliyotchi.Application.Common.Interfaces;
-using Amaliyotchi.Application.Common.Scoping;
 using Amaliyotchi.Domain.Companies;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Domain.Exceptions;
@@ -19,36 +18,28 @@ public sealed record GetCompanyCheckInQrQuery(Guid Id) : IRequest<CompanyCheckIn
 /// audit <see cref="AuditAction.CompanyQrRotated"/>. Yo'q → 404.</summary>
 public sealed record RotateCompanyCheckInQrCommand(Guid Id) : IRequest<CompanyCheckInQrDto>;
 
-internal sealed class GetCompanyCheckInQrQueryHandler(IApplicationDbContext db, IScopeResolver scopeResolver)
+internal sealed class GetCompanyCheckInQrQueryHandler(IApplicationDbContext db)
     : IRequestHandler<GetCompanyCheckInQrQuery, CompanyCheckInQrDto>
 {
-    public async Task<CompanyCheckInQrDto> Handle(GetCompanyCheckInQrQuery request, CancellationToken cancellationToken)
-    {
-        var scope = await scopeResolver.ResolveAsync(cancellationToken);
-        return await CompanyCheckInQrs.GetAsync(db, scope, request.Id, requireScopedStudents: false, cancellationToken);
-    }
+    public Task<CompanyCheckInQrDto> Handle(GetCompanyCheckInQrQuery request, CancellationToken cancellationToken)
+        => CompanyCheckInQrs.GetAsync(db, request.Id, cancellationToken);
 }
 
 internal sealed class RotateCompanyCheckInQrCommandHandler(
-    IApplicationDbContext db, IScopeResolver scopeResolver, IAuditWriter audit, IClock clock)
+    IApplicationDbContext db, IAuditWriter audit, IClock clock)
     : IRequestHandler<RotateCompanyCheckInQrCommand, CompanyCheckInQrDto>
 {
-    public async Task<CompanyCheckInQrDto> Handle(RotateCompanyCheckInQrCommand request, CancellationToken cancellationToken)
-    {
-        var scope = await scopeResolver.ResolveAsync(cancellationToken);
-        return await CompanyCheckInQrs.RotateAsync(
-            db, audit, clock, scope, request.Id, requireScopedStudents: false, cancellationToken);
-    }
+    public Task<CompanyCheckInQrDto> Handle(RotateCompanyCheckInQrCommand request, CancellationToken cancellationToken)
+        => CompanyCheckInQrs.RotateAsync(db, audit, clock, request.Id, cancellationToken);
 }
 
-/// <summary>Admin va tyutor QR amallari uchun umumiy mantiq. Tyutor ko'lami <c>GET /api/tutor/companies/{id}</c>
-/// dagidek: ko'lamda shu korxonaga tasdiqlangan arizasi bor talaba bo'lmasa — 404 (mavjudligi oshkor qilinmaydi).</summary>
+/// <summary>Korxona check-in QR amallari uchun umumiy mantiq (admin). Korxona topilmasa — 404.</summary>
 internal static class CompanyCheckInQrs
 {
     public static async Task<CompanyCheckInQrDto> GetAsync(
-        IApplicationDbContext db, DataScope scope, Guid companyId, bool requireScopedStudents, CancellationToken cancellationToken)
+        IApplicationDbContext db, Guid companyId, CancellationToken cancellationToken)
     {
-        var company = await LoadAsync(db, scope, companyId, requireScopedStudents, track: false, cancellationToken);
+        var company = await LoadAsync(db, companyId, track: false, cancellationToken);
         return ToDto(company);
     }
 
@@ -56,12 +47,10 @@ internal static class CompanyCheckInQrs
         IApplicationDbContext db,
         IAuditWriter audit,
         IClock clock,
-        DataScope scope,
         Guid companyId,
-        bool requireScopedStudents,
         CancellationToken cancellationToken)
     {
-        var company = await LoadAsync(db, scope, companyId, requireScopedStudents, track: true, cancellationToken);
+        var company = await LoadAsync(db, companyId, track: true, cancellationToken);
         company.RotateCheckInQr(clock.UtcNow);
 
         // Token o'zi audit'ga yozilmaydi — u QR sirining o'zi.
@@ -75,9 +64,7 @@ internal static class CompanyCheckInQrs
 
     private static async Task<Company> LoadAsync(
         IApplicationDbContext db,
-        DataScope scope,
         Guid companyId,
-        bool requireScopedStudents,
         bool track,
         CancellationToken cancellationToken)
     {
@@ -85,15 +72,6 @@ internal static class CompanyCheckInQrs
         var company = await companies.FirstOrDefaultAsync(c => c.Id == companyId, cancellationToken)
             ?? throw new NotFoundException("Korxona", companyId);
 
-        if (requireScopedStudents)
-        {
-            var inScope = await db.PracticeApplications
-                .AsNoTracking()
-                .InScope(scope)
-                .AnyAsync(a => a.CompanyId == companyId && a.Status == ApplicationStatus.Approved, cancellationToken);
-            if (!inScope)
-                throw new NotFoundException("Korxona", companyId);
-        }
 
         return company;
     }

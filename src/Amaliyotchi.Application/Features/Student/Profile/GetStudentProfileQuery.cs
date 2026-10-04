@@ -1,15 +1,13 @@
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Common.Time;
-using Amaliyotchi.Application.Features.Tutor.Students;
+using Amaliyotchi.Application.Features.Supervision.Students;
 using Amaliyotchi.Domain.Exceptions;
 using Amaliyotchi.Domain.Practice;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Student.Profile;
-
-public sealed record StudentProfileTutorDto(string FullName, string? PhoneNumber);
 
 public sealed record StudentProfilePeriodDto(
     Guid Id, string Name, PracticePeriodStatus Status, DateOnly StartDate, DateOnly EndDate);
@@ -20,7 +18,7 @@ public sealed record StudentProfileCompanyDto(Guid Id, string Name, string? Addr
 /// <param name="AttendancePct">Davomat foizi (sababli kunlar maxrajdan chiqariladi).</param>
 /// <param name="Total">Joriy umumiy ball (0–100); davr boshlanmagan bo'lsa 0.</param>
 /// <param name="Grade">2–5 yoki null (davomat yetarli emas yoki davr boshlanmagan).</param>
-/// <param name="Finalized">Tyutor bahoni yakunlagan.</param>
+/// <param name="Finalized">Administrator bahoni yakunlagan.</param>
 public sealed record StudentProfilePracticeDto(
     StudentProfilePeriodDto Period,
     StudentProfileCompanyDto? Company,
@@ -47,7 +45,6 @@ public sealed record StudentProfileDto(
     string Direction,
     string Group,
     int Course,
-    StudentProfileTutorDto? Tutor,
     bool TelegramLinked,
     bool HasPassword,
     bool MustChangePassword,
@@ -57,16 +54,16 @@ public sealed record StudentProfileDto(
 
 public sealed record GetStudentProfileQuery : IRequest<StudentProfileDto>;
 
-/// <summary>Hisob-kitoblar tyutor/admin profilidagi bilan AYNAN bir xil bo'lishi uchun umumiy bloklarni
-/// <see cref="GetTutorStudentDetailQuery"/> hisoblaydi (talaba ko'lami — faqat o'zi, <c>ScopeKind.Self</c>);
-/// bu yerda faqat talaba kabinetiga xos maydonlar (kafedra, tyutor, parol holati, davr holati, yakunlanganlik) qo'shiladi.</summary>
+/// <summary>Hisob-kitoblar admin profilidagi bilan AYNAN bir xil bo'lishi uchun umumiy bloklarni
+/// <see cref="GetStudentDetailQuery"/> hisoblaydi (talaba ko'lami — faqat o'zi, <c>ScopeKind.Self</c>);
+/// bu yerda faqat talaba kabinetiga xos maydonlar (kafedra, parol holati, davr holati, yakunlanganlik) qo'shiladi.</summary>
 internal sealed class GetStudentProfileQueryHandler(IApplicationDbContext db, ICurrentUser currentUser, ISender sender, IClock clock)
     : IRequestHandler<GetStudentProfileQuery, StudentProfileDto>
 {
     public async Task<StudentProfileDto> Handle(GetStudentProfileQuery request, CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId ?? throw new ForbiddenException("Avtorizatsiya talab qilinadi.");
-        var detail = await sender.Send(new GetTutorStudentDetailQuery(userId), cancellationToken);
+        var detail = await sender.Send(new GetStudentDetailQuery(userId), cancellationToken);
 
         var org = await (from p in db.StudentProfiles.AsNoTracking()
                          where p.UserId == userId
@@ -75,20 +72,11 @@ internal sealed class GetStudentProfileQueryHandler(IApplicationDbContext db, IC
                          join dept in db.Departments on d.DepartmentId equals dept.Id
                          select new
                          {
-                             GroupId = g.Id,
                              Department = dept.Name,
                              TelegramLinked = p.User.TelegramUserId != null,
                              p.User.MustChangePassword
                          })
             .FirstAsync(cancellationToken);
-
-        // Admin profilidagi qoida: guruhga biriktirilgan faol tyutor, bir nechta bo'lsa FISH bo'yicha birinchisi.
-        var tutor = await (from a in db.TutorAssignments.AsNoTracking()
-                           where a.IsActive && a.StudentGroupId == org.GroupId
-                           join u in db.Users on a.TutorUserId equals u.Id
-                           orderby u.FullName, u.Id
-                           select new StudentProfileTutorDto(u.FullName, u.PhoneNumber))
-            .FirstOrDefaultAsync(cancellationToken);
 
         var today = clock.LocalToday();
         var options = detail.Periods;
@@ -103,16 +91,16 @@ internal sealed class GetStudentProfileQueryHandler(IApplicationDbContext db, IC
                 .ToListAsync(cancellationToken))
             .ToHashSet();
 
-        // Har davr ko'rsatkichlari tyutor/admin profili bilan AYNAN bir manbadan (GetTutorStudentDetailQuery, periodId bilan).
+        // Har davr ko'rsatkichlari admin profili bilan AYNAN bir manbadan (GetStudentDetailQuery, periodId bilan).
         // Sukut davri uchun yuqoridagi `detail` qayta ishlatiladi; qolgan har davr uchun bitta qo'shimcha chaqiruv
         // (cheklangan sondagi so'rovlar). Talaba davrlari soni amalda 1–3 ta — so'rovlar soni davrlar soniga chiziqli, lekin kichik.
-        var details = new Dictionary<Guid, TutorStudentDetail>();
+        var details = new Dictionary<Guid, StudentDetail>();
         if (detail.Period is { } defaultPeriod)
             details[defaultPeriod.Id] = detail;
         foreach (var option in options)
         {
             if (!details.ContainsKey(option.Id))
-                details[option.Id] = await sender.Send(new GetTutorStudentDetailQuery(userId, option.Id), cancellationToken);
+                details[option.Id] = await sender.Send(new GetStudentDetailQuery(userId, option.Id), cancellationToken);
         }
 
         var practices = options
@@ -146,7 +134,6 @@ internal sealed class GetStudentProfileQueryHandler(IApplicationDbContext db, IC
             detail.Direction,
             detail.Group,
             detail.Course,
-            tutor,
             org.TelegramLinked,
             detail.HasPassword,
             org.MustChangePassword,
@@ -159,8 +146,8 @@ internal sealed class GetStudentProfileQueryHandler(IApplicationDbContext db, IC
     private static bool IsOngoing(StudentPeriodOption option, DateOnly today)
         => option.Status == PracticePeriodStatus.Active && option.StartDate <= today && today <= option.EndDate;
 
-    /// <summary>Bitta davr bo'yicha tyutor profili bloklaridan talaba kabineti elementini yig'adi.</summary>
-    private static StudentProfilePracticeDto? ToPractice(TutorStudentDetail d, PracticePeriodStatus status, bool finalized)
+    /// <summary>Bitta davr bo'yicha admin profili bloklaridan talaba kabineti elementini yig'adi.</summary>
+    private static StudentProfilePracticeDto? ToPractice(StudentDetail d, PracticePeriodStatus status, bool finalized)
         => d.Period is not { } period
             ? null
             : new StudentProfilePracticeDto(

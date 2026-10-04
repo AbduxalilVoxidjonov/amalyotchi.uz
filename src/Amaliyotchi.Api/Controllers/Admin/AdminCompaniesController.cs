@@ -132,7 +132,7 @@ public sealed class AdminCompaniesController(ISender sender) : ControllerBase
     }
 
     /// <summary>Korxonaga ariza bergan talabalar (qoralamadan boshqa), FISH bo'yicha tartiblangan —
-    /// guruh, tyutor, ariza holati va faol davr ko'rsatkichlari bilan. Korxona topilmasa → 404.</summary>
+    /// guruh, ariza holati va faol davr ko'rsatkichlari bilan. Korxona topilmasa → 404.</summary>
     [HttpGet("{id:guid}/students")]
     [ProducesResponseType<IReadOnlyList<CompanyStudent>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

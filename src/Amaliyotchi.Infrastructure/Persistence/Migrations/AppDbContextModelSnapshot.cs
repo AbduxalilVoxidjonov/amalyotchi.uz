@@ -906,6 +906,12 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
 
+                    b.Property<bool>("IsSuperAdmin")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_super_admin");
+
                     b.Property<DateTimeOffset?>("LastLoginAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_login_at");
@@ -1971,176 +1977,6 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                     b.ToTable("student_profiles", (string)null);
                 });
 
-            modelBuilder.Entity("Amaliyotchi.Domain.Students.TutorAssignment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("AcademicYearId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("academic_year_id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<DateTimeOffset?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<Guid>("StudentGroupId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("student_group_id");
-
-                    b.Property<Guid>("TutorUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tutor_user_id");
-
-                    b.Property<DateTimeOffset?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.HasKey("Id")
-                        .HasName("pk_tutor_assignments");
-
-                    b.HasIndex("AcademicYearId")
-                        .HasDatabaseName("ix_tutor_assignments_academic_year_id");
-
-                    b.HasIndex("StudentGroupId")
-                        .HasDatabaseName("ix_tutor_assignments_student_group_id");
-
-                    b.HasIndex("TutorUserId", "StudentGroupId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_tutor_assignments_tutor_user_id_student_group_id")
-                        .HasFilter("is_deleted = false");
-
-                    b.ToTable("tutor_assignments", (string)null);
-                });
-
-            modelBuilder.Entity("Amaliyotchi.Domain.Students.TutorFaculty", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("FacultyId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("faculty_id");
-
-                    b.Property<Guid>("TutorUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tutor_user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_tutor_faculties");
-
-                    b.HasIndex("FacultyId")
-                        .HasDatabaseName("ix_tutor_faculties_faculty_id");
-
-                    b.HasIndex("TutorUserId", "FacultyId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_tutor_faculties_tutor_user_id_faculty_id");
-
-                    b.ToTable("tutor_faculties", (string)null);
-                });
-
-            modelBuilder.Entity("Amaliyotchi.Domain.Students.TutorScope", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<DateTimeOffset?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<Guid?>("DepartmentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("department_id");
-
-                    b.Property<Guid?>("DirectionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("direction_id");
-
-                    b.Property<Guid>("FacultyId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("faculty_id");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<int>("Level")
-                        .HasColumnType("integer")
-                        .HasColumnName("level");
-
-                    b.Property<Guid?>("StudentGroupId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("student_group_id");
-
-                    b.Property<Guid>("TutorUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tutor_user_id");
-
-                    b.Property<DateTimeOffset?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.HasKey("Id")
-                        .HasName("pk_tutor_scopes");
-
-                    b.HasIndex("DepartmentId")
-                        .HasDatabaseName("ix_tutor_scopes_department_id");
-
-                    b.HasIndex("DirectionId")
-                        .HasDatabaseName("ix_tutor_scopes_direction_id");
-
-                    b.HasIndex("FacultyId")
-                        .HasDatabaseName("ix_tutor_scopes_faculty_id")
-                        .HasFilter("is_deleted = false");
-
-                    b.HasIndex("StudentGroupId")
-                        .HasDatabaseName("ix_tutor_scopes_student_group_id");
-
-                    b.HasIndex("TutorUserId")
-                        .HasDatabaseName("ix_tutor_scopes_tutor_user_id");
-
-                    b.ToTable("tutor_scopes", (string)null);
-                });
-
             modelBuilder.Entity("Amaliyotchi.Domain.Attendance.AttendanceEvent", b =>
                 {
                     b.HasOne("Amaliyotchi.Domain.Companies.Company", null)
@@ -2505,84 +2341,6 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Amaliyotchi.Domain.Students.TutorAssignment", b =>
-                {
-                    b.HasOne("Amaliyotchi.Domain.Organization.AcademicYear", null)
-                        .WithMany()
-                        .HasForeignKey("AcademicYearId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_tutor_assignments_academic_years_academic_year_id");
-
-                    b.HasOne("Amaliyotchi.Domain.Organization.StudentGroup", "Group")
-                        .WithMany()
-                        .HasForeignKey("StudentGroupId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_tutor_assignments_student_groups_student_group_id");
-
-                    b.HasOne("Amaliyotchi.Domain.Identity.User", null)
-                        .WithMany()
-                        .HasForeignKey("TutorUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_tutor_assignments_users_tutor_user_id");
-
-                    b.Navigation("Group");
-                });
-
-            modelBuilder.Entity("Amaliyotchi.Domain.Students.TutorFaculty", b =>
-                {
-                    b.HasOne("Amaliyotchi.Domain.Organization.Faculty", null)
-                        .WithMany()
-                        .HasForeignKey("FacultyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_tutor_faculties_faculties_faculty_id");
-
-                    b.HasOne("Amaliyotchi.Domain.Identity.User", null)
-                        .WithMany("Faculties")
-                        .HasForeignKey("TutorUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_tutor_faculties_users_tutor_user_id");
-                });
-
-            modelBuilder.Entity("Amaliyotchi.Domain.Students.TutorScope", b =>
-                {
-                    b.HasOne("Amaliyotchi.Domain.Organization.Department", null)
-                        .WithMany()
-                        .HasForeignKey("DepartmentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_tutor_scopes_departments_department_id");
-
-                    b.HasOne("Amaliyotchi.Domain.Organization.Direction", null)
-                        .WithMany()
-                        .HasForeignKey("DirectionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_tutor_scopes_directions_direction_id");
-
-                    b.HasOne("Amaliyotchi.Domain.Organization.Faculty", null)
-                        .WithMany()
-                        .HasForeignKey("FacultyId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_tutor_scopes_faculties_faculty_id");
-
-                    b.HasOne("Amaliyotchi.Domain.Organization.StudentGroup", null)
-                        .WithMany()
-                        .HasForeignKey("StudentGroupId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_tutor_scopes_student_groups_student_group_id");
-
-                    b.HasOne("Amaliyotchi.Domain.Identity.User", null)
-                        .WithMany()
-                        .HasForeignKey("TutorUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_tutor_scopes_users_tutor_user_id");
-                });
-
             modelBuilder.Entity("Amaliyotchi.Domain.Diary.DiaryEntry", b =>
                 {
                     b.Navigation("Attachments");
@@ -2590,8 +2348,6 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Amaliyotchi.Domain.Identity.User", b =>
                 {
-                    b.Navigation("Faculties");
-
                     b.Navigation("RefreshTokens");
 
                     b.Navigation("StudentProfile");

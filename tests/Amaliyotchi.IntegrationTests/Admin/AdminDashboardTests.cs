@@ -34,7 +34,7 @@ public sealed class AdminDashboardTests(ApiFixture fixture)
     private async Task AssertShapeAndAggregatesAsync(HttpClient client)
     {
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group, "Dashboard Tyutor");
+        var tutor = await Factory.CreateAdminAsync();
         var company = await Factory.CreateCompanyAsync();
         var period = await Factory.CreateActivePeriodAsync(group, tutor.Id);
         var present = await Factory.CreateStudentAsync(group: group, fullName: "Dashboard Kelgan");
@@ -56,7 +56,6 @@ public sealed class AdminDashboardTests(ApiFixture fixture)
         var root = json.RootElement;
         root.TryGetProperty("stats", out var stats).Should().BeTrue("camelCase");
         root.TryGetProperty("faculties", out _).Should().BeTrue();
-        root.TryGetProperty("tutors", out _).Should().BeTrue();
         root.TryGetProperty("audit", out _).Should().BeTrue();
         stats.GetProperty("attendanceTodayPct").ValueKind.Should().Be(JsonValueKind.Number, "xom raqam, matn emas");
         root.GetProperty("date").GetString().Should().Be(today.ToString("yyyy-MM-dd"));
@@ -76,12 +75,7 @@ public sealed class AdminDashboardTests(ApiFixture fixture)
         faculty.AttendedToday.Should().Be(2);
         faculty.AttendancePct.Should().Be(67);
 
-        var tutorRow = dto.Tutors.Should().ContainSingle(t => t.Id == tutor.Id).Subject;
-        tutorRow.Groups.Should().Equal(group.GroupName);
-        tutorRow.StudentCount.Should().Be(3);
-        tutorRow.PendingCount.Should().Be(1);
-        tutorRow.Status.Should().Be(Application.Features.Admin.Common.TutorStatus.Late);
-        tutorRow.AvgDecisionHours.Should().NotBeNull("ikkita ariza tasdiqlangan");
+        root.TryGetProperty("tutors", out _).Should().BeFalse("tyutor roli olib tashlangan");
 
         dto.Audit.Should().NotBeEmpty().And.HaveCountLessThanOrEqualTo(8);
         body.Should().Contain("\"action\":\"", "audit amali enum string");
@@ -89,9 +83,9 @@ public sealed class AdminDashboardTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Dashboard_Tyutor_403()
+    public async Task Dashboard_Talaba_403()
     {
-        var client = await Factory.LoginAsTutorAsync();
+        var client = await Factory.LoginAsNewStudentAsync();
 
         var response = await client.GetAsync("/api/admin/dashboard");
 
@@ -131,7 +125,6 @@ public sealed class AdminDashboardEmptyDbTests(AdminEmptyDbFixture fixture)
         dto.Stats.AttendanceTodayPct.Should().Be(0);
         dto.Stats.AttendanceYesterdayPct.Should().Be(0);
         dto.Faculties.Should().BeEmpty();
-        dto.Tutors.Should().BeEmpty();
         // Admin yaratilishi va kirish audit'ga tushadi — ro'yxat bo'sh bo'lmasligi mumkin, lekin ≤ 8.
         dto.Audit.Should().HaveCountLessThanOrEqualTo(8);
     }

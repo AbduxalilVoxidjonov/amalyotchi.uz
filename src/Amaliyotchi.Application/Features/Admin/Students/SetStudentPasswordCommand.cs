@@ -1,6 +1,6 @@
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Scoping;
-using Amaliyotchi.Application.Features.Admin.Tutors;
+using Amaliyotchi.Application.Features.Admin.Common;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Domain.Exceptions;
 using Amaliyotchi.Domain.Identity;
@@ -9,11 +9,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Admin.Students;
 
-/// <summary><c>POST /api/admin/students/{id}/password</c> va <c>POST /api/tutor/students/{id}/password</c>:
-/// <c>{ password }</c> → 204. <see cref="Id"/> route'dan. Talabaga brauzer orqali (HEMIS ID + parol) kirish uchun
-/// vaqtinchalik parol o'rnatiladi (<c>MustChangePassword=true</c>) va barcha faol refresh tokenlari bekor qilinadi.
-/// Ko'lam: admin — hamma, tyutor — biriktirilgan guruhlari; tashqarisida (yoki yo'q) → 404.
-/// Uslub <see cref="ResetTutorPasswordCommand"/> bilan bir xil.</summary>
+/// <summary><c>POST /api/admin/students/{id}/password</c>: <c>{ password }</c> → 204. <see cref="Id"/> route'dan.
+/// Talabaga brauzer orqali (HEMIS ID + parol) kirish uchun vaqtinchalik parol o'rnatiladi (<c>MustChangePassword=true</c>)
+/// va barcha faol refresh tokenlari bekor qilinadi. Talaba topilmasa → 404.</summary>
 public sealed record SetStudentPasswordCommand(Guid Id, string Password) : IRequest;
 
 internal sealed class SetStudentPasswordCommandHandler(

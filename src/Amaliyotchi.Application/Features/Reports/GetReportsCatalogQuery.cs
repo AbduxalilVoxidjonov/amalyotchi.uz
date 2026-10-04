@@ -1,14 +1,13 @@
 using Amaliyotchi.Application.Common.Interfaces;
-using Amaliyotchi.Application.Common.Scoping;
 using Amaliyotchi.Application.Common.Time;
-using Amaliyotchi.Application.Features.Tutor.Common;
+using Amaliyotchi.Application.Features.Supervision.Common;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Reports;
 
-/// <param name="Scope">Ko'lam yorlig'i: tyutor — guruhlar ("412-22, 413-22"), admin — "Barcha fakultetlar".</param>
-/// <param name="Groups">Tyutor guruhlari (admin uchun bo'sh).</param>
+/// <param name="Scope">Ko'lam yorlig'i — doim "Barcha fakultetlar" (faqat admin).</param>
+/// <param name="Groups">Har doim bo'sh (tarixiy maydon — kontrakt mosligi uchun saqlangan).</param>
 public sealed record ReportFilter(DateOnly? DateFrom, DateOnly? DateTo, string Scope, IReadOnlyList<string> Groups, int StudentCount);
 
 /// <param name="Formats">"pdf" / "xlsx".</param>
@@ -17,12 +16,12 @@ public sealed record ReportCard(string Id, string Name, IReadOnlyList<string> Fo
 
 public sealed record ReportsCatalog(ReportFilter Filter, IReadOnlyList<ReportCard> Reports);
 
-/// <summary><c>GET /api/reports</c> (Admin, Tyutor) — hisobotlar katalogi: filtr (ko'lamdagi guruhlarning sukut bo'yicha
+/// <summary><c>GET /api/reports</c> (Admin) — hisobotlar katalogi: filtr (barcha guruhlarning sukut bo'yicha
 /// davrlari sanalari — davom etayotgan → oxirgi tugagan → kelgusi, <c>PeriodLookup.ForGroup</c>; ko'lam) + kartalar.
 /// Yuklab olish (<c>/api/reports/{id}/download</c>) keyingi bosqichda.</summary>
 public sealed record GetReportsCatalogQuery : IRequest<ReportsCatalog>;
 
-internal sealed class GetReportsCatalogQueryHandler(IApplicationDbContext db, IScopeResolver scopeResolver, IClock clock)
+internal sealed class GetReportsCatalogQueryHandler(IApplicationDbContext db, IClock clock)
     : IRequestHandler<GetReportsCatalogQuery, ReportsCatalog>
 {
     public const string AllFacultiesScope = "Barcha fakultetlar";
@@ -33,22 +32,18 @@ internal sealed class GetReportsCatalogQueryHandler(IApplicationDbContext db, IS
         new("attendance", "Davomat hisoboti", ["xlsx"],
             "Davr bo'yicha har talabaning kunlik davomati: keldi / kech keldi / kelmadi / sababli, foiz.", false, NotAvailableNote),
         new("portfolio", "Talaba portfoliosi", ["pdf"],
-            "Kundalik hisobotlar, davomat statistikasi, baholar va tyutor xulosasi — bitta PDF.", false, NotAvailableNote),
+            "Kundalik hisobotlar, davomat statistikasi, baholar va rahbar xulosasi — bitta PDF.", false, NotAvailableNote),
         new("company-reference", "Korxona tavsifnomasi", ["pdf"],
             "Korxona rahbari imzolaydigan tavsifnoma shabloni (talaba ma'lumotlari to'ldirilgan).", false, NotAvailableNote),
         new("diaries", "Kundaliklar yig'masi", ["pdf", "xlsx"],
-            "Davr bo'yicha barcha kundalik yozuvlari va tyutor baholari.", false, NotAvailableNote)
+            "Davr bo'yicha barcha kundalik yozuvlari va ularning baholari.", false, NotAvailableNote)
     ];
 
     public async Task<ReportsCatalog> Handle(GetReportsCatalogQuery request, CancellationToken cancellationToken)
     {
-        var scope = await scopeResolver.ResolveAsync(cancellationToken);
-
+        // Faqat admin (AdminOnly) — ko'lam doim cheklovsiz: barcha guruhlar va talabalar.
         var lookup = await PeriodLookup.LoadAsync(db, clock.LocalToday(), cancellationToken);
-        var scopedGroups = scope.Kind == ScopeKind.Groups
-            ? lookup.GroupIds.Where(scope.StudentGroupIds.Contains)
-            : lookup.GroupIds;
-        var selected = scopedGroups
+        var selected = lookup.GroupIds
             .Select(lookup.ForGroup)
             .Where(p => p is not null)
             .Select(p => p!.Period)
@@ -57,28 +52,10 @@ internal sealed class GetReportsCatalogQueryHandler(IApplicationDbContext db, IS
             ? null
             : new { From = selected.Min(p => p.StartDate), To = selected.Max(p => p.EndDate) };
 
-        List<string> groups = [];
-        string scopeLabel;
-        int studentCount;
-
-        if (scope.IsUnrestricted)
-        {
-            scopeLabel = AllFacultiesScope;
-            studentCount = await db.StudentProfiles.AsNoTracking().CountAsync(cancellationToken);
-        }
-        else
-        {
-            groups = await db.StudentGroups.AsNoTracking()
-                .Where(g => scope.StudentGroupIds.Contains(g.Id))
-                .OrderBy(g => g.Name)
-                .Select(g => g.Name)
-                .ToListAsync(cancellationToken);
-            scopeLabel = string.Join(", ", groups);
-            studentCount = await db.StudentProfiles.AsNoTracking().InScope(scope).CountAsync(cancellationToken);
-        }
+        var studentCount = await db.StudentProfiles.AsNoTracking().CountAsync(cancellationToken);
 
         return new ReportsCatalog(
-            new ReportFilter(range?.From, range?.To, scopeLabel, groups, studentCount),
+            new ReportFilter(range?.From, range?.To, AllFacultiesScope, [], studentCount),
             Cards);
     }
 }

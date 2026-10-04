@@ -64,15 +64,12 @@ public sealed class DemoDataPurgeTests(DemoPurgeFixture fixture) : IClassFixture
         report.Found.Should().BeTrue();
         report.Applied.Should().BeFalse();
         report.Blockers.Should().BeEmpty();
-        report.Count("users").Should().Be(41, "3 tyutor + 38 talaba");
+        report.Count("users").Should().Be(38, "38 talaba (yangi seed'da tyutor yo'q)");
         report.Count("student_profiles").Should().Be(38);
         report.Count("faculties").Should().Be(4);
         report.Count("departments").Should().Be(4);
         report.Count("directions").Should().Be(4);
         report.Count("student_groups").Should().Be(4);
-        report.Count("tutor_faculties").Should().Be(3);
-        report.Count("tutor_scopes").Should().Be(4);
-        report.Count("tutor_assignments").Should().Be(4);
         report.Count("companies").Should().Be(6);
         report.Count("practice_periods").Should().Be(2);
         report.Count("practice_period_groups").Should().Be(4);
@@ -99,14 +96,14 @@ public sealed class DemoDataPurgeTests(DemoPurgeFixture fixture) : IClassFixture
     {
         var factory = await fixture.CreateSeededFactoryAsync();
 
-        // Boshqa fakultetda haqiqiy ma'lumot: tyutor, talaba, korxona, davr, tasdiqlangan ariza, fayl.
+        // Boshqa fakultetda haqiqiy ma'lumot: admin, talaba, korxona, davr, tasdiqlangan ariza, fayl.
         var group = await factory.CreateGroupAsync();
-        var tutor = await factory.CreateTutorAsync(group, "Haqiqiy Tyutor");
+        var realAdmin = await factory.CreateAdminAsync("Haqiqiy Admin");
         var student = await factory.CreateStudentAsync(group: group, fullName: "Haqiqiy Talaba");
         var company = await factory.CreateCompanyAsync(name: "Haqiqiy Korxona MChJ");
         var adminId = await factory.WithDbAsync(db => db.Users.Where(u => u.Role == UserRole.Admin).Select(u => u.Id).FirstAsync());
         var period = await factory.CreateActivePeriodAsync(group, adminId);
-        var application = await factory.CreateApprovedApplicationAsync(student, period, company, tutor.Id);
+        var application = await factory.CreateApprovedApplicationAsync(student, period, company, realAdmin.Id);
         var realFile = await factory.CreateStoredFileAsync(student.Id);
 
         // "Xabarlar": admin xabari demo talabaga ham, haqiqiy talabaga ham yuborilgan — demo yetkazish FK (Restrict)
@@ -143,17 +140,15 @@ public sealed class DemoDataPurgeTests(DemoPurgeFixture fixture) : IClassFixture
         await factory.WithDbAsync(async db =>
         {
             var users = db.Users.IgnoreQueryFilters();
-            (await users.AnyAsync(u => u.PhoneNumber == DemoDataSeeder.TutorPhone)).Should().BeFalse();
             (await db.StudentProfiles.IgnoreQueryFilters().AnyAsync(p => p.HemisId == DemoDataSeeder.StudentHemisId)).Should().BeFalse();
             (await db.Faculties.IgnoreQueryFilters().AnyAsync(f => f.Code == "AT")).Should().BeFalse();
             (await db.PracticePeriods.IgnoreQueryFilters().AnyAsync(p => p.Name == DemoDataSeeder.PeriodName)).Should().BeFalse();
             (await db.Companies.IgnoreQueryFilters().AnyAsync(c => c.Tin == "304512889")).Should().BeFalse();
 
             // Haqiqiy ma'lumot to'liq joyida.
-            (await users.CountAsync(u => u.Id == tutor.Id || u.Id == student.Id || u.Id == adminId)).Should().Be(3);
+            (await users.CountAsync(u => u.Id == realAdmin.Id || u.Id == student.Id || u.Id == adminId)).Should().Be(3);
             (await db.Faculties.AnyAsync(f => f.Id == group.FacultyId)).Should().BeTrue();
             (await db.StudentGroups.AnyAsync(g => g.Id == group.GroupId)).Should().BeTrue();
-            (await db.TutorAssignments.AnyAsync(a => a.TutorUserId == tutor.Id)).Should().BeTrue();
             (await db.Companies.AnyAsync(c => c.Id == company.Id)).Should().BeTrue();
             (await db.PracticePeriods.AnyAsync(p => p.Id == period.Id)).Should().BeTrue();
             (await db.PracticeApplications.AnyAsync(a => a.Id == application.Id)).Should().BeTrue();
@@ -197,18 +192,18 @@ public sealed class DemoDataPurgeTests(DemoPurgeFixture fixture) : IClassFixture
     }
 
     [Fact]
-    public async Task Apply_HaqiqiyTyutorDemoFakultetda_YokiHaqiqiyArizaDemoKorxonada_RadEtadi()
+    public async Task Apply_HaqiqiyFoydalanuvchiDemoFakultetda_YokiHaqiqiyArizaDemoKorxonada_RadEtadi()
     {
         var factory = await fixture.CreateSeededFactoryAsync();
         var demoGroup = await DemoGroupAsync(factory, "413-22");
 
-        // Haqiqiy tyutor demo fakultetga (va boshqa haqiqiy guruhga) biriktirilgan.
+        // Haqiqiy foydalanuvchi (asosiy fakulteti — demo fakultet), profili boshqa haqiqiy guruhda.
         var realGroup = await factory.CreateGroupAsync();
-        var realTutor = User.CreateWithPassword(
-            "Begona Tyutor", TestClients.RandomHemisId(), TestClients.RandomPhone(), "hash", UserRole.Tutor, demoGroup.FacultyId);
+        var realUser = User.CreateStudent("Begona Foydalanuvchi", demoGroup.FacultyId, TestClients.RandomPhone());
         await factory.WithDbAsync(async db =>
         {
-            db.Users.Add(realTutor);
+            db.Users.Add(realUser);
+            db.StudentProfiles.Add(Amaliyotchi.Domain.Students.StudentProfile.Create(realUser.Id, TestClients.RandomHemisId(), realGroup.GroupId));
             await db.SaveChangesAsync();
         });
 
@@ -223,10 +218,39 @@ public sealed class DemoDataPurgeTests(DemoPurgeFixture fixture) : IClassFixture
         var report = await PurgeAsync(factory);
 
         report.Applied.Should().BeFalse();
-        report.Blockers.Should().Contain(b => b.Contains("Begona Tyutor"));
+        report.Blockers.Should().Contain(b => b.Contains("Begona Foydalanuvchi"));
         report.Blockers.Should().Contain(b => b.Contains("practice_applications") && b.Contains("demo bo'lmagan talaba"));
         (await SnapshotAsync(factory)).Should().BeEquivalentTo(before);
-        (await factory.WithDbAsync(db => db.Users.AnyAsync(u => u.Id == realTutor.Id))).Should().BeTrue();
+        (await factory.WithDbAsync(db => db.Users.AnyAsync(u => u.Id == realUser.Id))).Should().BeTrue();
+    }
+
+    /// <summary>Eski (tyutorli) seed'dan qolgan bazada demo tyutor — tarixiy rol 2, <c>RemoveTutors</c> migratsiyasi
+    /// soft-delete qilgan. Purge uni demo foydalanuvchi sifatida aniqlaydi va o'chiradi; enum'da yo'q rol o'qishda xato bermaydi.</summary>
+    [Fact]
+    public async Task Apply_EskiSeedTyutori_Rol2_SoftDeleted_HamOchadi()
+    {
+        var factory = await fixture.CreateSeededFactoryAsync();
+        var legacyId = Guid.CreateVersion7();
+        await factory.WithDbAsync(async db =>
+        {
+            var anchor = await (from p in db.StudentProfiles
+                                join u in db.Users on p.UserId equals u.Id
+                                where p.HemisId == DemoDataSeeder.StudentHemisId
+                                select new { u.FacultyId, u.CreatedAt }).SingleAsync();
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO users (id, full_name, phone_number, hemis_id, password_hash, role, is_active, must_change_password,
+                                   is_super_admin, faculty_id, created_at, is_deleted, deleted_at)
+                VALUES ({legacyId}, 'Nodira Saidova', {DemoDataSeeder.LegacyTutorPhone}, {DemoDataSeeder.LegacyTutorHemisId}, 'hash',
+                        2, false, false, false, {anchor.FacultyId}, {anchor.CreatedAt}, true, {anchor.CreatedAt})
+                """);
+        });
+
+        var report = await PurgeAsync(factory);
+
+        report.Applied.Should().BeTrue();
+        report.Blockers.Should().BeEmpty();
+        report.Count("users").Should().Be(39, "38 talaba + eski demo tyutor");
+        (await factory.WithDbAsync(db => db.Users.IgnoreQueryFilters().AnyAsync(u => u.Id == legacyId))).Should().BeFalse();
     }
 
     [Fact]
@@ -269,10 +293,10 @@ public sealed class DemoDataPurgeTests(DemoPurgeFixture fixture) : IClassFixture
     {
         var factory = await fixture.CreateSeededFactoryAsync();
 
-        // Demo tyutor purge'dan oldin kira oladi.
+        // Demo talaba purge'dan oldin kira oladi.
         var anonymous = factory.CreateClient();
         (await anonymous.PostJsonAsync("/api/auth/login",
-            new { HemisId = DemoDataSeeder.TutorHemisId, Password = DemoDataSeeder.TutorPassword }))
+            new { HemisId = DemoDataSeeder.StudentHemisId, Password = DemoDataSeeder.StudentPassword }))
             .StatusCode.Should().Be(HttpStatusCode.OK);
 
         var (exit, _, error) = await RunCliAsync(factory, PurgeDemoCommand.Name, "--apply");
@@ -280,8 +304,8 @@ public sealed class DemoDataPurgeTests(DemoPurgeFixture fixture) : IClassFixture
 
         (await anonymous.GetAsync("/health")).StatusCode.Should().Be(HttpStatusCode.OK);
         (await anonymous.PostJsonAsync("/api/auth/login",
-            new { HemisId = DemoDataSeeder.TutorHemisId, Password = DemoDataSeeder.TutorPassword }))
-            .StatusCode.Should().Be(HttpStatusCode.Forbidden, "demo tyutor o'chirilgan (noto'g'ri login — 403, AuthSessionService)");
+            new { HemisId = DemoDataSeeder.StudentHemisId, Password = DemoDataSeeder.StudentPassword }))
+            .StatusCode.Should().Be(HttpStatusCode.Forbidden, "demo talaba o'chirilgan (noto'g'ri login — 403, AuthSessionService)");
 
         var admin = factory.CreateClient();
         var login = await admin.PostJsonAsync("/api/auth/login",
@@ -383,9 +407,6 @@ public sealed class DemoDataPurgeTests(DemoPurgeFixture fixture) : IClassFixture
             ["departments"] = await db.Departments.IgnoreQueryFilters().CountAsync(),
             ["directions"] = await db.Directions.IgnoreQueryFilters().CountAsync(),
             ["student_groups"] = await db.StudentGroups.IgnoreQueryFilters().CountAsync(),
-            ["tutor_faculties"] = await db.TutorFaculties.CountAsync(),
-            ["tutor_scopes"] = await db.TutorScopes.IgnoreQueryFilters().CountAsync(),
-            ["tutor_assignments"] = await db.TutorAssignments.IgnoreQueryFilters().CountAsync(),
             ["companies"] = await db.Companies.IgnoreQueryFilters().CountAsync(),
             ["practice_periods"] = await db.PracticePeriods.IgnoreQueryFilters().CountAsync(),
             ["practice_period_groups"] = await db.PracticePeriodGroups.CountAsync(),

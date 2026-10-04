@@ -3,8 +3,8 @@ using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Common.Scoping;
 using Amaliyotchi.Application.Features.Admin.Common;
-using Amaliyotchi.Application.Features.Tutor.Common;
-using Amaliyotchi.Application.Features.Tutor.Students;
+using Amaliyotchi.Application.Features.Supervision.Common;
+using Amaliyotchi.Application.Features.Supervision.Students;
 using Amaliyotchi.Domain.Exceptions;
 using Amaliyotchi.Domain.Leave;
 using Amaliyotchi.Domain.Practice;
@@ -18,7 +18,7 @@ namespace Amaliyotchi.Application.Features.Admin.Companies;
 /// talabalar soni (§4.7; 0 bo'lsa davr ro'yxatga kirmaydi).</summary>
 public sealed record CompanyPeriod(Guid Id, string Name, DateOnly StartDate, DateOnly EndDate, int Students);
 
-/// <summary>Korxona tafsiloti (admin va tyutor uchun bir xil shakl).
+/// <summary>Korxona tafsiloti (admin uchun bir xil shakl).
 /// <paramref name="Students"/> — so'rovchi ko'lamidagi AKTIV talabalar (§4.7; admin uchun = <paramref name="TotalStudents"/>),
 /// <paramref name="TotalStudents"/> — butun tizim bo'yicha aktiv talabalar (STIR nazorati shu songa tayanadi).</summary>
 public sealed record CompanyDetail(
@@ -43,8 +43,8 @@ public sealed record CompanyDetail(
     CompanyFlag? Flag,
     IReadOnlyList<CompanyPeriod> Periods);
 
-/// <summary>Korxonada hozir amaliyot o'tayotgan talaba: profil, tyutor, ariza holati (doim approved) va aktiv davr ko'rsatkichlari.
-/// <paramref name="State"/> — <c>GET /api/tutor/students</c> dagi qoida bilan bir xil.</summary>
+/// <summary>Korxonada hozir amaliyot o'tayotgan talaba: profil, ariza holati (doim approved) va aktiv davr ko'rsatkichlari.
+/// <paramref name="State"/> — talabalar ro'yxatidagi qoida (<c>StudentStateRule</c>) bilan bir xil.</summary>
 public sealed record CompanyStudent(
     Guid StudentId,
     string Name,
@@ -52,7 +52,6 @@ public sealed record CompanyStudent(
     string Group,
     int Course,
     string Faculty,
-    string? TutorName,
     ApplicationStatus ApplicationStatus,
     string? PeriodName,
     double AttendancePct,
@@ -76,7 +75,7 @@ internal static class CompanyFlags
             : null;
 }
 
-/// <summary>Korxona so'rovlari uchun umumiy yuklovchilar — admin va tyutor bir xil mantiqdan foydalanadi,
+/// <summary>Korxona so'rovlari uchun umumiy yuklovchilar — admin bir xil mantiqdan foydalanadi,
 /// farqi faqat <see cref="DataScope"/> da.</summary>
 internal static class CompanyQueries
 {
@@ -156,26 +155,12 @@ internal static class CompanyQueries
         return result;
     }
 
-    /// <summary>Tyutor ko'lami darvozasi: ko'lamda shu korxonaga (istalgan davrda) tasdiqlangan arizasi bor talaba
-    /// bo'lmasa korxona "yo'q" hisoblanadi (404, mavjudligi oshkor qilinmaydi). Tarix bo'yicha — sonlar esa aktiv
-    /// qoida bo'yicha (0 bo'lishi mumkin).</summary>
-    private static async Task EnsureScopedAccessAsync(
-        IApplicationDbContext db, DataScope scope, Guid companyId, CancellationToken cancellationToken)
-    {
-        var hasScoped = await db.PracticeApplications.AsNoTracking().InScope(scope)
-            .AnyAsync(a => a.CompanyId == companyId && a.Status == ApplicationStatus.Approved, cancellationToken);
-        if (!hasScoped)
-            throw new NotFoundException("Korxona", companyId);
-    }
-
     /// <summary>Korxona tafsiloti. Talabalar sonlari, shubhali kunlar va <c>periods</c> — faqat AKTIV joylashuvlar
-    /// (§4.7): hozir davom etayotgan ochiq davr(lar), har birida kamida bitta aktiv talaba.
-    /// <paramref name="requireScopedStudents"/> — tyutor uchun ko'lam darvozasi (<see cref="EnsureScopedAccessAsync"/>).</summary>
+    /// (§4.7): hozir davom etayotgan ochiq davr(lar), har birida kamida bitta aktiv talaba.</summary>
     public static async Task<CompanyDetail> LoadDetailAsync(
         IApplicationDbContext db,
         DataScope scope,
         Guid companyId,
-        bool requireScopedStudents,
         DateOnly today,
         CancellationToken cancellationToken)
     {
@@ -200,9 +185,6 @@ internal static class CompanyQueries
             })
             .FirstOrDefaultAsync(cancellationToken)
             ?? throw new NotFoundException("Korxona", companyId);
-
-        if (requireScopedStudents)
-            await EnsureScopedAccessAsync(db, scope, companyId, cancellationToken);
 
         Guid[] companyIds = [companyId];
         var all = await LoadActivePlacementsAsync(db, scope: null, companyIds, today, cancellationToken);
@@ -248,7 +230,6 @@ internal static class CompanyQueries
         IApplicationDbContext db,
         DataScope scope,
         Guid companyId,
-        bool requireScopedStudents,
         DateOnly today,
         TimeOnly localNow,
         CancellationToken cancellationToken)
@@ -256,9 +237,6 @@ internal static class CompanyQueries
         var exists = await db.Companies.AsNoTracking().AnyAsync(c => c.Id == companyId, cancellationToken);
         if (!exists)
             throw new NotFoundException("Korxona", companyId);
-
-        if (requireScopedStudents)
-            await EnsureScopedAccessAsync(db, scope, companyId, cancellationToken);
 
         Guid[] companyIds = [companyId];
         var placements = await LoadActivePlacementsAsync(db, scope, companyIds, today, cancellationToken);
@@ -294,15 +272,6 @@ internal static class CompanyQueries
 
         if (profiles.Count == 0)
             return [];
-
-        var groupIds = profiles.Select(p => p.GroupId).Distinct().ToList();
-        var tutorByGroup = (await (from a in db.TutorAssignments.AsNoTracking()
-                                   where a.IsActive && groupIds.Contains(a.StudentGroupId)
-                                   join u in db.Users on a.TutorUserId equals u.Id
-                                   select new { a.StudentGroupId, u.FullName })
-                .ToListAsync(cancellationToken))
-            .GroupBy(t => t.StudentGroupId)
-            .ToDictionary(g => g.Key, g => g.Select(t => t.FullName).OrderBy(n => n, StringComparer.Ordinal).First());
 
         // Statistika — talabaning aktiv davri bo'yicha (ko'rsatilgan <c>periodName</c> bilan bir xil).
         var periods = await PeriodLookup.LoadAsync(db, today, cancellationToken);
@@ -345,7 +314,6 @@ internal static class CompanyQueries
 
             result.Add(new CompanyStudent(
                 profile.UserId, profile.FullName, profile.HemisId, profile.GroupName, profile.Course, profile.Faculty,
-                tutorByGroup.GetValueOrDefault(profile.GroupId),
                 ApplicationStatus.Approved,
                 placement.PeriodName,
                 stats.AttendancePct, stats.AttendedDays, stats.TotalDays, diary.Count,

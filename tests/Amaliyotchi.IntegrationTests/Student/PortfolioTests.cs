@@ -33,19 +33,19 @@ public sealed class PortfolioTests(ApiFixture fixture)
                 if (i <= 2)
                 {
                     var entry = DiaryEntry.Create(scene.Student.Id, scene.Period.Id, date, StudentTestData.LongText(), null, PracticeTime.At(date, new TimeOnly(18, 0)));
-                    entry.Approve(scene.Tutor.Id, i == 1 ? 5 : 4, null, PracticeTime.At(date, new TimeOnly(20, 0)));
+                    entry.Approve(scene.Admin.Id, i == 1 ? 5 : 4, null, PracticeTime.At(date, new TimeOnly(20, 0)));
                     db.DiaryEntries.Add(entry);
                 }
             }
 
             var leave = Domain.Leave.LeaveRequest.Create(scene.Student.Id, scene.Period.Id, today.AddDays(-4), today.AddDays(-4), "Shifokor ko'rigi — ma'lumotnoma");
-            leave.Approve(scene.Tutor.Id, null, PracticeTime.At(today.AddDays(-5), new TimeOnly(12, 0)));
+            leave.Approve(scene.Admin.Id, null, PracticeTime.At(today.AddDays(-5), new TimeOnly(12, 0)));
             db.LeaveRequests.Add(leave);
 
             var grade = PracticeGrade.Create(scene.Student.Id, scene.Period.Id);
             grade.SetTutorPoints(18);
             grade.SetReferencePoints(9);
-            grade.Finalize("Amaliyotni muvaffaqiyatli o'tadi.", scene.Tutor.Id, PracticeTime.At(today.AddDays(-1), new TimeOnly(18, 0)));
+            grade.Finalize("Amaliyotni muvaffaqiyatli o'tadi.", scene.Admin.Id, PracticeTime.At(today.AddDays(-1), new TimeOnly(18, 0)));
             db.PracticeGrades.Add(grade);
             await db.SaveChangesAsync();
         });
@@ -99,7 +99,7 @@ public sealed class PortfolioTests(ApiFixture fixture)
         dto.Grade.Should().BeNull("davomat 70% dan past — qayta topshiradi");
         dto.Finalized.Should().BeTrue();
         dto.Conclusion.Should().NotBeNull();
-        dto.Conclusion!.Author.Should().Be(scene.Tutor.FullName);
+        dto.Conclusion!.Author.Should().Be(scene.Admin.FullName);
         dto.PdfUrl.Should().BeNull();
 
         using var json = JsonDocument.Parse(body);
@@ -132,9 +132,9 @@ public sealed class PortfolioTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Tyutor_403()
+    public async Task Admin_403()
     {
-        var tutor = await Factory.LoginAsTutorAsync();
-        (await tutor.GetAsync("/api/student/portfolio")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var admin = await Factory.LoginAsAdminAsync();
+        (await admin.GetAsync("/api/student/portfolio")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 }

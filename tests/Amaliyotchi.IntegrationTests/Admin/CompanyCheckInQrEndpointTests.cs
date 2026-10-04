@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.IntegrationTests.Admin;
 
-/// <summary>Korxona check-in QR endpointlari: admin (hamma korxona) va tyutor (ko'lam — <c>GET /api/tutor/companies/{id}</c>
+/// <summary>Korxona check-in QR endpointlari: admin (hamma korxona) va tyutor (ko'lam — <c>GET /api/admin/companies/{id}</c>
 /// dagidek), almashtirish auditi, rol cheklovlari.</summary>
 [Collection(ApiCollection.Name)]
 public sealed class CompanyCheckInQrEndpointTests(ApiFixture fixture)
@@ -78,65 +78,21 @@ public sealed class CompanyCheckInQrEndpointTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Tyutor_KolamIchida_200_KolamTashqarisi_404_Rotate_Audit()
+    public async Task Talaba_403_YoqKorxona_404()
     {
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group);
-        var otherGroup = await Factory.CreateGroupAsync();
-        var period = await Factory.CreateActivePeriodAsync(group, tutor.Id, otherGroup.GroupId);
-        var mine = await Factory.CreateStudentAsync(group: group);
-        var stranger = await Factory.CreateStudentAsync(group: otherGroup);
-        var own = await Factory.CreateCompanyAsync();
-        var foreign = await Factory.CreateCompanyAsync();
-        var unused = await Factory.CreateCompanyAsync();
-        await Factory.CreateApprovedApplicationAsync(mine, period, own, tutor.Id);
-        await Factory.CreateApprovedApplicationAsync(stranger, period, foreign, tutor.Id);
-        var client = await Factory.LoginAsync(tutor);
-
-        var get = await client.GetAsync($"/api/tutor/companies/{own.Id}/checkin-qr");
-        get.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await get.Content.ReadAsync<CompanyCheckInQrDto>())!.Payload.Should().Be(own.CheckInQrPayload);
-
-        foreach (var id in new[] { foreign.Id, unused.Id, Guid.NewGuid() })
-        {
-            (await client.GetAsync($"/api/tutor/companies/{id}/checkin-qr")).StatusCode.Should().Be(HttpStatusCode.NotFound);
-            (await client.PostAsync($"/api/tutor/companies/{id}/checkin-qr/rotate", null)).StatusCode
-                .Should().Be(HttpStatusCode.NotFound);
-        }
-
-        (await ReloadAsync(foreign.Id)).CheckInQrToken.Should().Be(foreign.CheckInQrToken, "ko'lam tashqarisi o'zgarmaydi");
-        (await RotationAuditsAsync(foreign.Id)).Should().BeEmpty();
-
-        var rotate = await client.PostAsync($"/api/tutor/companies/{own.Id}/checkin-qr/rotate", null);
-        rotate.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await rotate.Content.ReadAsync<CompanyCheckInQrDto>())!.Payload.Should().NotBe(own.CheckInQrPayload);
-
-        var audit = (await RotationAuditsAsync(own.Id)).Should().ContainSingle().Subject;
-        audit.UserId.Should().Be(tutor.Id);
-        audit.UserRole.Should().Be(UserRole.Tutor);
-    }
-
-    [Fact]
-    public async Task Talaba_403_Tyutor_AdminEndpointiga_403()
-    {
-        var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group);
         var student = await Factory.CreateStudentAsync(group: group);
         var company = await Factory.CreateCompanyAsync();
         var studentClient = await Factory.LoginAsStudentAsync(student);
-        var tutorClient = await Factory.LoginAsync(tutor);
 
         (await studentClient.GetAsync($"/api/admin/companies/{company.Id}/checkin-qr")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await studentClient.PostAsync($"/api/admin/companies/{company.Id}/checkin-qr/rotate", null)).StatusCode
             .Should().Be(HttpStatusCode.Forbidden);
-        (await studentClient.GetAsync($"/api/tutor/companies/{company.Id}/checkin-qr")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await studentClient.PostAsync($"/api/tutor/companies/{company.Id}/checkin-qr/rotate", null)).StatusCode
-            .Should().Be(HttpStatusCode.Forbidden);
-
-        (await tutorClient.GetAsync($"/api/admin/companies/{company.Id}/checkin-qr")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await tutorClient.PostAsync($"/api/admin/companies/{company.Id}/checkin-qr/rotate", null)).StatusCode
-            .Should().Be(HttpStatusCode.Forbidden);
-
         (await ReloadAsync(company.Id)).CheckInQrToken.Should().Be(company.CheckInQrToken);
+
+        var admin = await Factory.LoginAsAdminAsync();
+        var missing = Guid.NewGuid();
+        (await admin.GetAsync($"/api/admin/companies/{missing}/checkin-qr")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await admin.PostAsync($"/api/admin/companies/{missing}/checkin-qr/rotate", null)).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }

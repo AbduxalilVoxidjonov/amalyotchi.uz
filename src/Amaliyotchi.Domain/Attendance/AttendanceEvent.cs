@@ -4,7 +4,7 @@ using Amaliyotchi.Domain.ValueObjects;
 
 namespace Amaliyotchi.Domain.Attendance;
 
-/// <summary>Har bir check-in/check-out urinishi — muvaffaqiyatsizi ham. Tyutor xaritasi va
+/// <summary>Har bir check-in/check-out urinishi — muvaffaqiyatsizi ham. Admin xaritasi va
 /// anti-fraud tahlil shu yozuvlardan quriladi. O'zgarmas; audit'dan istisno (o'zi tarix).</summary>
 public sealed class AttendanceEvent : BaseEntity, IAuditExempt
 {
@@ -34,7 +34,7 @@ public sealed class AttendanceEvent : BaseEntity, IAuditExempt
     public CheckInRejectReason RejectReason { get; private set; }
 
     /// <summary>Urinish paytida olingan selfi (<c>StoredFileKind.CheckInPhoto</c>). Rasm yuborilmagan bo'lsa — null.
-    /// Rad etilgan urinishning rasmi ham saqlanadi: tyutor shubhani shu bo'yicha tekshiradi.</summary>
+    /// Rad etilgan urinishning rasmi ham saqlanadi: admin shubhani shu bo'yicha tekshiradi.</summary>
     public Guid? PhotoFileId { get; private set; }
 
     /// <summary>Yuzni tasdiqlash ishlagan urinishda — selfi va etalon o'xshashligi (0–100; rad etilgan

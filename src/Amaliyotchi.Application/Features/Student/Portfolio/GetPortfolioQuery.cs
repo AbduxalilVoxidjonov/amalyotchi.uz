@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Amaliyotchi.Application.Features.Student.Portfolio;
 
 /// <summary><c>GET /api/student/portfolio?periodId=</c>: tanlangan davr bo'yicha davomat/kundalik statistikasi +
-/// <see cref="GradeCalculator"/> natijasi (tyutor/tavsifnoma ballari <see cref="PracticeGrade"/> dan) + talabaning barcha
+/// <see cref="GradeCalculator"/> natijasi (rahbar/tavsifnoma ballari <see cref="PracticeGrade"/> dan) + talabaning barcha
 /// davrlari ro'yxati. <c>periodId</c> berilmasa — sukut bo'yicha davr (<see cref="PeriodPurpose.Default"/>).
 /// Davr yo'q yoki begona <c>periodId</c> → 404. <c>pdfUrl</c> hozircha null.</summary>
 public sealed record GetPortfolioQuery(Guid? PeriodId = null) : IRequest<PortfolioDto>;
@@ -51,7 +51,7 @@ internal sealed class GetPortfolioQueryHandler(IApplicationDbContext db, ICurren
             var author = grade.FinalizedByUserId is { } byId
                 ? await db.Users.AsNoTracking().Where(u => u.Id == byId).Select(u => u.FullName).FirstOrDefaultAsync(cancellationToken)
                 : null;
-            conclusion = new PortfolioConclusionDto(grade.Conclusion, author ?? "Tyutor", grade.FinalizedAt!.Value);
+            conclusion = new PortfolioConclusionDto(grade.Conclusion, author ?? "Administrator", grade.FinalizedAt!.Value);
         }
 
         return new PortfolioDto(

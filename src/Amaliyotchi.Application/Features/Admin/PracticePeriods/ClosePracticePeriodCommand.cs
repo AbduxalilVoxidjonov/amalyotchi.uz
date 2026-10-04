@@ -6,7 +6,7 @@ using MediatR;
 namespace Amaliyotchi.Application.Features.Admin.PracticePeriods;
 
 /// <summary><c>POST /api/admin/practice-periods/{id}/close</c> → 200 <see cref="PracticePeriodDetail"/> (<c>status: closed</c>).
-/// Topilmasa → 404; allaqachon yopilgan → 409. Yopilgan davr talaba/tyutor oqimlaridan chiqadi (check-in to'xtaydi),
+/// Topilmasa → 404; allaqachon yopilgan → 409. Yopilgan davr talaba/admin oqimlaridan chiqadi (check-in to'xtaydi),
 /// tarix (davomat, kundalik, baho) saqlanadi.</summary>
 public sealed record ClosePracticePeriodCommand(Guid Id) : IRequest<PracticePeriodDetail>;
 

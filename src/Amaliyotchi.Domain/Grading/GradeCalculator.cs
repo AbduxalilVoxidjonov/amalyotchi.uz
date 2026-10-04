@@ -24,7 +24,7 @@ public static class GradeThresholds
 /// <summary>Hisoblangan ballar. <see cref="Grade"/> null — davomat yetarli emas (qayta topshiradi).</summary>
 /// <param name="AttendancePoints">0..40</param>
 /// <param name="ReportPoints">0..30</param>
-/// <param name="TutorPoints">0..20 (tyutor qo'ymagan bo'lsa 0)</param>
+/// <param name="TutorPoints">0..20 (rahbar bali qo'yilmagan bo'lsa 0)</param>
 /// <param name="ReferencePoints">0..10 (bo'lmasa 0)</param>
 /// <param name="Total">Ballar yig'indisi, 0..100</param>
 /// <param name="Grade">2..5 yoki null</param>
@@ -43,7 +43,7 @@ public sealed record GradeResult(
     public bool MustRetake => Grade is null;
 }
 
-/// <summary>Sof hisob: davomat 40% + hisobotlar 30% + tyutor 20% + tavsifnoma 10% → 100 ball → baho 2–5.</summary>
+/// <summary>Sof hisob: davomat 40% + hisobotlar 30% + rahbar 20% + tavsifnoma 10% → 100 ball → baho 2–5.</summary>
 public static class GradeCalculator
 {
     public static GradeResult Compute(

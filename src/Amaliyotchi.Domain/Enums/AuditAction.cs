@@ -56,7 +56,7 @@ public enum AuditAction
     GroupActivated = 40,
     GroupDeactivated = 41,
 
-    /// <summary>Admin tyutor yaratdi/tahrirladi, faol holatini o'zgartirdi, parolini tikladi
+    /// <summary>TARIXIY (tyutor roli olib tashlangan — yangi yozuv tushmaydi): admin tyutor yaratdi/tahrirladi, faol holatini o'zgartirdi, parolini tikladi
     /// yoki ko'lam (fakultet/kafedra/yo'nalish/guruh) biriktiruvlarini almashtirdi.</summary>
     TutorCreated = 42,
     TutorUpdated = 43,
@@ -133,5 +133,18 @@ public enum AuditAction
     FaceEnrollmentRejected = 73,
 
     /// <summary>Tyutor/admin etalonni bekor qildi (holat "none" — talaba qayta yuboradi).</summary>
-    FaceEnrollmentReset = 74
+    FaceEnrollmentReset = 74,
+
+    /// <summary>Bosh admin yangi admin yaratdi (<c>POST /api/admin/admins</c>). <c>changes</c> — <c>{ login, generatedPassword }</c>
+    /// (parolning o'zi yozilmaydi).</summary>
+    AdminCreated = 75,
+
+    /// <summary>Bosh admin admin ma'lumotlarini (FISH, telefon) tahrirladi.</summary>
+    AdminUpdated = 76,
+
+    /// <summary>Bosh admin adminni blokladi yoki faollashtirdi. <c>changes</c> — <c>{ isActive }</c>.</summary>
+    AdminStatusChanged = 77,
+
+    /// <summary>Bosh admin admin parolini tikladi (vaqtinchalik parol; refresh tokenlar bekor qilinadi).</summary>
+    AdminPasswordReset = 78
 }

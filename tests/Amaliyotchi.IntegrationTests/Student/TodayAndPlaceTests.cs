@@ -95,7 +95,7 @@ public sealed class TodayAndPlaceTests(ApiFixture fixture)
         await Factory.WithDbAsync(async db =>
         {
             var leave = Domain.Leave.LeaveRequest.Create(scene.Student.Id, scene.Period.Id, day, day, "Shifokor ko'rigi, ma'lumotnoma bor");
-            leave.Approve(scene.Tutor.Id, null, PracticeTime.At(day.AddDays(-1), new TimeOnly(12, 0)));
+            leave.Approve(scene.Admin.Id, null, PracticeTime.At(day.AddDays(-1), new TimeOnly(12, 0)));
             db.LeaveRequests.Add(leave);
             await db.SaveChangesAsync();
         });
@@ -199,7 +199,7 @@ public sealed class TodayAndPlaceTests(ApiFixture fixture)
     public async Task Place_ShartnomaFayli_BorBolsa()
     {
         var group = await Factory.CreateGroupAsync();
-        var tutor = await Factory.CreateTutorAsync(group);
+        var tutor = await Factory.CreateAdminAsync();
         var student = await Factory.CreateStudentAsync(group: group);
         var company = await Factory.CreateCompanyAsync();
         var period = await Factory.CreateActivePeriodAsync(group, tutor.Id);
@@ -233,9 +233,9 @@ public sealed class TodayAndPlaceTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Place_Tyutor_403()
+    public async Task Place_Admin_403()
     {
-        var tutor = await Factory.LoginAsTutorAsync();
-        (await tutor.GetAsync("/api/student/place")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var admin = await Factory.LoginAsAdminAsync();
+        (await admin.GetAsync("/api/student/place")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 }

@@ -13,6 +13,10 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options, IClock clock) 
 {
     public const string FacultyClaim = "faculty_id";
 
+    /// <summary>Bosh admin belgisi (<c>"true"</c>) — <c>SuperAdminOnly</c> siyosati shunga tayanadi. Faqat bosh adminda
+    /// yoziladi; belgi o'zgarsa stamp o'zgaradi (<see cref="UserSessionValidator.ComputeStamp(User)"/>) va eski token rad etiladi.</summary>
+    public const string SuperAdminClaim = "is_super_admin";
+
     /// <summary>JsonWebTokenHandler outbound mapping qilmaydi — ClaimTypes.Role ishlatilsa JWT ichiga
     /// uzun URI tushadi. Qisqa "role" ni JwtBearer (MapInboundClaims=true) ClaimTypes.Role ga o'zi xaritalaydi.
     /// "name" esa inbound map'da YO'Q — u AuthorizationSetup'da <c>NameClaimType</c> orqali sozlangan.</summary>
@@ -36,6 +40,9 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options, IClock clock) 
             // Parol/login/faollik o'zgarsa eski access tokenlar rad etiladi (AuthorizationSetup → OnTokenValidated).
             new(UserSessionValidator.StampClaim, UserSessionValidator.ComputeStamp(user))
         };
+
+        if (user.IsSuperAdmin)
+            claims.Add(new Claim(SuperAdminClaim, "true"));
 
         if (user.FacultyId is { } facultyId)
             claims.Add(new Claim(FacultyClaim, facultyId.ToString()));

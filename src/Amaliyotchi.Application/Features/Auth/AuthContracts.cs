@@ -3,9 +3,10 @@ using Amaliyotchi.Domain.Identity;
 
 namespace Amaliyotchi.Application.Features.Auth;
 
-/// <summary>Kontrakt v2: talaba uchun guruh/kurs ham keladi (StudentProfile ⟕ StudentGroup), admin/tyutorda
-/// bu maydonlar <c>null</c>. <c>HemisId</c> — talabada <c>StudentProfile.HemisId</c>, admin/tyutorda
-/// <c>User.HemisId</c> (ikkalasi ham login identifikatori sifatida ishlatiladi, shu DTO'da birlashtiriladi).</summary>
+/// <summary>Kontrakt v2: talaba uchun guruh/kurs ham keladi (StudentProfile ⟕ StudentGroup), adminda
+/// bu maydonlar <c>null</c>. <c>HemisId</c> — talabada <c>StudentProfile.HemisId</c>, adminda
+/// <c>User.HemisId</c> (ikkalasi ham login identifikatori sifatida ishlatiladi, shu DTO'da birlashtiriladi).
+/// <c>IsSuperAdmin</c> — bosh admin (adminlarni boshqaradi); talabada doim <c>false</c>.</summary>
 public sealed record UserSummaryDto(
     Guid Id,
     string FullName,
@@ -15,7 +16,8 @@ public sealed record UserSummaryDto(
     Guid? GroupId,
     string? GroupName,
     int? Course,
-    string? HemisId)
+    string? HemisId,
+    bool IsSuperAdmin)
 {
     /// <summary>Login/Refresh/Me/Telegram bitta joydan quradi — maydon qo'shilsa faqat shu yer o'zgaradi.
     /// Talaba uchun chaqiruvchi <c>Include(u => u.StudentProfile).ThenInclude(p => p.Group)</c> bilan yuklashi shart
@@ -32,7 +34,8 @@ public sealed record UserSummaryDto(
             profile?.StudentGroupId,
             profile?.Group?.Name,
             profile?.Group?.Course,
-            profile?.HemisId ?? user.HemisId);
+            profile?.HemisId ?? user.HemisId,
+            user.IsSuperAdmin);
     }
 }
 

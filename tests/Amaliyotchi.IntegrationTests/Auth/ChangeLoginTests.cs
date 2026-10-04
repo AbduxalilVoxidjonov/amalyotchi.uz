@@ -35,15 +35,15 @@ public sealed class ChangeLoginTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Available_BoshqaAdmin_Tyutor_Talaba_OchirilganHisob_Band()
+    public async Task Available_BoshqaAdmin_Talaba_OchirilganHisob_Band()
     {
         var admin = await Factory.LoginAsAdminAsync();
         var otherAdmin = await Factory.CreateAdminAsync();
-        var tutor = await Factory.CreateTutorAsync();
+        var tutor = await Factory.CreateAdminAsync();
         var student = await Factory.CreateStudentAsync();
         var studentHemis = await ProfileHemisIdAsync(student.Id);
 
-        var deleted = await Factory.CreateTutorAsync();
+        var deleted = await Factory.CreateAdminAsync();
         await Factory.WithDbAsync(async db =>
         {
             var user = await db.Users.FirstAsync(u => u.Id == deleted.Id);
@@ -82,9 +82,9 @@ public sealed class ChangeLoginTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Available_Tyutor_Talaba_403_Anonim_401()
+    public async Task Available_Talaba_403_Anonim_401()
     {
-        var tutor = await Factory.LoginAsTutorAsync();
+        var tutor = await Factory.LoginAsNewStudentAsync();
         (await tutor.GetAsync("/api/auth/login-available?login=123456")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
         var student = await Factory.LoginAsStudentAsync(await Factory.CreateStudentAsync());
@@ -192,11 +192,11 @@ public sealed class ChangeLoginTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task ChangeLogin_TyutorVaTalabaLogini_409()
+    public async Task ChangeLogin_AdminVaTalabaLogini_409()
     {
         var admin = await Factory.CreateAdminAsync();
         var client = await Factory.LoginAsync(admin);
-        var tutor = await Factory.CreateTutorAsync();
+        var tutor = await Factory.CreateAdminAsync();
         var student = await Factory.CreateStudentAsync();
         var studentHemis = await ProfileHemisIdAsync(student.Id);
 
@@ -214,14 +214,8 @@ public sealed class ChangeLoginTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task ChangeLogin_Tyutor_Talaba_403_Anonim_401()
+    public async Task ChangeLogin_Talaba_403_Anonim_401()
     {
-        var tutor = await Factory.CreateTutorAsync();
-        var tutorClient = await Factory.LoginAsync(tutor);
-        (await tutorClient.PostJsonAsync("/api/auth/change-login",
-                new { newLogin = TestClients.RandomHemisId(), currentPassword = tutor.Password }))
-            .StatusCode.Should().Be(HttpStatusCode.Forbidden);
-
         var student = await Factory.LoginAsStudentAsync(await Factory.CreateStudentAsync());
         (await student.PostJsonAsync("/api/auth/change-login",
                 new { newLogin = TestClients.RandomHemisId(), currentPassword = "Istalgan-Parol" }))

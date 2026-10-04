@@ -4,7 +4,7 @@ using Amaliyotchi.Domain.Exceptions;
 namespace Amaliyotchi.Domain.Faces;
 
 /// <summary>Talabaning etalon yuz rasmi ("Yuzni tasdiqlash"): har talabaga BITTA qator (yagona faol etalon).
-/// Talaba rozilik bilan selfi yuboradi → <see cref="FaceEnrollmentStatus.Pending"/>; tyutor tasdiqlaydi yoki rad etadi;
+/// Talaba rozilik bilan selfi yuboradi → <see cref="FaceEnrollmentStatus.Pending"/>; admin tasdiqlaydi yoki rad etadi;
 /// "reset" — qator o'chiriladi (holat "none", talaba qayta yuboradi). Tarix audit jurnalida.
 /// Check-in selfisi shu <see cref="Embedding"/> bilan solishtiriladi (pending ham, approved ham).</summary>
 public sealed class StudentFaceEnrollment : AuditableEntity
@@ -12,7 +12,7 @@ public sealed class StudentFaceEnrollment : AuditableEntity
     public const int RejectReasonMaxLength = 500;
 
     public const string AlreadyApprovedMessage =
-        "Yuz allaqachon tasdiqlangan. O'zgartirish uchun tyutoringizga murojaat qiling.";
+        "Yuz allaqachon tasdiqlangan. O'zgartirish uchun administratorga murojaat qiling.";
 
     private StudentFaceEnrollment() { }
 
@@ -34,7 +34,7 @@ public sealed class StudentFaceEnrollment : AuditableEntity
     public Guid? ReviewedByUserId { get; private set; }
     public string? RejectReason { get; private set; }
 
-    /// <summary>Check-in'da etalon sifatida ishlatiladimi (tyutor ko'rmagan bo'lsa ham — pending).</summary>
+    /// <summary>Check-in'da etalon sifatida ishlatiladimi (admin ko'rmagan bo'lsa ham — pending).</summary>
     public bool IsUsableReference => Status is FaceEnrollmentStatus.Pending or FaceEnrollmentStatus.Approved;
 
     public static StudentFaceEnrollment Submit(Guid studentUserId, Guid photoFileId, float[] embedding, DateTimeOffset now)

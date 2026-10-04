@@ -149,7 +149,7 @@ public sealed class AdminMessagesTests(ApiFixture fixture)
         max.StatusCode.Should().Be(HttpStatusCode.Created, await max.Content.ReadAsStringAsync());
         (await max.Content.ReadAsync<MessageSummary>())!.Text.Should().HaveLength(4000);
 
-        var tutor = await Factory.LoginAsTutorAsync();
+        var tutor = await Factory.LoginAsNewStudentAsync();
         (await tutor.PostJsonAsync(Url, new { text = "Salom", attachAppButton = false, audience = selected }))
             .StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await tutor.GetAsync($"{Url}/recipients")).StatusCode.Should().Be(HttpStatusCode.Forbidden);

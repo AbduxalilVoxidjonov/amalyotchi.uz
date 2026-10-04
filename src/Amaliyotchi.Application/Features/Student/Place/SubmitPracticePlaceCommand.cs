@@ -15,7 +15,7 @@ namespace Amaliyotchi.Application.Features.Student.Place;
 /// <summary><c>POST /api/student/place</c>: <c>{ tin }</c> → 201 <see cref="PracticePlaceDto"/>.
 /// Talaba korxona ma'lumotini QO'LDA kiritmaydi — faqat STIR yozadi, qolgani admin oldindan
 /// kiritgan yozuvdan olinadi (nom, manzil, koordinata, radius, rahbar). Ariza <c>Submitted</c>
-/// holatida tyutorga boradi; radius korxonanikidan olinadi.
+/// holatida adminga boradi; radius korxonanikidan olinadi.
 /// Ariza davri — davom etayotgan, bo'lmasa eng yaqin kelgusi davr (<see cref="PeriodPurpose.Enrollment"/>).
 /// STIR bilan faol korxona topilmasa → 404; ochiq (davom etayotgan/kelgusi) davr yo'q → 409; ariza allaqachon bor → 409
 /// (qayta ishlashga qaytarilgan bo'lsa — qayta yuboriladi).</summary>
@@ -25,11 +25,11 @@ public sealed record SubmitPracticePlaceCommand(string Tin) : IRequest<PracticeP
 public static class SubmitPlaceMessages
 {
     public const string NoPeriodMessage =
-        "Sizga faol amaliyot davri biriktirilmagan — tyutoringizga murojaat qiling.";
+        "Sizga faol amaliyot davri biriktirilmagan — administratorga murojaat qiling.";
     public const string PendingMessage =
-        "Arizangiz ko'rib chiqilmoqda — tyutor qaroridan keyin o'zgartirish mumkin.";
+        "Arizangiz ko'rib chiqilmoqda — administrator qaroridan keyin o'zgartirish mumkin.";
     public const string AlreadyApprovedMessage =
-        "Sizga allaqachon amaliyot joyi biriktirilgan. O'zgartirish uchun tyutoringizga murojaat qiling.";
+        "Sizga allaqachon amaliyot joyi biriktirilgan. O'zgartirish uchun administratorga murojaat qiling.";
 }
 
 internal sealed class SubmitPracticePlaceCommandHandler(

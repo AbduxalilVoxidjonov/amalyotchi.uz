@@ -220,7 +220,7 @@ public sealed class AdminStudentCreateTests(ApiFixture fixture)
     [Fact]
     public async Task Tyutor_403()
     {
-        var client = await Factory.LoginAsTutorAsync();
+        var client = await Factory.LoginAsNewStudentAsync();
 
         (await client.PostJsonAsync(Url, new { fullName = "X", hemisId = "123456", groupId = Guid.NewGuid() }))
             .StatusCode.Should().Be(HttpStatusCode.Forbidden);

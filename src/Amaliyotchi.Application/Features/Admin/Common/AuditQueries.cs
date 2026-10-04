@@ -5,7 +5,9 @@ using Amaliyotchi.Domain.Enums;
 namespace Amaliyotchi.Application.Features.Admin.Common;
 
 /// <summary>Kontrakt v2 <c>AuditEntry</c>: xom qiymatlar — kim (<c>userName</c>, <c>userRole</c>), amal (enum),
-/// qaysi yozuv (<c>entityName</c>/<c>entityId</c>), sabab va o'zgarishlar (JSON matni). Matnni frontend yasaydi.</summary>
+/// qaysi yozuv (<c>entityName</c>/<c>entityId</c>), sabab va o'zgarishlar (JSON matni). Matnni frontend yasaydi.
+/// <c>userRole</c> — <c>admin</c> | <c>student</c> | <c>tutor</c> (tarixiy: tyutor roli olib tashlangan, eski yozuvlarda
+/// bazada <c>2</c> qolgan — enum'da yo'q, shuning uchun satr sifatida SQL'da xaritalanadi).</summary>
 public sealed record AuditEntryDto(
     Guid Id,
     DateTimeOffset At,
@@ -16,7 +18,7 @@ public sealed record AuditEntryDto(
     string? Changes,
     Guid? UserId,
     string? UserName,
-    UserRole? UserRole);
+    string? UserRole);
 
 public static class AuditQueries
 {
@@ -36,5 +38,14 @@ public static class AuditQueries
                a.Changes,
                a.UserId,
                u != null ? u.FullName : null,
-               a.UserRole);
+               a.UserRole == null ? null
+                   : a.UserRole == UserRole.Admin ? AdminRole
+                   : a.UserRole == UserRole.Student ? StudentRole
+                   : LegacyTutorRole);
+
+    public const string AdminRole = "admin";
+    public const string StudentRole = "student";
+
+    /// <summary>Tarixiy rol (bazada <c>2</c>) — faqat audit jurnalidagi eski yozuvlar uchun.</summary>
+    public const string LegacyTutorRole = "tutor";
 }

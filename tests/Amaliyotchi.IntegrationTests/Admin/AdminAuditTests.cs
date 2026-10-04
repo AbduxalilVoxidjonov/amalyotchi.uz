@@ -15,7 +15,7 @@ public sealed class AdminAuditTests(ApiFixture fixture)
     [Fact]
     public async Task Audit_200_Shakl_YangisiBirinchi()
     {
-        var tutor = await Factory.CreateTutorAsync(fullName: "Audit Tyutor");
+        var tutor = await Factory.CreateAdminAsync();
         await Factory.LoginAsync(tutor); // loggedIn yozuvi
 
         var client = await Factory.LoginAsAdminAsync();
@@ -39,7 +39,7 @@ public sealed class AdminAuditTests(ApiFixture fixture)
     [Fact]
     public async Task Audit_ActionFiltri_VaQidiruv()
     {
-        var tutor = await Factory.CreateTutorAsync(fullName: "Audit Filtr Tyutor");
+        var tutor = await Factory.CreateAdminAsync("Audit Filtr Admin");
         await Factory.LoginAsync(tutor);
 
         var client = await Factory.LoginAsAdminAsync();
@@ -47,9 +47,9 @@ public sealed class AdminAuditTests(ApiFixture fixture)
         var byAction = await client.GetPagedAsync<AuditEntryDto>("/api/admin/audit?action=loggedIn&pageSize=50");
         byAction.Total.Should().BeGreaterThan(0);
         byAction.Items.Should().OnlyContain(a => a.Action == AuditAction.LoggedIn);
-        byAction.Items.Should().Contain(a => a.UserId == tutor.Id && a.UserName == "Audit Filtr Tyutor" && a.UserRole == UserRole.Tutor);
+        byAction.Items.Should().Contain(a => a.UserId == tutor.Id && a.UserName == "Audit Filtr Admin" && a.UserRole == "admin");
 
-        var byName = await client.GetPagedAsync<AuditEntryDto>("/api/admin/audit?q=audit%20filtr%20tyutor");
+        var byName = await client.GetPagedAsync<AuditEntryDto>("/api/admin/audit?q=audit%20filtr%20admin");
         byName.Total.Should().BeGreaterThan(0);
         byName.Items.Should().OnlyContain(a => a.UserId == tutor.Id);
 
@@ -68,9 +68,9 @@ public sealed class AdminAuditTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Audit_Tyutor_403()
+    public async Task Audit_Talaba_403()
     {
-        var client = await Factory.LoginAsTutorAsync();
+        var client = await Factory.LoginAsNewStudentAsync();
 
         (await client.GetAsync("/api/admin/audit")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }

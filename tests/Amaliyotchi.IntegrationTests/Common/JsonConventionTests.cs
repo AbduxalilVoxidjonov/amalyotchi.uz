@@ -11,11 +11,11 @@ public sealed class JsonConventionTests(ApiFixture fixture)
     [Fact]
     public async Task Javob_CamelCaseProperty_VaEnumCamelCaseString()
     {
-        var tutor = await fixture.Factory.CreateTutorAsync();
-        var (_, _) = await fixture.Factory.LoginWithResultAsync(tutor);
+        var admin = await fixture.Factory.CreateAdminAsync();
+        var (_, _) = await fixture.Factory.LoginWithResultAsync(admin);
 
         var response = await fixture.Factory.CreateClient()
-            .PostJsonAsync("/api/auth/login", new { tutor.HemisId, tutor.Password });
+            .PostJsonAsync("/api/auth/login", new { admin.HemisId, admin.Password });
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -26,8 +26,9 @@ public sealed class JsonConventionTests(ApiFixture fixture)
 
         var user = root.GetProperty("user");
         user.GetProperty("role").ValueKind.Should().Be(JsonValueKind.String, "enum raqam emas, string");
-        user.GetProperty("role").GetString().Should().Be("tutor");
-        user.GetProperty("facultyId").GetString().Should().Be(tutor.FacultyId!.Value.ToString());
+        user.GetProperty("role").GetString().Should().Be("admin");
+        user.GetProperty("isSuperAdmin").ValueKind.Should().Be(JsonValueKind.False);
+        user.GetProperty("facultyId").ValueKind.Should().Be(JsonValueKind.Null, "admin fakultetga biriktirilmaydi");
     }
 
     [Fact]

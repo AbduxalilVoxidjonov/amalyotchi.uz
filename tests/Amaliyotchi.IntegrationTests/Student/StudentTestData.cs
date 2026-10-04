@@ -15,7 +15,7 @@ namespace Amaliyotchi.IntegrationTests.Student;
 /// <summary>Talaba testlari uchun tayyor sahna: guruh → tyutor → talaba → korxona → davr → tasdiqlangan ariza → kirgan klient.</summary>
 public sealed record StudentScene(
     TestGroup Group,
-    TestUser Tutor,
+    TestUser Admin,
     TestUser Student,
     Company Company,
     PracticePeriod Period,
@@ -86,19 +86,19 @@ public static class StudentTestData
         int radiusM = 150)
     {
         var group = await factory.CreateGroupAsync();
-        var tutor = await factory.CreateTutorAsync(group);
+        var admin = await factory.CreateAdminAsync();
         var student = await factory.CreateStudentAsync(group: group);
         var company = await factory.CreateCompanyAsync(CompanyLat, CompanyLng, radiusM);
         var practicePeriod = period is null
-            ? await factory.CreatePeriodAtAsync(group, tutor.Id, day ?? factory.LocalToday())
-            : await period(group, tutor.Id);
+            ? await factory.CreatePeriodAtAsync(group, admin.Id, day ?? factory.LocalToday())
+            : await period(group, admin.Id);
 
         PracticeApplication? application = null;
         if (approve)
-            application = await factory.CreateApprovedApplicationAsync(student, practicePeriod, company, tutor.Id);
+            application = await factory.CreateApprovedApplicationAsync(student, practicePeriod, company, admin.Id);
 
         var client = await factory.LoginAsStudentAsync(student);
-        return new StudentScene(group, tutor, student, company, practicePeriod, application, client);
+        return new StudentScene(group, admin, student, company, practicePeriod, application, client);
     }
 
     /// <summary>Kontrakt <c>CheckinRequest</c>: API soati (muzlatilgan bo'lsa — o'sha moment) bo'yicha 2 soniya oldingi urinish

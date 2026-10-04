@@ -84,7 +84,7 @@ public sealed class AdminSettingsTests(ApiFixture fixture)
             var entry = audit.Items[0];
             entry.Action.Should().Be(AuditAction.SettingsChanged);
             entry.EntityName.Should().Be(nameof(AppSetting));
-            entry.UserRole.Should().Be(UserRole.Admin);
+            entry.UserRole.Should().Be("admin");
             entry.Changes.Should().Contain(SettingKeys.GeofenceRadius).And.Contain(newRadius);
         }
         finally
@@ -148,9 +148,9 @@ public sealed class AdminSettingsTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Sozlamalar_Tyutor_403_GetVaPut()
+    public async Task Sozlamalar_Talaba_403_GetVaPut()
     {
-        var client = await Factory.LoginAsTutorAsync();
+        var client = await Factory.LoginAsNewStudentAsync();
 
         (await client.GetAsync("/api/admin/settings")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await client.PutAsJsonAsync("/api/admin/settings", new { values = new { geofenceRadius = "300" } }))

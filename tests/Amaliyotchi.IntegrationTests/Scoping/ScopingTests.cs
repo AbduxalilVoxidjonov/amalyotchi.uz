@@ -8,34 +8,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.IntegrationTests.Scoping;
 
-/// <summary>Ma'lumot ko'lami: tyutor faqat o'z guruhlaridagi talabalarni ko'radi. HTTP darajasida
+/// <summary>Ma'lumot ko'lami: admin — hammasi, talaba — faqat o'zi. HTTP darajasida
 /// <c>GET /api/files/{id}</c> orqali (ko'lam <c>IScopeResolver</c> bilan hisoblanadi), DB darajasida <c>ScopeQueries</c> bilan.</summary>
 [Collection(ApiCollection.Name)]
 public sealed class ScopingTests(ApiFixture fixture)
 {
     private ApiFactory Factory => fixture.Factory;
-
-    [Fact]
-    public async Task Tyutor_OzGuruhiTalabasiniKoradi_BegonaGuruhnikiniKormaydi()
-    {
-        var groupA = await Factory.CreateGroupAsync();
-        var groupB = await Factory.CreateGroupAsync();
-        var tutorA = await Factory.CreateTutorAsync(groupA);
-        var tutorB = await Factory.CreateTutorAsync(groupB);
-        var studentA = await Factory.CreateStudentAsync(group: groupA);
-        var studentB = await Factory.CreateStudentAsync(group: groupB);
-
-        var fileA = await Factory.CreateStoredFileAsync(studentA.Id);
-        var fileB = await Factory.CreateStoredFileAsync(studentB.Id);
-
-        var clientA = await Factory.LoginAsync(tutorA);
-        (await clientA.GetAsync($"/api/files/{fileA.Id}")).StatusCode.Should().Be(HttpStatusCode.OK);
-        (await clientA.GetAsync($"/api/files/{fileB.Id}")).StatusCode.Should().Be(HttpStatusCode.NotFound, "begona guruh — 404, 403 emas");
-
-        var clientB = await Factory.LoginAsync(tutorB);
-        (await clientB.GetAsync($"/api/files/{fileB.Id}")).StatusCode.Should().Be(HttpStatusCode.OK);
-        (await clientB.GetAsync($"/api/files/{fileA.Id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
 
     [Fact]
     public async Task Talaba_FaqatOzFaylini_AdminHammasini()
@@ -70,37 +48,26 @@ public sealed class ScopingTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task ScopeQueries_TyutorKolami_FaqatOzGuruhlari()
+    public async Task ScopeQueries_Talaba_FaqatOzi_Admin_Hammasi_Bosh_Hechnarsa()
     {
-        var groupA = await Factory.CreateGroupAsync();
-        var groupB = await Factory.CreateGroupAsync();
-        var tutorA = await Factory.CreateTutorAsync(groupA);
-        var studentA = await Factory.CreateStudentAsync(group: groupA);
-        var studentB = await Factory.CreateStudentAsync(group: groupB);
+        var group = await Factory.CreateGroupAsync();
+        var studentA = await Factory.CreateStudentAsync(group: group);
+        var studentB = await Factory.CreateStudentAsync(group: group);
 
         await Factory.WithDbAsync(async db =>
         {
-            var groupIds = await db.TutorAssignments
-                .Where(a => a.TutorUserId == tutorA.Id && a.IsActive)
-                .Select(a => a.StudentGroupId)
-                .ToListAsync();
-            var studentIds = await db.StudentProfiles
-                .Where(p => groupIds.Contains(p.StudentGroupId))
-                .Select(p => p.UserId)
-                .ToListAsync();
-            var scope = DataScope.ForTutor(tutorA.Id, groupIds, studentIds);
+            var self = DataScope.ForStudent(studentA.Id);
+            (await db.StudentProfiles.InScope(self).Select(p => p.UserId).SingleAsync()).Should().Be(studentA.Id);
+            (await db.GetScopedStudentAsync(self, studentA.Id)).UserId.Should().Be(studentA.Id);
+            var act = () => db.GetScopedStudentAsync(self, studentB.Id);
+            await act.Should().ThrowAsync<NotFoundException>("ko'lamdan tashqari — 404");
 
-            var visible = await db.StudentProfiles.InScope(scope).Select(p => p.UserId).ToListAsync();
-            visible.Should().Contain(studentA.Id).And.NotContain(studentB.Id);
+            var admin = DataScope.Unrestricted(Guid.NewGuid());
+            var visible = await db.StudentProfiles.InScope(admin).Select(p => p.UserId).ToListAsync();
+            visible.Should().Contain([studentA.Id, studentB.Id]);
 
-            (await db.GetScopedStudentAsync(scope, studentA.Id)).UserId.Should().Be(studentA.Id);
-            var act = () => db.GetScopedStudentAsync(scope, studentB.Id);
-            await act.Should().ThrowAsync<NotFoundException>();
-
-            (await db.DailyAttendances.InScope(scope).CountAsync()).Should().Be(0, "davomat yo'q, lekin so'rov tarjima qilinadi");
+            (await db.DailyAttendances.InScope(self).CountAsync()).Should().Be(0, "davomat yo'q, lekin so'rov tarjima qilinadi");
             (await db.StudentProfiles.InScope(DataScope.Empty).AnyAsync()).Should().BeFalse();
-            (await db.StudentProfiles.InScope(DataScope.ForStudent(studentB.Id)).Select(p => p.UserId).SingleAsync())
-                .Should().Be(studentB.Id);
         });
     }
 }

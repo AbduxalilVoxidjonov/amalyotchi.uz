@@ -133,9 +133,9 @@ public sealed class CheckOutTests(ApiFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Tyutor_403()
+    public async Task Admin_403()
     {
-        var tutor = await Factory.LoginAsTutorAsync();
-        (await tutor.PostJsonAsync("/api/student/checkout", Factory.Geo())).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var admin = await Factory.LoginAsAdminAsync();
+        (await admin.PostJsonAsync("/api/student/checkout", Factory.Geo())).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 }

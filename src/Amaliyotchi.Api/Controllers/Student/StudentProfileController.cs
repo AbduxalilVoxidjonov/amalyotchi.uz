@@ -11,7 +11,7 @@ namespace Amaliyotchi.Api.Controllers.Student;
 [Authorize(Policy = Policies.StudentOnly)]
 public sealed class StudentProfileController(ISender sender) : ControllerBase
 {
-    /// <summary>Talaba kabineti: akademik ma'lumot, biriktirilgan tyutor, Telegram/parol holati va sukut bo'yicha
+    /// <summary>Talaba kabineti: akademik ma'lumot, Telegram/parol holati va sukut bo'yicha
     /// davrdagi amaliyot xulosasi (korxona, o'tgan ish kunlari, davomat, shubhali kunlar, joriy ball/baho).
     /// Davr yo'q bo'lsa <c>practice = null</c>.</summary>
     [HttpGet]

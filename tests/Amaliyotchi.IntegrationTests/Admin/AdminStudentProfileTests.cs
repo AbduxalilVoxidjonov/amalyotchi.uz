@@ -1,14 +1,14 @@
 using System.Net;
 using Amaliyotchi.Application.Features.Admin.Common;
 using Amaliyotchi.Application.Features.Admin.Students;
-using Amaliyotchi.Application.Features.Tutor.Diaries;
-using Amaliyotchi.Application.Features.Tutor.Students;
+using Amaliyotchi.Application.Features.Supervision.Diaries;
+using Amaliyotchi.Application.Features.Supervision.Students;
 using Amaliyotchi.Domain.Diary;
 using Amaliyotchi.Domain.Enums;
 using Amaliyotchi.Domain.Practice;
 using Amaliyotchi.Domain.Students;
 using Amaliyotchi.IntegrationTests.Infrastructure;
-using Amaliyotchi.IntegrationTests.Tutor;
+using Amaliyotchi.IntegrationTests.Supervision;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,13 +22,13 @@ public sealed class AdminStudentProfileTests(ApiFixture fixture)
     private ApiFactory Factory => fixture.Factory;
 
     [Fact]
-    public async Task Profil_200_TyutorKafedraTelegramVaUmumiyBloklar()
+    public async Task Profil_200_KafedraTelegramVaUmumiyBloklar()
     {
-        var s = await Factory.CreateTutorScenarioAsync();
+        var s = await Factory.CreateAdminScenarioAsync();
         var days = await Factory.PastWorkDaysAsync(s.Period, 3);
         await Factory.AddAttendanceAsync(s.Student, s.Period, days[0]);
         await Factory.AddAttendanceAsync(s.Student, s.Period, days[1], late: true);
-        await Factory.AddDiaryAsync(s.Student, s.Period, days[0], s.Tutor.Id, score: 5);
+        await Factory.AddDiaryAsync(s.Student, s.Period, days[0], s.Admin.Id, score: 5);
 
         var admin = await Factory.LoginAsAdminAsync();
         var response = await admin.GetAsync($"/api/admin/students/{s.Student.Id}");
@@ -41,13 +41,12 @@ public sealed class AdminStudentProfileTests(ApiFixture fixture)
         detail.Department.Should().NotBeNullOrEmpty();
         detail.TelegramLinked.Should().BeTrue();
         detail.AdminStatus.Should().Be(AdminStudentStatus.Flagged, "uch kunlik davrda davomat 70% dan past");
-        detail.Tutor.Should().NotBeNull();
-        detail.Tutor!.Id.Should().Be(s.Tutor.Id);
-        detail.Tutor.FullName.Should().Be(s.Tutor.FullName);
+        (await (await admin.GetAsync($"/api/admin/students/{s.Student.Id}")).Content.ReadAsStringAsync())
+            .Should().NotContain("\"tutor\":", "tyutor maydoni olib tashlangan");
 
         // Tyutor profilidagi bloklar — bir xil qiymatlar
-        var fromTutor = (await (await s.Client.GetAsync($"/api/tutor/students/{s.Student.Id}")).Content
-            .ReadAsync<TutorStudentDetail>())!;
+        var fromTutor = (await (await s.Client.GetAsync($"/api/admin/students/{s.Student.Id}")).Content
+            .ReadAsync<StudentDetail>())!;
 
         detail.Id.Should().Be(fromTutor.Id);
         detail.Name.Should().Be(fromTutor.Name);
@@ -68,7 +67,7 @@ public sealed class AdminStudentProfileTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Profil_TyutorBiriktirilmagan_VaTelegramsizTalaba_Ham_Korinadi()
+    public async Task Profil_TelegramsizTalaba_Ham_Korinadi()
     {
         var group = await Factory.CreateGroupAsync();
         var student = await Factory.CreateUnlinkedStudentAsync(group, "Ulanmagan Profil");
@@ -78,7 +77,6 @@ public sealed class AdminStudentProfileTests(ApiFixture fixture)
             .ReadAsync<AdminStudentDetail>())!;
 
         detail.Name.Should().Be("Ulanmagan Profil");
-        detail.Tutor.Should().BeNull("guruhga tyutor biriktirilmagan");
         detail.TelegramLinked.Should().BeFalse();
         detail.AdminStatus.Should().Be(AdminStudentStatus.Unlinked);
         detail.Period.Should().BeNull();
@@ -89,21 +87,21 @@ public sealed class AdminStudentProfileTests(ApiFixture fixture)
     [Fact]
     public async Task Davomat_VaKundaliklar_TyutorEndpointi_Bilan_BirXil()
     {
-        var s = await Factory.CreateTutorScenarioAsync();
+        var s = await Factory.CreateAdminScenarioAsync();
         var days = await Factory.PastWorkDaysAsync(s.Period, 2);
         await Factory.AddAttendanceAsync(s.Student, s.Period, days[0]);
-        await Factory.AddDiaryAsync(s.Student, s.Period, days[0], s.Tutor.Id, score: 4);
+        await Factory.AddDiaryAsync(s.Student, s.Period, days[0], s.Admin.Id, score: 4);
 
         var admin = await Factory.LoginAsAdminAsync();
 
         var adminDays = (await (await admin.GetAsync($"/api/admin/students/{s.Student.Id}/attendance")).Content
             .ReadAsync<List<StudentAttendanceDay>>())!;
-        var tutorDays = (await (await s.Client.GetAsync($"/api/tutor/students/{s.Student.Id}/attendance")).Content
+        var tutorDays = (await (await s.Client.GetAsync($"/api/admin/students/{s.Student.Id}/attendance")).Content
             .ReadAsync<List<StudentAttendanceDay>>())!;
         adminDays.Should().NotBeEmpty().And.BeEquivalentTo(tutorDays);
 
         var adminDiaries = (await (await admin.GetAsync($"/api/admin/students/{s.Student.Id}/diaries")).Content
-            .ReadAsync<List<TutorDiaryEntry>>())!;
+            .ReadAsync<List<DiaryReviewEntry>>())!;
         adminDiaries.Should().HaveCount(1);
         adminDiaries[0].Score.Should().Be(4);
     }
@@ -111,7 +109,7 @@ public sealed class AdminStudentProfileTests(ApiFixture fixture)
     [Fact]
     public async Task Davomat_TeskariOraliq_400()
     {
-        var s = await Factory.CreateTutorScenarioAsync();
+        var s = await Factory.CreateAdminScenarioAsync();
         var admin = await Factory.LoginAsAdminAsync();
 
         var response = await admin.GetAsync(
@@ -123,7 +121,7 @@ public sealed class AdminStudentProfileTests(ApiFixture fixture)
     [Fact]
     public async Task Kundalikni_Baholash_Admin_Ham_Qila_Oladi()
     {
-        var s = await Factory.CreateTutorScenarioAsync();
+        var s = await Factory.CreateAdminScenarioAsync();
         var days = await Factory.PastWorkDaysAsync(s.Period, 2);
         var entry = await Factory.AddDiaryAsync(s.Student, s.Period, days[0]);
         var second = await Factory.AddDiaryAsync(s.Student, s.Period, days[1]);
@@ -133,7 +131,7 @@ public sealed class AdminStudentProfileTests(ApiFixture fixture)
         var scored = await admin.PostJsonAsync(
             $"/api/admin/diaries/{entry.Id}/review", new { action = "score", score = 5, comment = "Ajoyib" });
         scored.StatusCode.Should().Be(HttpStatusCode.OK);
-        var dto = (await scored.Content.ReadAsync<TutorDiaryEntry>())!;
+        var dto = (await scored.Content.ReadAsync<DiaryReviewEntry>())!;
         dto.Status.Should().Be(DiaryStatus.Approved);
         dto.Score.Should().Be(5);
         dto.Comment.Should().Be("Ajoyib");
@@ -144,7 +142,7 @@ public sealed class AdminStudentProfileTests(ApiFixture fixture)
         detail.Diary.ScoredCount.Should().Be(1);
         detail.Diary.Avg.Should().Be(5);
 
-        // Ko'rib chiqilgani qayta baholanmaydi; validatsiya tyutornikidek.
+        // Ko'rib chiqilgani qayta baholanmaydi; validatsiya o'zgarmagan.
         (await admin.PostJsonAsync($"/api/admin/diaries/{entry.Id}/review", new { action = "approve" }))
             .StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await admin.PostJsonAsync($"/api/admin/diaries/{second.Id}/review", new { action = "score", score = 7 }))
@@ -155,23 +153,24 @@ public sealed class AdminStudentProfileTests(ApiFixture fixture)
         var rewrite = await admin.PostJsonAsync(
             $"/api/admin/diaries/{second.Id}/review", new { action = "rewrite", comment = "Batafsilroq yozing" });
         rewrite.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await rewrite.Content.ReadAsync<TutorDiaryEntry>())!.Status.Should().Be(DiaryStatus.Rewrite);
+        (await rewrite.Content.ReadAsync<DiaryReviewEntry>())!.Status.Should().Be(DiaryStatus.Rewrite);
 
         // Audit: tekshiruvchi — admin.
         await Factory.WithDbAsync(async db =>
             (await db.AuditLogs.CountAsync(l => l.Action == AuditAction.DiaryReviewed
                 && (l.EntityId == entry.Id.ToString() || l.EntityId == second.Id.ToString()))).Should().Be(2));
 
-        // Tyutor admin yo'liga kira olmaydi (o'z talabasi bo'lsa ham) — o'z endpoint'i bor.
+        // Talaba admin yo'liga kira olmaydi.
         var third = await Factory.AddDiaryAsync(s.Student, s.Period, Factory.Today());
-        (await s.Client.PostJsonAsync($"/api/admin/diaries/{third.Id}/review", new { action = "approve" }))
+        var studentClient = await Factory.LoginAsStudentAsync(s.Student);
+        (await studentClient.PostJsonAsync($"/api/admin/diaries/{third.Id}/review", new { action = "approve" }))
             .StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]
-    public async Task NotogriId_404_Tyutor_403()
+    public async Task NotogriId_404_Talaba_403()
     {
-        var s = await Factory.CreateTutorScenarioAsync();
+        var s = await Factory.CreateAdminScenarioAsync();
         var admin = await Factory.LoginAsAdminAsync();
 
         foreach (var url in new[]
@@ -184,8 +183,9 @@ public sealed class AdminStudentProfileTests(ApiFixture fixture)
             (await admin.GetAsync(url)).StatusCode.Should().Be(HttpStatusCode.NotFound, url);
         }
 
-        // Tyutor admin endpoint'iga kira olmaydi (o'z talabasi bo'lsa ham).
-        (await s.Client.GetAsync($"/api/admin/students/{s.Student.Id}")).StatusCode
+        // Talaba (o'zi haqida bo'lsa ham) admin endpoint'iga kira olmaydi.
+        var studentClient = await Factory.LoginAsStudentAsync(s.Student);
+        (await studentClient.GetAsync($"/api/admin/students/{s.Student.Id}")).StatusCode
             .Should().Be(HttpStatusCode.Forbidden);
     }
 }

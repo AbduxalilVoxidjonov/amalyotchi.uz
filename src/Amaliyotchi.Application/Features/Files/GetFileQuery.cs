@@ -11,8 +11,7 @@ namespace Amaliyotchi.Application.Features.Files;
 public sealed record FileDownloadDto(StoredFile File, Stream Content, long Length);
 
 /// <summary><c>GET /api/files/{id}</c>. Ko'lam: shablon — hamma; admin — hammasi; talaba — o'z fayllari
-/// (o'zi yuklagan yoki o'z arizasi/kundaligi/ruxsati/check-in selfisiga biriktirilgan);
-/// tyutor — ko'lamdagi talabalar fayllari.
+/// (o'zi yuklagan yoki o'z arizasi/kundaligi/ruxsati/check-in selfisiga biriktirilgan).
 /// Ko'lamdan tashqari yoki yo'q fayl — 404 (mavjudligi oshkor qilinmaydi).</summary>
 public sealed record GetFileQuery(Guid FileId) : IRequest<FileDownloadDto>;
 

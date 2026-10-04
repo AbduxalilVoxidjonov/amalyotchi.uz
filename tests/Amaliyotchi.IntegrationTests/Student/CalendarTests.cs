@@ -107,9 +107,9 @@ public sealed class CalendarTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Tyutor_403()
+    public async Task Admin_403()
     {
-        var tutor = await Factory.LoginAsTutorAsync();
-        (await tutor.GetAsync("/api/student/calendar")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var admin = await Factory.LoginAsAdminAsync();
+        (await admin.GetAsync("/api/student/calendar")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 }
