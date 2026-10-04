@@ -20,7 +20,9 @@ export type SettingKey =
   | 'checkinPhotoRequired'
   | 'checkinQrRequired'
   | 'maxStudentsPerCompany'
-  | 'diaryPdfRequired';
+  | 'diaryPdfRequired'
+  | 'faceVerificationEnabled'
+  | 'faceMatchThreshold';
 
 export interface Setting {
   /** `SettingKey` yoki backend'ning yangi (frontend hali bilmaydigan) kaliti. */
@@ -74,6 +76,8 @@ export const UNIT_LABEL: Record<string, string> = {
   m: 'm',
   min: 'daqiqa',
   chars: 'belgi',
+  percent: '%',
+  '%': '%',
 };
 
 export const DOC_TEMPLATE_KIND_LABEL: Record<DocTemplateKind, string> = {

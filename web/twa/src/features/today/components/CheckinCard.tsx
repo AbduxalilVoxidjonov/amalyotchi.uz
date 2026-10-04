@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Button, Card, Eyebrow, FactGrid, type FactItem } from '@/shared/ui';
+import { AppLink, Button, Card, Eyebrow, FactGrid, type FactItem } from '@/shared/ui';
 import { formatDate, formatMeters, formatTime } from '@/shared/lib/format';
 import type { CheckinFlow, CheckinMode } from '../hooks';
 import { PHOTO_ACCEPT } from '../photo';
@@ -34,7 +34,9 @@ export function CheckinCard({ today, mode, flow }: CheckinCardProps) {
   const cameraRef = useRef<HTMLInputElement>(null);
   // Sozlamalar (TodayDto `checkin`): flag yo'q bo'lsa — ikkalasi ham majburiy (backend sukuti `true`).
   const qrRequired = isQrRequired(checkin.qrRequired);
-  const photoRequired = checkin.photoRequired !== false;
+  // v3.27: yuz tekshiruvi yoqilgan bo'lsa selfi har doim majburiy.
+  const faceRequired = checkin.faceRequired === true;
+  const photoRequired = checkin.photoRequired !== false || faceRequired;
   const inFlow = flow.phase !== 'idle' && flow.phase !== 'done';
   const selfieStep = flow.phase === 'capture' || flow.phase === 'preview';
   const copy = COPY[mode];
@@ -94,12 +96,17 @@ export function CheckinCard({ today, mode, flow }: CheckinCardProps) {
               {flow.error}
             </p>
           )}
+          {flow.faceEnrollNeeded && (
+            <Button asChild variant="secondary" radius="md2" block className={styles.faceLink}>
+              <AppLink to="/face">Yuzni tasdiqlash</AppLink>
+            </Button>
+          )}
           <Button
             variant="checkin"
             tone={mode === 'checkout' ? 'dark' : 'accent'}
             className={styles.button}
             onClick={() => {
-              flow.start(mode, { qrRequired, photoRequired });
+              flow.start(mode, { qrRequired, photoRequired, faceRequired });
               if (!qrRequired) openCamera();
             }}
           >

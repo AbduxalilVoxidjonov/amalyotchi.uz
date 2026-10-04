@@ -2,6 +2,7 @@ import { http, HttpResponse, type HttpHandler } from 'msw';
 import { STUDENT_ENDPOINTS } from '@/shared/api/endpoints';
 import { problem, requireBearer } from '@/mocks/problem';
 import { setMockPlace, setPlaceEnrollmentPeriod } from '@/features/place/mocks';
+import { mockFace } from '@/features/face/mocks';
 import { MOCK_AUTUMN_PERIOD, MOCK_GAP_DATE, MOCK_SPRING_PERIOD } from '@/features/period/mocks';
 import { periodPhase } from '@/features/period/types';
 import { formatDate } from '@/shared/lib/format';
@@ -42,6 +43,7 @@ function initialToday(): TodayDto {
       // Sozlamalar ko'zgusi: `mockCheckinPhotoRequired` (false) va `checkinQrRequired` (backend sukuti true).
       photoRequired: false,
       qrRequired: true,
+      faceRequired: false,
     },
     place: {
       company: 'Tech Solutions MChJ',
@@ -95,6 +97,61 @@ export const QR_INVALID_MESSAGE = 'QR kod bu amaliyot joyiga tegishli emas.';
 function qrRejection(qr: string | null): Response | null {
   if (qr === null || qr === MOCK_CHECKIN_QR) return null;
   return problem(409, 'Ziddiyat', QR_INVALID_MESSAGE);
+}
+
+/** Yuz tekshiruvi xabarlari (backend `CheckInRejectReason.Message()` bilan bir xil ma'noda). */
+export const FACE_REJECT_MESSAGES = {
+  faceNotEnrolled:
+    'Yuz rasmingiz hali tasdiqlanmagan. Avval yuzingizni tasdiqlash uchun rasm yuboring.',
+  faceNotDetected: "Selfida yuz topilmadi. Yuzingiz aniq ko'rinadigan qilib qayta suratga oling.",
+  faceMismatch: 'Selfidagi yuz tasdiqlangan rasmingizga mos kelmadi. Qayta suratga oling.',
+} as const;
+
+/** Mock yuz solishtirish natijasi (testda `setFaceCheck`). */
+let mockFaceResult: 'match' | 'mismatch' | 'notDetected' = 'match';
+
+/**
+ * Sozlama `faceVerificationEnabled` ko'zgusi: `today.checkin.faceRequired` (va selfi majburiy) + solishtirish natijasi.
+ * Etalon holati `features/face/mocks` (`setMockFace`) da.
+ */
+export function setFaceCheck({
+  required = true,
+  result = 'match',
+}: {
+  required?: boolean;
+  result?: 'match' | 'mismatch' | 'notDetected';
+}) {
+  mockFaceResult = result;
+  mockCheckinPhotoRequired = required || mockCheckinPhotoRequired;
+  mockToday = {
+    ...mockToday,
+    checkin: {
+      ...mockToday.checkin,
+      faceRequired: required,
+      photoRequired: required || mockToday.checkin.photoRequired === true,
+    },
+  };
+}
+
+/** Yuz tekshiruvi (selfi bor deb hisoblanadi) → 400/409 `rejectReason` bilan; aks holda null. */
+function faceRejection(): Response | null {
+  if (!mockToday.checkin.faceRequired) return null;
+  if (mockFace.status !== 'approved') {
+    return problem(400, "Noto'g'ri amal", FACE_REJECT_MESSAGES.faceNotEnrolled, {
+      rejectReason: 'faceNotEnrolled',
+    });
+  }
+  if (mockFaceResult === 'notDetected') {
+    return problem(400, "Noto'g'ri amal", FACE_REJECT_MESSAGES.faceNotDetected, {
+      rejectReason: 'faceNotDetected',
+    });
+  }
+  if (mockFaceResult === 'mismatch') {
+    return problem(409, 'Ziddiyat', FACE_REJECT_MESSAGES.faceMismatch, {
+      rejectReason: 'faceMismatch',
+    });
+  }
+  return null;
 }
 
 /** Backend sozlamasi `diaryPdfRequired` ko'zgusi — testda `setDiaryPdfRequired(true)` bilan yoqiladi. */
@@ -160,6 +217,7 @@ function periodRejection(): Response | null {
 export function resetTodayMocks() {
   mockToday = initialToday();
   mockCheckinPhotoRequired = false;
+  mockFaceResult = 'match';
   lastCheckinPhoto = null;
   lastCheckinQr = null;
 }
@@ -285,6 +343,8 @@ export const todayHandlers: HttpHandler[] = [
     }
     const qrInvalid = qrRejection(body.qr);
     if (qrInvalid) return qrInvalid;
+    const faceInvalid = faceRejection();
+    if (faceInvalid) return faceInvalid;
     lastCheckinQr = body.qr;
     const distanceM = Math.round(
       distanceMeters(body.lat, body.lng, MOCK_PLACE.lat, MOCK_PLACE.lng),
@@ -333,6 +393,8 @@ export const todayHandlers: HttpHandler[] = [
     }
     const qrInvalid = qrRejection(body.qr);
     if (qrInvalid) return qrInvalid;
+    const faceInvalid = faceRejection();
+    if (faceInvalid) return faceInvalid;
     lastCheckinQr = body.qr;
     const distanceM = Math.round(
       distanceMeters(body.lat, body.lng, MOCK_PLACE.lat, MOCK_PLACE.lng),

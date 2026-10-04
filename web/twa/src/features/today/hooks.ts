@@ -82,6 +82,8 @@ export interface CheckinRequirements {
   qrRequired: boolean;
   /** `checkin.photoRequired` — yo'q bo'lsa `true` ("Rasmsiz davom etish" ko'rsatilmaydi). */
   photoRequired: boolean;
+  /** v3.27 `today.checkin.faceRequired` — selfi etalon bilan solishtiriladi (selfi majburiy). Yo'q → `false`. */
+  faceRequired: boolean;
 }
 
 /** Muvaffaqiyatli belgilanish: server qaytargan yangi TodayDto (vaqt, holat, masofa). */
@@ -115,8 +117,10 @@ export interface CheckinFlow {
   pending: boolean;
   /** Umumiy xato: tarmoq, server, eskirgan ekran (oyna yopilgan, allaqachon belgilangan …). */
   error: string | null;
-  /** Rasmga oid xato: format, hajm, "rasm majburiy". */
+  /** Rasmga oid xato: format, hajm, "rasm majburiy", yuz mos kelmadi / topilmadi. */
   photoError: string | null;
+  /** Server `faceNotEnrolled` qaytardi — `error` bilan birga etalon yuborish sahifasiga (`/face`) havola. */
+  faceEnrollNeeded: boolean;
   /** `done` bosqichida — server javobi. */
   result: CheckinResult | null;
   /**
@@ -147,7 +151,11 @@ export interface CheckinFlow {
 /** Joylashuv shu muddatdan eski bo'lsa qayta so'raladi (selfie uzoq olinishi mumkin). */
 const POSITION_MAX_AGE_MS = 90_000;
 
-const DEFAULT_REQUIREMENTS: CheckinRequirements = { qrRequired: true, photoRequired: true };
+const DEFAULT_REQUIREMENTS: CheckinRequirements = {
+  qrRequired: true,
+  photoRequired: true,
+  faceRequired: false,
+};
 
 /**
  * Davomat oqimi (QR sahifasi): **1) QR → 2) selfi (yuz) → 3) joylashuv → yuborish**.
@@ -174,6 +182,7 @@ export function useCheckinFlow(): CheckinFlow {
   const [preparing, setPreparing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [faceEnrollNeeded, setFaceEnrollNeeded] = useState(false);
   const [result, setResult] = useState<CheckinResult | null>(null);
 
   // Har bir urinish o'z raqamiga ega — kechikkan async javoblar eskirgan bo'lsa e'tiborsiz qoladi.
@@ -318,6 +327,7 @@ export function useCheckinFlow(): CheckinFlow {
     setPreparing(false);
     setError(null);
     setPhotoError(null);
+    setFaceEnrollNeeded(false);
     setQrError(null);
     setLocationError(null);
     setQrSafely(null);
@@ -331,7 +341,12 @@ export function useCheckinFlow(): CheckinFlow {
 
   const start = useCallback(
     (next: CheckinMode, reqs: Partial<CheckinRequirements> = {}) => {
-      const resolved: CheckinRequirements = { ...DEFAULT_REQUIREMENTS, ...reqs };
+      const merged: CheckinRequirements = { ...DEFAULT_REQUIREMENTS, ...reqs };
+      // Yuz tekshiruvi selfisiz bo'lmaydi.
+      const resolved: CheckinRequirements = {
+        ...merged,
+        photoRequired: merged.photoRequired || merged.faceRequired,
+      };
       resetAttempt();
       setMode(next);
       setRequirements(resolved);
@@ -438,6 +453,22 @@ export function useCheckinFlow(): CheckinFlow {
             setLocation('idle');
             setPhase('capture');
             return;
+          case 'face':
+            if (verdict.faceReason === 'faceNotEnrolled') {
+              // Tasdiqlangan etalon yo'q — urinish to'xtatiladi, `/face` ga havola ko'rsatiladi.
+              resetAttempt();
+              setError(verdict.message);
+              setFaceEnrollNeeded(true);
+              setPhase('idle');
+              return;
+            }
+            // Selfida yuz yo'q / mos kelmadi — selfi qayta olinadi (QR saqlanadi).
+            setPhotoError(verdict.message);
+            setPhotoSafely(null);
+            skipPhotoRef.current = false;
+            setLocation('idle');
+            setPhase('capture');
+            return;
           case 'location':
             setLocation('error');
             setLocationError(verdict.message);
@@ -489,6 +520,7 @@ export function useCheckinFlow(): CheckinFlow {
     pending: toggle.isPending,
     error,
     photoError,
+    faceEnrollNeeded,
     result,
     start,
     scanQr,

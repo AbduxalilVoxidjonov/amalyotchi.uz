@@ -3,7 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Avatar, LoadingState } from '@/shared/ui';
 import { useAuthStore } from '@/shared/auth/store';
 import { requestWriteAccessOnce } from '@/shared/auth/telegram';
-import { crumbFor, navItemForPath } from '../nav';
+import { crumbFor, navItemForPath, pageTitleForPath } from '../nav';
 import styles from './AppShell.module.css';
 import { TabBar } from './TabBar';
 
@@ -13,11 +13,11 @@ import { TabBar } from './TabBar';
  * Avatar — faqat ko'rinish (havola emas); profilga pastki "Profil" tabi orqali kiriladi.
  * Sarlavha nav'dan avtomatik (SPEC-NAV 6: title = activeNav.label).
  */
-export function AppShell() {
+export function AppShell({ locked = false }: { locked?: boolean }) {
   const { pathname } = useLocation();
   const user = useAuthStore((s) => s.user);
   const nav = navItemForPath(pathname);
-  const title = nav?.label ?? 'Amaliyotchi';
+  const title = nav?.label ?? pageTitleForPath(pathname) ?? 'Amaliyotchi';
 
   // Sessiya bor (shell faqat kirgandan keyin chiziladi) — bot xabar yubora olishi uchun ruxsat so'rovi
   // (bir marta, Telegram 6.9+ da, ruxsat hali berilmagan bo'lsa).
@@ -26,8 +26,8 @@ export function AppShell() {
   }, []);
 
   useEffect(() => {
-    document.title = nav ? `${nav.label} · Amaliyotchi` : 'Amaliyotchi';
-  }, [nav]);
+    document.title = title === 'Amaliyotchi' ? title : `${title} · Amaliyotchi`;
+  }, [title]);
 
   return (
     <div className={styles.shell}>
@@ -43,7 +43,8 @@ export function AppShell() {
           <Outlet />
         </Suspense>
       </main>
-      <TabBar />
+      {/* Yuz darvozasi: etalon yuborilmaguncha boshqa bo'limlarga o'tilmaydi. */}
+      {!locked && <TabBar />}
     </div>
   );
 }

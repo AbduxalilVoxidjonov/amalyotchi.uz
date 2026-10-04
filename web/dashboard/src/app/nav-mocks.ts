@@ -6,6 +6,7 @@ import { STUDENTS_ENDPOINT } from '@/features/admin/students/api';
 import { TUTORS_ENDPOINT } from '@/features/admin/tutors/api';
 import { mockApplications } from '@/features/tutor/applications/mocks';
 import { mockDiaries } from '@/features/tutor/diaries/mocks';
+import { pendingFaceCount } from '@/features/tutor/face/mocks';
 import {
   mockStudents as tutorMockStudents,
   resolveMockPeriod,
@@ -43,6 +44,7 @@ export function tutorNavMock(): TutorNavDto {
       applications: mockApplications.filter((a) => a.status === 'submitted').length,
       students: tutorMockStudents.length,
       diaries: mockDiaries.length,
+      pendingFaceEnrollments: pendingFaceCount(),
     },
     context: {
       groups,

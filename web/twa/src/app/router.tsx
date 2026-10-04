@@ -3,11 +3,14 @@ import {
   createBrowserRouter,
   createMemoryRouter,
   Navigate,
+  useLocation,
   type RouteObject,
 } from 'react-router-dom';
 import { ForcePasswordScreen } from '@/features/auth/components/ForcePasswordScreen';
 import { LoginScreen } from '@/features/auth/components/LoginScreen';
 import { submitTelegramLink, telegramLinkErrorHint, useAutoLogin } from '@/features/auth/hooks';
+import { useFaceGate } from '@/features/face/hooks';
+import { FACE_PATH } from '@/features/face/types';
 import { errorMessage, isApiError } from '@/shared/api/client';
 import { importWithReload } from '@/shared/lib/chunk-reload';
 import { authMode, type AuthMode } from '@/shared/auth/mode';
@@ -25,6 +28,7 @@ const PlacePage = lazy(importWithReload(() => import('@/pages/PlacePage')));
 const DiaryPage = lazy(importWithReload(() => import('@/pages/DiaryPage')));
 const QrPage = lazy(importWithReload(() => import('@/pages/QrPage')));
 const ProfilePage = lazy(importWithReload(() => import('@/pages/ProfilePage')));
+const FaceEnrollPage = lazy(importWithReload(() => import('@/pages/FaceEnrollPage')));
 
 const TELEGRAM_LINK_KEY = ['auth', 'telegram-link'] as const;
 
@@ -36,6 +40,7 @@ const TELEGRAM_LINK_KEY = ['auth', 'telegram-link'] as const;
  *      foydalanuvchi o'zi chiqqan → "Qayta kirish" tugmasi (avtomatik qayta kirilmaydi).
  *  - Web rejimi (oddiy brauzer yoki `?web=1`): HEMIS ID + parol login sahifasi.
  *  - `mustChangePassword` → "Yangi parol o'rnating" ekrani (ilovaga o'tkazilmaydi).
+ *  - Yuz darvozasi (`FaceGate`): tekshiruv yoqilgan va etalon yo'q/rad etilgan → `/face`.
  */
 function RootLayout() {
   const { status, mode, loggedOut, isPending, error, relogin } = useAutoLogin();
@@ -87,7 +92,26 @@ function RootLayout() {
     );
   }
   if (mustChangePassword) return <ForcePasswordScreen />;
-  return <AppShell />;
+  return <FaceGate />;
+}
+
+/**
+ * Kirgandan keyin: `GET /api/student/face` javobi kutiladi (bir marta, keshda qoladi). `required` va etalon
+ * yo'q / rad etilgan → har qanday sahifadan `/face` ga yo'naltiriladi, tab-bar yashiriladi ("Chiqish" sahifada).
+ * `pending`/`approved` yoki so'rov xatosi (eski server) → oddiy ilova.
+ */
+function FaceGate() {
+  const { pending, needsEnrollment } = useFaceGate();
+  const { pathname } = useLocation();
+  if (pending) {
+    return (
+      <div className={styles.gate}>
+        <LoadingState height={200} label="Yuklanmoqda…" />
+      </div>
+    );
+  }
+  if (needsEnrollment && pathname !== FACE_PATH) return <Navigate to={FACE_PATH} replace />;
+  return <AppShell locked={needsEnrollment} />;
 }
 
 /**
@@ -114,6 +138,7 @@ export const routes: RouteObject[] = [
           { path: '/portfolio', element: <Navigate to="/" replace /> },
           { path: '/ruxsat', element: <Navigate to="/" replace /> },
           { path: '/profil', element: <ProfilePage /> },
+          { path: FACE_PATH, element: <FaceEnrollPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

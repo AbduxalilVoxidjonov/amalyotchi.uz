@@ -48,6 +48,11 @@ export interface TodayCheckInDto {
    * Yo'q/`undefined` — talab qilinadi (`isQrRequired`).
    */
   qrRequired?: boolean;
+  /**
+   * v3.27: sozlama `faceVerificationEnabled` — check-in selfisi etalon bilan solishtiriladi, shuning
+   * uchun selfi MAJBURIY ("Rasmsiz davom etish" yo'q). Eski server yubormasa — `false`.
+   */
+  faceRequired?: boolean;
 }
 
 export interface TodayPlaceDto {
@@ -94,6 +99,30 @@ export interface TodayDto {
   /** `canWriteDiary=false` sababi (o'zbekcha), masalan "Amaliyot davri yakunlangan — …"; aks holda null. */
   diaryBlockedReason?: string | null;
 }
+
+/**
+ * Check-in rad sabablari (backend `CheckInRejectReason`, camelCase). Server ProblemDetails'da `rejectReason`
+ * kengaytmasini yubormasligi mumkin — `checkin-errors.ts` matn bo'yicha ham ajratadi.
+ * v3.27 yuz sabablari: `faceNotEnrolled` (tasdiqlangan etalon yo'q), `faceNotDetected` (selfida yuz yo'q),
+ * `faceMismatch` (moslik chegaradan past).
+ */
+export type CheckinRejectReason =
+  | 'notApproved'
+  | 'notWorkDay'
+  | 'periodNotStarted'
+  | 'periodEnded'
+  | 'windowNotOpen'
+  | 'windowClosed'
+  | 'poorAccuracy'
+  | 'outOfRadius'
+  | 'alreadyCheckedIn'
+  | 'noCheckIn'
+  | 'alreadyCheckedOut'
+  | 'onLeave'
+  | 'qrInvalid'
+  | 'faceNotEnrolled'
+  | 'faceNotDetected'
+  | 'faceMismatch';
 
 /**
  * POST /api/student/checkin | /checkout — **multipart/form-data** (kontrakt §1.3):

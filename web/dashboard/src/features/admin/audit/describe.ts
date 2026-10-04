@@ -71,6 +71,10 @@ export const AUDIT_ACTION_LABEL: Record<AuditAction, { label: string; kind: Stat
   broadcastMessageCreated: { label: 'Xabar yuborildi', kind: 'info' },
   broadcastMessageRetried: { label: 'Xabar qayta yuborildi', kind: 'info' },
   studentWorkHoursChanged: { label: "Talaba ish vaqtini o'zgartirdi", kind: 'info' },
+  faceEnrollmentSubmitted: { label: 'Talaba yuz rasmini yubordi', kind: 'info' },
+  faceEnrollmentApproved: { label: 'Yuz rasmi tasdiqlandi', kind: 'ok' },
+  faceEnrollmentRejected: { label: 'Yuz rasmi rad etildi', kind: 'bad' },
+  faceEnrollmentReset: { label: 'Yuz rasmi bekor qilindi', kind: 'late' },
 };
 
 export const USER_ROLE_LABEL: Record<AuditUserRole, string> = {

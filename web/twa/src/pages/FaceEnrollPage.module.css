@@ -1,0 +1,60 @@
+/* "Yuzni tasdiqlash" sahifasi (360px kenglikda ham bitta ustun). */
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.text {
+  margin: 6px 0 0;
+  font-size: var(--fs-md);
+  color: var(--color-text-muted);
+  line-height: var(--lh-note);
+}
+.rejected {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md2);
+  background: var(--color-bad-bg);
+  border: var(--border-w) solid var(--color-bad-border);
+  color: var(--color-bad-fg);
+  font-size: var(--fs-md);
+  line-height: var(--lh-note);
+}
+.photo {
+  margin-top: 14px;
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 12px 0 0;
+  font-size: var(--fs-sm);
+}
+.meta dt {
+  color: var(--color-text-faint);
+}
+.meta dd {
+  margin: 0;
+  font-family: var(--font-mono);
+}
+.home {
+  margin-top: 14px;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+.error {
+  margin: 0;
+  padding: 9px 11px;
+  border-radius: var(--radius-md2);
+  background: var(--color-bad-bg);
+  border: var(--border-w) solid var(--color-bad-border);
+  color: var(--color-bad-fg);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-note);
+}

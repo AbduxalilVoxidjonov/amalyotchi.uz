@@ -1,6 +1,6 @@
-# API-CONTRACT v3.25
+# API-CONTRACT v3.27
 
-Oxirgi yangilanish: 02.10.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
+Oxirgi yangilanish: 03.10.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
 esa haqiqiy controller/DTO/validator/handler kodidan olingan — har bir maydon, chegara va status kod kodda bor.
 Frontend (`web/dashboard`, `web/twa`, `web/shared`) shu shaklga moslanishi kerak; v1 bilan farqlar §5 da,
@@ -28,7 +28,8 @@ v3.22 (admin o'z loginini almashtiradi — `GET /api/auth/login-available`, `POS
 v3.23 (admin dashboard ko'rsatkichlari loyiha qoidalariga moslandi — ochiq davrlar, davom etayotgan davr davomati) — §6.29,
 v3.24 ("Xabarlar": admin Telegram orqali talabalarga xabar yuboradi — `/api/admin/messages`) — §6.30,
 v3.25 (bitta talabani forma orqali qo'shish — `POST /api/admin/students`, `GET /api/admin/students/group-options`) — §6.31,
-v3.26 (talabaning o'z ish vaqti — `PUT /api/student/profile/work-hours`; check-in oynasi qisqa kunga moslashadi) — §6.32.
+v3.26 (talabaning o'z ish vaqti — `PUT /api/student/profile/work-hours`; check-in oynasi qisqa kunga moslashadi) — §6.32,
+v3.27 (yuzni tasdiqlash — talaba etalon selfisi, tyutor tasdig'i, check-in selfisini solishtirish — `/api/student/face`, `/api/tutor/face-enrollments`) — §6.33.
 
 Jami **122 ta endpoint**: Auth 9 · Admin 78 · Reports 1 · Tutor 21 · Student (TWA) 11 · Files 1 · Companies 1.
 
@@ -2716,7 +2717,7 @@ Tartib: davom etayotgan ochiq davr(lar) birinchi, keyin `startDate` kamayish (te
 | `TutorScopeLevel`                  | `faculty` · `department` · `direction` · `group`                                                                                                                                                                                                                                                                                          | admin tutors `scopes[].level`, `PUT .../scopes` body                                   |
 | `AdminStudentStatus`               | `active` · `flagged` · `unlinked`                                                                                                                                                                                                                                                                                                         | admin students                                                                         |
 | `CompanyFlag`                      | `suspicious` · `tooManyStudents` · `largeRadius` · `null` — ustuvorlik aynan shu tartibda                                                                                                                                                                                                                                                 | admin companies, tutor companies                                                       |
-| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorScopesChanged` · `studentsImported` · `company*` (§6.9) · `studentsAssignedToCompany` · `practicePeriodCreated` · `practicePeriodUpdated` · `practicePeriodGroupsChanged` · `practicePeriodClosed` · `practicePeriodDeleted` · `companyQrRotated` (v3.7) · `studentPasswordSet` · `passwordChanged` (v3.8) · `telegramLinked` (v3.9) · `studentCompanyReassigned` · `loginChanged` (v3.22) · `broadcastMessageCreated` · `broadcastMessageRetried` (v3.24) · `studentCreated` (v3.25) | admin audit `action`, `?action=`                                                       |
+| `AuditAction`                      | `created` · `updated` · `deleted` · `manualOverride` · `loggedIn` · `loginFailed` · `manualCheckIn` · `radiusChanged` · `applicationApproved` · `applicationReturned` · `applicationRejected` · `leaveApproved` · `leaveRejected` · `diaryReviewed` · `gradeChanged` · `gradeReverted` · `settingsChanged` · `attendanceMarkedSuspicious` · `faculty/department/direction/group` × `Created/Updated/Deleted/Activated/Deactivated` (masalan `facultyCreated`, `groupDeactivated`) · `tutorCreated` · `tutorUpdated` · `tutorActivated` · `tutorDeactivated` · `tutorPasswordReset` · `tutorScopesChanged` · `studentsImported` · `company*` (§6.9) · `studentsAssignedToCompany` · `practicePeriodCreated` · `practicePeriodUpdated` · `practicePeriodGroupsChanged` · `practicePeriodClosed` · `practicePeriodDeleted` · `companyQrRotated` (v3.7) · `studentPasswordSet` · `passwordChanged` (v3.8) · `telegramLinked` (v3.9) · `studentCompanyReassigned` · `loginChanged` (v3.22) · `broadcastMessageCreated` · `broadcastMessageRetried` (v3.24) · `studentCreated` (v3.25) · `faceEnrollmentSubmitted` · `faceEnrollmentApproved` · `faceEnrollmentRejected` · `faceEnrollmentReset` (v3.27) | admin audit `action`, `?action=`                                                       |
 | `BroadcastAudienceKind` (request)  | `selected` · `filter` · `all`                                                                                                                                                                                                                                                                                                             | `POST /api/admin/messages` `audience.kind` (v3.24)                                     |
 | `BroadcastMessageStatus`           | `queued` · `sending` · `completed` — yetkazishlardan hisoblanadi (§2.3.5)                                                                                                                                                                                                                                                                 | `MessageSummary.status`                                                                |
 | `BroadcastDeliveryStatus`          | `pending` · `sent` · `failed` · `blocked`                                                                                                                                                                                                                                                                                                 | `MessageDeliveryRow.status`, `?status=`                                                |
@@ -3482,3 +3483,54 @@ Foydalanuvchi qarori: talabalar ruxsat (leave) so'ramaydi — funksiya butunlay 
 - **Enum:** `AuditAction` + `studentWorkHoursChanged` (70). **Migratsiya `StudentWorkHours`:** `student_profiles` ga
   5 ta nullable ustun.
 - Endpoint soni **122 → 123** (`[Http*]` atributlari 124 → 125).
+
+### 6.33 v3.26 → v3.27 (03.10.2026): yuzni tasdiqlash
+
+Oqim: talaba kiradi (HEMIS ID + parol yoki Telegram) → tekshiruv yoqilgan va ishlatsa bo'ladigan etalon yo'q bo'lsa,
+avval rozilik bilan etalon selfi ("etalon") yuboradi → tyutor tasdiqlaydi/rad etadi → har check-in/check-out selfisi
+server tomonida etalon bilan solishtiriladi; moslik chegaradan past → urinish rad etiladi.
+
+- **Sozlamalar** (`GET/PUT /api/admin/settings`): `faceVerificationEnabled: boolean` ("Yuzni tekshirish", sukut `false`),
+  `faceMatchThreshold: int` (%, "Yuz moslik chegarasi", sukut 36).
+- **`StudentFaceDto`:**
+  ```ts
+  interface StudentFaceDto {
+    status: 'none' | 'pending' | 'approved' | 'rejected';
+    required: boolean;            // = faceVerificationEnabled
+    photoUrl: string | null;      // /api/files/{id} — etalon (Bearer bilan)
+    submittedAt: string | null;   // ISO
+    reviewedAt: string | null;    // ISO
+    rejectReason: string | null;  // tyutor rad etgan bo'lsa
+  }
+  ```
+- **Talaba (StudentOnly):**
+  - `GET /api/student/face` → 200 `StudentFaceDto`.
+  - `POST /api/student/face` — `multipart/form-data`: `photo` (fayl; check-in selfisi qoidalari — ≤5 MB,
+    JPEG/PNG/WEBP/HEIC/HEIF) + `consent` (`"true"`) → 200 `StudentFaceDto` (`status=pending`). 400 `errors.Photo` /
+    `errors.Consent`: "Rozilik berilishi kerak.", "Rasmda yuz topilmadi. …", "Rasmda faqat bitta yuz bo'lishi kerak.";
+    409 — etalon allaqachon tasdiqlangan. `rejected`/`pending` holatida qayta yuborish mumkin (yangi etalon `pending`).
+  - TWA darvozasi: `required && (status === 'none' || status === 'rejected')` → talaba avval `/face` sahifasiga
+    yo'naltiriladi (tab-bar yashirin, "Chiqish" bor); `pending`/`approved` — oddiy ilova.
+- **`TodayDto.checkin.faceRequired: boolean`** — `true` bo'lsa selfi majburiy ("Rasmsiz davom etish" yo'q).
+- **`CheckInRejectReason` + `faceNotEnrolled`** (tasdiqlangan etalon yo'q), **`faceNotDetected`** (selfida yuz topilmadi),
+  **`faceMismatch`** (moslik `faceMatchThreshold` dan past). Xato — ProblemDetails, `detail` — o'zbekcha xabar.
+  Frontend sababni ProblemDetails `rejectReason` kengaytmasidan (bo'lsa) yoki `detail` matnidan ("yuz" so'zi) ajratadi:
+  `faceNotDetected`/`faceMismatch` → selfi qayta olinadi; `faceNotEnrolled` → xabar + "Yuzni tasdiqlash" (`/face`) tugmasi.
+  Rad etilgan urinish tyutor davomat ro'yxatida odatdagidek (`rejectReason`, `rejectMessage`) ko'rinadi.
+- **Tyutor (TutorOnly, o'z talabalari doirasida):**
+  - `GET /api/tutor/face-enrollments?status=pending|approved|rejected` (sukut `pending`) →
+    `{ items: { studentId, fullName, hemisId, group, photoUrl, status, submittedAt, reviewedAt, rejectReason }[] }`.
+  - `POST /api/tutor/students/{studentId}/face/approve` → 200 `StudentFaceDto`.
+  - `POST /api/tutor/students/{studentId}/face/reject` `{ reason: string }` (majburiy) → 200 `StudentFaceDto`;
+    400 `errors.Reason`.
+  - `POST /api/tutor/students/{studentId}/face/reset` → 200 `StudentFaceDto` (etalon bekor, `status=none`).
+  - `GET /api/tutor/students/{id}` — yangi yuqori darajadagi `face: StudentFaceDto`.
+  - Davomat qatorlari (tyutor talaba davomati / davr kunlari) — yangi `faceMatchScore: number | null` (0–100, %;
+    solishtirilmagan → null). UI: "Yuz: NN%".
+  - `GET /api/tutor/nav` — yangi `pendingFaceEnrollments: number` (sidebar "Yuz tasdiqlash" belgisi).
+- **Enum:** `AuditAction` + `faceEnrollmentSubmitted` ("Talaba yuz rasmini yubordi"), `faceEnrollmentApproved`
+  ("Yuz rasmi tasdiqlandi"), `faceEnrollmentRejected` ("Yuz rasmi rad etildi"), `faceEnrollmentReset`
+  ("Yuz rasmi bekor qilindi").
+- Eski server bilan moslik: frontend yangi maydonlarni ixtiyoriy deb o'qiydi (`faceRequired`, `face`, `faceMatchScore`,
+  `pendingFaceEnrollments` yo'q → tekshiruv o'chiq / ko'rsatilmaydi); `GET /api/student/face` xatosi darvozani yopmaydi.
+- Endpoint soni **123 → 129** (Student +2, Tutor +4).

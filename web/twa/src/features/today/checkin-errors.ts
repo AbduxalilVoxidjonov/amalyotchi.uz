@@ -1,4 +1,5 @@
-import { errorMessage, isApiError } from '@/shared/api/client';
+import { errorMessage, isApiError, type ApiError } from '@/shared/api/client';
+import type { CheckinRejectReason } from './types';
 
 /**
  * Check-in/check-out server xatosidan keyin oqim qaysi qadamga qaytadi (kontrakt §2.6, `CheckInRejectReason`):
@@ -8,14 +9,50 @@ import { errorMessage, isApiError } from '@/shared/api/client';
  *    ("Siz amaliyot joyida emassiz." / mock: "Korxona radiusidan tashqaridasiz…"), 400 `errors.Lat/Lng/Accuracy`;
  *  - `stale` — ekran eskirgan: amal hozir umuman mumkin emas (oyna yopilgan/ochilmagan, ish kuni emas, davr yo'q,
  *    ruxsat kuni, ariza tasdiqlanmagan, allaqachon belgilangan …) — bugungi holat qayta yuklanadi;
- *  - `retry` — tarmoq/server xatosi: shu (joylashuv) qadamida "Qayta urinish".
+ *  - `retry` — tarmoq/server xatosi: shu (joylashuv) qadamida "Qayta urinish";
+ *  - `face` — v3.27 yuz tekshiruvi: `faceNotDetected`/`faceMismatch` → selfi qayta olinadi;
+ *    `faceNotEnrolled` → etalon yuborish sahifasiga (`/face`) havola.
  * Backend rad sababini (`rejectReason`) ProblemDetails'da yubormaydi — `detail` matni va status bo'yicha ajratiladi.
  */
-export type CheckinErrorStep = 'qr' | 'photo' | 'location' | 'stale' | 'retry';
+export type CheckinErrorStep = 'qr' | 'photo' | 'location' | 'stale' | 'retry' | 'face';
+
+export type FaceRejectReason = Extract<
+  CheckinRejectReason,
+  'faceNotEnrolled' | 'faceNotDetected' | 'faceMismatch'
+>;
 
 export interface CheckinErrorVerdict {
   step: CheckinErrorStep;
   message: string;
+  /** Faqat `step === 'face'` da. */
+  faceReason?: FaceRejectReason;
+}
+
+const FACE_REASONS: readonly FaceRejectReason[] = [
+  'faceNotEnrolled',
+  'faceNotDetected',
+  'faceMismatch',
+];
+
+/**
+ * Yuz rad sababi: avval ProblemDetails `rejectReason` kengaytmasi, bo'lmasa `detail` matni ("yuz" so'zi):
+ * etalon yo'q/tasdiqlanmagan → `faceNotEnrolled`, "topilmadi/aniqlanmadi" → `faceNotDetected`,
+ * qolgani → `faceMismatch`.
+ */
+function faceRejection(cause: ApiError): FaceRejectReason | null {
+  const reason = (cause.problem as { rejectReason?: unknown } | undefined)?.rejectReason;
+  if (typeof reason === 'string') {
+    return (FACE_REASONS as readonly string[]).includes(reason)
+      ? (reason as FaceRejectReason)
+      : null;
+  }
+  if (cause.status !== 400 && cause.status !== 409) return null;
+  if (cause.fieldError('photo')) return null;
+  const text = cause.message;
+  if (!/\byuz/i.test(text)) return null;
+  if (/tasdiqlanmagan|yubor|etalon|namuna|ro[ʻ'’`]?yxat/i.test(text)) return 'faceNotEnrolled';
+  if (/topilmadi|aniqlanmadi|ko[ʻ'’`]?rinmadi/i.test(text)) return 'faceNotDetected';
+  return 'faceMismatch';
 }
 
 const LOCATION_FIELDS = ['lat', 'lng', 'accuracy'] as const;
@@ -36,6 +73,9 @@ export function classifyCheckinError(cause: unknown): CheckinErrorVerdict {
 
   const qr = qrRejection(cause);
   if (qr) return { step: 'qr', message: qr };
+
+  const face = faceRejection(cause);
+  if (face) return { step: 'face', message: cause.message, faceReason: face };
 
   const photo = cause.fieldError('photo');
   if (photo) return { step: 'photo', message: photo };

@@ -233,4 +233,12 @@ describe('Admin StudentDetailPage — amaliyot davri tanlagichi (v3.5)', () => {
     expect(section.getByRole('button', { name: 'Fevral 2026' })).toBeInTheDocument();
     expect(prev).toBeDisabled();
   });
+
+  it('"Yuz" kartasi — faqat ko\'rish (admin amallari yo\'q)', async () => {
+    renderPage();
+    const card = await screen.findByRole('region', { name: 'Yuz' });
+    expect(within(card).getByText('Tasdiqlangan')).toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: 'Bekor qilish' })).not.toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: 'Tasdiqlash' })).not.toBeInTheDocument();
+  });
 });

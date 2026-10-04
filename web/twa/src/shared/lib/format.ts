@@ -139,3 +139,18 @@ export function daysBetween(from: string, to: string): number {
   if (!a || !b) return 0;
   return Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(a.y, a.m - 1, a.d)) / 86_400_000);
 }
+
+/** ISO datetime → "12.10.2026 09:02" (Toshkent vaqti); bo'sh/noto'g'ri → ''. */
+export function formatDateTime(value: string | null | undefined): string {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: APP_TIME_ZONE,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  return `${get('day')}.${get('month')}.${get('year')} ${formatTime(value)}`;
+}

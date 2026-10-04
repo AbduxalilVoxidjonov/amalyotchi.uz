@@ -70,6 +70,10 @@ export const AUDIT_ACTIONS = [
   'broadcastMessageCreated',
   'broadcastMessageRetried',
   'studentWorkHoursChanged',
+  'faceEnrollmentSubmitted',
+  'faceEnrollmentApproved',
+  'faceEnrollmentRejected',
+  'faceEnrollmentReset',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

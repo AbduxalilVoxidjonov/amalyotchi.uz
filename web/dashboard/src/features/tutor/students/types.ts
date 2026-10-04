@@ -1,6 +1,7 @@
 import type { StatusKind } from '@/shared/ui';
 import { APPLICATION_STATUS_LABEL, type ApplicationStatus } from '../applications/types';
 import type { DiaryStatus } from '../diaries/types';
+import type { StudentFace } from '../face/types';
 import { ATTENDANCE_STATUS_LABEL, SUSPICIOUS_LABEL, type AttendanceStatus } from '../today/types';
 
 /** Backend `StudentState`: davomat < 70% → redFlag; shubhali kunlar bor → suspicious; aks holda active. */
@@ -172,6 +173,11 @@ export interface TutorStudentDetail {
   selectedPeriodId: string | null;
   /** Talabaga parol o'rnatilganmi (TWA'ga brauzerda HEMIS ID + parol bilan kirish). Admin javobida ham bor. */
   hasPassword: boolean;
+  /**
+   * v3.27 — etalon yuz rasmi holati (tasdiqlash/rad etish/bekor qilish shu profilda). Eski server
+   * yubormaydi → "Yuz" kartasi ko'rsatilmaydi.
+   */
+  face?: StudentFace | null;
 }
 
 /**
@@ -209,6 +215,8 @@ export interface AttendancePunch {
   photoUrl: string | null;
   /** `distanceM > company.radiusM` */
   outOfRadius: boolean;
+  /** v3.27 — selfi va etalon rasm o'xshashligi (0–100 %); yuz tekshirilmagan bo'lsa null/yo'q. */
+  faceMatchScore?: number | null;
 }
 
 /**
@@ -229,6 +237,9 @@ export type AttendanceRejectReason =
   | 'alreadyCheckedOut'
   | 'onLeave'
   | 'qrInvalid'
+  | 'faceNotEnrolled'
+  | 'faceNotDetected'
+  | 'faceMismatch'
   | (string & {});
 
 /** Zaxira yorliqlar (KONTRAKT §3.2 matnlari) — `rejectMessage` bo'lmaganda ishlatiladi. */
@@ -246,7 +257,20 @@ export const REJECT_REASON_LABEL: Record<string, string> = {
   alreadyCheckedOut: 'Ketish allaqachon belgilangan',
   onLeave: 'Bu kunga ruxsat tasdiqlangan',
   qrInvalid: 'QR kod mos emas',
+  faceNotEnrolled: 'Etalon yuz rasmi tasdiqlanmagan',
+  faceNotDetected: 'Selfida yuz topilmadi',
+  faceMismatch: 'Yuz etalon rasmga mos kelmadi',
 };
+
+/** Yuz moslik bali → "Yuz: 87%" (null/yo'q → null, ko'rsatilmaydi). */
+export function faceScoreLabel(score: number | null | undefined): string | null {
+  return typeof score === 'number' && Number.isFinite(score) ? `Yuz: ${Math.round(score)}%` : null;
+}
+
+/** Qabul qilingan check-in'ning yuz moslik bali: kun darajasida, bo'lmasa check-in belgilanishida. */
+export function dayFaceScore(day: StudentAttendanceDay): number | null {
+  return day.faceMatchScore ?? day.checkIn?.faceMatchScore ?? null;
+}
 
 export function rejectReasonText(
   attempt: Pick<AttendanceAttempt, 'rejectReason' | 'rejectMessage'>,
@@ -277,6 +301,8 @@ export interface AttendanceAttempt {
   lat: number | null;
   lng: number | null;
   photoUrl: string | null;
+  /** v3.27 — selfi va etalon rasm o'xshashligi (0–100 %); tekshirilmagan bo'lsa null/yo'q. */
+  faceMatchScore?: number | null;
 }
 
 export interface AttendanceDayDiary {
@@ -311,6 +337,11 @@ export interface StudentAttendanceDay {
    * Eski backend javobida bo'lmasa `studentsApi.attendance` uni `[]` ga to'ldiradi.
    */
   events: AttendanceAttempt[];
+  /**
+   * v3.27 — qabul qilingan check-in selfisining etalon bilan o'xshashligi (0–100 %).
+   * Yuz tekshiruvi o'chiq/eski server → null yoki yo'q (ko'rsatilmaydi).
+   */
+  faceMatchScore?: number | null;
 }
 
 /**

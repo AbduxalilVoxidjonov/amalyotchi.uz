@@ -244,3 +244,12 @@
 .attemptDistance .outNote {
   color: var(--color-bad-fg);
 }
+
+/* v3.27 — yuz moslik bali ("Yuz: 87%"): ixcham, xira mono yozuv (shubhali belgilardan past ahamiyat). */
+.faceScore {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  white-space: nowrap;
+}

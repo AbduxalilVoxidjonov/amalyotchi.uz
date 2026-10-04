@@ -1,6 +1,6 @@
 import type { Setting, SettingKey } from './types';
 
-export type SettingGroupId = 'attendance' | 'report' | 'companies' | 'other';
+export type SettingGroupId = 'attendance' | 'report' | 'face' | 'companies' | 'other';
 
 export interface SettingGroupDef {
   id: SettingGroupId;
@@ -36,6 +36,11 @@ export const SETTING_GROUPS: readonly SettingGroupDef[] = [
       'checkinQrRequired',
       'diaryPdfRequired',
     ],
+  },
+  {
+    id: 'face',
+    title: 'Yuzni tasdiqlash',
+    keys: ['faceVerificationEnabled', 'faceMatchThreshold'],
   },
   {
     id: 'companies',

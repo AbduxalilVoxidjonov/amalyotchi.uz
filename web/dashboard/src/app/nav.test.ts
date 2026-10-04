@@ -10,7 +10,7 @@ const admin: NavData = {
 
 const tutor: NavData = {
   role: UserRole.Tutor,
-  counts: { today: 38, applications: 7, students: 38, diaries: 0 },
+  counts: { today: 38, applications: 7, students: 38, diaries: 0, pendingFaceEnrollments: 3 },
   context: { groups: ['412-22', '413-22'], periodName: '3-kurs amaliyoti' },
 };
 
@@ -41,8 +41,19 @@ describe('navForRole', () => {
       '/tutor/applications': '7',
       '/tutor/students': '38',
       '/tutor/diaries': undefined,
+      '/tutor/face': '3',
       '/tutor/calendar': undefined,
     });
+  });
+
+  it("tyutor: `pendingFaceEnrollments` yo'q (eski server) yoki yuqori darajada keladi", () => {
+    const { pendingFaceEnrollments: _omit, ...oldCounts } = (
+      tutor as Extract<NavData, { context: { groups: string[] } }>
+    ).counts;
+    const old = { ...tutor, counts: oldCounts } as NavData;
+    expect(navBadges(old)['/tutor/face']).toBeUndefined();
+    const top = { ...old, pendingFaceEnrollments: 2 } as NavData;
+    expect(navBadges(top)['/tutor/face']).toBe('2');
   });
 });
 

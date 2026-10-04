@@ -50,6 +50,12 @@ export const STUDENT_ENDPOINTS = {
    * Ikkalasi null — davr vaqtiga qaytarish. O'zgarish ERTADAN kuchga kiradi (bugungi oyna o'zgarmaydi).
    */
   profileWorkHours: '/api/student/profile/work-hours',
+  /**
+   * Yuzni tasdiqlash (kontrakt v3.27 §6.33):
+   * GET → StudentFaceDto · POST multipart(photo, consent="true") → StudentFaceDto (status=pending)
+   * | 400 `errors.Photo`/`errors.Consent` (yuz topilmadi, bir nechta yuz, rozilik yo'q) | 409 (allaqachon tasdiqlangan).
+   */
+  face: '/api/student/face',
 } as const;
 
 /**

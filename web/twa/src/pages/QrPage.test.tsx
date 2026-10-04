@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 // `lastCheckin*`/`mockToday` mock ichida qayta tayinlanadi — namespace orqali o'qiladi.
 import * as todayMocks from '@/features/today/mocks';
+import * as faceMocks from '@/features/face/mocks';
 import { setCheckinPhotoRequired, setPeriodGap } from '@/features/today/mocks';
 import { setPeriodDaysVariant } from '@/features/period-days/mocks';
 import { problem } from '@/mocks/problem';
@@ -515,5 +516,85 @@ describe("QR sahifasi — bo'sh holatlar", () => {
       await screen.findByRole('heading', { name: 'Amaliyot davri tugagan: Kuzgi amaliyot 2026' }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Kelganini belgilash' })).not.toBeInTheDocument();
+  });
+});
+
+describe('QR sahifasi — yuz tekshiruvi (v3.27)', () => {
+  it('faceRequired → "Rasmsiz davom etish" yo‘q, solishtirish izohi bor', async () => {
+    stubGeolocation();
+    faceMocks.setMockFace({ required: true, status: 'approved' });
+    todayMocks.setFaceCheck({ required: true });
+    renderApp('/qr');
+    await startAndScan('Kelganini belgilash');
+    expect(screen.getByText(/tasdiqlangan yuz rasmingiz bilan solishtiriladi/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Rasmsiz davom etish' })).not.toBeInTheDocument();
+    await selfieAndSend();
+    expect(
+      await screen.findByRole('heading', { name: 'Kelganingiz belgilandi · 09:02' }),
+    ).toBeInTheDocument();
+  });
+
+  it('faceMismatch → server xabari selfi qadamida, qayta olish so‘raladi', async () => {
+    stubGeolocation();
+    faceMocks.setMockFace({ required: true, status: 'approved' });
+    todayMocks.setFaceCheck({ required: true, result: 'mismatch' });
+    renderApp('/qr');
+    await startAndScan('Kelganini belgilash');
+    await selfieAndSend();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      todayMocks.FACE_REJECT_MESSAGES.faceMismatch,
+    );
+    // Selfi qadami: rasm tashlab yuborilgan, "Rasmga olish" qayta.
+    expect(screen.getByRole('button', { name: 'Rasmga olish' })).toBeInTheDocument();
+    expect(screen.queryByAltText('Olingan selfie')).not.toBeInTheDocument();
+    expect(todayMocks.mockToday.checkin.checkInAt).toBeNull();
+  });
+
+  it('faceNotDetected → selfi qadamiga qaytadi', async () => {
+    stubGeolocation();
+    faceMocks.setMockFace({ required: true, status: 'approved' });
+    todayMocks.setFaceCheck({ required: true, result: 'notDetected' });
+    renderApp('/qr');
+    await startAndScan('Kelganini belgilash');
+    await selfieAndSend();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      todayMocks.FACE_REJECT_MESSAGES.faceNotDetected,
+    );
+    expect(screen.getByRole('button', { name: 'Rasmga olish' })).toBeInTheDocument();
+  });
+
+  it('faceNotEnrolled (etalon tekshirilmoqda) → xabar va "Yuzni tasdiqlash" → /face', async () => {
+    stubGeolocation();
+    faceMocks.setMockFace({
+      required: true,
+      status: 'pending',
+      photoUrl: faceMocks.MOCK_FACE_PHOTO_URL,
+    });
+    todayMocks.setFaceCheck({ required: true });
+    const router = renderApp('/qr');
+    await startAndScan('Kelganini belgilash');
+    await selfieAndSend();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      todayMocks.FACE_REJECT_MESSAGES.faceNotEnrolled,
+    );
+    fireEvent.click(screen.getByRole('link', { name: 'Yuzni tasdiqlash' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Yuzni tasdiqlash', level: 1 }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/face');
+  });
+
+  it('rejectReason kengaytmasisiz matn bo‘yicha ham ajratiladi (409 mos kelmadi)', async () => {
+    stubGeolocation();
+    server.use(
+      http.post('/api/student/checkin', () =>
+        problem(409, 'Ziddiyat', 'Selfidagi yuz tasdiqlangan rasmingizga mos kelmadi.'),
+      ),
+    );
+    renderApp('/qr');
+    await startAndScan('Kelganini belgilash');
+    await selfieAndSend();
+    expect(await screen.findByRole('alert')).toHaveTextContent('mos kelmadi');
+    expect(screen.getByRole('button', { name: 'Rasmga olish' })).toBeInTheDocument();
   });
 });

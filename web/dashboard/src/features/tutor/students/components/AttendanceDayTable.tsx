@@ -5,7 +5,9 @@ import { fmtDateOnly, fmtDistance } from '../../format';
 import { useDiaryReview } from '../../diaries/hooks';
 import { DIARY_STATUS_LABEL, type DiaryEntry } from '../../diaries/types';
 import {
+  dayFaceScore,
   dayStatusLabel,
+  faceScoreLabel,
   fmtCoords,
   rejectReasonText,
   type AttendanceAttempt,
@@ -132,9 +134,15 @@ const COLUMNS: DataTableColumn<StudentAttendanceDay>[] = [
     wrap: true,
     render: (d) => {
       const items = flags(d);
-      if (items.length === 0) return <span className={styles.dim}>—</span>;
+      const face = faceScoreLabel(dayFaceScore(d));
+      if (items.length === 0 && !face) return <span className={styles.dim}>—</span>;
       return (
         <ChipRow>
+          {face && (
+            <span className={styles.faceScore} title="Selfi va etalon yuz rasmi o'xshashligi">
+              {face}
+            </span>
+          )}
           {items.map((f) => (
             <Chip key={f} variant="fmt">
               {f}
@@ -221,6 +229,12 @@ function PunchBlock({
             <dt>Lokatsiya</dt>
             <dd className={styles.coords}>{coords ?? 'Yuborilmagan'}</dd>
           </div>
+          {faceScoreLabel(punch.faceMatchScore) && (
+            <div>
+              <dt>Yuz mosligi</dt>
+              <dd className={styles.faceScore}>{faceScoreLabel(punch.faceMatchScore)}</dd>
+            </div>
+          )}
         </dl>
         {punch.photoUrl ? (
           <figure className={styles.selfie}>
@@ -270,6 +284,9 @@ function AttemptCard({ date, attempt }: { date: string; attempt: AttendanceAttem
         {status}
       </Badge>
       {!attempt.accepted && <p className={styles.attemptReason}>{rejectReasonText(attempt)}</p>}
+      {faceScoreLabel(attempt.faceMatchScore) && (
+        <p className={styles.faceScore}>{faceScoreLabel(attempt.faceMatchScore)}</p>
+      )}
       {attempt.distanceM !== null && (
         <p className={styles.attemptDistance}>
           <span className={styles.dim}>Masofa </span>

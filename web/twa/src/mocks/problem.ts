@@ -7,7 +7,7 @@ export function problem(
   status: number,
   title: string,
   detail: string,
-  extra?: { errors?: Record<string, string[]> },
+  extra?: { errors?: Record<string, string[]>; [key: string]: unknown },
 ) {
   return HttpResponse.json(
     { status, title, detail, traceId: 'mock', ...extra },

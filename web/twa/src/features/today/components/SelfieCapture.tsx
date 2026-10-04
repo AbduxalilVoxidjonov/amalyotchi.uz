@@ -11,7 +11,7 @@ export interface SelfieCaptureProps {
 }
 
 /** Yuz uchun oval yo'naltiruvchi (kamera ochilishidan oldin — qanday suratga olish kerakligi). */
-function FaceGuide({ busy }: { busy: boolean }) {
+export function FaceGuide({ busy }: { busy: boolean }) {
   return (
     <div className={styles.guide} data-busy={busy || undefined}>
       <svg
@@ -36,8 +36,8 @@ function FaceGuide({ busy }: { busy: boolean }) {
 /**
  * 2-qadam: yuz (selfi) — presentation. Old kamera (`capture="user"`), yuz uchun oval yo'naltiruvchi.
  * `capture` bosqichi: kamera kutilmoqda · `preview` bosqichi: rasm ko'rib chiqiladi (qayta olish/tasdiqlash).
- * "Tasdiqlash va yuborish" → 3-qadam (joylashuv) va so'rov. Yuzni tanish/solishtirish YO'Q — rasm faqat
- * urinish bilan saqlanadi va tyutorga ko'rinadi.
+ * "Tasdiqlash va yuborish" → 3-qadam (joylashuv) va so'rov. Rasm urinish bilan saqlanadi va tyutorga
+ * ko'rinadi; v3.27 `faceRequired` bo'lsa server uni tasdiqlangan etalon bilan solishtiradi.
  */
 export function SelfieCapture({ flow, onOpenCamera }: SelfieCaptureProps) {
   const { phase, mode, photo, preparing, pending, photoError, requirements } = flow;
@@ -56,6 +56,11 @@ export function SelfieCapture({ flow, onOpenCamera }: SelfieCaptureProps) {
         Old kamera ochiladi — yuzingizni suratga oling. Rasm urinish bilan birga saqlanadi va
         tyutorga ko‘rinadi. Keyingi qadamda joylashuvingiz aniqlanadi.
       </p>
+      {requirements.faceRequired && (
+        <p className={styles.note}>
+          Selfi tasdiqlangan yuz rasmingiz bilan solishtiriladi — yuzingiz to‘liq va aniq ko‘rinsin.
+        </p>
+      )}
 
       {hasPhoto ? (
         <figure className={styles.preview}>

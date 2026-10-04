@@ -203,3 +203,52 @@ describe('AttendanceDayTable', () => {
     expect(within(dialog).queryByRole('region', { name: 'Urinishlar' })).not.toBeInTheDocument();
   });
 });
+
+describe('AttendanceDayTable · yuz moslik bali (v3.27)', () => {
+  function renderDays(days: StudentAttendanceDay[]) {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <AttendanceDayTable days={days} radiusM={150} />
+      </QueryClientProvider>,
+    );
+  }
+
+  it("`faceMatchScore` bor kunda \"Yuz: NN%\", null/yo'q bo'lsa ko'rsatilmaydi; urinish kartasida ham", async () => {
+    const user = userEvent.setup();
+    renderDays([
+      day({
+        date: '2026-09-09',
+        checkIn: { ...punch('09:05', '/api/files/in-0909'), faceMatchScore: 87.4 },
+        faceMatchScore: 87.4,
+        attempts: 2,
+        rejectedAttempts: 1,
+        events: [
+          attempt({
+            id: 'f1',
+            at: '08:59',
+            accepted: false,
+            rejectReason: 'faceMismatch',
+            rejectMessage: null,
+            faceMatchScore: 21,
+          }),
+          attempt({ id: 'f2', at: '09:05', faceMatchScore: 87.4 }),
+        ],
+      }),
+      day({ date: '2026-09-10', checkIn: punch('09:01', null), faceMatchScore: null }),
+    ]);
+    const table = screen.getByRole('table', { name: 'Kundalik jadval' });
+    const row9 = within(table).getByText('09.09.2026').closest('[role="row"]') as HTMLElement;
+    const row10 = within(table).getByText('10.09.2026').closest('[role="row"]') as HTMLElement;
+    expect(within(row9).getByText('Yuz: 87%')).toBeInTheDocument();
+    expect(within(row10).queryByText(/Yuz:/)).not.toBeInTheDocument();
+
+    await user.click(within(table).getByText('09.09.2026'));
+    const dialog = await screen.findByRole('dialog', { name: /09\.09\.2026 — kun tafsiloti/ });
+    expect(within(dialog).getByText('Yuz mosligi')).toBeInTheDocument();
+    const gallery = within(dialog).getByRole('region', { name: 'Urinishlar' });
+    const [rejected] = within(gallery).getAllByRole('listitem') as [HTMLElement];
+    expect(within(rejected).getByText('Yuz etalon rasmga mos kelmadi')).toBeInTheDocument();
+    expect(within(rejected).getByText('Yuz: 21%')).toBeInTheDocument();
+  });
+});

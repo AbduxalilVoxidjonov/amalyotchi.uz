@@ -33,3 +33,12 @@ export function crumbFor(user: { course: number | null } | null): string {
 export function navItemForPath(pathname: string): StudentNavItem | undefined {
   return STUDENT_NAV.find((n) => (n.to === '/' ? pathname === '/' : pathname.startsWith(n.to)));
 }
+
+/** Tab-bar'da bo'lmagan sahifalar sarlavhasi (masalan, profil kartasidan ochiladigan `/face`). */
+const PAGE_TITLES: Record<string, string> = {
+  '/face': 'Yuzni tasdiqlash',
+};
+
+export function pageTitleForPath(pathname: string): string | undefined {
+  return PAGE_TITLES[pathname];
+}

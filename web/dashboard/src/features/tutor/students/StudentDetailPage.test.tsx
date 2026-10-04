@@ -519,3 +519,82 @@ describe('StudentDetailPage — amaliyot davri tanlagichi (v3.5)', () => {
     expect(within(section).getByRole('button', { name: 'Keyingi oy' })).toBeEnabled();
   });
 });
+
+describe('StudentDetailPage · "Yuz" kartasi (v3.27)', () => {
+  it('pending: rasm, holat, Tasdiqlash → holat "Tasdiqlangan" bo‘ladi', async () => {
+    const user = userEvent.setup();
+    renderStudentDetail('/tutor/students/s-341031');
+    const card = await screen.findByRole('region', { name: 'Yuz' });
+    expect(within(card).getByText('Tekshirilmoqda')).toHaveAttribute('data-status', 'late');
+    expect(within(card).getByText('11.10.2026 09:05')).toBeInTheDocument();
+    expect(
+      within(card).getByRole('button', {
+        name: 'Karimov Bekzod etalon yuz rasmi — kattalashtirish',
+      }),
+    ).toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: 'Bekor qilish' })).not.toBeInTheDocument();
+
+    await user.click(within(card).getByRole('button', { name: 'Tasdiqlash' }));
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('region', { name: 'Yuz' })).getByText('Tasdiqlangan'),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      within(screen.getByRole('region', { name: 'Yuz' })).queryByRole('button', {
+        name: 'Tasdiqlash',
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('pending: Rad etish — sababsiz yuborilmaydi; sabab bilan → "Rad etilgan" va sabab ko‘rinadi', async () => {
+    const user = userEvent.setup();
+    renderStudentDetail('/tutor/students/s-341032');
+    const card = await screen.findByRole('region', { name: 'Yuz' });
+    await user.click(within(card).getByRole('button', { name: 'Rad etish' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Yuz rasmini rad etish' });
+    await user.click(within(dialog).getByRole('button', { name: 'Rad etish' }));
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('Rad etish sababini yozing.');
+    await user.type(within(dialog).getByLabelText('Rad etish sababi'), 'Boshqa odam');
+    await user.click(within(dialog).getByRole('button', { name: 'Rad etish' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    const updated = screen.getByRole('region', { name: 'Yuz' });
+    await waitFor(() => expect(within(updated).getByText('Rad etilgan')).toBeInTheDocument());
+    expect(within(updated).getByText('Boshqa odam')).toBeInTheDocument();
+  });
+
+  it('approved: Bekor qilish — tasdiq dialogi → reset → "Yuborilmagan" bo‘sh holat', async () => {
+    const user = userEvent.setup();
+    renderStudentDetail('/tutor/students/s-341030');
+    const card = await screen.findByRole('region', { name: 'Yuz' });
+    expect(within(card).getByText('Tasdiqlangan')).toHaveAttribute('data-status', 'ok');
+    expect(within(card).getByText('01.10.2026 10:40')).toBeInTheDocument();
+
+    await user.click(within(card).getByRole('button', { name: 'Bekor qilish' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Yuz rasmini bekor qilish' });
+    // "Qaytish" — hech narsa o'zgarmaydi.
+    await user.click(within(dialog).getByRole('button', { name: 'Qaytish' }));
+    expect(within(card).getByText('Tasdiqlangan')).toBeInTheDocument();
+
+    await user.click(within(card).getByRole('button', { name: 'Bekor qilish' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: 'Yuz rasmini bekor qilish' })).getByRole(
+        'button',
+        { name: 'Bekor qilish' },
+      ),
+    );
+    expect(
+      await within(screen.getByRole('region', { name: 'Yuz' })).findByText(
+        'Etalon yuz rasmi yuborilmagan',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("kundalik jadvalda yuz moslik bali ko'rinadi", async () => {
+    renderStudentDetail('/tutor/students/s-341030');
+    const table = await screen.findByRole('table', { name: 'Kundalik jadval' });
+    await waitFor(() =>
+      expect(within(table).getAllByText(/^Yuz: \d+%$/).length).toBeGreaterThan(0),
+    );
+  });
+});

@@ -1,0 +1,23 @@
+/* Etalon rasmi — selfi preview bilan bir xil oval shakl. */
+.img,
+.box {
+  display: block;
+  width: 150px;
+  height: 190px;
+  margin: 0 auto;
+  border-radius: 50%;
+  border: var(--border-inner);
+  background: var(--color-surface-3);
+}
+.img {
+  object-fit: cover;
+}
+.box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  color: var(--color-text-faint);
+  font-size: var(--fs-sm);
+  text-align: center;
+}

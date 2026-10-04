@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { StudentFaceCard } from '../../face/components/StudentFaceCard';
 import { todayInTashkent } from '../../format';
 import type { StudentApiArea, TutorStudentDetail } from '../types';
 import { StudentAttendanceSection } from './StudentAttendanceSection';
@@ -65,6 +66,15 @@ export function StudentProfile({
           actions={headerActions}
           labelPeriodCompany={labelPeriodCompany}
         />
+        {/* v3.27: "Yuz" kartasi — server `face` yuborsa; amallar faqat tyutor profilida. */}
+        {detail.face && (
+          <StudentFaceCard
+            studentId={detail.id}
+            studentName={detail.name}
+            face={detail.face}
+            canManage={area === 'tutor'}
+          />
+        )}
         {children}
         <StudentAttendanceSection detail={detail} period={shownPeriod} area={area} />
       </div>

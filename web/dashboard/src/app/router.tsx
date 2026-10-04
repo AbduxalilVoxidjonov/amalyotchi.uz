@@ -53,6 +53,7 @@ const TodayPage = lazy(() => import('@/features/tutor/today/TodayPage'));
 const ApplicationsPage = lazy(() => import('@/features/tutor/applications/ApplicationsPage'));
 const MyStudentsPage = lazy(() => import('@/features/tutor/students/MyStudentsPage'));
 const StudentDetailPage = lazy(() => import('@/features/tutor/students/StudentDetailPage'));
+const FaceEnrollmentsPage = lazy(() => import('@/features/tutor/face/FaceEnrollmentsPage'));
 const DiariesPage = lazy(() => import('@/features/tutor/diaries/DiariesPage'));
 const CalendarPage = lazy(() => import('@/features/tutor/calendar/CalendarPage'));
 const MapPage = lazy(() => import('@/features/tutor/map/MapPage'));
@@ -144,6 +145,7 @@ export const routes: RouteObject[] = [
               { path: 'applications', element: <ApplicationsPage /> },
               { path: 'students', element: <MyStudentsPage /> },
               { path: 'students/:studentId', element: <StudentDetailPage /> },
+              { path: 'face', element: <FaceEnrollmentsPage /> },
               { path: 'diaries', element: <DiariesPage /> },
               { path: 'calendar', element: <CalendarPage /> },
               { path: 'map', element: <MapPage /> },

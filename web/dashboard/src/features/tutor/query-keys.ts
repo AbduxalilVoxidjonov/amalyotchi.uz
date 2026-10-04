@@ -1,4 +1,5 @@
 import type { ApplicationTab } from './applications/types';
+import type { FaceEnrollmentTab } from './face/types';
 import type { StudentApiArea } from './students/types';
 import type { TodayParams } from './today/api';
 
@@ -36,6 +37,10 @@ export const tutorKeys = {
     students: (id: string) => ['tutor', 'companies', 'detail', id, 'students'] as const,
     /** `GET /companies/{id}/checkin-qr` — korxona check-in QR kodi. */
     checkinQr: (id: string) => ['tutor', 'companies', 'detail', id, 'checkin-qr'] as const,
+  },
+  face: {
+    all: ['tutor', 'face'] as const,
+    list: (params: { status: FaceEnrollmentTab }) => ['tutor', 'face', 'list', params] as const,
   },
   diaries: {
     all: ['tutor', 'diaries'] as const,

@@ -33,6 +33,7 @@ const TUTOR_NAV: readonly SidebarNavItem[] = [
   { label: 'Bugun', to: '/tutor', end: true },
   { label: 'Arizalar', to: '/tutor/applications' },
   { label: 'Talabalarim', to: '/tutor/students' },
+  { label: 'Yuz tasdiqlash', to: '/tutor/face' },
   { label: 'Kundaliklar', to: '/tutor/diaries' },
   { label: 'Kalendar', to: '/tutor/calendar' },
   { label: 'Xarita', to: '/tutor/map' },

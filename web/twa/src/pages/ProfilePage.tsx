@@ -1,6 +1,8 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { ChangePasswordForm } from '@/features/auth/components/ChangePasswordForm';
 import { useLogout } from '@/features/auth/hooks';
+import { useStudentFaceQuery } from '@/features/face/hooks';
+import { FACE_PATH, FACE_STATUS } from '@/features/face/types';
 import { useProfileQuery, useUpdateWorkHours } from '@/features/profile/hooks';
 import { PracticePeriodCard } from '@/features/profile/components/PracticePeriodCard';
 import {
@@ -19,7 +21,7 @@ import type {
 } from '@/features/profile/types';
 import { errorMessage, isApiError } from '@/shared/api/client';
 import { formatDate, formatPhone } from '@/shared/lib/format';
-import { Avatar, Badge, Button, Card, ErrorState, Input, LoadingState } from '@/shared/ui';
+import { AppLink, Avatar, Badge, Button, Card, ErrorState, Input, LoadingState } from '@/shared/ui';
 import pages from './pages.module.css';
 import styles from './ProfilePage.module.css';
 
@@ -49,6 +51,7 @@ export function ProfilePage() {
       <PersonalCard profile={p} />
       <PracticesCard practices={profilePractices(p)} />
       {p.workHours && <WorkHoursCard workHours={p.workHours} />}
+      <FaceCard />
       <AccountCard profile={p} />
     </div>
   );
@@ -273,6 +276,43 @@ function WorkHoursCard({ workHours: wh }: { workHours: StudentWorkHoursDto }) {
           </Button>
         )}
       </form>
+    </Card>
+  );
+}
+
+/**
+ * "Yuz tasdiqlash": etalon holati + `/face` ga havola. So'rov xatosi (eski server) — karta ko'rsatilmaydi.
+ */
+function FaceCard() {
+  const q = useStudentFaceQuery();
+  if (!q.data) return null;
+  const face = q.data;
+  const meta = FACE_STATUS[face.status];
+  const action =
+    face.status === 'none'
+      ? 'Rasm yuborish'
+      : face.status === 'rejected'
+        ? 'Qayta yuborish'
+        : "Ko'rish";
+  return (
+    <Card padded aria-labelledby="profile-face">
+      <div className={styles.sectionHead}>
+        <h2 id="profile-face" className={pages.sectionTitle}>
+          Yuz tasdiqlash
+        </h2>
+        <Badge status={meta.badge} size="sm">
+          {meta.label}
+        </Badge>
+      </div>
+      <p className={styles.note}>
+        {face.required
+          ? 'Davomat selfisi tasdiqlangan yuz rasmingiz bilan solishtiriladi.'
+          : 'Yuz rasmi davomatda shaxsingizni tasdiqlash uchun ishlatiladi.'}
+        {face.status === 'rejected' && face.rejectReason ? ` Rad sababi: ${face.rejectReason}` : ''}
+      </p>
+      <Button asChild block className={styles.faceLink}>
+        <AppLink to={FACE_PATH}>{action}</AppLink>
+      </Button>
     </Card>
   );
 }

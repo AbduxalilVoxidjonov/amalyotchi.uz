@@ -20,6 +20,7 @@ import type {
   TutorStudentDetail,
 } from './types';
 import { hasMockStudentPassword } from '@/features/shared/student-password/passwordStore';
+import { mockFaceOf } from '../face/mockStore';
 
 /**
  * SPEC-SCREENS §5 mock (6 ta). `buildDetail`/`buildAttendance`/`buildDiaries` admin mock'laridan
@@ -615,6 +616,8 @@ export function buildAttendance(
       attempts: rejectedBefore ? 3 : hasPunch ? 1 : 0,
       rejectedAttempts: rejectedBefore ? 2 : 0,
       events,
+      // v3.27: selfi bor check-in'da yuz moslik bali (etalon bilan solishtirilgan).
+      faceMatchScore: checkIn?.photoUrl ? 62 + ((w * 7) % 36) : null,
     });
   }
   return days;
@@ -800,6 +803,7 @@ export function buildDetail(
       periods,
       selectedPeriodId: period.id,
       hasPassword: hasMockStudentPassword(student.id),
+      face: mockFaceOf(student.id),
     };
   }
 
@@ -827,6 +831,7 @@ export function buildDetail(
       periods,
       selectedPeriodId: period.id,
       hasPassword: hasMockStudentPassword(student.id),
+      face: mockFaceOf(student.id),
     };
   }
 
@@ -880,6 +885,7 @@ export function buildDetail(
     periods,
     selectedPeriodId: period.id,
     hasPassword: hasMockStudentPassword(student.id),
+    face: mockFaceOf(student.id),
   };
 }
 

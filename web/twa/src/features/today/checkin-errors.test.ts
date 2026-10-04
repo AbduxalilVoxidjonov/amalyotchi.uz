@@ -54,3 +54,25 @@ describe('classifyCheckinError — server xatosidan keyin qaysi qadamga', () => 
     ).toBe('Rasm 5 MB dan oshmasligi kerak.');
   });
 });
+
+describe('classifyCheckinError — yuz sabablari (v3.27)', () => {
+  const withReason = (status: number, detail: string, rejectReason: string) =>
+    ApiError.fromProblem(status, { title: 'x', status, detail, rejectReason }, detail);
+
+  it.each([
+    [withReason(400, 'Etalon yo‘q.', 'faceNotEnrolled'), 'faceNotEnrolled'],
+    [withReason(400, 'Yuz yo‘q.', 'faceNotDetected'), 'faceNotDetected'],
+    [withReason(409, 'Mos emas.', 'faceMismatch'), 'faceMismatch'],
+    [apiError(400, 'Yuz rasmingiz hali tasdiqlanmagan.'), 'faceNotEnrolled'],
+    [apiError(400, 'Selfida yuz topilmadi.'), 'faceNotDetected'],
+    [apiError(409, 'Selfidagi yuz tasdiqlangan rasmingizga mos kelmadi.'), 'faceMismatch'],
+  ])('%s → face/%s', (error, reason) => {
+    expect(classifyCheckinError(error)).toMatchObject({ step: 'face', faceReason: reason });
+  });
+
+  it('boshqa rejectReason (qrInvalid emas) yuz deb hisoblanmaydi', () => {
+    expect(classifyCheckinError(withReason(400, 'Bugun ish kuni emas.', 'notWorkDay')).step).toBe(
+      'stale',
+    );
+  });
+});

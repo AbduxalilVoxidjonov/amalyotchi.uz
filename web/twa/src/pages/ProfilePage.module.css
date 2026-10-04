@@ -137,3 +137,8 @@
   padding: 10px 12px;
   line-height: var(--lh-note);
 }
+
+/* "Yuz tasdiqlash" kartasi — havola tugmasi. */
+.faceLink {
+  margin-top: 12px;
+}

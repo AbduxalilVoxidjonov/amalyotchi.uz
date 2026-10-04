@@ -4,6 +4,8 @@ import { applicationsHandlers, resetApplicationsMock } from './applications/mock
 import { calendarHandlers } from './calendar/mocks';
 import { companiesHandlers } from './companies/mocks';
 import { diariesHandlers, resetDiariesMock } from './diaries/mocks';
+import { resetFaceMock } from './face/mockStore';
+import { faceHandlers } from './face/mocks';
 import { gradingHandlers, resetGradingMock } from './grading/mocks';
 import { mapHandlers } from './map/mocks';
 import { resetStudentDiaryReviewsMock, studentsHandlers } from './students/mocks';
@@ -22,6 +24,7 @@ export const tutorHandlers: HttpHandler[] = [
   ...mapHandlers,
   ...gradingHandlers,
   ...companiesHandlers,
+  ...faceHandlers,
 ];
 
 /** Mutatsiyalar o'zgartirgan in-memory holatni tiklash (testlar orasida). */
@@ -30,6 +33,7 @@ export function resetTutorMocks() {
   resetDiariesMock();
   resetGradingMock();
   resetStudentDiaryReviewsMock();
+  resetFaceMock();
   // Talaba paroli (admin va tyutor profili umumiy mock holati).
   resetStudentPasswordMock();
 }

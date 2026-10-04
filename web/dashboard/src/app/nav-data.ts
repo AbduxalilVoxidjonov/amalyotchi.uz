@@ -24,8 +24,17 @@ export interface AdminNavDto {
 }
 
 export interface TutorNavDto {
-  counts: { today: number; applications: number; students: number; diaries: number };
+  counts: {
+    today: number;
+    applications: number;
+    students: number;
+    diaries: number;
+    /** v3.27 — tyutor tekshiruvini kutayotgan etalon yuz rasmlari. Eski server yubormaydi. */
+    pendingFaceEnrollments?: number;
+  };
   context: { groups: string[]; periodName: string | null };
+  /** v3.27 — `counts` ichida bo'lmasa, yuqori darajada kelishi ham qabul qilinadi. */
+  pendingFaceEnrollments?: number;
 }
 
 /** Rol bilan belgilangan javob — `navBadges`/`navCrumb` qaysi shaklligini aniq biladi. */
@@ -73,6 +82,7 @@ export function navBadges(data: NavData): NavBadges {
     '/tutor/applications': badge(c.applications),
     '/tutor/students': badge(c.students),
     '/tutor/diaries': badge(c.diaries),
+    '/tutor/face': badge(c.pendingFaceEnrollments ?? data.pendingFaceEnrollments ?? 0),
   };
 }
 

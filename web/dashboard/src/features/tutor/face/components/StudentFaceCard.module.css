@@ -1,0 +1,47 @@
+.layout {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 600px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+.photo {
+  min-width: 0;
+  max-width: 180px;
+}
+.noPhoto {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 5;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md2);
+  color: var(--color-text-faint);
+  font-size: var(--fs-xs2);
+}
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.reason {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.reasonLabel {
+  color: var(--color-text-faint);
+}
+.error {
+  margin: 0;
+  color: var(--color-bad-fg);
+  font-size: var(--fs-xs2);
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}

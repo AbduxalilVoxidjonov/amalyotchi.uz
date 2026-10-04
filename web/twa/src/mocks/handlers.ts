@@ -1,6 +1,7 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
 import { toUserRole, UserRole } from '@amaliyotchi/shared';
 import { diaryHandlers } from '@/features/diary/mocks';
+import { faceHandlers } from '@/features/face/mocks';
 import { placeHandlers } from '@/features/place/mocks';
 import { periodDaysHandlers } from '@/features/period-days/mocks';
 import { profileHandlers } from '@/features/profile/mocks';
@@ -152,4 +153,5 @@ export const handlers: HttpHandler[] = [
   ...diaryHandlers,
   ...periodDaysHandlers,
   ...profileHandlers,
+  ...faceHandlers,
 ];
