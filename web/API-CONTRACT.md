@@ -1315,7 +1315,7 @@ Sozlamalar (kalit · tur · birlik · default · min–max): `geofenceRadius` in
 `checkInWindow` int min `90` 15–480 ·
 **`checkinPhotoRequired`** bool **`true`** (v3.7 gacha `false`) · **`checkinQrRequired`** bool `true` (v3.7) ·
 **`maxStudentsPerCompany`** int `10` 1–200 · `faceVerificationEnabled` bool `false` · `faceMatchThreshold` int `36` 0–100 ·
-**`trackingEnabled`** bool `true` · **`trackingIntervalSec`** int sec `300` 60–900 · **`trackingDistanceFilterM`** int m `50` 10–500 (v3.29, §6.35).
+**`trackingEnabled`** bool `true` · **`trackingIntervalSec`** int sec `120` 60–900 · **`trackingDistanceFilterM`** int m `20` 10–500 (v3.29, §6.35).
 Ro'yxat tartibi — shu; `checkinPhotoRequired`/`maxStudentsPerCompany` v3 da qo'shildi (§6); `diaryPdfRequired` — keyinroq
 (`minReportLength` dan keyin); `checkinQrRequired` — v3.7 (§6.13).
 Bazada yo'q kalit default bilan qaytadi (`updatedAt: null`).
@@ -3624,8 +3624,10 @@ adminlarni yaratadi, tahrirlaydi, bloklaydi va parolini tiklaydi.
 Kontrakt va qoidalar manbasi — `docs/LIVE-JOYLASHUV.md`. Barcha vaqtlar UTC (`+00:00`), enum'lar camelCase string.
 
 - **Sozlamalar** (`GET/PUT /api/admin/settings`, ro'yxat oxirida): `trackingEnabled` bool `true` · `trackingIntervalSec`
-  int, `unit: "sec"` (yangi birlik), `300`, 60–900 · `trackingDistanceFilterM` int m `50` 10–500. Oraliqdan tashqari → 400
-  `errors.<key>` (boshqa sozlamalar kabi).
+  int, `unit: "sec"` (yangi birlik), `120`, 60–900 · `trackingDistanceFilterM` int m `20` 10–500. Oraliqdan tashqari → 400
+  `errors.<key>` (boshqa sozlamalar kabi). Sukutlar (14.10.2026, deploy'dan oldin `300`/`50` dan o'zgartirildi — korxona
+  ichidagi harakat ham ko'rinsin) kodda (`SettingKeys`): seed faqat yo'q kalitni qo'shadi, saqlangan qiymat o'zgarmaydi;
+  `signalLost` = `3 × intervalSec` (sukut 6 daq), `outsideMinutes` oralig'i `2 × intervalSec` (sukut 4 daq) da kesiladi.
 - **`GET /api/student/today`** (va `POST /checkin|/checkout` javobidagi `TodayDto`) — yangi maydon, doim keladi:
   ```ts
   interface TrackingDto {

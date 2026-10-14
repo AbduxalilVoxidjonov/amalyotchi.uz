@@ -3,8 +3,23 @@
  * backend ham shu oraliqlarni tekshiradi (400 `errors{key}`), bu yerda faqat erta xabar va
  * Saqlash'ni to'sish uchun.
  */
+export const TRACKING_ENABLED_KEY = 'trackingEnabled';
 export const TRACKING_INTERVAL_KEY = 'trackingIntervalSec';
 export const TRACKING_DISTANCE_KEY = 'trackingDistanceFilterM';
+
+/** `trackingEnabled` o'chiq bo'lsa bu maydonlar tahrirlanmaydi (kuzatuv yo'q — oraliq/masofa ma'nosiz). */
+const TRACKING_DEPENDENT_KEYS: ReadonlySet<string> = new Set([
+  TRACKING_INTERVAL_KEY,
+  TRACKING_DISTANCE_KEY,
+]);
+
+/** Kalit kuzatuv o'chiqligi sababli disabled bo'lishi kerakmi (`values` — joriy draft/server qiymatlari). */
+export function isTrackingDependentDisabled(
+  key: string,
+  values: Readonly<Record<string, string>>,
+): boolean {
+  return TRACKING_DEPENDENT_KEYS.has(key) && values[TRACKING_ENABLED_KEY] === 'false';
+}
 
 export const TRACKING_LIMITS = {
   [TRACKING_INTERVAL_KEY]: { min: 60, max: 900 },
@@ -37,7 +52,7 @@ export function validateTracking(
   return errors;
 }
 
-/** 300 → "5", 90 → "1.5" (input uchun; noto'g'ri qiymat — o'zicha). */
+/** 120 → "2", 90 → "1.5" (input uchun; noto'g'ri qiymat — o'zicha). */
 export function secondsToMinutesText(raw: string): string {
   const v = raw.trim();
   if (!/^\d+$/.test(v)) return v;
@@ -45,7 +60,7 @@ export function secondsToMinutesText(raw: string): string {
   return Number.isInteger(min) ? String(min) : String(Math.round(min * 10) / 10);
 }
 
-/** "5" → "300", "1,5" → "90"; son bo'lmasa — matnning o'zi (validatsiya ushlaydi). */
+/** "2" → "120", "1,5" → "90"; son bo'lmasa — matnning o'zi (validatsiya ushlaydi). */
 export function minutesTextToSeconds(text: string): string {
   const v = text.trim().replace(',', '.');
   if (v === '' || !/^\d+(\.\d*)?$/.test(v)) return text.trim();

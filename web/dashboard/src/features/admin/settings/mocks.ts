@@ -177,7 +177,7 @@ export const mockSettings: AdminSettings = {
     {
       key: 'trackingIntervalSec',
       label: "Ping oralig'i",
-      value: '300',
+      value: '120',
       type: 'int',
       unit: 'sec',
       note: 'Joylashuv shuncha vaqtda bir marta yuboriladi (1–15 daqiqa).',
@@ -188,7 +188,7 @@ export const mockSettings: AdminSettings = {
     {
       key: 'trackingDistanceFilterM',
       label: 'Masofa filtri',
-      value: '50',
+      value: '20',
       type: 'int',
       unit: 'm',
       note: 'Talaba shuncha metr siljisa oraliq kutilmasdan ping yuboriladi.',

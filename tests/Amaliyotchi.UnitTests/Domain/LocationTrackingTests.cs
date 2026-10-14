@@ -185,8 +185,8 @@ public sealed class LocationTrackingTests
 
     [Theory]
     [InlineData(SettingKeys.TrackingEnabled, "true", null)]
-    [InlineData(SettingKeys.TrackingIntervalSec, "300", "sec")]
-    [InlineData(SettingKeys.TrackingDistanceFilterM, "50", "m")]
+    [InlineData(SettingKeys.TrackingIntervalSec, "120", "sec")]
+    [InlineData(SettingKeys.TrackingDistanceFilterM, "20", "m")]
     public void Sozlamalar_StandartQiymatVaBirlik(string key, string defaultValue, string? unit)
     {
         var definition = SettingKeys.Get(key);

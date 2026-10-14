@@ -190,10 +190,10 @@ describe('SettingsPage', () => {
       expect(
         within(tracking).getByRole('switch', { name: 'Fonda joylashuvni kuzatish' }),
       ).toBeChecked();
-      // 300 soniya → 5 daqiqa.
-      expect(within(tracking).getByLabelText("Ping oralig'i")).toHaveValue(5);
+      // Sukut 120 soniya → 2 daqiqa.
+      expect(within(tracking).getByLabelText("Ping oralig'i")).toHaveValue(2);
       expect(within(tracking).getByText('daqiqa')).toBeInTheDocument();
-      expect(within(tracking).getByLabelText('Masofa filtri')).toHaveValue(50);
+      expect(within(tracking).getByLabelText('Masofa filtri')).toHaveValue(20);
     });
 
     it("oraliqdan tashqari qiymat → xato, Saqlash o'chiq, so'rov yuborilmaydi", async () => {
@@ -222,6 +222,45 @@ describe('SettingsPage', () => {
       expect(screen.getByRole('button', { name: 'Saqlash' })).toBeDisabled();
       await user.click(screen.getByRole('button', { name: 'Saqlash' }));
       expect(bodies).toEqual([]);
+    });
+
+    it("kuzatuv o'chirilsa oraliq va masofa maydonlari disabled, yoqilsa — qayta faol", async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsPage />);
+      const tracking = await screen.findByRole('region', { name: 'Joylashuvni kuzatish' });
+      const toggle = within(tracking).getByRole('switch', { name: 'Fonda joylashuvni kuzatish' });
+      const interval = within(tracking).getByLabelText("Ping oralig'i");
+      const distance = within(tracking).getByLabelText('Masofa filtri');
+      expect(interval).toBeEnabled();
+      expect(distance).toBeEnabled();
+
+      await user.click(toggle);
+      expect(toggle).not.toBeChecked();
+      expect(interval).toBeDisabled();
+      expect(distance).toBeDisabled();
+      // Switch'ning o'zi faol qoladi — qayta yoqish mumkin.
+      expect(toggle).toBeEnabled();
+
+      await user.click(toggle);
+      expect(interval).toBeEnabled();
+      expect(distance).toBeEnabled();
+    });
+
+    it("serverda kuzatuv o'chiq bo'lsa maydonlar boshidanoq disabled", async () => {
+      server.use(
+        http.get(SETTINGS_ENDPOINT, () =>
+          HttpResponse.json<AdminSettings>({
+            ...mockSettings,
+            settings: mockSettings.settings.map((s) =>
+              s.key === 'trackingEnabled' ? { ...s, value: 'false' } : s,
+            ),
+          }),
+        ),
+      );
+      renderWithProviders(<SettingsPage />);
+      const tracking = await screen.findByRole('region', { name: 'Joylashuvni kuzatish' });
+      expect(within(tracking).getByLabelText("Ping oralig'i")).toBeDisabled();
+      expect(within(tracking).getByLabelText('Masofa filtri')).toBeDisabled();
     });
 
     it("to'g'ri qiymat → PUT soniyada yuboriladi", async () => {

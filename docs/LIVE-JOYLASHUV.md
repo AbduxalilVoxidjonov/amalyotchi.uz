@@ -27,8 +27,10 @@ Ikki qism:
 - **Soxta joylashuv**: klient `isMocked` yuboradi; server saqlaydi va adminga belgi sifatida ko'rsatadi
   (ping rad etilmaydi).
 - **Saqlash muddati**: ping'lar 60 kundan keyin o'chiriladi (fon job).
-- **Sozlamalar** (admin → Sozlamalar): `trackingEnabled` (sukut `true`), `trackingIntervalSec` (sukut 300,
-  ruxsat 60–900), `trackingDistanceFilterM` (sukut 50, 10–500).
+- **Sozlamalar** (admin → Sozlamalar): `trackingEnabled` (sukut `true`), `trackingIntervalSec` (sukut 120,
+  ruxsat 60–900), `trackingDistanceFilterM` (sukut 20, 10–500). Sukutlar korxona ichida aylanib yurish ham izda
+  ko'rinishi uchun tanlangan (oldin 300/50 edi): sukut bo'yicha `signalLost` — 6 daqiqa, `outsideMinutes` oralig'i
+  4 daqiqada kesiladi. `trackingEnabled=false` bo'lsa admin Sozlamalarida oraliq va masofa maydonlari o'chiq (disabled).
 - Barcha vaqtlar UTC ISO-8601, JSON camelCase, enum camelCase string, xatolar ProblemDetails.
 
 ## Talaba API
@@ -38,8 +40,8 @@ Ikki qism:
 "tracking": {
   "enabled": true,            // sozlamada yoqilgan VA sessiya faol (check-in bor, check-out yo'q)
   "consentGiven": true,       // talaba fonda kuzatuvga rozilik berganmi
-  "intervalSec": 300,
-  "distanceFilterM": 50,
+  "intervalSec": 120,
+  "distanceFilterM": 20,
   "activeUntil": "2026-10-14T13:30:00Z"  // ko'pi bilan qachongacha (auto-close vaqti); null = noma'lum
 }
 ```
@@ -93,14 +95,24 @@ Body `{ "consent": true }` → 204. `consent=false` → rozilikni qaytarib olish
 ```
 Data scoping: mavjud admin qoidalari (bosh admin / oddiy admin) — boshqa admin endpoint'lari qanday cheklasa, shunday.
 
+Admin panel: iz sahifasi `/admin/today/students/:id/location?date=&name=` — xaritada ping'lar vaqt tartibida chiziq
+(polyline) bilan bog'langan, nuqtalar holat rangida (inside — yashil, outside — qizil, inaccurate — sariq; soxta — uzuq
+chegara); sana tanlagich `?date=` ni o'zgartiradi. Kirish: "Bugun" jadvalidagi talaba ismi yoki talaba profili
+(`/admin/students/:id`) sarlavhasidagi **"Joylashuv izi"** havolasi (bugungi sana, `&from=student` — breadcrumb profilga qaytaradi).
+
 ### `GET/PUT /api/admin/settings` — yangi maydonlar
 `trackingEnabled`, `trackingIntervalSec`, `trackingDistanceFilterM` (validatsiya yuqoridagi oraliqlar).
 
 ## Mobil ilova (app/)
 
-- Ruxsatlar: oldin "Ilovadan foydalanganda" (ekrandagi jonli ko'rsatkich va check-in). Fonda kuzatuv uchun —
-  check-in'dan keyin, **ochiq ogohlantirish ekrani** (nima, nega, qachon to'xtaydi, faqat ish vaqtida) → rozilik →
-  `PUT /tracking/consent` → "Doim" ruxsati (Android 10+ sozlamalar orqali, iOS Always).
+- Rozilik (2026-10-14 qarori): `tracking.consentGiven=false` bo'lsa rozilik ekrani check-in oqimining **birinchi qadami**
+  ("Keyinroq" yo'q). "Roziman" → `PUT /tracking/consent` → QR/selfi. "Rozi emasman" → davomat belgilanmaydi.
+  Bir marta berilgan rozilik qayta so'ralmaydi; Profil'dan qaytarib olinsa keyingi check-in'da yana so'raladi.
+  (Gate hozircha faqat ilovada — server rozilik bo'lmasa ham check-in'ni qabul qiladi, admin'da `noConsent`.)
+- Ruxsat: "Ilovadan foydalanganda" yetarli — kuzatuv check-in paytida (ilova old planda) foreground service bilan
+  boshlanib fonda davom etadi. "Doim" faqat ixtiyoriy (Profil'dan). Platforma har ~15 s o'lchaydi, Dart tomonda
+  `intervalSec` yoki `distanceFilterM` siljish bo'yicha yoziladi (korxona ichidagi harakat ham ko'rinadi);
+  navbat har 60–120 s da yuboriladi.
 - Android: foreground service doimiy bildirishnoma bilan ("Amaliyotchi ish vaqtida joylashuvni tekshirmoqda"),
   `ACCESS_BACKGROUND_LOCATION`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION`, `POST_NOTIFICATIONS`.
   iOS: `UIBackgroundModes: location`, `NSLocationAlwaysAndWhenInUseUsageDescription`, `allowBackgroundLocationUpdates`,

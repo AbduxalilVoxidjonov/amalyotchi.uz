@@ -9,8 +9,8 @@ import type {
   TrackPlace,
 } from './types';
 
-/** Mock kuzatuv oralig'i — kontrakt sukuti `trackingIntervalSec = 300`. */
-const INTERVAL_MIN = 5;
+/** Mock kuzatuv oralig'i — kontrakt sukuti `trackingIntervalSec = 120`. */
+const INTERVAL_MIN = 2;
 const PROBLEM_HEADERS = { 'Content-Type': 'application/problem+json' };
 
 /** "2026-10-14" + "09:05" (Toshkent, UTC+5) → UTC ISO. */
@@ -50,7 +50,7 @@ function toPing(date: string, place: TrackPlace, seed: PingSeed, i: number): Loc
   };
 }
 
-/** `from`..`to` oralig'ida har 5 daqiqada ping; `status(time)` holatni beradi. */
+/** `from`..`to` oralig'ida har `INTERVAL_MIN` (2) daqiqada ping; `status(time)` holatni beradi. */
 function series(
   from: string,
   to: string,
@@ -102,7 +102,7 @@ interface Scenario {
 
 /**
  * Ssenariylar (today/mocks bilan mos):
- * - Aliyev — 10:20–10:45 tashqariga chiqib qaytgan;
+ * - Aliyev — 10:20–10:44 tashqariga chiqib qaytgan;
  * - Karimov — 11:30 dan keyin signal yo'q;
  * - Yusupova — 13:00–13:20 soxta (isMocked) ping'lar, 17:02 da ketgan;
  * - Rahimov — 11:40 dan beri tashqarida, bitta aniqligi past ping.
@@ -112,7 +112,7 @@ const SCENARIOS: Record<string, Scenario> = {
     checkIn: '09:02',
     checkOut: null,
     consentGiven: true,
-    pings: series('09:05', '13:00', (t) => (t >= '10:20' && t < '10:45' ? 'outside' : 'inside')),
+    pings: series('09:04', '13:00', (t) => (t >= '10:20' && t < '10:44' ? 'outside' : 'inside')),
   },
   's-341031': {
     checkIn: '09:41',
@@ -136,7 +136,7 @@ const SCENARIOS: Record<string, Scenario> = {
     checkOut: null,
     consentGiven: true,
     pings: series('09:10', '12:30', (t) =>
-      t === '10:15' ? 'inaccurate' : t >= '11:40' ? 'outside' : 'inside',
+      t === '10:16' ? 'inaccurate' : t >= '11:40' ? 'outside' : 'inside',
     ),
   },
   's-341047': { checkIn: '08:45', checkOut: null, consentGiven: false, pings: [] },

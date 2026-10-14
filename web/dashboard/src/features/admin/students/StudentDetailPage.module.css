@@ -29,3 +29,10 @@
   outline: none;
   box-shadow: var(--focus-ring);
 }
+/* Profil sarlavhasidagi amallar: "Joylashuv izi" havolasi + parol */
+.headerActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}

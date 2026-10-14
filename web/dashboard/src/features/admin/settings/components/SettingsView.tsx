@@ -4,7 +4,12 @@ import { ErrorState } from '../../components/PageStatus';
 import { formatDayMonth } from '../../shared/format';
 import { parseWeekdays, toggleWeekday, WEEKDAYS } from '../../shared/weekdays';
 import { groupSettings } from '../groups';
-import { minutesTextToSeconds, secondsToMinutesText, TRACKING_INTERVAL_KEY } from '../tracking';
+import {
+  isTrackingDependentDisabled,
+  minutesTextToSeconds,
+  secondsToMinutesText,
+  TRACKING_INTERVAL_KEY,
+} from '../tracking';
 import { UNIT_LABEL, type AdminSettings, type Setting } from '../types';
 import styles from './SettingsView.module.css';
 
@@ -139,7 +144,7 @@ function SettingControl({
 
 interface IntervalMinutesControlProps {
   id: string;
-  /** Xom qiymat — soniyalarda ("300"). */
+  /** Xom qiymat — soniyalarda ("120"). */
   value: string;
   describedBy: string | undefined;
   invalid: boolean;
@@ -261,6 +266,10 @@ export function SettingsView({
   onAddHoliday,
 }: SettingsViewProps) {
   const groups = groupSettings(data.settings);
+  // Joriy qiymatlar (draft ustidan server) — bog'liq maydonlarni o'chirish uchun.
+  const current: Record<string, string> = Object.fromEntries(
+    data.settings.map((s) => [s.key, values[s.key] ?? s.value]),
+  );
 
   return (
     <form
@@ -283,9 +292,9 @@ export function SettingsView({
                   <SettingRow
                     key={s.key}
                     setting={s}
-                    value={values[s.key] ?? s.value}
+                    value={current[s.key] ?? s.value}
                     error={fieldErrors[s.key]?.join(' ')}
-                    disabled={isSaving}
+                    disabled={isSaving || isTrackingDependentDisabled(s.key, current)}
                     onChange={(v) => onChange(s.key, v)}
                   />
                 ))}

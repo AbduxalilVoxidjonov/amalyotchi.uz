@@ -48,6 +48,11 @@ describe('buildTimeline', () => {
     expect(tl.segments.at(-1)).toMatchObject({ kind: 'gap', to: Date.parse(t('11:00')) });
   });
 
+  it("ping'lar 2 tadan kam → sukut chegarasi 2 × 120 s = 4 daq", () => {
+    expect(gapThresholdMinutes([])).toBe(4);
+    expect(gapThresholdMinutes([ping('09:10')])).toBe(4);
+  });
+
   it("check-in ham ping ham yo'q → null", () => {
     expect(buildTimeline({ pings: [], checkInAt: null, checkOutAt: null }, null)).toBeNull();
   });

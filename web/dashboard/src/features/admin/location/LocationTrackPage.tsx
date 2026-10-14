@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { Badge, Breadcrumb, Card, CardBody, Input } from '@/shared/ui';
+import { Badge, Breadcrumb, Card, CardBody, Input, type BreadcrumbItem } from '@/shared/ui';
 import { QueryState } from '../components/QueryState';
 import { fmtDateOnly, fmtDistance, fmtTime, todayInTashkent } from '../shared/fmt';
 import { TrackMap } from './components/TrackMap';
@@ -14,7 +14,8 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * Admin · talabaning kunlik joylashuv izi (`/admin/today/students/:studentId/location?date=&name=`).
- * Xarita (korxona radiusi + ping'lar) · kun xulosasi · vaqt chizig'i. Sana sukut bo'yicha — bugun (Toshkent).
+ * Xarita (korxona radiusi + ping'lar, vaqt bo'yicha chiziq) · kun xulosasi · vaqt chizig'i. Sana sukut
+ * bo'yicha — bugun (Toshkent). `?from=student` — talaba profilidan kelingan (breadcrumb profilga qaytaradi).
  */
 export function LocationTrackPage() {
   const { studentId = '' } = useParams<{ studentId: string }>();
@@ -24,6 +25,14 @@ export function LocationTrackPage() {
   const date = dateParam && DATE_RE.test(dateParam) && dateParam <= today ? dateParam : today;
   const isToday = date === today;
   const name = params.get('name')?.trim() || 'Talaba';
+  const fromStudent = params.get('from') === 'student';
+  const breadcrumb: BreadcrumbItem[] = fromStudent
+    ? [
+        { label: 'Talabalar', to: '/admin/students' },
+        { label: name, to: `/admin/students/${encodeURIComponent(studentId)}` },
+        { label: 'Joylashuv izi' },
+      ]
+    : [{ label: 'Bugun', to: '/admin/today' }, { label: name }];
 
   const query = useLocationPingsQuery(studentId, date, isToday);
   const data = query.data;
@@ -42,7 +51,7 @@ export function LocationTrackPage() {
 
   return (
     <div className={styles.page}>
-      <Breadcrumb items={[{ label: 'Bugun', to: '/admin/today' }, { label: name }]} />
+      <Breadcrumb items={breadcrumb} />
       <Card as="section" aria-labelledby="track-title">
         <CardBody className={styles.head}>
           <div className={styles.titleBlock}>

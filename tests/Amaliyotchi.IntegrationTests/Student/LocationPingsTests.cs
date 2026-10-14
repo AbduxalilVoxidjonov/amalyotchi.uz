@@ -57,7 +57,7 @@ public sealed class LocationPingsTests(ApiFixture fixture)
         {
             fixture.Clock.Set(At(day, 8, 30));
             var before = (await (await scene.Client.GetAsync("/api/student/today")).Content.ReadAsync<TodayDto>())!;
-            before.Tracking.Should().Be(new TrackingDto(false, false, 300, 50, null), "check-in yo'q — sessiya faol emas");
+            before.Tracking.Should().Be(new TrackingDto(false, false, 120, 20, null), "check-in yo'q — sessiya faol emas");
 
             await Factory.CheckInDirectlyAsync(scene, day);
             fixture.Clock.Set(At(day, 10, 0));

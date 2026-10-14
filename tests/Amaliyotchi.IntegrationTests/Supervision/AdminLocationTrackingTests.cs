@@ -122,7 +122,7 @@ public sealed class AdminLocationTrackingTests(ApiFixture fixture)
             o.State.Should().Be(Amaliyotchi.Domain.Attendance.PresenceState.Outside);
             o.LastPingAt.Should().Be(At(s.Day, 9, 58));
             o.DistanceM.Should().BeApproximately(1000, 30);
-            o.OutsideMinutes.Should().Be(5 + 10, "9:35→9:40 = 5; 9:40→9:58 = 18, lekin 2×300 s = 10 da kesiladi");
+            o.OutsideMinutes.Should().Be(4 + 4, "9:35→9:40 = 5 va 9:40→9:58 = 18, lekin sukut 2×120 s = 4 da kesiladi");
             o.Mocked.Should().BeTrue();
 
             rows[inside.Id].Presence!.State.Should().Be(Amaliyotchi.Domain.Attendance.PresenceState.Inside);
@@ -181,7 +181,8 @@ public sealed class AdminLocationTrackingTests(ApiFixture fixture)
             LocationPingStatus.Inside, LocationPingStatus.Outside, LocationPingStatus.Outside, LocationPingStatus.Inaccurate);
         body.Pings[2].IsMocked.Should().BeTrue();
         body.Pings[0].DistanceM.Should().Be(0);
-        body.Summary.Should().Be(new LocationPingsSummaryDto(4, 1, 2, 1, 5 + 10, 22, At(s.Day, 9, 37)));
+        // outsideMinutes: 9:10→9:15 = 5 va 9:15→9:37 = 22, har biri sukut 2×120 s = 4 da kesiladi.
+        body.Summary.Should().Be(new LocationPingsSummaryDto(4, 1, 2, 1, 4 + 4, 22, At(s.Day, 9, 37)));
 
         // Ping'siz kun — bo'sh, joy null (davomat yo'q).
         var empty = (await (await s.Admin.GetAsync(
@@ -218,9 +219,9 @@ public sealed class AdminLocationTrackingTests(ApiFixture fixture)
         var byKey = settings.Settings.ToDictionary(x => x.Key);
         byKey[SettingKeys.TrackingEnabled].Type.Should().Be(SettingType.Bool);
         byKey[SettingKeys.TrackingIntervalSec].Should().Match<SettingDto>(x =>
-            x.Type == SettingType.Int && x.Min == 60 && x.Max == 900 && x.Unit == "sec");
+            x.Type == SettingType.Int && x.Min == 60 && x.Max == 900 && x.Unit == "sec" && x.Value == "120");
         byKey[SettingKeys.TrackingDistanceFilterM].Should().Match<SettingDto>(x =>
-            x.Type == SettingType.Int && x.Min == 10 && x.Max == 500 && x.Unit == "m");
+            x.Type == SettingType.Int && x.Min == 10 && x.Max == 500 && x.Unit == "m" && x.Value == "20");
 
         var bad = await client.PutAsJsonAsync("/api/admin/settings", new
         {
@@ -244,23 +245,26 @@ public sealed class AdminLocationTrackingTests(ApiFixture fixture)
         {
             var ok = await client.PutAsJsonAsync("/api/admin/settings", new
             {
-                values = new Dictionary<string, string> { [SettingKeys.TrackingIntervalSec] = "120" }
+                values = new Dictionary<string, string> { [SettingKeys.TrackingIntervalSec] = "600" }
             });
             ok.StatusCode.Should().Be(HttpStatusCode.OK);
             (await ok.Content.ReadAsync<AdminSettingsDto>())!.Settings
-                .Single(x => x.Key == SettingKeys.TrackingIntervalSec).Value.Should().Be("120");
+                .Single(x => x.Key == SettingKeys.TrackingIntervalSec).Value.Should().Be("600");
 
             // Talaba "today" yangi oraliqni oladi.
             var scene = await Factory.CreateSceneAsync();
             var today = (await (await scene.Client.GetAsync("/api/student/today"))
                 .Content.ReadAsync<Amaliyotchi.Application.Features.Student.TodayDto>())!;
-            today.Tracking.IntervalSec.Should().Be(120);
+            today.Tracking.IntervalSec.Should().Be(600);
         }
         finally
         {
             await client.PutAsJsonAsync("/api/admin/settings", new
             {
-                values = new Dictionary<string, string> { [SettingKeys.TrackingIntervalSec] = "300" }
+                values = new Dictionary<string, string>
+                {
+                    [SettingKeys.TrackingIntervalSec] = SettingKeys.Get(SettingKeys.TrackingIntervalSec).DefaultValue
+                }
             });
         }
     }

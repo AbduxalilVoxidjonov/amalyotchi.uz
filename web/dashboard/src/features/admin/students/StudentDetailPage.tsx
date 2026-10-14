@@ -1,10 +1,11 @@
 import { Breadcrumb, Button, EmptyState, type BreadcrumbItem } from '@/shared/ui';
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { StudentPasswordAction } from '@/features/shared/student-password';
 import { isApiError } from '@/shared/api';
 import { StudentProfile } from '@/features/admin/student-profile/components/StudentProfile';
 import { todayInTashkent } from '@/features/admin/shared/fmt';
+import { locationTrackHref } from '@/features/admin/location/paths';
 import { periodPhase, usePeriodParam } from '@/features/admin/student-profile/periods';
 import { LoadingState } from '../components/PageStatus';
 import { HierarchyListPage } from '../faculties/components/HierarchyListPage';
@@ -37,6 +38,7 @@ function canChangeCompany(
  * (kafedra, Telegram). Davomat/kundalik `/api/admin/students/:id/...` dan so'raladi; parol
  * o'rnatish va yuz tasdiqlash/rad etish/bekor qilish (v3.28) shu sahifada. Tashkiliy blokdagi tugma talabani korxonaga
  * biriktiradi yoki boshqa korxonaga o'tkazadi (faqat shu sahifada — ommaviy biriktirish alohida).
+ * Sarlavhadagi "Joylashuv izi" — bugungi kunlik iz sahifasiga (LIVE-JOYLASHUV.md; sana o'sha yerda tanlanadi).
  */
 export function StudentDetailPage() {
   const { studentId = '' } = useParams<{ studentId: string }>();
@@ -98,7 +100,22 @@ export function StudentDetailPage() {
             onSelectPeriod={setPeriodId}
             isPlaceholderData={query.isPlaceholderData}
             labelPeriodCompany
-            headerActions={<StudentPasswordAction student={detail} />}
+            headerActions={
+              <div className={styles.headerActions}>
+                <Button asChild size="xs">
+                  <Link
+                    to={locationTrackHref(detail.id, {
+                      name: detail.name,
+                      date: todayInTashkent(),
+                      from: 'student',
+                    })}
+                  >
+                    Joylashuv izi
+                  </Link>
+                </Button>
+                <StudentPasswordAction student={detail} />
+              </div>
+            }
           >
             <AdminStudentMetaCard
               detail={detail}

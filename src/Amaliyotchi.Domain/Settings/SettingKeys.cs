@@ -110,9 +110,9 @@ public static class SettingKeys
         new(TrackingEnabled, "Ish vaqtida joylashuvni kuzatish", SettingType.Bool, null,
             "Yoqilgan bo'lsa check-in'dan check-out'gacha ilova fonda joylashuvni yuboradi (talaba roziligi bilan); admin talaba ish joyidan chiqib ketganini ko'radi.", "true"),
         new(TrackingIntervalSec, "Kuzatuv oralig'i", SettingType.Int, UnitSeconds,
-            "Fonda joylashuv har shuncha soniyada olinadi. Oxirgi ping 3 × oraliqdan eski bo'lsa — \"signal yo'q\".", "300", 60, 900),
+            "Fonda joylashuv har shuncha soniyada olinadi. Oxirgi ping 3 × oraliqdan eski bo'lsa — \"signal yo'q\".", "120", 60, 900),
         new(TrackingDistanceFilterM, "Kuzatuv masofa filtri", SettingType.Int, UnitMeters,
-            "Talaba shuncha metr siljisa oraliqni kutmasdan joylashuv olinadi.", "50", 10, 500)
+            "Talaba shuncha metr siljisa oraliqni kutmasdan joylashuv olinadi.", "20", 10, 500)
     ];
 
     private static readonly Dictionary<string, SettingDefinition> ByKey =

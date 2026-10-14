@@ -24,29 +24,29 @@ describe('LocationTrackPage', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Bugun');
 
     const summary = await screen.findByLabelText('Kun xulosasi', { selector: 'dl' });
-    // 09:05–13:00 har 5 daqiqada = 48 ping; 10:20–10:40 — 5 ta tashqarida.
-    expect(fact(summary, 'Jami ping')).toBe('48');
-    expect(fact(summary, 'Ichkarida')).toBe('43');
-    expect(fact(summary, 'Tashqarida')).toBe('5');
-    expect(fact(summary, 'Tashqarida vaqt')).toBe('25 daq');
-    expect(fact(summary, 'Eng uzun uzilish')).toBe('5 daq');
+    // 09:04–13:00 har 2 daqiqada (sukut 120 s) = 119 ping; 10:20–10:42 — 12 ta tashqarida.
+    expect(fact(summary, 'Jami ping')).toBe('119');
+    expect(fact(summary, 'Ichkarida')).toBe('107');
+    expect(fact(summary, 'Tashqarida')).toBe('12');
+    expect(fact(summary, 'Tashqarida vaqt')).toBe('24 daq');
+    expect(fact(summary, 'Eng uzun uzilish')).toBe('2 daq');
     expect(fact(summary, 'Oxirgi ping')).toBe('13:00');
 
-    expect(await screen.findByTestId('track-map')).toHaveTextContent('48 nuqta');
+    expect(await screen.findByTestId('track-map')).toHaveTextContent('119 nuqta');
     expect(
       screen.getByText(/Tech Solutions MChJ · radius 150 m · check-in 09:02/),
     ).toBeInTheDocument();
 
     const timeline = screen.getByRole('region', { name: "Vaqt chizig'i" });
-    expect(within(timeline).getByText('10:20–10:45')).toBeInTheDocument();
-    expect(within(timeline).getByText('25 daq')).toBeInTheDocument();
+    expect(within(timeline).getByText('10:20–10:44')).toBeInTheDocument();
+    expect(within(timeline).getByText('24 daq')).toBeInTheDocument();
   });
 
   it('soxta ping belgisi va sana tanlagich → ?date=', async () => {
     const router = renderAdminRoute(
       '/admin/today/students/s-341033/location?name=Yusupova+Nilufar&date=2026-10-12',
     );
-    expect(await screen.findByText('Soxta joylashuv aniqlangan · 5 ta ping')).toBeInTheDocument();
+    expect(await screen.findByText('Soxta joylashuv aniqlangan · 11 ta ping')).toBeInTheDocument();
 
     const date = screen.getByLabelText('Sana');
     expect(date).toHaveValue('2026-10-12');
@@ -54,6 +54,23 @@ describe('LocationTrackPage', () => {
     await waitFor(() =>
       expect(new URLSearchParams(router.state.location.search).get('date')).toBe('2026-10-09'),
     );
+  });
+
+  it('talaba profilidan kelinganda breadcrumb profilga qaytaradi', async () => {
+    renderAdminRoute(
+      '/admin/today/students/s-341030/location?name=Aliyev+Akmal&date=2026-10-12&from=student',
+    );
+    const crumbs = within(await screen.findByRole('navigation', { name: "Yo'l" }));
+    expect(crumbs.getByRole('link', { name: 'Talabalar' })).toHaveAttribute(
+      'href',
+      '/admin/students',
+    );
+    expect(crumbs.getByRole('link', { name: 'Aliyev Akmal' })).toHaveAttribute(
+      'href',
+      '/admin/students/s-341030',
+    );
+    expect(crumbs.getByText('Joylashuv izi')).toBeInTheDocument();
+    expect(crumbs.queryByRole('link', { name: 'Bugun' })).not.toBeInTheDocument();
   });
 
   it("rozilik bo'lmasa — ogohlantirish, ping yo'q", async () => {

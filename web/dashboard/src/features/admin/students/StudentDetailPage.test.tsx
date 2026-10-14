@@ -8,6 +8,7 @@ import {
   mockProfilePeriods,
   recordRequests,
 } from '@/features/admin/student-profile/periodTestUtils';
+import { todayInTashkent } from '@/features/admin/shared/fmt';
 import { renderHierarchyPage } from '../shared/renderHierarchyPage';
 import { StudentDetailPage } from './StudentDetailPage';
 
@@ -55,6 +56,16 @@ describe('Admin StudentDetailPage', () => {
     expect(meta.getByText('Dasturiy injiniring kafedrasi')).toBeInTheDocument();
     expect(meta.getByText("Bog'langan")).toBeInTheDocument();
     expect(meta.getByText('Faol')).toBeInTheDocument();
+  });
+
+  it('sarlavhada bugungi "Joylashuv izi" havolasi (profildan kelinganini bildiradi)', async () => {
+    renderPage();
+    const link = await screen.findByRole('link', { name: 'Joylashuv izi' });
+    const href = new URL(link.getAttribute('href')!, 'http://x');
+    expect(href.pathname).toBe('/admin/today/students/s1/location');
+    expect(href.searchParams.get('date')).toBe(todayInTashkent());
+    expect(href.searchParams.get('name')).toBe('Aliyev Akmal');
+    expect(href.searchParams.get('from')).toBe('student');
   });
 
   it("korxona, ariza va davr bloklari to'ladi", async () => {

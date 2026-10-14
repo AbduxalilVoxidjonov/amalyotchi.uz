@@ -193,7 +193,7 @@ interface PresenceSeed {
 }
 
 const PRESENCE_SEEDS: Record<string, PresenceSeed> = {
-  's-341030': { state: 'inside', agoMin: 3, distanceM: 42, outsideMinutes: 25 },
+  's-341030': { state: 'inside', agoMin: 3, distanceM: 42, outsideMinutes: 24 },
   's-341031': { state: 'signalLost', agoMin: 47, distanceM: 60 },
   's-341033': { state: 'stopped', agoMin: 190, distanceM: 30, mocked: true },
   's-341034': { state: 'outside', agoMin: 2, distanceM: 410, outsideMinutes: 18 },

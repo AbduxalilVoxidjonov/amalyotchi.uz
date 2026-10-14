@@ -19,8 +19,8 @@ export interface Timeline {
 }
 
 const MIN = 60_000;
-/** Ping'lar 2 tadan kam bo'lsa — kontrakt sukuti (intervalSec 300) × 2. */
-const DEFAULT_GAP_MIN = 10;
+/** Ping'lar 2 tadan kam bo'lsa — kontrakt sukuti (intervalSec 120 s = 2 daq) × 2. */
+const DEFAULT_GAP_MIN = 4;
 
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
