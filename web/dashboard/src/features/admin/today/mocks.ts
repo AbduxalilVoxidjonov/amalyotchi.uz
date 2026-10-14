@@ -4,11 +4,14 @@ import type {
   AttendanceFilter,
   AttendanceRow,
   AttendanceStatus,
+  Presence,
+  PresenceFilter,
+  PresenceState,
   TodayAlert,
   TodayResponse,
   TodayStats,
 } from './types';
-import { isAttendanceFilter } from './types';
+import { isAttendanceFilter, isPresenceFilter } from './types';
 
 export const MOCK_TODAY_DATE = '2026-10-12';
 
@@ -30,7 +33,7 @@ const SPEC_ROWS: AttendanceRow[] = [
     group: '412-22',
     company: 'Tech Solutions MChJ',
     checkIn: '09:02',
-    checkOut: '17:05',
+    checkOut: null,
     diary: 'written',
     distanceM: 45,
     outOfRadius: false,
@@ -42,7 +45,7 @@ const SPEC_ROWS: AttendanceRow[] = [
     group: '412-22',
     company: 'Agrobank ATB',
     checkIn: '09:41',
-    checkOut: '16:58',
+    checkOut: null,
     diary: 'pending',
     distanceM: 85,
     outOfRadius: false,
@@ -157,23 +160,69 @@ function generateExtra(): AttendanceRow[] {
     const status = plan[i] ?? 'present';
     const checkedIn = status === 'present' || status === 'late';
     const minute = String(10 + ((i * 7) % 45)).padStart(2, '0');
+    const live = i === 4 || i === 7; // "Aniqlik past" / "Rozilik yo'q" — sessiya hali ochiq
     return row({
       studentId: `s-3410${40 + i}`,
       name,
       group: i % 2 === 0 ? '412-22' : '413-22',
       company: i === 5 ? null : COMPANIES[i % COMPANIES.length]!,
       checkIn: checkedIn ? `${status === 'late' ? '09' : '08'}:${minute}` : null,
-      checkOut: checkedIn && i % 3 !== 0 ? `17:${minute}` : null,
+      checkOut: checkedIn && !live && i % 3 !== 0 ? `17:${minute}` : null,
       diary: checkedIn ? (i % 4 === 0 ? 'pending' : 'written') : null,
       distanceM: checkedIn ? 20 + ((i * 13) % 110) : null,
       outOfRadius: false,
       status,
-      autoClosed: checkedIn && i % 3 === 0,
+      autoClosed: checkedIn && !live && i % 3 === 0,
     });
   });
 }
 
 export const mockTodayRows: AttendanceRow[] = [...SPEC_ROWS, ...generateExtra()];
+
+/**
+ * Jonli joylashuv (LIVE-JOYLASHUV.md) — `lastPingAt` so'rov paytiga nisbatan hisoblanadi (`agoMin`).
+ * Aliyev — tashqariga chiqib qaytgan (hozir ichkarida, 25 daq tashqarida bo'lgan) · Karimov — signal yo'q ·
+ * Rahimov — hozir tashqarida · Yusupova — ketgan, kunda soxta ping bo'lgan.
+ */
+interface PresenceSeed {
+  state: PresenceState;
+  agoMin: number | null;
+  distanceM: number | null;
+  outsideMinutes?: number;
+  mocked?: boolean;
+}
+
+const PRESENCE_SEEDS: Record<string, PresenceSeed> = {
+  's-341030': { state: 'inside', agoMin: 3, distanceM: 42, outsideMinutes: 25 },
+  's-341031': { state: 'signalLost', agoMin: 47, distanceM: 60 },
+  's-341033': { state: 'stopped', agoMin: 190, distanceM: 30, mocked: true },
+  's-341034': { state: 'outside', agoMin: 2, distanceM: 410, outsideMinutes: 18 },
+  's-341044': { state: 'inaccurate', agoMin: 4, distanceM: 130 },
+  's-341047': { state: 'noConsent', agoMin: null, distanceM: null },
+};
+
+function presenceSeed(r: AttendanceRow): PresenceSeed | null {
+  const seed = PRESENCE_SEEDS[r.studentId];
+  if (seed) return seed;
+  if (r.checkIn === null) return null;
+  if (r.checkOut !== null || r.autoClosed) return { state: 'stopped', agoMin: 240, distanceM: 35 };
+  return { state: 'inside', agoMin: 5, distanceM: r.distanceM };
+}
+
+function withPresence(r: AttendanceRow, now: number): AttendanceRow {
+  const seed = presenceSeed(r);
+  const presence: Presence | null = seed
+    ? {
+        state: seed.state,
+        lastPingAt:
+          seed.agoMin === null ? null : new Date(now - seed.agoMin * 60_000).toISOString(),
+        distanceM: seed.distanceM,
+        outsideMinutes: seed.outsideMinutes ?? 0,
+        mocked: seed.mocked ?? false,
+      }
+    : null;
+  return { ...r, presence };
+}
 
 const PAGE_SIZE = 6;
 
@@ -196,11 +245,22 @@ function stats(rows: readonly AttendanceRow[]): TodayStats {
   };
 }
 
-export function buildTodayResponse(filter: AttendanceFilter, page: number, q = ''): TodayResponse {
+export function buildTodayResponse(
+  filter: AttendanceFilter,
+  page: number,
+  q = '',
+  presence: PresenceFilter = 'all',
+  now: number = Date.now(),
+): TodayResponse {
   const needle = q.trim().toLowerCase();
-  const filtered = mockTodayRows.filter(
-    (r) => matchesFilter(r, filter) && (!needle || r.name.toLowerCase().includes(needle)),
-  );
+  const filtered = mockTodayRows
+    .map((r) => withPresence(r, now))
+    .filter(
+      (r) =>
+        matchesFilter(r, filter) &&
+        (!needle || r.name.toLowerCase().includes(needle)) &&
+        (presence === 'all' || r.presence?.state === presence),
+    );
   const safePage = Math.max(1, page);
   const start = (safePage - 1) * PAGE_SIZE;
   const items = filtered.slice(start, start + PAGE_SIZE);
@@ -237,6 +297,10 @@ export const todayHandlers: HttpHandler[] = [
         { status: 400 },
       );
     }
-    return HttpResponse.json(buildTodayResponse(status ?? 'all', page, q));
+    // `presence` — backend `TodayPresenceFilter` (outside | signalLost); noma'lum qiymat e'tiborsiz.
+    const presence = url.searchParams.get('presence');
+    return HttpResponse.json(
+      buildTodayResponse(status ?? 'all', page, q, isPresenceFilter(presence) ? presence : 'all'),
+    );
   }),
 ];

@@ -48,6 +48,7 @@ const AuditPage = lazy(() => import('@/features/admin/audit/AuditPage'));
 const SettingsPage = lazy(() => import('@/features/admin/settings/SettingsPage'));
 const ReportsPage = lazy(() => import('@/features/reports/ReportsPage'));
 const TodayPage = lazy(() => import('@/features/admin/today/TodayPage'));
+const LocationTrackPage = lazy(() => import('@/features/admin/location/LocationTrackPage'));
 const ApplicationsPage = lazy(() => import('@/features/admin/applications/ApplicationsPage'));
 const FaceEnrollmentsPage = lazy(() => import('@/features/admin/face/FaceEnrollmentsPage'));
 const DiariesPage = lazy(() => import('@/features/admin/diaries/DiariesPage'));
@@ -102,6 +103,8 @@ export const routes: RouteObject[] = [
               },
               // v3.28: sobiq tyutor bo'limi sahifalari (kundalik nazorat) — endi adminda.
               { path: 'today', element: <TodayPage /> },
+              // Talabaning kunlik joylashuv izi (LIVE-JOYLASHUV.md) — "Bugun" ostida.
+              { path: 'today/students/:studentId/location', element: <LocationTrackPage /> },
               { path: 'applications', element: <ApplicationsPage /> },
               { path: 'face', element: <FaceEnrollmentsPage /> },
               { path: 'diaries', element: <DiariesPage /> },

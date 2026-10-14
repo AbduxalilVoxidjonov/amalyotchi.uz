@@ -52,6 +52,43 @@ export interface AttendanceRow {
   manual: boolean;
   /** Check-out bo'lmagani uchun avtomatik yopilgan. */
   autoClosed: boolean;
+  /**
+   * Fonda joylashuv kuzatuvi holati (LIVE-JOYLASHUV.md · Admin API). null — bugun check-in yo'q
+   * yoki kuzatuv o'chiq. Eski backend maydonni umuman yubormasligi mumkin — `undefined` ham null kabi.
+   */
+  presence?: Presence | null;
+}
+
+/** Backend `PresenceState` (camelCase). */
+export type PresenceState =
+  'inside' | 'outside' | 'inaccurate' | 'signalLost' | 'stopped' | 'noConsent';
+
+export interface Presence {
+  state: PresenceState;
+  /** UTC ISO; ping bo'lmagan bo'lsa null. */
+  lastPingAt: string | null;
+  /** Oxirgi ping'dan korxonagacha (m); null — noma'lum. */
+  distanceM: number | null;
+  /** Bugun tashqarida o'tgan daqiqalar. */
+  outsideMinutes: number;
+  /** Bugun kamida bitta soxta (isMocked) ping bo'lgan. */
+  mocked: boolean;
+}
+
+/**
+ * "Joyida" filtri (`?presence=`, backend `TodayPresenceFilter`) — holat filtridan alohida.
+ * Hujjatda (LIVE-JOYLASHUV.md) yozilmagan, lekin backend qo'llaydi; UI joriy sahifani klientda ham filtrlaydi.
+ */
+export type PresenceFilter = 'all' | 'outside' | 'signalLost';
+
+export const PRESENCE_FILTERS: { value: PresenceFilter; label: string }[] = [
+  { value: 'all', label: 'Barchasi' },
+  { value: 'outside', label: 'Tashqarida' },
+  { value: 'signalLost', label: "Signal yo'q" },
+];
+
+export function isPresenceFilter(v: string | null): v is PresenceFilter {
+  return v === 'all' || v === 'outside' || v === 'signalLost';
 }
 
 /** Kontraktdagi yagona sahifalash shakli. */

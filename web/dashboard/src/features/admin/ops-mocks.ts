@@ -6,6 +6,7 @@ import { diariesHandlers, resetDiariesMock } from './diaries/mocks';
 import { resetFaceMock } from './face/mockStore';
 import { faceHandlers } from './face/mocks';
 import { gradingHandlers, resetGradingMock } from './grading/mocks';
+import { locationHandlers } from './location/mocks';
 import { mapHandlers } from './map/mocks';
 import { resetStudentDiaryReviewsMock, studentProfileHandlers } from './student-profile/mocks';
 import { todayHandlers } from './today/mocks';
@@ -17,6 +18,7 @@ import { todayHandlers } from './today/mocks';
  */
 export const opsHandlers: HttpHandler[] = [
   ...todayHandlers,
+  ...locationHandlers,
   ...applicationsHandlers,
   ...studentProfileHandlers,
   ...diariesHandlers,

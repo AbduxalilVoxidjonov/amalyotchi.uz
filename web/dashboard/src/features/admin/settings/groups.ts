@@ -1,6 +1,6 @@
 import type { Setting, SettingKey } from './types';
 
-export type SettingGroupId = 'attendance' | 'report' | 'face' | 'companies' | 'other';
+export type SettingGroupId = 'attendance' | 'tracking' | 'report' | 'face' | 'companies' | 'other';
 
 export interface SettingGroupDef {
   id: SettingGroupId;
@@ -25,6 +25,12 @@ export const SETTING_GROUPS: readonly SettingGroupDef[] = [
       'autoCheckout',
       'workDays',
     ],
+  },
+  {
+    // LIVE-JOYLASHUV.md — ish vaqtida fonda joylashuv kuzatuvi.
+    id: 'tracking',
+    title: 'Joylashuvni kuzatish',
+    keys: ['trackingEnabled', 'trackingIntervalSec', 'trackingDistanceFilterM'],
   },
   {
     id: 'report',

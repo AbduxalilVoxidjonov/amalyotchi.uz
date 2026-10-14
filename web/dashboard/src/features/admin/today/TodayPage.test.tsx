@@ -39,4 +39,53 @@ describe('TodayPage (/admin/today)', () => {
     await user.click(screen.getByRole('button', { name: 'Ogohlantirishlarni yopish' }));
     expect(screen.queryByText(/3 ta talaba radius tashqarisidan/)).not.toBeInTheDocument();
   });
+
+  it('"Joyida" ustuni: holat chip\'lari, soxta joylashuv belgisi, oxirgi ping vaqti', async () => {
+    renderAdminRoute('/admin/today');
+    const table = await screen.findByRole('table', { name: 'Bugungi davomat' });
+    await within(table).findByText('Aliyev Akmal');
+    expect(within(table).getByRole('columnheader', { name: 'Joyida' })).toBeInTheDocument();
+    expect(within(table).getByText('Joyida', { selector: '[data-state]' })).toHaveAttribute(
+      'data-tone',
+      'ok',
+    );
+    expect(within(table).getByText('Tashqarida · 18 daq')).toHaveAttribute('data-tone', 'bad');
+    expect(within(table).getByText(/^Signal yo'q · \d{2}:\d{2} dan$/)).toHaveAttribute(
+      'data-tone',
+      'lost',
+    );
+    expect(within(table).getByText('Ketgan')).toBeInTheDocument();
+    expect(within(table).getByRole('img', { name: 'Soxta joylashuv aniqlangan' })).toHaveAttribute(
+      'title',
+      'Soxta joylashuv aniqlangan',
+    );
+    expect(within(table).getByText('3 daq oldin')).toBeInTheDocument();
+    // Qator nomi — kunlik iz sahifasiga havola.
+    expect(within(table).getByRole('link', { name: 'Aliyev Akmal' })).toHaveAttribute(
+      'href',
+      '/admin/today/students/s-341030/location?name=Aliyev+Akmal',
+    );
+  });
+
+  it("joylashuv filtri: Tashqarida / Signal yo'q → ?presence=", async () => {
+    const user = userEvent.setup();
+    const router = renderAdminRoute('/admin/today');
+    const table = await screen.findByRole('table', { name: 'Bugungi davomat' });
+    await within(table).findByText('Aliyev Akmal');
+    const group = screen.getByRole('group', { name: 'Joylashuv filtri' });
+
+    await user.click(within(group).getByRole('button', { name: 'Tashqarida' }));
+    await waitFor(() => expect(router.state.location.search).toBe('?presence=outside'));
+    await waitFor(() => expect(within(table).queryByText('Aliyev Akmal')).not.toBeInTheDocument());
+    expect(within(table).getByText('Rahimov Sardor')).toBeInTheDocument();
+
+    await user.click(within(group).getByRole('button', { name: "Signal yo'q" }));
+    await waitFor(() => expect(router.state.location.search).toBe('?presence=signalLost'));
+    expect(await within(table).findByText('Karimov Bekzod')).toBeInTheDocument();
+    expect(within(table).queryByText('Rahimov Sardor')).not.toBeInTheDocument();
+
+    await user.click(within(group).getByRole('button', { name: 'Barchasi' }));
+    await waitFor(() => expect(router.state.location.search).toBe(''));
+    expect(await within(table).findByText('Aliyev Akmal')).toBeInTheDocument();
+  });
 });

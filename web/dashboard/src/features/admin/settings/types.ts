@@ -22,7 +22,10 @@ export type SettingKey =
   | 'maxStudentsPerCompany'
   | 'diaryPdfRequired'
   | 'faceVerificationEnabled'
-  | 'faceMatchThreshold';
+  | 'faceMatchThreshold'
+  | 'trackingEnabled'
+  | 'trackingIntervalSec'
+  | 'trackingDistanceFilterM';
 
 export interface Setting {
   /** `SettingKey` yoki backend'ning yangi (frontend hali bilmaydigan) kaliti. */
@@ -76,6 +79,8 @@ export const UNIT_LABEL: Record<string, string> = {
   m: 'm',
   min: 'daqiqa',
   chars: 'belgi',
+  sec: 'soniya',
+  s: 'soniya',
   percent: '%',
   '%': '%',
 };

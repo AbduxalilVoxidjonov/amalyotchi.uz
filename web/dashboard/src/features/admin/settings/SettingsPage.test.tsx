@@ -182,4 +182,67 @@ describe('SettingsPage', () => {
     expect(screen.getByRole('switch', { name: 'Kundalik hisobot majburiy' })).toBeChecked();
     expect(screen.getByRole('button', { name: 'Saqlash' })).toBeDisabled();
   });
+
+  describe('Joylashuvni kuzatish', () => {
+    it("switch, interval (daqiqada) va masofa filtri ko'rinadi", async () => {
+      renderWithProviders(<SettingsPage />);
+      const tracking = await screen.findByRole('region', { name: 'Joylashuvni kuzatish' });
+      expect(
+        within(tracking).getByRole('switch', { name: 'Fonda joylashuvni kuzatish' }),
+      ).toBeChecked();
+      // 300 soniya → 5 daqiqa.
+      expect(within(tracking).getByLabelText("Ping oralig'i")).toHaveValue(5);
+      expect(within(tracking).getByText('daqiqa')).toBeInTheDocument();
+      expect(within(tracking).getByLabelText('Masofa filtri')).toHaveValue(50);
+    });
+
+    it("oraliqdan tashqari qiymat → xato, Saqlash o'chiq, so'rov yuborilmaydi", async () => {
+      const user = userEvent.setup();
+      const bodies = capturePuts();
+      renderWithProviders(<SettingsPage />);
+      const tracking = await screen.findByRole('region', { name: 'Joylashuvni kuzatish' });
+
+      const interval = within(tracking).getByLabelText("Ping oralig'i");
+      await user.clear(interval);
+      await user.type(interval, '20');
+      expect(within(tracking).getByRole('alert')).toHaveTextContent(
+        "Ping oralig'i 1–15 daqiqa (60–900 soniya) bo'lishi kerak.",
+      );
+      expect(interval).toHaveAttribute('aria-invalid', 'true');
+      expect(screen.getByRole('button', { name: 'Saqlash' })).toBeDisabled();
+
+      await user.clear(interval);
+      await user.type(interval, '10');
+      const distance = within(tracking).getByLabelText('Masofa filtri');
+      await user.clear(distance);
+      await user.type(distance, '5');
+      expect(within(tracking).getByRole('alert')).toHaveTextContent(
+        "Masofa filtri 10–500 m oralig'ida butun son bo'lishi kerak.",
+      );
+      expect(screen.getByRole('button', { name: 'Saqlash' })).toBeDisabled();
+      await user.click(screen.getByRole('button', { name: 'Saqlash' }));
+      expect(bodies).toEqual([]);
+    });
+
+    it("to'g'ri qiymat → PUT soniyada yuboriladi", async () => {
+      const user = userEvent.setup();
+      const bodies = capturePuts();
+      renderWithProviders(<SettingsPage />);
+      const tracking = await screen.findByRole('region', { name: 'Joylashuvni kuzatish' });
+
+      const interval = within(tracking).getByLabelText("Ping oralig'i");
+      await user.clear(interval);
+      await user.type(interval, '10');
+      await user.click(
+        within(tracking).getByRole('switch', { name: 'Fonda joylashuvni kuzatish' }),
+      );
+      await user.click(screen.getByRole('button', { name: 'Saqlash' }));
+
+      expect(await screen.findByRole('status')).toHaveTextContent('Saqlandi');
+      expect(bodies).toEqual([
+        { values: { trackingIntervalSec: '600', trackingEnabled: 'false' } },
+      ]);
+      expect(within(tracking).getByLabelText("Ping oralig'i")).toHaveValue(10);
+    });
+  });
 });

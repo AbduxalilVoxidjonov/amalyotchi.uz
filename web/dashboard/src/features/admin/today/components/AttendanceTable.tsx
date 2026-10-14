@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react';
 import { Badge, Button, DataTable, PersonCell, type DataTableColumn } from '@/shared/ui';
+import { locationTrackHref } from '../../location/paths';
 import { fmtDistance } from '../../shared/fmt';
 import { DIARY_LABEL, rowStatusLabel, type AttendanceRow, type Paged } from '../types';
 import styles from './AttendanceTable.module.css';
+import { PresenceCell } from './PresenceCell';
 
 /**
- * SPEC-SCREENS §3 — 8 ustunli davomat jadvali. Katak ranglari (JS `inFg/outFg/diaryFg/distFg`)
+ * SPEC-SCREENS §3 — 9 ustunli (+ "Joyida", LIVE-JOYLASHUV.md) davomat jadvali. Katak ranglari (JS `inFg/outFg/diaryFg/distFg`)
  * `data-tone` orqali: late · empty · ok · pending · out · muted.
  */
 function Tone({ tone, children }: { tone: string; children: ReactNode }) {
@@ -16,12 +18,22 @@ function Tone({ tone, children }: { tone: string; children: ReactNode }) {
   );
 }
 
+/** Kunlik joylashuv izi — faqat bugun check-in qilgan (yoki kuzatuv holati bor) talabalar uchun. */
+function trackHref(r: AttendanceRow): string | undefined {
+  return r.checkIn !== null || r.presence
+    ? locationTrackHref(r.studentId, { name: r.name })
+    : undefined;
+}
+
 const COLUMNS: DataTableColumn<AttendanceRow>[] = [
   {
     key: 'name',
     header: 'Talaba',
     width: '1.7fr',
-    render: (r) => <PersonCell name={r.name} />,
+    render: (r) => {
+      const to = trackHref(r);
+      return to ? <PersonCell name={r.name} to={to} /> : <PersonCell name={r.name} />;
+    },
   },
   { key: 'group', header: 'Guruh', width: '.6fr', mono: true, dim: true },
   {
@@ -70,6 +82,12 @@ const COLUMNS: DataTableColumn<AttendanceRow>[] = [
     ),
   },
   {
+    key: 'presence',
+    header: 'Joyida',
+    width: '1.1fr',
+    render: (r) => <PresenceCell presence={r.presence} />,
+  },
+  {
     key: 'status',
     header: 'Status',
     width: '.9fr',
@@ -105,7 +123,8 @@ export function AttendanceTable({ rows, pagination, toolbar, onPageChange }: Att
       columns={COLUMNS}
       rows={rows}
       rowKey={(r) => r.studentId}
-      minWidth="860px"
+      rowHref={trackHref}
+      minWidth="980px"
       toolbar={toolbar}
       emptyText="Bu filtr bo'yicha talabalar yo'q"
       footer={

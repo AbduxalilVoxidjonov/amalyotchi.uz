@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Button, Card, CardHeader, Input, Pill, cn } from '@/shared/ui';
 import { ErrorState } from '../../components/PageStatus';
 import { formatDayMonth } from '../../shared/format';
 import { parseWeekdays, toggleWeekday, WEEKDAYS } from '../../shared/weekdays';
 import { groupSettings } from '../groups';
+import { minutesTextToSeconds, secondsToMinutesText, TRACKING_INTERVAL_KEY } from '../tracking';
 import { UNIT_LABEL, type AdminSettings, type Setting } from '../types';
 import styles from './SettingsView.module.css';
 
@@ -13,6 +15,8 @@ export interface SettingsViewProps {
   /** PUT 400 `errors{key:[...]}`. */
   fieldErrors: Record<string, string[]>;
   isDirty: boolean;
+  /** Klient validatsiyasi xatosi bor — Saqlash o'chiq. */
+  hasErrors?: boolean;
   isSaving: boolean;
   saveError: unknown;
   saved: boolean;
@@ -94,6 +98,19 @@ function SettingControl({
     );
   }
 
+  if (setting.key === TRACKING_INTERVAL_KEY) {
+    return (
+      <IntervalMinutesControl
+        id={id}
+        value={value}
+        describedBy={describedBy}
+        invalid={Boolean(error)}
+        disabled={disabled}
+        onChange={onChange}
+      />
+    );
+  }
+
   const unit = setting.unit ? (UNIT_LABEL[setting.unit] ?? setting.unit) : null;
   return (
     <div className={styles.intField}>
@@ -115,6 +132,59 @@ function SettingControl({
       />
       <span className={styles.unit} aria-hidden>
         {unit}
+      </span>
+    </div>
+  );
+}
+
+interface IntervalMinutesControlProps {
+  id: string;
+  /** Xom qiymat — soniyalarda ("300"). */
+  value: string;
+  describedBy: string | undefined;
+  invalid: boolean;
+  disabled: boolean;
+  onChange: (seconds: string) => void;
+}
+
+/**
+ * `trackingIntervalSec` — server soniyada saqlaydi, UI daqiqada ko'rsatadi. Yozilayotgan matn
+ * ("1." kabi) saqlanadi; tashqi qiymat (Bekor qilish) o'zgarsa — undan qayta hisoblanadi.
+ */
+function IntervalMinutesControl({
+  id,
+  value,
+  describedBy,
+  invalid,
+  disabled,
+  onChange,
+}: IntervalMinutesControlProps) {
+  const [text, setText] = useState(() => secondsToMinutesText(value));
+  const shown = minutesTextToSeconds(text) === value ? text : secondsToMinutesText(value);
+  return (
+    <div className={styles.intField}>
+      <Input
+        id={id}
+        variant="readonly"
+        mono
+        type="number"
+        inputMode="decimal"
+        min={1}
+        max={15}
+        step={1}
+        className={styles.intInput ?? ''}
+        wrapperClassName={styles.intWrap}
+        value={shown}
+        onChange={(e) => {
+          setText(e.target.value);
+          onChange(minutesTextToSeconds(e.target.value));
+        }}
+        disabled={disabled}
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
+      />
+      <span className={styles.unit} aria-hidden>
+        daqiqa
       </span>
     </div>
   );
@@ -181,6 +251,7 @@ export function SettingsView({
   values,
   fieldErrors,
   isDirty,
+  hasErrors = false,
   isSaving,
   saveError,
   saved,
@@ -268,7 +339,7 @@ export function SettingsView({
           <Button type="button" onClick={onCancel} disabled={isSaving || !isDirty}>
             Bekor qilish
           </Button>
-          <Button type="submit" variant="primary" disabled={isSaving || !isDirty}>
+          <Button type="submit" variant="primary" disabled={isSaving || !isDirty || hasErrors}>
             {isSaving ? 'Saqlanmoqda…' : 'Saqlash'}
           </Button>
         </div>

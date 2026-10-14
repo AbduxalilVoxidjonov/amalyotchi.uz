@@ -6,6 +6,7 @@ import { ErrorState, LoadingState } from '../components/PageStatus';
 import { SettingsView } from './components/SettingsView';
 import { useSettingsQuery, useUpdateSettings } from './hooks';
 import { AccountSecurity } from './security/AccountSecurity';
+import { validateTracking } from './tracking';
 import styles from './SettingsPage.module.css';
 import type { AdminSettings } from './types';
 
@@ -84,10 +85,14 @@ function SystemSettings() {
       .map((k) => [k, values[k] ?? '']),
   );
   const isDirty = Object.keys(changed).length > 0;
-  const fieldErrors =
+  const serverErrors =
     update.error && isApiError(update.error) && update.error.kind === 'validation'
       ? update.error.fieldErrors
       : {};
+  // Kuzatuv oraliqlari klientda ham tekshiriladi — xato bo'lsa Saqlash yuborilmaydi.
+  const clientErrors = validateTracking(values, new Set(Object.keys(base)));
+  const hasClientErrors = Object.keys(clientErrors).length > 0;
+  const fieldErrors = { ...serverErrors, ...clientErrors };
 
   return (
     <SettingsView
@@ -95,12 +100,13 @@ function SystemSettings() {
       values={values}
       fieldErrors={fieldErrors}
       isDirty={isDirty}
+      hasErrors={hasClientErrors}
       isSaving={update.isPending}
-      saveError={Object.keys(fieldErrors).length > 0 ? null : update.error}
+      saveError={Object.keys(serverErrors).length > 0 ? null : update.error}
       saved={update.isSuccess}
       onChange={(key, value) => setDraft({ ...values, [key]: value })}
       onSave={() => {
-        if (!isDirty) return;
+        if (!isDirty || hasClientErrors) return;
         update.mutate({ values: changed }, { onSuccess: () => setDraft(null) });
       }}
       onCancel={() => {

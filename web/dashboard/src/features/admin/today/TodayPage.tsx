@@ -7,7 +7,15 @@ import { AlertBanner } from './components/AlertBanner';
 import { AttendanceTable } from './components/AttendanceTable';
 import { useTodayQuery } from './hooks';
 import { buildStatTiles, presentAlert } from './present';
-import { ATTENDANCE_FILTERS, isAttendanceFilter, type AttendanceFilter } from './types';
+import { matchesPresenceFilter } from './presence';
+import {
+  ATTENDANCE_FILTERS,
+  isAttendanceFilter,
+  isPresenceFilter,
+  PRESENCE_FILTERS,
+  type AttendanceFilter,
+  type PresenceFilter,
+} from './types';
 import styles from './TodayPage.module.css';
 
 type View = 'list' | 'company';
@@ -27,16 +35,25 @@ export function TodayPage() {
   const status: AttendanceFilter = isAttendanceFilter(params.get('status'))
     ? (params.get('status') as AttendanceFilter)
     : 'all';
+  const presenceParam = params.get('presence');
+  const presence: PresenceFilter = isPresenceFilter(presenceParam) ? presenceParam : 'all';
   const page = Math.max(1, Number(params.get('page') ?? '1') || 1);
   const [view, setView] = useState<View>('list');
   const [alertsDismissed, setAlertsDismissed] = useState(false);
 
-  const query = useTodayQuery({ status, page });
+  const query = useTodayQuery({ status, page, presence });
 
   const setFilter = (next: AttendanceFilter) => {
     const sp = new URLSearchParams(params);
     if (next === 'all') sp.delete('status');
     else sp.set('status', next);
+    sp.delete('page');
+    setParams(sp);
+  };
+  const setPresence = (next: PresenceFilter) => {
+    const sp = new URLSearchParams(params);
+    if (next === 'all') sp.delete('presence');
+    else sp.set('presence', next);
     sp.delete('page');
     setParams(sp);
   };
@@ -48,11 +65,12 @@ export function TodayPage() {
   };
 
   const rows = useMemo(() => {
-    const list = query.data?.rows.items ?? [];
+    // Backend `?presence=` ni qo'llamasa ham joriy sahifa to'g'ri filtrlansin.
+    const list = (query.data?.rows.items ?? []).filter((r) => matchesPresenceFilter(r, presence));
     return view === 'company'
       ? [...list].sort((a, b) => (a.company ?? '').localeCompare(b.company ?? '', 'uz'))
       : list;
-  }, [query.data, view]);
+  }, [query.data, view, presence]);
   const alerts = useMemo(() => (query.data?.alerts ?? []).map(presentAlert), [query.data]);
 
   const toolbar = (
@@ -60,6 +78,13 @@ export function TodayPage() {
       <PillGroup aria-label="Kun filtri">
         {ATTENDANCE_FILTERS.map((f) => (
           <Pill key={f.value} active={status === f.value} onClick={() => setFilter(f.value)}>
+            {f.label}
+          </Pill>
+        ))}
+      </PillGroup>
+      <PillGroup role="group" aria-label="Joylashuv filtri">
+        {PRESENCE_FILTERS.map((f) => (
+          <Pill key={f.value} active={presence === f.value} onClick={() => setPresence(f.value)}>
             {f.label}
           </Pill>
         ))}

@@ -1,0 +1,85 @@
+.wrap {
+  position: relative;
+  border: var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: var(--color-map-ph);
+}
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: var(--fs-sm);
+  color: var(--color-text-faint);
+}
+.legend {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 500;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 6px 10px;
+  list-style: none;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: var(--border);
+  font-size: var(--fs-xs2);
+  color: var(--color-text-muted);
+}
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-pill);
+}
+.dot[data-kind='inside'] {
+  background: var(--color-ok-strong);
+}
+.dot[data-kind='outside'] {
+  background: var(--color-bad-strong);
+}
+.dot[data-kind='inaccurate'] {
+  background: var(--color-late-strong);
+}
+.dot[data-kind='mocked'] {
+  background: var(--color-surface);
+  box-shadow: 0 0 0 2px var(--color-text);
+}
+/* Leaflet SVG path'lari (TrackMapCanvas) */
+.fence {
+  stroke: var(--color-accent);
+  fill: var(--color-accent);
+}
+.placeDot {
+  stroke: var(--color-text-on-accent);
+  fill: var(--color-accent);
+}
+.track {
+  stroke: var(--color-text-muted);
+  fill: none;
+}
+.inside {
+  stroke: var(--color-surface);
+  fill: var(--color-ok-strong);
+}
+.outside {
+  stroke: var(--color-surface);
+  fill: var(--color-bad-strong);
+}
+.inaccurate {
+  stroke: var(--color-surface);
+  fill: var(--color-late-strong);
+}
+.mocked {
+  stroke: var(--color-text);
+  stroke-dasharray: 3 2;
+}

@@ -24,6 +24,8 @@ export const opsKeys = {
     ) => ['admin', 'students', 'attendance', id, periodId, range] as const,
     diaries: (id: string, periodId: string | null = null) =>
       ['admin', 'students', 'diaries', id, periodId] as const,
+    locationPings: (id: string, date: string) =>
+      ['admin', 'students', 'location-pings', id, date] as const,
   },
   face: {
     all: ['admin', 'face'] as const,
