@@ -6,6 +6,7 @@ import type {
   AssignCompanyInput,
   AssignCompanyResult,
   SetStudentCompanyInput,
+  SetStudentWorkHoursInput,
   Student,
   StudentCreateInput,
   StudentFilters,
@@ -29,6 +30,8 @@ import type {
  * POST /api/admin/students/assign-company     → AssignCompanyResult · 400 · 404 · 409
  * POST /api/admin/students/{id}/company       → AdminStudentDetail · 400 · 404 · 409
  *   (profildan bitta talabani biriktirish yoki boshqa korxonaga o'tkazish)
+ * PUT  /api/admin/students/{id}/work-hours    → AdminStudentDetail · 400 `errors.Start|End` · 404
+ *   (v3.32: talabaning ish vaqtini faqat admin belgilaydi; ertadan kuchga kiradi)
  * Davomat va kundaliklar (`{id}/attendance`, `{id}/diaries`) — `features/admin/student-profile/api.ts`
  * dagi `studentProfileApi` orqali so'raladi.
  */
@@ -63,6 +66,10 @@ export const STUDENTS_ASSIGN_COMPANY_ENDPOINT = `${STUDENTS_ENDPOINT}/assign-com
 export const studentCompanyEndpoint = (id: string) =>
   `${STUDENTS_ENDPOINT}/${encodeURIComponent(id)}/company`;
 
+/** Talabaning ish vaqti (kelish/ketish). */
+export const studentWorkHoursEndpoint = (id: string) =>
+  `${STUDENTS_ENDPOINT}/${encodeURIComponent(id)}/work-hours`;
+
 /** Yuklab olinadigan shablon nomi (server `Content-Disposition` bermasa — zaxira). */
 export const STUDENTS_TEMPLATE_FILE_NAME = 'talabalar-import-shablon.xlsx';
 
@@ -93,4 +100,6 @@ export const studentsApi = {
     api.post<AssignCompanyResult>(STUDENTS_ASSIGN_COMPANY_ENDPOINT, input),
   setCompany: (id: string, input: SetStudentCompanyInput) =>
     api.post<AdminStudentDetail>(studentCompanyEndpoint(id), input),
+  setWorkHours: (id: string, input: SetStudentWorkHoursInput) =>
+    api.put<AdminStudentDetail>(studentWorkHoursEndpoint(id), input),
 };

@@ -298,8 +298,8 @@ export function StudentDetailView({
                     <span className={styles.hours}>
                       {`${period.dailyStart} — ${period.dailyEnd}`}
                       {period.customWorkHours && (
-                        <Badge status="info" size="sm" title="Talaba o'z ish vaqtini belgilagan">
-                          talaba belgilagan
+                        <Badge status="info" size="sm" title="Ish vaqtini admin belgilagan">
+                          admin belgilagan
                         </Badge>
                       )}
                     </span>

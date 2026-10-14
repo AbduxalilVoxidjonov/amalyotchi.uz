@@ -1,7 +1,9 @@
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Features.Admin.Common;
+using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Application.Features.Faces;
+using Amaliyotchi.Application.Features.Student.Profile;
 using Amaliyotchi.Application.Features.Supervision.Students;
 using Amaliyotchi.Domain.Students;
 using MediatR;
@@ -12,7 +14,9 @@ namespace Amaliyotchi.Application.Features.Admin.Students;
 /// <summary><c>GET /api/admin/students/{id}</c> javobi — umumiy talaba profili bloklari
 /// (<see cref="StudentDetail"/>) + adminga xos maydonlar: kafedra, Telegram bog'lanishi,
 /// ro'yxatdagi holat va guruh identifikatori. <c>activeCompany</c> — tanlangan davrdan mustaqil aktiv korxona
-/// (ro'yxatdagi <c>company</c> bilan bir xil qoida), <c>company</c> esa tanlangan davr bo'yicha.</summary>
+/// (ro'yxatdagi <c>company</c> bilan bir xil qoida), <c>company</c> esa tanlangan davr bo'yicha.
+/// <c>workHours</c> — admin belgilagan ish vaqti (<c>PUT /api/admin/students/{id}/work-hours</c>), kuchga kirish sanasi,
+/// bugun amaldagi va sukut davri soatlari (tanlangan davrdan mustaqil).</summary>
 public sealed record AdminStudentDetail(
     Guid Id,
     string Name,
@@ -39,7 +43,8 @@ public sealed record AdminStudentDetail(
     Guid? SelectedPeriodId,
     bool HasPassword,
     ActiveCompanyRef? ActiveCompany,
-    StudentFaceDto Face);
+    StudentFaceDto Face,
+    StudentWorkHoursDto WorkHours);
 
 /// <summary><c>GET /api/admin/students/{id}?periodId=</c> — talaba profili (davrga bog'liq bloklar tanlangan davr bo'yicha).
 /// Talaba topilmasa yoki <c>periodId</c> talabaga tegishli bo'lmasa → 404.</summary>
@@ -48,7 +53,7 @@ public sealed record GetAdminStudentDetailQuery(Guid Id, Guid? PeriodId = null) 
 /// <summary>Umumiy bloklarni <see cref="GetStudentDetailQuery"/> hisoblaydi (admin ko'lami cheklovsiz,
 /// shuning uchun ayni handler adminga ham to'g'ri keladi — topilmasa 404 ni ham o'sha beradi),
 /// bu yerda faqat adminga xos maydonlar qo'shiladi.</summary>
-internal sealed class GetAdminStudentDetailQueryHandler(IApplicationDbContext db, ISender sender)
+internal sealed class GetAdminStudentDetailQueryHandler(IApplicationDbContext db, ISender sender, IClock clock)
     : IRequestHandler<GetAdminStudentDetailQuery, AdminStudentDetail>
 {
     public async Task<AdminStudentDetail> Handle(GetAdminStudentDetailQuery request, CancellationToken cancellationToken)
@@ -97,6 +102,7 @@ internal sealed class GetAdminStudentDetailQueryHandler(IApplicationDbContext db
             profile.SelectedPeriodId,
             profile.HasPassword,
             profile.ActiveCompany,
-            profile.Face);
+            profile.Face,
+            await StudentWorkHoursMapper.LoadAsync(db, profile.Id, clock.LocalToday(), cancellationToken));
     }
 }

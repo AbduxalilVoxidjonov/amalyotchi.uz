@@ -1,7 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, vi } from 'vitest';
-import { resetProfileMocks } from '@/features/profile/mocks';
 import { resetMockState } from '@/mocks/data';
 import { server } from '@/mocks/server';
 import { useSessionFlags } from '@/shared/auth/session';
@@ -16,7 +15,6 @@ afterEach(() => {
   cleanup();
   server.resetHandlers();
   resetMockState();
-  resetProfileMocks();
   setInitData('');
   resetTelegramStub();
   useAuthStore.getState().clear();

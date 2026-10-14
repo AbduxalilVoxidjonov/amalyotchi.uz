@@ -50,6 +50,38 @@ export interface AdminStudentDetail extends StudentProfileDetail {
   /** Ro'yxatdagi holat bilan bir xil qoida (faol · qizil bayroq · ulanmagan). */
   adminStatus: StudentStatus;
   telegramLinked: boolean;
+  /**
+   * v3.32 — admin belgilagan ish vaqti (talaba ilovada faqat ko'radi). Eski server yubormaydi →
+   * "Ish vaqti" kartasi ko'rsatilmaydi.
+   */
+  workHours?: StudentWorkHours;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Ish vaqti — `PUT /api/admin/students/{id}/work-hours` (v3.32). Talabaning kelish/ketish vaqtini
+ * FAQAT admin belgilaydi; o'zgarish ERTADAN kuchga kiradi (bugungi check-in oynasi o'zgarmaydi).
+ * Javob: yangilangan `AdminStudentDetail` (yangi `workHours` bilan).
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** Barcha vaqtlar "HH:mm" (Toshkent). */
+export interface StudentWorkHours {
+  /** Admin oxirgi belgilagan kelish vaqti; `null` — davr vaqti ishlatiladi. */
+  start: string | null;
+  end: string | null;
+  /** DateOnly — `start/end` shu sanadan amal qiladi; hech qachon belgilanmagan → null. */
+  effectiveFrom: string | null;
+  /** Bugun amaldagi vaqt (admin belgilagan yoki davrniki). */
+  todayStart: string;
+  todayEnd: string;
+  /** Sukut davri vaqti; davr yo'q → null. */
+  periodStart: string | null;
+  periodEnd: string | null;
+}
+
+/** Ikkalasi `null` — davr vaqtiga qaytarish. */
+export interface SetStudentWorkHoursInput {
+  start: string | null;
+  end: string | null;
 }
 
 /* ────────────────────────────────────────────────────────────────────────────

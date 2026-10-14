@@ -1,0 +1,29 @@
+/* Talaba profili · "Ish vaqti" kartasi va tahrirlash modali */
+.pending {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md2);
+  background: var(--color-info-bg);
+  color: var(--color-info-fg);
+  font-size: var(--fs-sm2);
+  line-height: var(--lh-note);
+}
+.none {
+  color: var(--color-text-faint);
+}
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.note {
+  margin: 0;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  line-height: var(--lh-note);
+}

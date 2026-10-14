@@ -35,11 +35,11 @@ public sealed class StudentProfile : AuditableEntity, ISoftDeletable
     /// <summary>Ish vaqti uchun eng qisqa davomiylik (daqiqa).</summary>
     public const int MinWorkMinutes = 60;
 
-    /// <summary>Talabaning o'zi belgilagan kelish vaqti (Toshkent). null — davr soatlari ishlatiladi.
+    /// <summary>Admin belgilagan kelish vaqti (Toshkent). null — davr soatlari ishlatiladi.
     /// <see cref="WorkHoursEffectiveFrom"/> dan boshlab amal qiladi.</summary>
     public TimeOnly? WorkStart { get; private set; }
 
-    /// <summary>Talabaning o'zi belgilagan ketish vaqti. <see cref="WorkStart"/> bilan birga null yoki birga qiymatli.</summary>
+    /// <summary>Admin belgilagan ketish vaqti. <see cref="WorkStart"/> bilan birga null yoki birga qiymatli.</summary>
     public TimeOnly? WorkEnd { get; private set; }
 
     /// <summary><see cref="WorkStart"/>/<see cref="WorkEnd"/> shu sanadan (Toshkent) amal qiladi; undan oldin —
@@ -102,7 +102,8 @@ public sealed class StudentProfile : AuditableEntity, ISoftDeletable
 
     public bool IsActive => Status == StudentStatus.Active && !IsDeleted;
 
-    /// <summary>Talaba o'z ish vaqtini belgilaydi (ikkalasi null — davr soatlariga qaytish). O'zgarish ERTADAN
+    /// <summary>Talabaning ish vaqtini belgilaydi — faqat admin (<c>PUT /api/admin/students/{id}/work-hours</c>);
+    /// ikkalasi null — davr soatlariga qaytish. O'zgarish ERTADAN
     /// (<paramref name="today"/> + 1, Toshkent) kuchga kiradi — bugungi kelish vaqtini surib "kech keldi"dan qochib
     /// bo'lmaydi. Joriy soatlar allaqachon amalda bo'lsa ular "oldingi"ga o'tadi; hali kuchga kirmagan o'zgarish
     /// bo'lsa — faqat u almashtiriladi (oldingi soatlar saqlanadi).</summary>

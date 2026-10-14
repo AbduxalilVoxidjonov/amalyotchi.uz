@@ -40,11 +40,15 @@ import type {
   AssignCompanyError,
   AssignCompanyInput,
   SetStudentCompanyInput,
+  SetStudentWorkHoursInput,
   Student,
   StudentCreateInput,
   StudentFilters,
   StudentGroupOption,
+  StudentWorkHours,
 } from './types';
+import { todayInTashkent } from '../shared/fmt';
+import { addDays, validateWorkHours } from './workHours';
 import { STUDENT_COMPANY_COMMENT_MAX } from './types';
 import { STUDENT_FORM_MESSAGES, STUDENT_FULL_NAME_MAX, normalizeUzPhone } from './schema';
 
@@ -181,12 +185,38 @@ export function resetStudentCompanyMock() {
   companyOverrides.clear();
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * Ish vaqti (`PUT /students/{id}/work-hours`, v3.32) — mock holati: talaba id → admin belgilagan
+ * `start/end` (ertadan kuchga kiradi, shuning uchun `todayStart/todayEnd` o'zgarmaydi).
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const workHoursOverrides = new Map<
+  string,
+  Pick<StudentWorkHours, 'start' | 'end' | 'effectiveFrom'>
+>();
+
+function workHoursFor(id: string, period: AdminStudentDetail['period']): StudentWorkHours {
+  const periodStart = period?.dailyStart ?? null;
+  const periodEnd = period?.dailyEnd ?? null;
+  return {
+    start: null,
+    end: null,
+    effectiveFrom: null,
+    todayStart: periodStart ?? '09:00',
+    todayEnd: periodEnd ?? '18:00',
+    periodStart,
+    periodEnd,
+    ...workHoursOverrides.get(id),
+  };
+}
+
 /** Testlar orasida: qo'lda yaratilgan talabalar va biriktirishlar tozalanadi. */
 export function resetStudentsMock() {
   mockStudents.splice(SEED_STUDENT_COUNT);
   createdPhones.clear();
   nextCreatedId = 1;
   companyOverrides.clear();
+  workHoursOverrides.clear();
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -374,6 +404,7 @@ function buildAdminDetail(
       adminStatus: row.status,
       telegramLinked: row.telegramLinked,
       hasPassword: hasMockStudentPassword(adminId),
+      workHours: workHoursFor(adminId, base.period),
     };
   }
 
@@ -397,6 +428,7 @@ function buildAdminDetail(
     adminStatus: row.status,
     telegramLinked: row.telegramLinked,
     hasPassword: hasMockStudentPassword(adminId),
+    workHours: workHoursFor(adminId, base.period),
   };
 }
 
@@ -598,6 +630,28 @@ export const studentsHandlers: HttpHandler[] = [
         contract: null,
       },
     });
+    const detail = buildAdminDetail(id, null);
+    return detail && detail !== 'periodNotFound' ? HttpResponse.json(detail) : notFound();
+  }),
+
+  // Ish vaqti (v3.32): server qoidalari — ikkalasi null (davr vaqtiga qaytish) yoki ikkalasi ham,
+  // ketish > kelish, ≥ 1 soat; o'zgarish ertadan kuchga kiradi. Noma'lum talaba → 404.
+  http.put(`${STUDENTS_ENDPOINT}/:id/work-hours`, async ({ params, request }) => {
+    const id = String(params['id']);
+    if (!findRow(id)) return notFound();
+    const body = (await request.json().catch(() => null)) as SetStudentWorkHoursInput | null;
+    const start = body?.start ?? null;
+    const end = body?.end ?? null;
+    if (start !== null || end !== null) {
+      const e = validateWorkHours(start ?? '', end ?? '');
+      const errors: Record<string, string[]> = {};
+      if (e.start) errors['Start'] = [e.start];
+      if (e.end) errors['End'] = [e.end];
+      if (Object.keys(errors).length > 0) {
+        return problemResponse(400, "Ma'lumotlar noto'g'ri", "Ish vaqti noto'g'ri.", { errors });
+      }
+    }
+    workHoursOverrides.set(id, { start, end, effectiveFrom: addDays(todayInTashkent(), 1) });
     const detail = buildAdminDetail(id, null);
     return detail && detail !== 'periodNotFound' ? HttpResponse.json(detail) : notFound();
   }),

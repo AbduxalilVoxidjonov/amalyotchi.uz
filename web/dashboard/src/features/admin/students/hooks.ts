@@ -15,6 +15,7 @@ import {
 import type {
   AssignCompanyInput,
   SetStudentCompanyInput,
+  SetStudentWorkHoursInput,
   StudentCreateInput,
   StudentGroupOptionParams,
   StudentListParams,
@@ -155,6 +156,26 @@ export function useSetStudentCompany(studentId: string) {
       void queryClient.invalidateQueries({ queryKey: adminKeys.dashboard() });
       void queryClient.invalidateQueries({ queryKey: adminKeys.companiesAll() });
       void queryClient.invalidateQueries({ queryKey: ['admin', 'company'] });
+    },
+  });
+}
+
+/**
+ * Talabaning ish vaqtini belgilash / davr vaqtiga qaytarish (v3.32, faqat admin). Javob — sukut davri
+ * bo'yicha yangilangan profil: `student(id, null)` keshiga yoziladi, boshqa davr kalitlari qayta so'raladi.
+ * Bugungi holat o'zgarmaydi (o'zgarish ertadan kuchga kiradi).
+ */
+export function useSetStudentWorkHours(studentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ['admin', 'students', studentId, 'work-hours'],
+    mutationFn: (input: SetStudentWorkHoursInput) => studentsApi.setWorkHours(studentId, input),
+    onSuccess: (detail) => {
+      queryClient.setQueryData(adminKeys.student(studentId, null), detail);
+      void queryClient.invalidateQueries({
+        queryKey: ['admin', 'student', studentId],
+        predicate: (q) => q.queryKey[3] !== null,
+      });
     },
   });
 }

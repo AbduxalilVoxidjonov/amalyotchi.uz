@@ -22,14 +22,15 @@ export interface StudentProfileDto {
   practice: StudentProfilePracticeDto | null;
   /** Yangi maydon; eski server yubormasligi mumkin → `profilePractices()` `practice` ga qaytadi. */
   practices?: StudentProfilePracticeDto[];
-  /** Talabaning ish vaqti (kelish/ketish). Eski server yubormasligi mumkin → bo'lim yashiriladi. */
+  /** Talabaning ish vaqti (kelish/ketish) — faqat o'qish uchun, uni admin belgilaydi. Eski server yubormasligi
+   * mumkin → bo'lim yashiriladi. */
   workHours?: StudentWorkHoursDto;
 }
 
 /**
- * Talabaning o'zi belgilagan ish vaqti ("HH:mm"). `start`/`end` — oxirgi saqlangan qiymat (`null` — davr
- * vaqti ishlatiladi), `effectiveFrom` dan boshlab amal qiladi (ertangi sana bo'lsa — kutilayotgan o'zgarish).
- * `todayStart`/`todayEnd` — bugun amalda bo'lgan vaqt (o'zi belgilagan yoki davrniki).
+ * Talabaning ish vaqti ("HH:mm") — uni FAQAT admin belgilaydi (ilovada faqat ko'rsatiladi). `start`/`end` —
+ * admin oxirgi belgilagan qiymat (`null` — davr vaqti ishlatiladi), `effectiveFrom` dan boshlab amal qiladi
+ * (ertangi sana bo'lsa — kutilayotgan o'zgarish). `todayStart`/`todayEnd` — bugun amalda bo'lgan vaqt.
  */
 export interface StudentWorkHoursDto {
   start: string | null;
@@ -41,12 +42,6 @@ export interface StudentWorkHoursDto {
   /** Davr ish vaqti; davr biriktirilmagan → null. */
   periodStart: string | null;
   periodEnd: string | null;
-}
-
-/** PUT /api/student/profile/work-hours — ikkalasi null = davr vaqtiga qaytarish. */
-export interface UpdateWorkHoursRequest {
-  start: string | null;
-  end: string | null;
 }
 
 export interface StudentProfilePracticeDto {

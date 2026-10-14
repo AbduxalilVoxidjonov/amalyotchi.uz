@@ -43,13 +43,11 @@ export const STUDENT_ENDPOINTS = {
    * `periodId` berilmasa — sukut davr; davr biriktirilmagan → `period: null`, `days: []`.
    */
   periodDays: '/api/student/period-days',
-  /** GET → StudentProfileDto (shaxsiy/o'quv ma'lumotlari, amaliyot xulosasi, hisob holati) */
-  profile: '/api/student/profile',
   /**
-   * PUT { start: "HH:mm"|null, end: "HH:mm"|null } → StudentWorkHoursDto | 400 `errors.start`/`errors.end`.
-   * Ikkalasi null — davr vaqtiga qaytarish. O'zgarish ERTADAN kuchga kiradi (bugungi oyna o'zgarmaydi).
+   * GET → StudentProfileDto (shaxsiy/o'quv ma'lumotlari, amaliyot xulosasi, hisob holati, `workHours` — faqat
+   * o'qish uchun; ish vaqtini admin belgilaydi, talaba uchun PUT yo'li yo'q — kontrakt v3.32).
    */
-  profileWorkHours: '/api/student/profile/work-hours',
+  profile: '/api/student/profile',
   /**
    * Yuzni tasdiqlash (kontrakt v3.27 §6.33):
    * GET → StudentFaceDto · POST multipart(photo, consent="true") → StudentFaceDto (status=pending)

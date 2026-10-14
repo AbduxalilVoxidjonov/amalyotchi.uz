@@ -128,6 +128,20 @@ public sealed class AdminStudentsController(ISender sender) : ControllerBase
         Guid id, ReassignStudentCompanyCommand command, CancellationToken cancellationToken)
         => Ok(await sender.Send(command with { Id = id }, cancellationToken));
 
+    /// <summary>Talabaning ish vaqtini belgilash (faqat admin; talaba ilovada o'zgartira olmaydi):
+    /// <c>{ start: "HH:mm"|null, end: "HH:mm"|null }</c> → 200 yangilangan profil (<c>GET {id}</c> bilan bir xil, yangi
+    /// qiymatlar <c>workHours</c> da). Ikkalasi null — davr soatlariga qaytish. O'zgarish ERTADAN kuchga kiradi (check-in
+    /// oynasi, kechikish chegarasi, auto-close shu soatlardan). Format/oraliq xatosi → 400; talaba topilmasa → 404.
+    /// Audit: <c>StudentWorkHoursChanged</c>.</summary>
+    [HttpPut("{id:guid}/work-hours")]
+    [ProducesResponseType<AdminStudentDetail>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<AdminStudentDetail>> SetWorkHours(
+        Guid id, SetStudentWorkHoursCommand command, CancellationToken cancellationToken)
+        => Ok(await sender.Send(command with { Id = id }, cancellationToken));
+
     /// <summary>Talabaning kun-bakun davomati:
     /// holat, check-in/out vaqti, masofa, koordinata, selfi va urinishlar soni.
     /// <c>?from=&amp;to=</c> — ixtiyoriy (berilmasa davr boshidan bugungacha); teskari yoki

@@ -1,4 +1,4 @@
-# API-CONTRACT v3.31
+# API-CONTRACT v3.32
 
 Oxirgi yangilanish: 14.10.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
@@ -37,7 +37,9 @@ v3.29 (**live joylashuv** — ish vaqtida fonda kuzatuv: `today.tracking`, `PUT 
 3 ta yangi sozlama) — §6.35,
 v3.30 (**kundalik har kunga alohida, PDF hisobot** — `POST /api/student/diary` `date` + shartli `text`,
 `period-days` `days[].canSubmitDiary`, `DiaryEntryDto`/admin kundalik `submittedLate`) — §6.36,
-v3.31 (sozlama **`diaryAllowPastDays`** — admin o'tgan kunlarga hisobot yuklashni yopa oladi; `rewrite` istisno) — §6.36.
+v3.31 (sozlama **`diaryAllowPastDays`** — admin o'tgan kunlarga hisobot yuklashni yopa oladi; `rewrite` istisno) — §6.36,
+v3.32 (**ish vaqtini faqat admin belgilaydi** — `PUT /api/student/profile/work-hours` olib tashlandi,
+`PUT /api/admin/students/{id}/work-hours` qo'shildi, `AdminStudentDetail.workHours`) — §6.37.
 
 > v3.28: tyutor bo'limi (§2.5) va `/api/admin/tutors*` (§2.3.3) olib tashlandi, kundalik nazorat endpoint'lari
 > `/api/admin/*` ga ko'chdi, `/api/admin/admins*` qo'shildi — quyidagi sonlar v3.27 holati; farqi §6.34 da.
@@ -1064,6 +1066,39 @@ interface AdminStudentDetail extends /* TutorStudentDetail maydonlari, §2.5 */ 
 `adminStatus` ro'yxatdagi (`StudentRow.status`) bilan **bir qoidadan** hisoblanadi, lekin davomat foizi
 profil statistikasidan olinadi (`attendance.attendancePct`, `attendance.totalDays`) — ro'yxatdagi
 `elapsed` asosidagi yaxlitlash bilan bir necha foizga farq qilishi mumkin.
+
+**v3.32:** `AdminStudentDetail` ga `workHours: StudentWorkHoursDto` (§2.6 `GET /api/student/profile` dagi `workHours` bilan
+**aynan bir xil** shakl va manba — tanlangan `periodId` dan mustaqil, sukut davri bo'yicha):
+
+```ts
+interface StudentWorkHoursDto {
+  start: string | null;         // "HH:mm" — admin oxirgi belgilagan kelish vaqti; null — davr vaqti ishlatiladi
+  end: string | null;           // "HH:mm" — ketish; start bilan birga null yoki birga qiymatli
+  effectiveFrom: string | null; // "yyyy-MM-dd" — start/end shu sanadan amal qiladi; hech qachon belgilanmagan → null
+  todayStart: string;           // bugun amaldagi kelish vaqti (admin belgilagan yoki davr/standart)
+  todayEnd: string;
+  periodStart: string | null;   // sukut davr vaqti; davr yo'q → null
+  periodEnd: string | null;
+}
+```
+
+#### PUT `/api/admin/students/{id}/work-hours` · 200 · 400 · 403 · 404 — v3.32
+
+Talabaning ish vaqti (kelish/ketish) — **faqat admin belgilaydi** (talaba ilovada faqat ko'radi; talabaning
+`PUT /api/student/profile/work-hours` yo'li v3.32 da olib tashlandi). Body `{ start: "HH:mm"|null, end: "HH:mm"|null }`;
+ikkalasi null — davr vaqtiga qaytish. O'zgarish **ertadan** (Toshkent sanasi) kuchga kiradi — bugungi check-in oynasi,
+kechikish chegarasi va auto-close o'zgarmaydi; hali kuchga kirmagan o'zgarish bo'lsa — u almashtiriladi.
+Javob **200** — `AdminStudentDetail` (`GET /api/admin/students/{id}` — `periodId`'siz, sukut davri — bilan aynan bir xil;
+yangi qiymatlar `workHours` da, `period.dailyStart/dailyEnd/customWorkHours` esa bugungi amaldagi vaqtni ko'rsatadi).
+**400** `errors.Start` / `errors.End`: "Vaqtni HH:mm formatida kiriting." · "Kelish vaqtini kiriting." ·
+"Ketish vaqtini kiriting." (faqat bittasi berilgan) · "Ketish vaqti kelish vaqtidan keyin bo'lishi kerak." ·
+"Ish vaqti kamida 1 soat bo'lishi kerak.". Talaba topilmasa (ko'lamdan tashqari) → **404**; admin emas → **403**.
+Audit `studentWorkHoursChanged` (`entityType = StudentProfile`, `changes = { studentId, from: {start,end}, to: {start,end},
+effectiveFrom }`, aktor — admin).
+
+Amaldagi vaqt qayerda ishlatiladi: check-in oynasi (`dailyStart` … `+checkInWindowMinutes`, ish tugashigacha qisqaradi),
+kechikish chegarasi (`+lateToleranceMinutes`), check-out ochilishi (`dailyEnd`) va **auto-close** (`dailyEnd +
+checkoutGraceMinutes`), `GET /api/student/today` `window`, kalendar/`period-days`, admin "Bugun" va davomat statistikasi.
 
 #### GET `/api/admin/students/{id}/attendance?periodId=&from=&to=` · 200 · 400 · 404
 
@@ -2737,8 +2772,12 @@ interface StudentProfileDto {
     finalized: boolean; // tyutor bahoni yakunlagan
   } | null; // sukut bo'yicha davr (davom etayotgan → oxirgi tugagan → eng yaqin kelgusi) yo'q → null
   practices: StudentProfilePracticeDto[]; // v3.17 — BARCHA davrlar, element shakli `practice` bilan bir xil
+  workHours: StudentWorkHoursDto; // v3.26; v3.32 dan FAQAT O'QISH — ish vaqtini admin belgilaydi (§2.3, `PUT /api/admin/students/{id}/work-hours`)
 }
 ```
+
+> v3.32: talaba ish vaqtini o'zgartira olmaydi — `PUT /api/student/profile/work-hours` **yo'q** (404/405). `workHours`
+> shakli — §2.3 `StudentWorkHoursDto`.
 
 `practices` (v3.17) — talabaning barcha davrlari: to'plam `GET /api/student/period-days` dagi `periods` bilan **aynan bir xil**
 (bir manba — guruhiga biriktirilgan davrlar ∪ talabaning yozuvlari bor davrlar, o'chirilganlar chiqmaydi). Har element
@@ -3539,6 +3578,7 @@ Foydalanuvchi qarori: talabalar ruxsat (leave) so'ramaydi — funksiya butunlay 
 - **Yangi endpoint (StudentOnly):** `PUT /api/student/profile/work-hours` `{ start: "HH:mm"|null, end: "HH:mm"|null }` →
   200 `StudentWorkHoursDto` (yuqoridagi shakl). Ikkalasi null — davr vaqtiga qaytish. O'zgarish **ertadan** (Toshkent)
   kuchga kiradi. 400 `errors.Start`/`errors.End`: format, bittasi bo'sh, ketish ≤ kelish, 1 soatdan qisqa.
+- **v3.32 da o'zgardi:** talaba yo'li olib tashlandi — ish vaqtini faqat admin belgilaydi (§6.37).
 - Talabaning o'z vaqti check-in/kechikish/check-out, `today`, kalendar va tyutor/admin davomat holatlariga qo'llanadi.
   Tyutor talaba profili `period.dailyStart/dailyEnd` — talabaning bugungi amaldagi vaqti; yangi `period.customWorkHours: boolean`.
 - **Davr ish vaqti:** check-in oynasi kundan uzun bo'lsa endi 400 emas — oyna ish tugashigacha qisqaradi (saqlangan
@@ -3768,3 +3808,19 @@ hal qiladi.
 - `period-days` `days[].canSubmitDiary` — aynan shu qoida (yagona manba `DiaryDayPolicy`).
 - `date`siz eski yo'l (bugun), `date` = bugun va `TodayDto.canWriteDiary` — ta'sirlanmaydi. Endpoint soni, DTO, migratsiya —
   o'zgarmadi.
+
+### 6.37 v3.31 → v3.32 (14.10.2026): ish vaqtini faqat admin belgilaydi
+
+Mahsulot qarori: talabaning ish vaqti (kelish/ketish) ilovada belgilanmaydi — faqat admin panelda.
+- **Olib tashlandi (StudentOnly):** `PUT /api/student/profile/work-hours` → endi **404/405** (yo'l yo'q). TWA "Ish vaqtim"
+  kartasi faqat o'qish uchun: bugungi vaqt, manba ("Admin belgilagan" / "Davr vaqti"), davr vaqti, kutilayotgan o'zgarish.
+- **Yangi endpoint (AdminOnly):** `PUT /api/admin/students/{id}/work-hours` `{ start, end }` → 200 `AdminStudentDetail` (§2.3).
+  Qoidalar v3.26 dagi talaba yo'li bilan bir xil (ertadan kuchga kiradi, ikkalasi null — davr vaqtiga qaytish, 400
+  `errors.Start|End`); ko'lamdan tashqari / yo'q talaba → 404. Audit `studentWorkHoursChanged` — aktor admin,
+  `changes.studentId` qo'shildi.
+- **Yangi maydon:** `AdminStudentDetail.workHours: StudentWorkHoursDto` (`GET /api/admin/students/{id}`,
+  `POST …/company`, `PUT …/work-hours` javoblarida). `GET /api/student/profile` `workHours` — o'zgarmadi (faqat o'qish).
+- `period.customWorkHours` ma'nosi: bugun **admin belgilagan** vaqt amalda. Check-in/kechikish/auto-close mantig'i
+  o'zgarmadi — manba endi admin.
+- Admin panel: talaba profilida "Ish vaqti" kartasi + "Ish vaqtini belgilash" modali (kelish/ketish, "Davr vaqtiga qaytarish").
+- Endpoint soni o'zgarmadi (Student −1, Admin +1). Migratsiya yo'q (ustunlar v3.26 dagi).

@@ -102,7 +102,7 @@ internal sealed class GetStudentDetailQueryHandler(IApplicationDbContext db, ISc
         // Aktiv korxona — tanlangan davrdan mustaqil (bugun davom etayotgan ochiq davrdagi tasdiqlangan ariza).
         var activeCompany = await db.LoadActiveCompanyAsync(profile.UserId, today, cancellationToken);
 
-        // Talabaning bugun amaldagi o'z ish vaqti (bo'lsa) — bugungi oyna va ko'rsatiladigan soatlar shundan.
+        // Talabaning bugun amaldagi (admin belgilagan) ish vaqti (bo'lsa) — bugungi oyna va ko'rsatiladigan soatlar shundan.
         var ownHours = profile.HoursOn(today);
         var stats = StudentStatsCalculator.ComputeAttendance(period, attendance, leaves, today, localNow, ownHours);
         var diary = StudentStatsCalculator.ComputeDiary(diaryScores);
@@ -159,7 +159,7 @@ internal sealed class GetStudentDetailQueryHandler(IApplicationDbContext db, ISc
             StudentFaceDto.From(faceEnrollment, settings.FaceVerificationEnabled));
     }
 
-    /// <summary>Davr bloki; <c>dailyStart</c>/<c>dailyEnd</c> — talabaning bugun amaldagi soatlari (o'zi belgilagan
+    /// <summary>Davr bloki; <c>dailyStart</c>/<c>dailyEnd</c> — talabaning bugun amaldagi soatlari (admin belgilagan
     /// bo'lsa — <c>customWorkHours = true</c>, aks holda davr soatlari).</summary>
     private static StudentPeriod ToPeriod(PracticePeriod period, (TimeOnly Start, TimeOnly End)? ownHours)
         => new(

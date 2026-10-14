@@ -11,6 +11,7 @@ import { LoadingState } from '../components/PageStatus';
 import { HierarchyListPage } from '../faculties/components/HierarchyListPage';
 import { AdminStudentMetaCard } from './components/AdminStudentMetaCard';
 import { StudentCompanyModal } from './components/StudentCompanyModal';
+import { StudentWorkHoursCard, StudentWorkHoursModal } from './components/StudentWorkHoursCard';
 import { useStudentQuery } from './hooks';
 import type { AdminStudentDetail } from './types';
 import styles from './StudentDetailPage.module.css';
@@ -39,6 +40,7 @@ function canChangeCompany(
  * o'rnatish va yuz tasdiqlash/rad etish/bekor qilish (v3.28) shu sahifada. Tashkiliy blokdagi tugma talabani korxonaga
  * biriktiradi yoki boshqa korxonaga o'tkazadi (faqat shu sahifada — ommaviy biriktirish alohida).
  * Sarlavhadagi "Joylashuv izi" — bugungi kunlik iz sahifasiga (LIVE-JOYLASHUV.md; sana o'sha yerda tanlanadi).
+ * "Ish vaqti" kartasi (v3.32) — talabaning kelish/ketish vaqtini FAQAT admin shu yerda belgilaydi.
  */
 export function StudentDetailPage() {
   const { studentId = '' } = useParams<{ studentId: string }>();
@@ -46,11 +48,18 @@ export function StudentDetailPage() {
   const query = useStudentQuery(studentId, periodId);
   const detail = query.data;
   const [companyModalOpen, setCompanyModalOpen] = useState(false);
+  const [workHoursModalOpen, setWorkHoursModalOpen] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
+  const today = todayInTashkent();
 
   function openCompanyModal() {
     setFlash(null);
     setCompanyModalOpen(true);
+  }
+
+  function openWorkHoursModal() {
+    setFlash(null);
+    setWorkHoursModalOpen(true);
   }
 
   // URL'dagi davr talabaga tegishli emas (backend 404 "Amaliyot davri topilmadi.").
@@ -106,7 +115,7 @@ export function StudentDetailPage() {
                   <Link
                     to={locationTrackHref(detail.id, {
                       name: detail.name,
-                      date: todayInTashkent(),
+                      date: today,
                       from: 'student',
                     })}
                   >
@@ -120,11 +129,18 @@ export function StudentDetailPage() {
             <AdminStudentMetaCard
               detail={detail}
               onChangeCompany={
-                !query.isPlaceholderData && canChangeCompany(detail, periodId, todayInTashkent())
+                !query.isPlaceholderData && canChangeCompany(detail, periodId, today)
                   ? openCompanyModal
                   : undefined
               }
             />
+            {detail.workHours && (
+              <StudentWorkHoursCard
+                workHours={detail.workHours}
+                today={today}
+                onEdit={query.isPlaceholderData ? undefined : openWorkHoursModal}
+              />
+            )}
           </StudentProfile>
           {companyModalOpen && (
             <StudentCompanyModal
@@ -140,6 +156,19 @@ export function StudentDetailPage() {
                     ? `Talaba ${name ? `«${name}» korxonasiga ` : 'boshqa korxonaga '}o'tkazildi.`
                     : `Talaba ${name ? `«${name}» korxonasiga ` : 'korxonaga '}biriktirildi.`,
                 );
+              }}
+            />
+          )}
+          {workHoursModalOpen && detail.workHours && (
+            <StudentWorkHoursModal
+              studentId={detail.id}
+              studentName={detail.name}
+              workHours={detail.workHours}
+              today={today}
+              onClose={() => setWorkHoursModalOpen(false)}
+              onDone={(_updated, message) => {
+                setWorkHoursModalOpen(false);
+                setFlash(message);
               }}
             />
           )}

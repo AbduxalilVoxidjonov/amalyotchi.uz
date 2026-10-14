@@ -108,11 +108,11 @@ export interface StudentPeriod {
   startDate: string;
   endDate: string;
   /**
-   * "09:00" (Toshkent) — talabaning BUGUN amaldagi ish vaqti: o'zi belgilagan bo'lsa shu, aks holda davrniki.
+   * "09:00" (Toshkent) — talabaning BUGUN amaldagi ish vaqti: admin belgilagan bo'lsa shu, aks holda davrniki.
    */
   dailyStart: string;
   dailyEnd: string;
-  /** `true` — `dailyStart`/`dailyEnd` talabaning o'zi belgilagan vaqti. Eski server yubormaydi → `false`. */
+  /** `true` — `dailyStart`/`dailyEnd` admin belgilagan ish vaqti (v3.32). Eski server yubormaydi → `false`. */
   customWorkHours?: boolean;
   /** Ish kunlari: 1 = dushanba … 7 = yakshanba (`WorkDays` flags). */
   workDays: number[];
