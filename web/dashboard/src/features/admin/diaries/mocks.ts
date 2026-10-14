@@ -16,6 +16,7 @@ const SPEC_DIARIES: DiaryEntry[] = [
     group: '412-22',
     date: '2026-10-11',
     submittedAt: '2026-10-11T12:42:00Z', // 17:42 Toshkent
+    submittedLate: false,
     status: 'submitted',
     text: "Bugun jamoaning REST API loyihasida mijoz ro'yxatini qaytaruvchi endpoint ustida ishladim. Mentor bilan birga so'rov validatsiyasini ko'rib chiqdik, bo'sh maydonlar uchun xato matnlarini o'zbekchaga o'girdim. Tushdan keyin Postman'da 14 ta holatni sinab ko'rdim, ikkitasida 500 xato chiqdi — sababi bazadagi null qiymat ekan, mentor ko'rsatmasi bilan tuzatdim.",
     learned: 'So‘rov validatsiyasi va null qiymatlar bilan ishlash',
@@ -34,6 +35,7 @@ const SPEC_DIARIES: DiaryEntry[] = [
     group: '413-22',
     date: '2026-10-11',
     submittedAt: '2026-10-11T11:58:00Z', // 16:58
+    submittedLate: false,
     status: 'seen',
     text: "Marketing bo'limida oktabr oyi uchun kontent kalendarini tuzishda qatnashdim. Uch xil auditoriya uchun post matnlari yozdim, muharrir ikkitasini tanladi. Statistika panelidan o'tgan hafta ko'rsatkichlarini yig'ib, qisqa jadval tayyorladim.",
     learned: null,
@@ -49,6 +51,7 @@ const SPEC_DIARIES: DiaryEntry[] = [
     group: '412-22',
     date: '2026-10-11',
     submittedAt: '2026-10-11T13:31:00Z', // 18:31
+    submittedLate: false,
     status: 'rewrite',
     text: "Bugun bank filialida hujjatlar bilan ishladim. Ishladim va o'rgandim.",
     learned: null,
@@ -56,6 +59,23 @@ const SPEC_DIARIES: DiaryEntry[] = [
     score: null,
     comment: 'Batafsil yozing: qanday hujjatlar, nima qildingiz.',
     reviewedAt: '2026-10-11T14:00:00Z',
+  },
+  {
+    // v3.30 — mobil ilovadan o'tgan kunga matnsiz, faqat PDF hisobot (kech yuborilgan).
+    id: 'd-4',
+    studentId: 's-341034',
+    studentName: 'Rahimov Sardor',
+    group: '412-22',
+    date: '2026-10-09',
+    submittedAt: '2026-10-11T07:15:00Z', // 11.10 12:15 Toshkent
+    submittedLate: true,
+    status: 'submitted',
+    text: '',
+    learned: null,
+    files: [{ name: 'hisobot_09-10.pdf', url: '/api/files/f-d4-1' }],
+    score: null,
+    comment: null,
+    reviewedAt: null,
   },
 ];
 

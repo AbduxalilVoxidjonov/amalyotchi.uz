@@ -47,4 +47,17 @@ describe('DiariesPage (/admin/diaries)', () => {
     expect(within(card).getByText('Admin izohi:')).toBeInTheDocument();
     expect(within(card).getByText('Statistika jadvalini biriktiring')).toBeInTheDocument();
   });
+
+  it('matnsiz PDF hisobot — matn o\'rniga "PDF hisobot" va fayl havolasi; kech yuborilgan belgisi', async () => {
+    renderAdminRoute('/admin/diaries');
+    const card = await screen.findByRole('article', { name: 'Kundalik: Rahimov Sardor' });
+    expect(within(card).getByText('PDF hisobot')).toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: 'hisobot_09-10.pdf' })).toBeInTheDocument();
+    expect(within(card).getByText('Kech yuborilgan')).toHaveAttribute('data-status', 'late');
+
+    // O'z vaqtida yuborilgan kartada belgi yo'q.
+    const onTime = screen.getByRole('article', { name: 'Kundalik: Aliyev Akmal' });
+    expect(within(onTime).queryByText('Kech yuborilgan')).not.toBeInTheDocument();
+    expect(within(onTime).queryByText('PDF hisobot')).not.toBeInTheDocument();
+  });
 });

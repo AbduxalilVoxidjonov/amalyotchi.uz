@@ -5,7 +5,7 @@ using FluentValidation;
 
 namespace Amaliyotchi.Application.Features.Student.Diary;
 
-/// <summary>Matn uzunligi (minimal — sozlamadan), fayllar soni/hajmi/turi. Xatolar <c>errors.Text</c>, <c>errors.Files</c>.</summary>
+/// <summary>Matn uzunligi (minimal — sozlamadan; PDF biriktirilsa matn ixtiyoriy), fayllar soni/hajmi/turi. Xatolar <c>errors.Text</c>, <c>errors.Files</c>.</summary>
 public sealed class CreateDiaryEntryCommandValidator : AbstractValidator<CreateDiaryEntryCommand>
 {
     public const long MaxFileSizeBytes = 5 * 1024 * 1024;
@@ -25,8 +25,12 @@ public sealed class CreateDiaryEntryCommandValidator : AbstractValidator<CreateD
 
     public CreateDiaryEntryCommandValidator(IApplicationDbContext db)
     {
+        // Matn: yangi fayllar orasida PDF bo'lsa ixtiyoriy (minimal uzunlik ham qo'llanmaydi), aks holda majburiy.
         RuleFor(x => x.Text)
             .NotEmpty().WithMessage("Hisobot matnini kiriting.")
+            .When(x => !CreateDiaryEntryCommandHandler.HasPdf(x.Files));
+
+        RuleFor(x => x.Text)
             .MaximumLength(DiaryEntry.TextMaxLength).WithMessage($"Hisobot matni {DiaryEntry.TextMaxLength} belgidan oshmasligi kerak.")
             .MustAsync(async (text, ct) =>
             {
@@ -34,7 +38,8 @@ public sealed class CreateDiaryEntryCommandValidator : AbstractValidator<CreateD
                 return (text?.Trim().Length ?? 0) >= settings.MinReportLength;
             })
             .WithMessage("Hisobot matni juda qisqa — minimal uzunlik sozlamada belgilangan.")
-            .When(x => !string.IsNullOrWhiteSpace(x.Text), ApplyConditionTo.CurrentValidator);
+            .When(x => !string.IsNullOrWhiteSpace(x.Text) && !CreateDiaryEntryCommandHandler.HasPdf(x.Files),
+                ApplyConditionTo.CurrentValidator);
 
         RuleFor(x => x.Learned)
             .MaximumLength(DiaryEntry.TextMaxLength).WithMessage($"\"Nimani o'rgandim\" {DiaryEntry.TextMaxLength} belgidan oshmasligi kerak.");

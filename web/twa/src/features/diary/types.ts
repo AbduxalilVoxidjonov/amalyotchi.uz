@@ -28,6 +28,8 @@ export interface DiaryEntryDto {
   periodId: string;
   /** v3.5 — davr nomi; o'chirilgan davr → null. */
   periodName: string | null;
+  /** v3.30 — `submittedAt` Toshkent sanasi `date` dan keyin (TWA ishlatmaydi). */
+  submittedLate?: boolean;
 }
 
 /** POST /api/student/diary — multipart/form-data: text, learned?, files[] (0–5, ≤5 MB, rasm/PDF). */

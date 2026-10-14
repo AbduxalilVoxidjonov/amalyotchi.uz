@@ -32,6 +32,8 @@ export interface PeriodDay {
   suspicious: boolean;
   manual: boolean;
   diary: PeriodDayDiary | null;
+  /** v3.30 — shu kunga `POST /api/student/diary` (`date` bilan) qabul qilinadimi (TWA ishlatmaydi). */
+  canSubmitDiary?: boolean;
 }
 
 export interface PeriodSummary {

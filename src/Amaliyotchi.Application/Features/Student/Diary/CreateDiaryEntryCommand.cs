@@ -11,11 +11,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Student.Diary;
 
-/// <summary><c>POST /api/student/diary</c> (multipart). Bugungi hisobot: yangi → 201; bugungisi "qayta yozish"
-/// holatida bo'lsa — <see cref="DiaryEntry.Resubmit"/> (yangi fayllar qo'shiladi); aks holda 409.
+/// <summary><c>POST /api/student/diary</c> (multipart). Hisobot kuni — <see cref="Date"/> (berilmasa bugun, Toshkent).
+/// Qoida — <see cref="DiaryWritePolicy"/>: <c>date</c> berilmagan eski yo'lda (bugun) davr xatosi 400 (<c>detail</c>);
+/// <c>date</c> berilganda kelajak / davr tashqarisi / ish kuni emas → 400 <c>errors.Date</c>. Shu kunga yozuv yo'q → 201 (yangi);
+/// "qayta yozish" holatida → <see cref="DiaryEntry.Resubmit"/> (yangi fayllar qo'shiladi, holat <c>submitted</c>); aks holda 409.
+/// <see cref="Files"/> ichida kamida bitta PDF bo'lsa <see cref="Text"/> ixtiyoriy (bo'sh satr saqlanadi, minimal uzunlik
+/// tekshirilmaydi); PDF bo'lmasa — matn majburiy va <c>minReportLength</c> dan qisqa bo'lmasin.
 /// Sozlama <c>diaryPdfRequired</c> yoqilgan bo'lsa kamida bitta PDF shart (qayta yozishda avvalgi PDF ham hisob) → 400 <c>errors.Files</c>.
 /// Fayllar avval saqlovchiga yoziladi, keyin bitta <c>SaveChanges</c>; baza xatosida fayllar tozalanadi.</summary>
-public sealed record CreateDiaryEntryCommand(string Text, string? Learned, IReadOnlyList<UploadedFile> Files)
+public sealed record CreateDiaryEntryCommand(
+    string Text, string? Learned, IReadOnlyList<UploadedFile> Files, DateOnly? Date = null)
     : IRequest<DiaryEntryDto>;
 
 internal sealed class CreateDiaryEntryCommandHandler(
@@ -31,29 +36,49 @@ internal sealed class CreateDiaryEntryCommandHandler(
         var now = clock.UtcNow;
         var today = clock.LocalToday();
 
-        // Hisobot — faqat davom etayotgan davrga (bugunni o'z ichiga olgan, yopilmagan). Yagona qoida — DiaryWritePolicy
-        // (GET today → canWriteDiary ham shundan); yakunlangan davrda bugungi yozuvni qayta yozish ham taqiqlanadi.
+        // Yagona qoida — DiaryWritePolicy (GET today → canWriteDiary, GET period-days → canSubmitDiary ham shundan);
+        // yakunlangan davrda yozuvni qayta yozish ham taqiqlanadi.
         var practice = await db.LoadStudentPracticeAsync(userId, today, PeriodPurpose.Ongoing, cancellationToken);
-        var period = DiaryWritePolicy.RequireOngoingPeriod(practice);
+        var date = request.Date ?? today;
 
         var existing = await db.DiaryEntries
             .Include(d => d.Attachments)
-            .FirstOrDefaultAsync(d => d.StudentUserId == userId && d.Date == today, cancellationToken);
+            .FirstOrDefaultAsync(d => d.StudentUserId == userId && d.Date == date, cancellationToken);
+
+        PracticePeriod period;
+        if (request.Date is null)
+        {
+            // Eski yo'l (TWA): bugun, ish kuni sharti yo'q, davr xatosi — DomainException (400, faqat detail).
+            period = DiaryWritePolicy.RequireOngoingPeriod(practice);
+            if (existing is not null && existing.Status != DiaryStatus.Rewrite)
+                throw new ConflictException(DiaryWritePolicy.AlreadySubmittedMessage);
+        }
+        else
+        {
+            var decision = DiaryWritePolicy.EvaluateDay(practice, date, existing?.Status);
+            if (decision.Block == DiaryDayBlock.AlreadySubmitted)
+                throw new ConflictException(decision.Reason!);
+            if (!decision.CanWrite)
+                throw new ValidationException(
+                    new Dictionary<string, string[]> { [nameof(CreateDiaryEntryCommand.Date)] = [decision.Reason!] },
+                    decision.Reason);
+            period = decision.Period!;
+        }
+
+        // Yangi fayllar orasida PDF bo'lsa matn ixtiyoriy — minimal uzunlik qo'llanmaydi.
+        var minLength = HasPdf(request.Files) ? 0 : practice.Settings.MinReportLength;
+        var text = request.Text ?? string.Empty;
 
         DiaryEntry entry;
         if (existing is null)
         {
-            entry = DiaryEntry.Create(userId, period.Id, today, request.Text, request.Learned, now, practice.Settings.MinReportLength);
+            entry = DiaryEntry.Create(userId, period.Id, date, text, request.Learned, now, minLength);
             db.DiaryEntries.Add(entry);
-        }
-        else if (existing.Status == DiaryStatus.Rewrite)
-        {
-            existing.Resubmit(request.Text, request.Learned, now, practice.Settings.MinReportLength);
-            entry = existing;
         }
         else
         {
-            throw new ConflictException(DiaryWritePolicy.AlreadySubmittedMessage);
+            existing.Resubmit(text, request.Learned, now, minLength);
+            entry = existing;
         }
 
         if (practice.Settings.DiaryPdfRequired && !await HasPdfAsync(entry, request.Files, cancellationToken))
@@ -92,10 +117,14 @@ internal sealed class CreateDiaryEntryCommandHandler(
 
     public const string PdfRequiredMessage = "Hisobotga PDF fayl biriktirilishi shart.";
 
+    /// <summary>Yangi fayllar orasida PDF bormi (matn ixtiyoriyligi shu bilan aniqlanadi).</summary>
+    internal static bool HasPdf(IReadOnlyList<UploadedFile>? files)
+        => files is not null && files.Any(f => CreateDiaryEntryCommandValidator.IsPdf(f.ContentType, f.FileName));
+
     /// <summary>Yangi fayllar orasida yoki (qayta yozishda) yozuvda qolgan biriktirmalar orasida PDF bormi.</summary>
     private async Task<bool> HasPdfAsync(DiaryEntry entry, IReadOnlyList<UploadedFile> files, CancellationToken cancellationToken)
     {
-        if (files.Any(f => CreateDiaryEntryCommandValidator.IsPdf(f.ContentType, f.FileName)))
+        if (HasPdf(files))
             return true;
         if (entry.Attachments.Count == 0)
             return false;

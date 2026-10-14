@@ -30,7 +30,8 @@ export function DiaryEntryCard({ entry, studentName }: DiaryEntryCardProps) {
         <Badge status={status.kind}>{status.label}</Badge>
       </div>
 
-      <p className={styles.text}>{entry.text}</p>
+      {/* v3.30 — mobil ilovadan matnsiz, faqat PDF yuborilgan hisobot. */}
+      <p className={styles.text}>{entry.text.trim() === '' ? 'PDF hisobot' : entry.text}</p>
       {entry.learned && (
         <p className={styles.learned}>
           <span className={styles.learnedLabel}>O'rganilgan yangilik: </span>

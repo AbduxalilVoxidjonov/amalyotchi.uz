@@ -1,7 +1,14 @@
 import { AuthFileButton } from '@/shared/files';
 import { Avatar, Badge, Card, ChipRow } from '@/shared/ui';
 import { fmtDateOnly, fmtTime } from '../../shared/fmt';
-import { DIARY_STATUS_LABEL, type DiaryEntry, type DiaryReviewRequest } from '../types';
+import {
+  DIARY_LATE_LABEL,
+  DIARY_PDF_ONLY_LABEL,
+  DIARY_STATUS_LABEL,
+  isPdfOnlyDiary,
+  type DiaryEntry,
+  type DiaryReviewRequest,
+} from '../types';
 import { DiaryReviewControls } from './DiaryReviewControls';
 import styles from './DiaryCard.module.css';
 
@@ -31,9 +38,16 @@ export function DiaryCard({ entry, pending, error, onReview }: DiaryCardProps) {
             <div className={styles.meta}>{meta}</div>
           </div>
         </div>
-        <Badge status={s.kind}>{s.label}</Badge>
+        <div className={styles.badges}>
+          {entry.submittedLate && <Badge status="late">{DIARY_LATE_LABEL}</Badge>}
+          <Badge status={s.kind}>{s.label}</Badge>
+        </div>
       </header>
-      <p className={styles.text}>{entry.text}</p>
+      {isPdfOnlyDiary(entry) ? (
+        <p className={styles.pdfOnly}>{DIARY_PDF_ONLY_LABEL}</p>
+      ) : (
+        <p className={styles.text}>{entry.text}</p>
+      )}
       {entry.learned && (
         <p className={styles.learned}>
           <span className={styles.learnedLabel}>O'rganganim: </span>

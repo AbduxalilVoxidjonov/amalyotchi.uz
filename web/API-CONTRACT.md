@@ -1,4 +1,4 @@
-# API-CONTRACT v3.29
+# API-CONTRACT v3.30
 
 Oxirgi yangilanish: 14.10.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
@@ -34,7 +34,9 @@ v3.28 (**tyutor roli olib tashlandi** — barcha tyutor endpoint'lari adminga ko
 `/api/admin/admins`, `isSuperAdmin`) — §6.34,
 v3.29 (**live joylashuv** — ish vaqtida fonda kuzatuv: `today.tracking`, `PUT /api/student/tracking/consent`,
 `POST /api/student/location-pings`, admin `today.rows[].presence`, `GET /api/admin/students/{id}/location-pings`,
-3 ta yangi sozlama) — §6.35.
+3 ta yangi sozlama) — §6.35,
+v3.30 (**kundalik har kunga alohida, PDF hisobot** — `POST /api/student/diary` `date` + shartli `text`,
+`period-days` `days[].canSubmitDiary`, `DiaryEntryDto`/admin kundalik `submittedLate`) — §6.36.
 
 > v3.28: tyutor bo'limi (§2.5) va `/api/admin/tutors*` (§2.3.3) olib tashlandi, kundalik nazorat endpoint'lari
 > `/api/admin/*` ga ko'chdi, `/api/admin/admins*` qo'shildi — quyidagi sonlar v3.27 holati; farqi §6.34 da.
@@ -2160,8 +2162,9 @@ interface TutorDiaryEntry {
   group: string;
   date: string /*DateOnly*/;
   submittedAt: string;
+  submittedLate: boolean /*v3.30 — submittedAt ning Toshkent sanasi > date (o'tgan kunga kech yuborilgan)*/;
   status: DiaryStatus;
-  text: string;
+  text: string /*v3.30 — PDF hisobotda "" bo'lishi mumkin; UI: "PDF hisobot" + fayl havolasi*/;
   learned: string | null;
   files: { name: string; url: string }[];
   score: number | null /*1..5*/;
@@ -2313,8 +2316,9 @@ interface TodayDiaryDto {
 - guruhda davr umuman yo'q → `"Faol amaliyot davri yo'q — hisobot yozib bo'lmaydi."`;
 - davr ochiq, lekin bugungi yozuv allaqachon yuborilgan (`rewrite` emas) → `"Bugungi hisobot allaqachon yuborilgan."` (POST → 409).
 
-Ish kuni, ariza/korxona holati kundalik uchun **tekshirilmaydi** (POST ham tekshirmaydi). Validatsiya xatolari (matn
-uzunligi, fayllar, `pdfRequired`) bu maydonlarga kirmaydi.
+Ish kuni, ariza/korxona holati kundalik uchun **tekshirilmaydi** (`date`siz POST ham tekshirmaydi). Validatsiya xatolari (matn
+uzunligi, fayllar, `pdfRequired`) bu maydonlarga kirmaydi. v3.30: aniq kun uchun qoida (ish kuni sharti bilan) —
+`GET /api/student/period-days` `days[].canSubmitDiary` va `POST /api/student/diary` `date` (§2.6, §6.36).
 
 `place` — faqat ko'rsatilayotgan davrdagi ariza `approved` va korxona bor bo'lsa. Davr yo'q → `checkin.status="pending"`,
 `note="Faol amaliyot davri yo'q."`, `place=null`, `period=null`.
@@ -2513,9 +2517,10 @@ bo'yicha guruhlashi mumkin.
 interface DiaryEntryDto {
   id: string;
   date: string /*DateOnly*/;
-  submittedAt: string;
+  submittedAt: string /*haqiqiy yuborilgan vaqt*/;
+  submittedLate: boolean /*v3.30 — submittedAt ning Toshkent sanasi > date*/;
   status: DiaryStatus;
-  text: string;
+  text: string /*v3.30 — PDF bilan yuborilganda "" bo'lishi mumkin*/;
   learned: string | null;
   files: { id: string /*storedFileId*/; name: string; url: string }[];
   score: number | null;
@@ -2529,19 +2534,39 @@ interface DiaryEntryDto {
 
 | Form maydoni | Tip                     | Majburiy | Validatsiya                                                                                                        |
 | ------------ | ----------------------- | -------- | ------------------------------------------------------------------------------------------------------------------ |
-| `text`       | string                  | ha       | bo'sh emas; trim uzunligi ≥ `minReportLength` (default 150); ≤ 10000 (`errors.Text`)                               |
+| `date`       | string `"YYYY-MM-DD"`   | yo'q     | v3.30 — hisobot kuni (Toshkent); berilmasa **bugun** (eski yo'l). Format xato → 400 `errors.Date` = "Sana noto'g'ri formatda — YYYY-MM-DD kutiladi." |
+| `text`       | string                  | shartli  | v3.30: `files` ichida kamida bitta PDF bo'lsa **ixtiyoriy** (yo'q/bo'sh → `""` saqlanadi, minimal uzunlik qo'llanmaydi); PDF bo'lmasa — bo'sh emas, trim uzunligi ≥ `minReportLength` (default 150); har doim ≤ 10000 (`errors.Text`) |
 | `learned`    | string                  | yo'q     | ≤ 10000 (`errors.Learned`)                                                                                         |
 | `files`      | file[] (bir nomda ko'p) | yo'q     | ≤ 5 ta; har biri > 0 va ≤ 5 MB; `image/jpeg,png,webp,heic,heif` yoki `application/pdf`; nom ≤ 255 (`errors.Files`) |
 
-Butun so'rov ≤ 30 MB (`RequestSizeLimit`) — oshsa 413. Response **201** `DiaryEntryDto`.
-Xatolar: 400 validation; **400** davom etayotgan davr yo'q — `detail` = `TodayDto.diaryBlockedReason` matni (v3.19):
+PDF = content-type `application/pdf` yoki `.pdf` kengaytma. Butun so'rov ≤ 30 MB (`RequestSizeLimit`) — oshsa 413.
+Response **201** `DiaryEntryDto` (`date` — berilgan kun, `submittedAt` — haqiqiy vaqt, `submittedLate`).
+
+**`date` berilmagan (eski yo'l, TWA — o'zgarmagan):** kun = bugun. Xatolar: 400 validation; **400** davom etayotgan davr
+yo'q — `detail` = `TodayDto.diaryBlockedReason` matni (v3.19, `errors` yo'q):
 "Amaliyot davri yakunlangan — yangi kundalik yozuvi qo'shib bo'lmaydi." · "Amaliyot davri hali boshlanmagan." ·
 "Faol amaliyot davri yo'q — hisobot yozib bo'lmaydi." (bugungi `rewrite` yozuvni **yakunlangan davrda qayta yozish ham**
 shu 400 bilan rad etiladi); **400** fayllar jami > 5; **409** — bugungi
 hisobot allaqachon bor ("Bugungi hisobot allaqachon yuborilgan."). Istisno: bugungisi `rewrite` holatida → qayta yoziladi
-(`Resubmit`, fayllar qo'shiladi, status → `submitted`), 201.
-**400** `diaryPdfRequired=true` va `files` orasida PDF yo'q (PDF = content-type `application/pdf` yoki `.pdf` kengaytma;
-qayta yozishda yozuvda qolgan PDF ham hisob): `detail` = `errors.Files[0]` = "Hisobotga PDF fayl biriktirilishi shart."
+(`Resubmit`, fayllar qo'shiladi, status → `submitted`), 201. Ish kuni sharti **qo'yilmaydi**.
+
+**`date` berilgan (v3.30, mobil ilova)** — qoida `period-days` `canSubmitDiary` bilan **aynan bir xil** (backend
+`DiaryWritePolicy.EvaluateDay` → `DiaryDayPolicy`), tartib bilan:
+1. kun ≤ bugun (Toshkent), aks holda **400** `errors.Date` = `detail` = "Kelajakdagi kun uchun hisobot yuborib bo'lmaydi.";
+2. kun joriy guruhning **ochiq** (`closed` emas) davri ichida (`startDate ≤ kun ≤ endDate`), aks holda **400** `errors.Date`
+   = `detail` = davr sababi (yuqoridagi `diaryBlockedReason` matnlari, shu kunga nisbatan): kunni o'z ichiga olgan davr
+   yopilgan / davr tugagan → "Amaliyot davri yakunlangan — yangi kundalik yozuvi qo'shib bo'lmaydi."; kundan keyin
+   boshlanadigan davr bor → "Amaliyot davri hali boshlanmagan."; davr yo'q → "Faol amaliyot davri yo'q — hisobot yozib bo'lmaydi.";
+3. kun shu davr bo'yicha **ish kuni** (`period-days` `isWorkDay`: davr `workDays` ga kiradi va bayram emas), aks holda
+   **400** `errors.Date` = `detail` = "Dam olish kuni uchun hisobot yuborilmaydi.";
+4. shu kunga yozuv yo'q (→ yangi, 201) yoki `rewrite` holatida (→ `Resubmit`: matn yangilanadi, fayllar **qo'shiladi**,
+   status → `submitted`, 201); aks holda **409** "Bu kun uchun hisobot allaqachon yuborilgan." (`date` = bugun bo'lsa —
+   eski matn "Bugungi hisobot allaqachon yuborilgan.").
+
+Yozuv `periodId` — shu kunni o'z ichiga olgan ochiq davr. Bugun uchun `date` berilsa ham shu 4 qoida (ish kuni bilan).
+
+**400** `diaryPdfRequired=true` va `files` orasida PDF yo'q (qayta yozishda yozuvda qolgan PDF ham hisob):
+`detail` = `errors.Files[0]` = "Hisobotga PDF fayl biriktirilishi shart."
 
 #### GET `/api/student/calendar` — `?month=YYYY-MM` (berilmasa joriy oy)
 
@@ -2589,9 +2614,14 @@ interface StudentPeriodDaysDto {
     suspicious: boolean;
     manual: boolean;                   // tyutor qo'lda kiritgan/tuzatgan
     diary: { id: string; status: DiaryStatus; score: number | null } | null;
+    canSubmitDiary: boolean;           // v3.30 — POST /api/student/diary {date: shu kun} qabul qilinadimi (server hisoblaydi)
   }[];
 }
 ```
+
+`canSubmitDiary` (v3.30) = `POST /api/student/diary` `date` qoidasi (§ yuqorida, 1–4): kun ≤ `today`, joriy guruhning
+ochiq davri ichida, ish kuni (`isWorkDay`), yozuv yo'q yoki `diary.status = rewrite`. Tanlangan davr eski guruhniki yoki
+yopilgan bo'lsa — hamma kun `false`.
 
 `status`: bugun belgilanmagan va oyna ochiq → `pending` (oyna yopilgan → `absent`); kelgusi ish kuni → `future`,
 kelgusi dam olish/bayram → `dayOff`. Vaqtlar, `autoClosed/suspicious/manual`, `diary` — tyutor
@@ -3691,3 +3721,30 @@ Kontrakt va qoidalar manbasi — `docs/LIVE-JOYLASHUV.md`. Barcha vaqtlar UTC (`
   ```
 - **Enum'lar:** `LocationPingStatus` `inside|outside|inaccurate`; `LocationPingSource` `foreground|background`;
   `PresenceState` `inside|outside|inaccurate|signalLost|stopped|noConsent`.
+
+### 6.36 v3.29 → v3.30 (14.10.2026): kundalik har kunga alohida — PDF hisobot
+
+Mahsulot qarori: talaba mobil ilovasida "Kundaligim" haftalarga bo'linadi va **har bir kun uchun alohida PDF hisobot**
+yuklanadi (matn emas). Orqaga moslik saqlangan: TWA `date`siz, matn bilan bugunga yozishda davom etadi. Endpoint soni,
+migratsiya — o'zgarmadi.
+
+- **`POST /api/student/diary`** (§2.6):
+  - yangi ixtiyoriy forma maydoni `date` (`"YYYY-MM-DD"`, Toshkent; berilmasa bugun). Format xato → 400 `errors.Date`
+    "Sana noto'g'ri formatda — YYYY-MM-DD kutiladi.";
+  - `text` shartli: `files` ichida kamida bitta PDF bo'lsa ixtiyoriy (saqlanganda `""`, minimal uzunlik qo'llanmaydi);
+    PDF bo'lmasa — eski qoida (`minReportLength`, `errors.Text`). `learned`, fayl cheklovlari o'zgarmadi;
+  - `date` berilganda qoida (tartib bilan): kelajak → 400 `errors.Date` "Kelajakdagi kun uchun hisobot yuborib bo'lmaydi." ·
+    ochiq davr tashqarisi / yopiq davr → 400 `errors.Date` davr matni ("Amaliyot davri yakunlangan — yangi kundalik yozuvi
+    qo'shib bo'lmaydi." · "Amaliyot davri hali boshlanmagan." · "Faol amaliyot davri yo'q — hisobot yozib bo'lmaydi.") ·
+    ish kuni emas → 400 `errors.Date` "Dam olish kuni uchun hisobot yuborilmaydi." · yozuv bor (`rewrite` emas) → 409
+    "Bu kun uchun hisobot allaqachon yuborilgan." (bugun uchun — "Bugungi hisobot allaqachon yuborilgan."). Barcha 400'larda
+    `detail` = `errors.Date[0]`. `rewrite` → mavjud `Resubmit` (fayllar qo'shiladi, status → `submitted`);
+  - yozuvning `date` i — berilgan kun, `submittedAt` — haqiqiy vaqt;
+  - `date`siz eski yo'l o'zgarmadi (ish kuni tekshirilmaydi, davr xatosi `errors`siz 400, 409 matni eski).
+- **`GET /api/student/period-days`** — `days[].canSubmitDiary: boolean` (POST `date` qoidasi bilan aynan bir xil, server
+  hisoblaydi). `diary` maydoni qoladi.
+- **`submittedLate: boolean`** — `submittedAt` ning Toshkent sanasi `date` dan keyin: `DiaryEntryDto`
+  (`GET/POST /api/student/diary`, `today` emas) va admin kundalik yozuvi (`GET /api/admin/diaries`,
+  `GET /api/admin/students/{id}/diaries`, `POST /api/admin/diaries/{id}/review`). Admin panel kartalarida "Kech yuborilgan"
+  belgisi; `text = ""` bo'lsa matn o'rniga "PDF hisobot" va fayl havolasi.
+- `TodayDto.canWriteDiary` / `diaryBlockedReason` (v3.19) o'zgarmadi — bugungi kun uchun, ish kuni shartisiz.

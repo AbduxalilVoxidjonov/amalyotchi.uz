@@ -18,9 +18,12 @@ export interface DiaryEntry {
   group: string;
   /** Hisobot kuni (DateOnly). */
   date: string;
-  /** ISO 8601 (DateTimeOffset) */
+  /** ISO 8601 (DateTimeOffset) — haqiqiy yuborilgan vaqt. */
   submittedAt: string;
+  /** v3.30: `submittedAt` ning Toshkent sanasi `date` dan keyin (o'tgan kunga kech yuborilgan). */
+  submittedLate: boolean;
   status: DiaryStatus;
+  /** v3.30: PDF hisobot yuborilganda bo'sh satr bo'lishi mumkin — `isPdfOnlyDiary`. */
   text: string;
   /** "Nimani o'rgandim" (ixtiyoriy). */
   learned: string | null;
@@ -52,6 +55,14 @@ export const DIARY_STATUS_LABEL: Record<DiaryStatus, { label: string; kind: Stat
 };
 
 export const DIARY_SCORES: DiaryScore[] = [1, 2, 3, 4, 5];
+
+/** Matnsiz (faqat PDF) yuborilgan hisobot — kartalarda matn o'rniga "PDF hisobot" va fayl havolasi. */
+export function isPdfOnlyDiary(entry: Pick<DiaryEntry, 'text'>): boolean {
+  return entry.text.trim().length === 0;
+}
+
+export const DIARY_PDF_ONLY_LABEL = 'PDF hisobot';
+export const DIARY_LATE_LABEL = 'Kech yuborilgan';
 
 /** Admin amal qila oladigan holatlar (aks holda backend 409). */
 export function isDiaryReviewable(entry: Pick<DiaryEntry, 'status'>): boolean {

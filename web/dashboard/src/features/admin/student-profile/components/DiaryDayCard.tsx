@@ -1,9 +1,16 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Badge, Card } from '@/shared/ui';
-import { AuthFileEmbed } from '@/shared/files';
+import { AuthFileButton, AuthFileEmbed } from '@/shared/files';
 import { fmtDateOnly, fmtTime } from '../../shared/fmt';
 import { DiaryReviewControls } from '../../diaries/components/DiaryReviewControls';
-import { DIARY_STATUS_LABEL, type DiaryEntry, type DiaryReviewRequest } from '../../diaries/types';
+import {
+  DIARY_LATE_LABEL,
+  DIARY_PDF_ONLY_LABEL,
+  DIARY_STATUS_LABEL,
+  isPdfOnlyDiary,
+  type DiaryEntry,
+  type DiaryReviewRequest,
+} from '../../diaries/types';
 import styles from './DiaryDayCard.module.css';
 
 export interface DiaryDayCardProps {
@@ -44,6 +51,7 @@ export function DiaryDayCard({
   compact = false,
 }: DiaryDayCardProps) {
   const s = DIARY_STATUS_LABEL[entry.status];
+  const pdfOnly = isPdfOnlyDiary(entry);
   const textRef = useRef<HTMLParagraphElement>(null);
   const [expanded, setExpanded] = useState(false);
   // Qisqartirilgan matn haqiqatan sig'madimi — faqat shunda "To'liq ko'rish" tugmasi chiqadi.
@@ -75,19 +83,29 @@ export function DiaryDayCard({
               {entry.score}
             </span>
           )}
+          {entry.submittedLate && <Badge status="late">{DIARY_LATE_LABEL}</Badge>}
           <Badge status={s.kind}>{s.label}</Badge>
         </div>
       </header>
 
-      <p
-        ref={textRef}
-        id={`diary-text-${entry.id}`}
-        className={styles.text}
-        data-clamped={(compact && !expanded) || undefined}
-      >
-        {entry.text}
-      </p>
-      {compact && (overflows || expanded) && (
+      {pdfOnly ? (
+        <div className={styles.pdfOnly}>
+          <span>{DIARY_PDF_ONLY_LABEL}</span>
+          {/* Fayllar shu kartada ochiq ko'rsatilmasa — havola shu yerda. */}
+          {!showFiles &&
+            entry.files.map((f) => <AuthFileButton key={f.url} url={f.url} name={f.name} />)}
+        </div>
+      ) : (
+        <p
+          ref={textRef}
+          id={`diary-text-${entry.id}`}
+          className={styles.text}
+          data-clamped={(compact && !expanded) || undefined}
+        >
+          {entry.text}
+        </p>
+      )}
+      {!pdfOnly && compact && (overflows || expanded) && (
         <button
           type="button"
           className={styles.more}

@@ -27,7 +27,11 @@ public sealed record DiaryReviewEntry(
     IReadOnlyList<DiaryFile> Files,
     int? Score,
     string? Comment,
-    DateTimeOffset? ReviewedAt);
+    DateTimeOffset? ReviewedAt)
+{
+    /// <summary>Kech yuborilgan: <see cref="SubmittedAt"/> ning Toshkent sanasi <see cref="Date"/> dan keyin.</summary>
+    public bool SubmittedLate => DiaryDayPolicy.IsLate(Date, SubmittedAt);
+}
 
 internal static class DiaryQueries
 {

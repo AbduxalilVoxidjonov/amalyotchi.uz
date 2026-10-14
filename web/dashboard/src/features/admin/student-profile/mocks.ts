@@ -731,8 +731,10 @@ export function buildDiaries(studentId: string, periodId: string | null = null):
       group: student.group,
       date: day.date,
       submittedAt,
+      submittedLate: false,
       status: review?.status ?? diary.status,
-      text: DIARY_TEXTS[i % DIARY_TEXTS.length]!,
+      // Har 5-kundalik — mobil ilovadan matnsiz PDF hisobot (v3.30).
+      text: i % 5 === 4 ? '' : DIARY_TEXTS[i % DIARY_TEXTS.length]!,
       learned: DIARY_LEARNED[i % DIARY_LEARNED.length] ?? null,
       files,
       score: review ? review.score : diary.score,

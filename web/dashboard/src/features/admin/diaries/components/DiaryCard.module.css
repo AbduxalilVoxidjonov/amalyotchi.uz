@@ -42,3 +42,15 @@
 .learnedLabel {
   color: var(--color-text-dim);
 }
+.badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pdfOnly {
+  margin: 13px 0 0;
+  font-size: var(--fs-sm2);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-faint);
+}

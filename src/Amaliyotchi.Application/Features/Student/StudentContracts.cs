@@ -114,7 +114,11 @@ public sealed record DiaryEntryDto(
     int? Score,
     string? Comment,
     Guid PeriodId,
-    string? PeriodName);
+    string? PeriodName)
+{
+    /// <summary>Kech yuborilgan: <see cref="SubmittedAt"/> ning Toshkent sanasi <see cref="Date"/> dan keyin.</summary>
+    public bool SubmittedLate => DiaryDayPolicy.IsLate(Date, SubmittedAt);
+}
 
 public sealed record DiaryFileDto(Guid Id, string Name, string Url);
 

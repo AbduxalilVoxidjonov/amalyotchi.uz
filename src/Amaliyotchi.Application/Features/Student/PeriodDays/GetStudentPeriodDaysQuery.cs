@@ -9,6 +9,7 @@ using Amaliyotchi.Domain.Diary;
 using Amaliyotchi.Domain.Exceptions;
 using Amaliyotchi.Domain.Practice;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Student.PeriodDays;
 
@@ -23,6 +24,9 @@ public sealed record StudentPeriodDayDiaryDto(Guid Id, DiaryStatus Status, int? 
 /// <param name="CheckInAt">"HH:mm" (Toshkent) yoki null.</param>
 /// <param name="CheckOutAt">"HH:mm" (Toshkent) yoki null.</param>
 /// <param name="FaceMatchScore">Qabul qilingan check-in selfisining etalon yuzga o'xshashligi (0–100) yoki null.</param>
+/// <param name="CanSubmitDiary">Shu kun uchun <c>POST /api/student/diary</c> (<c>date</c> bilan) qabul qilinadimi — server
+/// <see cref="DiaryWritePolicy.EvaluateDay"/> bilan hisoblaydi: kun ≤ bugun, ochiq guruh davri ichida, ish kuni,
+/// yozuv yo'q yoki <c>rewrite</c>.</param>
 public sealed record StudentPeriodDayDto(
     DateOnly Date,
     int Weekday,
@@ -35,7 +39,8 @@ public sealed record StudentPeriodDayDto(
     bool Suspicious,
     bool Manual,
     StudentPeriodDayDiaryDto? Diary,
-    int? FaceMatchScore);
+    int? FaceMatchScore,
+    bool CanSubmitDiary);
 
 /// <param name="Status">Ko'rinadigan holat (<see cref="PracticePeriod.EffectiveStatus"/>).</param>
 /// <param name="RequiredDays">Davrdagi ish kunlari (bayramsiz) — <see cref="PracticePeriod.RequiredDays"/>.</param>
@@ -101,6 +106,14 @@ internal sealed class GetStudentPeriodDaysQueryHandler(
             context, snapshots, leaves.Select(l => (l.DateFrom, l.DateTo)).ToList(), today, localNow,
             practice.Student.HoursOn(today));
 
+        // canSubmitDiary — POST bilan aynan bir xil qoida: shu kungi yozuv holati sana bo'yicha (davrdan qat'i nazar).
+        var diaryStatuses = (await db.DiaryEntries
+                .AsNoTracking()
+                .Where(d => d.StudentUserId == userId && d.Date >= period.StartDate && d.Date <= period.EndDate)
+                .Select(d => new { d.Date, d.Status })
+                .ToListAsync(cancellationToken))
+            .ToDictionary(d => d.Date, d => d.Status);
+
         var days = new List<StudentPeriodDayDto>(period.EndDate.DayNumber - period.StartDate.DayNumber + 1);
         for (var date = period.StartDate; date <= period.EndDate; date = date.AddDays(1))
         {
@@ -118,7 +131,9 @@ internal sealed class GetStudentPeriodDaysQueryHandler(
                 detail?.Suspicious ?? false,
                 detail?.Manual ?? false,
                 detail?.Diary is { } diary ? new StudentPeriodDayDiaryDto(diary.Id, diary.Status, diary.Score) : null,
-                detail?.FaceMatchScore));
+                detail?.FaceMatchScore,
+                DiaryWritePolicy.EvaluateDay(
+                    practice, date, diaryStatuses.TryGetValue(date, out var diaryStatus) ? diaryStatus : null).CanWrite));
         }
 
         var defaultId = practice.Periods.Default(today, PeriodPurpose.Current)?.Id ?? practice.Periods.Default(today)?.Id;

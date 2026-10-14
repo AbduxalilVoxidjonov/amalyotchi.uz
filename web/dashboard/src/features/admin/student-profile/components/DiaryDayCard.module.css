@@ -89,3 +89,13 @@
   box-shadow: var(--focus-ring);
   border-radius: var(--radius-sm);
 }
+.pdfOnly {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 0;
+  font-size: var(--fs-sm2);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-faint);
+}
