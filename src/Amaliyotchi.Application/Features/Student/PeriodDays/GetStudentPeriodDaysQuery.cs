@@ -25,8 +25,8 @@ public sealed record StudentPeriodDayDiaryDto(Guid Id, DiaryStatus Status, int? 
 /// <param name="CheckOutAt">"HH:mm" (Toshkent) yoki null.</param>
 /// <param name="FaceMatchScore">Qabul qilingan check-in selfisining etalon yuzga o'xshashligi (0–100) yoki null.</param>
 /// <param name="CanSubmitDiary">Shu kun uchun <c>POST /api/student/diary</c> (<c>date</c> bilan) qabul qilinadimi — server
-/// <see cref="DiaryWritePolicy.EvaluateDay"/> bilan hisoblaydi: kun ≤ bugun, ochiq guruh davri ichida, ish kuni,
-/// yozuv yo'q yoki <c>rewrite</c>.</param>
+/// <see cref="DiaryWritePolicy.EvaluateDay"/> bilan hisoblaydi: kun ≤ bugun, o'tgan kun bo'lsa sozlama
+/// <c>diaryAllowPastDays</c> yoqiq yoki yozuv <c>rewrite</c>, ochiq guruh davri ichida, ish kuni, yozuv yo'q yoki <c>rewrite</c>.</param>
 public sealed record StudentPeriodDayDto(
     DateOnly Date,
     int Weekday,

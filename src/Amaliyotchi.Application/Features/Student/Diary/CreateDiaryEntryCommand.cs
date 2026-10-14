@@ -13,7 +13,8 @@ namespace Amaliyotchi.Application.Features.Student.Diary;
 
 /// <summary><c>POST /api/student/diary</c> (multipart). Hisobot kuni — <see cref="Date"/> (berilmasa bugun, Toshkent).
 /// Qoida — <see cref="DiaryWritePolicy"/>: <c>date</c> berilmagan eski yo'lda (bugun) davr xatosi 400 (<c>detail</c>);
-/// <c>date</c> berilganda kelajak / davr tashqarisi / ish kuni emas → 400 <c>errors.Date</c>. Shu kunga yozuv yo'q → 201 (yangi);
+/// <c>date</c> berilganda kelajak / o'tgan kun (sozlama <c>diaryAllowPastDays</c> o'chiq, yozuv <c>rewrite</c> emas) /
+/// davr tashqarisi / ish kuni emas → 400 <c>errors.Date</c>. Shu kunga yozuv yo'q → 201 (yangi);
 /// "qayta yozish" holatida → <see cref="DiaryEntry.Resubmit"/> (yangi fayllar qo'shiladi, holat <c>submitted</c>); aks holda 409.
 /// <see cref="Files"/> ichida kamida bitta PDF bo'lsa <see cref="Text"/> ixtiyoriy (bo'sh satr saqlanadi, minimal uzunlik
 /// tekshirilmaydi); PDF bo'lmasa — matn majburiy va <c>minReportLength</c> dan qisqa bo'lmasin.

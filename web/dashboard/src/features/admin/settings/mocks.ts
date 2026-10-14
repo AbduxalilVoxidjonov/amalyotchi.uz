@@ -141,6 +141,17 @@ export const mockSettings: AdminSettings = {
       updatedAt: UPDATED,
     },
     {
+      key: 'diaryAllowPastDays',
+      label: "O'tgan kunlarga hisobot yuklash",
+      value: 'true',
+      type: 'bool',
+      unit: null,
+      note: "O'chirilsa talaba faqat bugungi kun uchun hisobot yuklay oladi.",
+      min: null,
+      max: null,
+      updatedAt: UPDATED,
+    },
+    {
       key: 'faceVerificationEnabled',
       label: 'Yuzni tekshirish',
       value: 'false',

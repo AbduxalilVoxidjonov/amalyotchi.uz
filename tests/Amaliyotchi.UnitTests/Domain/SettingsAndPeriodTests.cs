@@ -33,6 +33,23 @@ public sealed class SettingsAndPeriodTests
         keys.IndexOf(SettingKeys.DiaryPdfRequired).Should().Be(keys.IndexOf(SettingKeys.MinReportLength) + 1);
     }
 
+    [Fact]
+    public void Sozlama_DiaryAllowPastDays_MantiqiyStandartYoqVaPdfSozlamasidanKeyin()
+    {
+        var definition = SettingKeys.Get(SettingKeys.DiaryAllowPastDays);
+
+        SettingKeys.DiaryAllowPastDays.Should().Be("diaryAllowPastDays");
+        definition.Type.Should().Be(SettingType.Bool);
+        definition.DefaultValue.Should().Be("true");
+        definition.Unit.Should().BeNull();
+        definition.Label.Should().Be("O'tgan kunlarga hisobot yuklash");
+        definition.Note.Should().Be("O'chirilsa talaba faqat bugungi kun uchun hisobot yuklay oladi.");
+        AppSetting.CreateDefault(SettingKeys.DiaryAllowPastDays, Now).AsBool().Should().BeTrue();
+
+        var keys = SettingKeys.All.Select(d => d.Key).ToList();
+        keys.IndexOf(SettingKeys.DiaryAllowPastDays).Should().Be(keys.IndexOf(SettingKeys.DiaryPdfRequired) + 1);
+    }
+
     [Theory]
     [InlineData("application/pdf", "hisobot.pdf", true)]
     [InlineData("APPLICATION/PDF", "hisobot", true)]

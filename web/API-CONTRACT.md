@@ -1,4 +1,4 @@
-# API-CONTRACT v3.30
+# API-CONTRACT v3.31
 
 Oxirgi yangilanish: 14.10.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
@@ -36,7 +36,8 @@ v3.29 (**live joylashuv** — ish vaqtida fonda kuzatuv: `today.tracking`, `PUT 
 `POST /api/student/location-pings`, admin `today.rows[].presence`, `GET /api/admin/students/{id}/location-pings`,
 3 ta yangi sozlama) — §6.35,
 v3.30 (**kundalik har kunga alohida, PDF hisobot** — `POST /api/student/diary` `date` + shartli `text`,
-`period-days` `days[].canSubmitDiary`, `DiaryEntryDto`/admin kundalik `submittedLate`) — §6.36.
+`period-days` `days[].canSubmitDiary`, `DiaryEntryDto`/admin kundalik `submittedLate`) — §6.36,
+v3.31 (sozlama **`diaryAllowPastDays`** — admin o'tgan kunlarga hisobot yuklashni yopa oladi; `rewrite` istisno) — §6.36.
 
 > v3.28: tyutor bo'limi (§2.5) va `/api/admin/tutors*` (§2.3.3) olib tashlandi, kundalik nazorat endpoint'lari
 > `/api/admin/*` ga ko'chdi, `/api/admin/admins*` qo'shildi — quyidagi sonlar v3.27 holati; farqi §6.34 da.
@@ -1314,12 +1315,14 @@ interface DocTemplateDto {
 Sozlamalar (kalit · tur · birlik · default · min–max): `geofenceRadius` int m `200` 50–1000 · `lateTolerance` int min `15` 0–120 ·
 `minGpsAccuracy` int m `100` 10–1000 · `autoCheckout` int min `60` 0–360 · `workDays` weekdays `1,2,3,4,5,6` ·
 `dailyReportRequired` bool `true` · `minReportLength` int chars `150` 0–5000 · **`diaryPdfRequired`** bool `false` ·
+**`diaryAllowPastDays`** bool `true` (v3.31) ·
 `checkInWindow` int min `90` 15–480 ·
 **`checkinPhotoRequired`** bool **`true`** (v3.7 gacha `false`) · **`checkinQrRequired`** bool `true` (v3.7) ·
 **`maxStudentsPerCompany`** int `10` 1–200 · `faceVerificationEnabled` bool `false` · `faceMatchThreshold` int `36` 0–100 ·
 **`trackingEnabled`** bool `true` · **`trackingIntervalSec`** int sec `120` 60–900 · **`trackingDistanceFilterM`** int m `20` 10–500 (v3.29, §6.35).
 Ro'yxat tartibi — shu; `checkinPhotoRequired`/`maxStudentsPerCompany` v3 da qo'shildi (§6); `diaryPdfRequired` — keyinroq
-(`minReportLength` dan keyin); `checkinQrRequired` — v3.7 (§6.13).
+(`minReportLength` dan keyin); `diaryAllowPastDays` — v3.31 (`diaryPdfRequired` dan keyin, §6.36);
+`checkinQrRequired` — v3.7 (§6.13).
 Bazada yo'q kalit default bilan qaytadi (`updatedAt: null`).
 
 | Kalit                   | Ta'sir                                                                                                            |
@@ -1327,6 +1330,7 @@ Bazada yo'q kalit default bilan qaytadi (`updatedAt: null`).
 | `checkinPhotoRequired`  | `true` bo'lsa `POST /api/student/checkin` va `/checkout` selfisiz qabul qilinmaydi → 400 `errors.Photo` (§2.6); talabaga `TodayDto.checkin.photoRequired` |
 | `checkinQrRequired`     | `true` bo'lsa check-in/check-out `qr` siz qabul qilinmaydi → 400 `errors.Qr` (§2.6); talabaga `TodayDto.checkin.qrRequired`. `false` bo'lsa ham **yuborilgan** `qr` tekshiriladi |
 | `diaryPdfRequired`      | `true` bo'lsa `POST /api/student/diary` kamida bitta PDF'siz qabul qilinmaydi → 400 `errors.Files`; talabaga `TodayDto.diary.pdfRequired` |
+| `diaryAllowPastDays`    | v3.31. Yorliq "O'tgan kunlarga hisobot yuklash", izoh "O'chirilsa talaba faqat bugungi kun uchun hisobot yuklay oladi.". `false` bo'lsa `POST /api/student/diary` `date` < bugun va shu kunga yozuv **yo'q** → 400 `errors.Date`; yozuv `rewrite` holatida bo'lsa qayta yuklash mumkin; `period-days` `canSubmitDiary` shu qoida bilan. `date`siz (bugun) yo'lga ta'sir qilmaydi (§2.6, §6.36) |
 | `maxStudentsPerCompany` | `CompanyRow`/`CompanyDetail`/`TutorCompany` dagi `maxStudents` va `overLimit`; bayroq `tooManyStudents` (§2.3)      |
 
 ---
@@ -2553,6 +2557,9 @@ hisobot allaqachon bor ("Bugungi hisobot allaqachon yuborilgan."). Istisno: bugu
 **`date` berilgan (v3.30, mobil ilova)** — qoida `period-days` `canSubmitDiary` bilan **aynan bir xil** (backend
 `DiaryWritePolicy.EvaluateDay` → `DiaryDayPolicy`), tartib bilan:
 1. kun ≤ bugun (Toshkent), aks holda **400** `errors.Date` = `detail` = "Kelajakdagi kun uchun hisobot yuborib bo'lmaydi.";
+   v3.31: sozlama `diaryAllowPastDays = false` bo'lsa, kun < bugun va shu kunga yozuv **yo'q** → **400** `errors.Date` =
+   `detail` = "O'tgan kunlar uchun hisobot yuklash yopilgan — faqat bugungi hisobotni yuklash mumkin." (yozuv bor bo'lsa
+   bu qoida qo'llanmaydi: `rewrite` → qayta yuklash mumkin, boshqa holat → 4-qoida, 409);
 2. kun joriy guruhning **ochiq** (`closed` emas) davri ichida (`startDate ≤ kun ≤ endDate`), aks holda **400** `errors.Date`
    = `detail` = davr sababi (yuqoridagi `diaryBlockedReason` matnlari, shu kunga nisbatan): kunni o'z ichiga olgan davr
    yopilgan / davr tugagan → "Amaliyot davri yakunlangan — yangi kundalik yozuvi qo'shib bo'lmaydi."; kundan keyin
@@ -2619,8 +2626,8 @@ interface StudentPeriodDaysDto {
 }
 ```
 
-`canSubmitDiary` (v3.30) = `POST /api/student/diary` `date` qoidasi (§ yuqorida, 1–4): kun ≤ `today`, joriy guruhning
-ochiq davri ichida, ish kuni (`isWorkDay`), yozuv yo'q yoki `diary.status = rewrite`. Tanlangan davr eski guruhniki yoki
+`canSubmitDiary` (v3.30) = `POST /api/student/diary` `date` qoidasi (§ yuqorida, 1–4): kun ≤ `today`, (v3.31)
+`diaryAllowPastDays = false` bo'lsa o'tgan kun faqat `diary.status = rewrite` bilan, joriy guruhning ochiq davri ichida, ish kuni (`isWorkDay`), yozuv yo'q yoki `diary.status = rewrite`. Tanlangan davr eski guruhniki yoki
 yopilgan bo'lsa — hamma kun `false`.
 
 `status`: bugun belgilanmagan va oyna ochiq → `pending` (oyna yopilgan → `absent`); kelgusi ish kuni → `future`,
@@ -2775,7 +2782,7 @@ Tartib: davom etayotgan ochiq davr(lar) birinchi, keyin `startDate` kamayish (te
 | `BroadcastMessageStatus`           | `queued` · `sending` · `completed` — yetkazishlardan hisoblanadi (§2.3.5)                                                                                                                                                                                                                                                                 | `MessageSummary.status`                                                                |
 | `BroadcastDeliveryStatus`          | `pending` · `sent` · `failed` · `blocked`                                                                                                                                                                                                                                                                                                 | `MessageDeliveryRow.status`, `?status=`                                                |
 | `SettingType`                      | `int` · `bool` · `weekdays`                                                                                                                                                                                                                                                                                                               | settings `type`                                                                        |
-| `SettingKey` (string const)        | `geofenceRadius` · `lateTolerance` · `minGpsAccuracy` · `autoCheckout` · `workDays` · `dailyReportRequired` · `minReportLength` · `diaryPdfRequired` · `checkInWindow` · `checkinPhotoRequired` · `checkinQrRequired` · `maxStudentsPerCompany`                                                                                                                                    | settings                                                                               |
+| `SettingKey` (string const)        | `geofenceRadius` · `lateTolerance` · `minGpsAccuracy` · `autoCheckout` · `workDays` · `dailyReportRequired` · `minReportLength` · `diaryPdfRequired` · `diaryAllowPastDays` · `checkInWindow` · `checkinPhotoRequired` · `checkinQrRequired` · `maxStudentsPerCompany`                                                                                                                                    | settings                                                                               |
 | `DocumentTemplateKind`             | `contract` · `referral` · `reference`                                                                                                                                                                                                                                                                                                     | settings templates                                                                     |
 | `StoredFileKind`                   | `contract` · `diaryAttachment` · `leaveDocument` · `template` · `checkInPhoto`                                                                                                                                                                                                                                                            | ichki (files ko'lami); `AttendancePunch.photoUrl`                                      |
 | Grade                              | `2` · `3` · `4` · `5` · `null`                                                                                                                                                                                                                                                                                                            | grading, portfolio (number)                                                            |
@@ -3748,3 +3755,16 @@ migratsiya — o'zgarmadi.
   `GET /api/admin/students/{id}/diaries`, `POST /api/admin/diaries/{id}/review`). Admin panel kartalarida "Kech yuborilgan"
   belgisi; `text = ""` bo'lsa matn o'rniga "PDF hisobot" va fayl havolasi.
 - `TodayDto.canWriteDiary` / `diaryBlockedReason` (v3.19) o'zgarmadi — bugungi kun uchun, ish kuni shartisiz.
+
+**v3.30 → v3.31 (14.10.2026): sozlama `diaryAllowPastDays`.** Mahsulot qarori: o'tgan kunga hisobot yuklashni admin o'zi
+hal qiladi.
+- Yangi sozlama `diaryAllowPastDays` (bool, default `true` — v3.30 xatti-harakati; `GET/PUT /api/admin/settings`,
+  ro'yxatda `diaryPdfRequired` dan keyin; DbSeeder mavjud bazaga faqat yo'q kalitni qo'shadi). Admin panel "Sozlamalar" →
+  "Talaba hisoboti — nimalar majburiy" guruhida switch.
+- `false` bo'lsa `POST /api/student/diary` `date` < bugun (Toshkent) va shu kunga yozuv yo'q → 400 `errors.Date` = `detail` =
+  "O'tgan kunlar uchun hisobot yuklash yopilgan — faqat bugungi hisobotni yuklash mumkin." Qoida tartibda kelajak
+  tekshiruvidan keyin, davr/ish kuni tekshiruvlaridan oldin. **Istisno:** shu kundagi yozuv `rewrite` holatida (admin
+  qayta yuklashni so'ragan) — qayta yuklash ruxsat etiladi; yozuv boshqa holatda — avvalgidek 409.
+- `period-days` `days[].canSubmitDiary` — aynan shu qoida (yagona manba `DiaryDayPolicy`).
+- `date`siz eski yo'l (bugun), `date` = bugun va `TodayDto.canWriteDiary` — ta'sirlanmaydi. Endpoint soni, DTO, migratsiya —
+  o'zgarmadi.

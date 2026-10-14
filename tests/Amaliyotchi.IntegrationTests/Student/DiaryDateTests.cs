@@ -6,6 +6,7 @@ using Amaliyotchi.Application.Features.Student;
 using Amaliyotchi.Application.Features.Student.PeriodDays;
 using Amaliyotchi.Domain.Diary;
 using Amaliyotchi.Domain.Practice;
+using Amaliyotchi.Domain.Settings;
 using Amaliyotchi.IntegrationTests.Infrastructure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +15,8 @@ namespace Amaliyotchi.IntegrationTests.Student;
 
 /// <summary><c>POST /api/student/diary</c> <c>date</c> bilan (har kunga alohida PDF hisobot, v3.30): o'tgan kunga PDF-only 201,
 /// takror 409, matnsiz va PDFsiz 400, kelajak / dam olish kuni / yopiq davr 400 <c>errors.Date</c>, rewrite,
-/// <c>submittedLate</c>, <c>GET /api/student/period-days</c> → <c>canSubmitDiary</c> POST bilan bir xil.</summary>
+/// <c>submittedLate</c>, <c>GET /api/student/period-days</c> → <c>canSubmitDiary</c> POST bilan bir xil;
+/// sozlama <c>diaryAllowPastDays</c> = false (v3.31): o'tgan kunga yangi yozuv 400, rewrite — mumkin.</summary>
 [Collection(ApiCollection.Name)]
 public sealed class DiaryDateTests(ApiFixture fixture)
 {
@@ -221,6 +223,57 @@ public sealed class DiaryDateTests(ApiFixture fixture)
         // JSON kontrakti: camelCase maydon.
         using var json = JsonDocument.Parse(await (await scene.Client.GetAsync("/api/student/period-days")).Content.ReadAsStringAsync());
         json.RootElement.GetProperty("days")[0].TryGetProperty("canSubmitDiary", out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task OtganKunlarYopiq_OtganKun_400_CanSubmitFalse_BugunVaEskiYolOchiq()
+    {
+        var scene = await Factory.CreateSceneAsync();
+        var today = Factory.LocalToday();
+        var day = await PastWorkDayAsync(2);
+        await using var setting = await Factory.UseSettingAsync(SettingKeys.DiaryAllowPastDays, "false");
+
+        using var past = PdfOnlyForm(day);
+        await AssertDateErrorAsync(
+            await scene.Client.PostAsync("/api/student/diary", past),
+            "O'tgan kunlar uchun hisobot yuklash yopilgan — faqat bugungi hisobotni yuklash mumkin.");
+        (await Factory.WithDbAsync(db => db.DiaryEntries.AnyAsync(d => d.StudentUserId == scene.Student.Id))).Should().BeFalse();
+
+        // canSubmitDiary — o'sha qoida: o'tgan kunlar yopiq, bugun ochiq.
+        var dto = await PeriodDaysAsync(scene.Client);
+        dto.Days.Where(d => d.Date < today).Should().OnlyContain(d => !d.CanSubmitDiary);
+        dto.Days.Single(d => d.Date == today).CanSubmitDiary.Should().Be(dto.Days.Single(d => d.Date == today).IsWorkDay);
+
+        // date'siz eski yo'l (bugun) ta'sirlanmaydi.
+        using var legacy = StudentTestData.DiaryForm(StudentTestData.LongText());
+        var response = await scene.Client.PostAsync("/api/student/diary", legacy);
+        response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
+        (await response.Content.ReadAsync<DiaryEntryDto>())!.Date.Should().Be(today);
+    }
+
+    [Fact]
+    public async Task OtganKunlarYopiq_Rewrite_QaytaYuklashMumkin()
+    {
+        var scene = await Factory.CreateSceneAsync();
+        var day = await PastWorkDayAsync(3);
+
+        using var first = PdfOnlyForm(day);
+        var created = (await (await scene.Client.PostAsync("/api/student/diary", first)).Content.ReadAsync<DiaryEntryDto>())!;
+        await Factory.WithDbAsync(async db =>
+        {
+            var entry = await db.DiaryEntries.SingleAsync(d => d.Id == created.Id);
+            entry.RequestRewrite(scene.Admin.Id, "Boshqa PDF yuklang", DateTimeOffset.UtcNow);
+            await db.SaveChangesAsync();
+        });
+
+        await using var setting = await Factory.UseSettingAsync(SettingKeys.DiaryAllowPastDays, "false");
+        (await DayAsync(scene.Client, day)).CanSubmitDiary.Should().BeTrue("rewrite — admin qayta yuklashni so'ragan");
+
+        using var second = Form(day, text: null, ("tuzatilgan.pdf", "application/pdf", Pdf));
+        var response = await scene.Client.PostAsync("/api/student/diary", second);
+        response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
+        (await response.Content.ReadAsync<DiaryEntryDto>())!.Id.Should().Be(created.Id);
+        (await DayAsync(scene.Client, day)).CanSubmitDiary.Should().BeFalse();
     }
 
     private Task<DateOnly> PastWorkDayAsync(int daysAgo) =>

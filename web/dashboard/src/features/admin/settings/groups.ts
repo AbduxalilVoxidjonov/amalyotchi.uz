@@ -41,6 +41,7 @@ export const SETTING_GROUPS: readonly SettingGroupDef[] = [
       'checkinPhotoRequired',
       'checkinQrRequired',
       'diaryPdfRequired',
+      'diaryAllowPastDays',
     ],
   },
   {

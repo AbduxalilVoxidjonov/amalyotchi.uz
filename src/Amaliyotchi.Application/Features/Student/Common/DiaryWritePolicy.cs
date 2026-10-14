@@ -11,7 +11,7 @@ namespace Amaliyotchi.Application.Features.Student.Common;
 /// <item><see cref="Evaluate"/> — eski "bugun" yo'li (<c>date</c> berilmagan POST va <c>canWriteDiary</c>): davr ochiq va
 /// bugunni o'z ichiga oladi, bugungi yozuv yo'q yoki <c>rewrite</c>; ish kuni sharti qo'yilmaydi (orqaga moslik).</item>
 /// <item><see cref="EvaluateDay"/> — aniq kun (<c>date</c> berilgan POST va <c>canSubmitDiary</c>): qo'shimcha ravishda
-/// kun ≤ bugun va ish kuni.</item>
+/// kun ≤ bugun, ish kuni va sozlama <c>diaryAllowPastDays</c> (o'chiq bo'lsa o'tgan kunga yangi yozuv yo'q, rewrite — mumkin).</item>
 /// </list>
 /// Davr yakunlangan bo'lsa yozuvni qayta yozish ham taqiqlanadi.</summary>
 internal static class DiaryWritePolicy
@@ -43,5 +43,7 @@ internal static class DiaryWritePolicy
                DiaryDayPolicy.PeriodBlockReason(practice.Periods.GroupPeriods, practice.Today) ?? NoPeriodMessage);
 
     private static DiaryDayDecision Decide(StudentPractice practice, DateOnly date, DiaryStatus? status, bool requireWorkDay)
-        => DiaryDayPolicy.Evaluate(practice.Periods.GroupPeriods, practice.IsHoliday, practice.Today, date, status, requireWorkDay);
+        => DiaryDayPolicy.Evaluate(
+            practice.Periods.GroupPeriods, practice.IsHoliday, practice.Today, date, status, requireWorkDay,
+            practice.Settings.DiaryAllowPastDays);
 }

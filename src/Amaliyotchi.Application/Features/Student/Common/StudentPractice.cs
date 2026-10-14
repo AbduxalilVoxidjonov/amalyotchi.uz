@@ -16,7 +16,8 @@ namespace Amaliyotchi.Application.Features.Student.Common;
 internal sealed record StudentSettings(
     double MinGpsAccuracyM, int MinReportLength, bool CheckInPhotoRequired, bool DiaryPdfRequired, bool CheckInQrRequired,
     bool FaceVerificationEnabled = false, int FaceMatchThreshold = 36,
-    bool TrackingEnabled = true, int TrackingIntervalSec = 120, int TrackingDistanceFilterM = 20);
+    bool TrackingEnabled = true, int TrackingIntervalSec = 120, int TrackingDistanceFilterM = 20,
+    bool DiaryAllowPastDays = true);
 
 /// <summary>Bitta talabaning amaliyot holati: profil (foydalanuvchi + guruh), sirt maqsadiga ko'ra tanlangan davr
 /// (<see cref="PeriodSelection"/>), shu davr bo'yicha ariza (korxona bilan), talabaning barcha davrlari, bayramlar,
@@ -141,7 +142,8 @@ internal static class StudentPracticeLoader
             SettingKeys.MinGpsAccuracy, SettingKeys.MinReportLength,
             SettingKeys.CheckInPhotoRequired, SettingKeys.DiaryPdfRequired, SettingKeys.CheckInQrRequired,
             SettingKeys.FaceVerificationEnabled, SettingKeys.FaceMatchThreshold,
-            SettingKeys.TrackingEnabled, SettingKeys.TrackingIntervalSec, SettingKeys.TrackingDistanceFilterM
+            SettingKeys.TrackingEnabled, SettingKeys.TrackingIntervalSec, SettingKeys.TrackingDistanceFilterM,
+            SettingKeys.DiaryAllowPastDays
         ];
         var values = await db.AppSettings
             .AsNoTracking()
@@ -158,7 +160,8 @@ internal static class StudentPracticeLoader
             Int(values, SettingKeys.FaceMatchThreshold),
             Bool(values, SettingKeys.TrackingEnabled),
             Int(values, SettingKeys.TrackingIntervalSec),
-            Int(values, SettingKeys.TrackingDistanceFilterM));
+            Int(values, SettingKeys.TrackingDistanceFilterM),
+            Bool(values, SettingKeys.DiaryAllowPastDays));
     }
 
     /// <summary>Mantiqiy sozlama: yo'q yoki buzuq qiymat → ta'rifdagi standart.</summary>

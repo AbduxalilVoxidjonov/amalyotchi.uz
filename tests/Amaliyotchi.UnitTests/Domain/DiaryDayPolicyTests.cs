@@ -32,8 +32,9 @@ public sealed class DiaryDayPolicyTests
     private static bool IsHoliday(DateOnly d) => d == Holiday;
 
     private static DiaryDayDecision Evaluate(
-        IReadOnlyCollection<PracticePeriod> periods, DateOnly date, DiaryStatus? status = null, bool requireWorkDay = true)
-        => DiaryDayPolicy.Evaluate(periods, IsHoliday, Today, date, status, requireWorkDay);
+        IReadOnlyCollection<PracticePeriod> periods, DateOnly date, DiaryStatus? status = null, bool requireWorkDay = true,
+        bool allowPastDays = true)
+        => DiaryDayPolicy.Evaluate(periods, IsHoliday, Today, date, status, requireWorkDay, allowPastDays);
 
     [Fact]
     public void OtganIshKuni_YozuvYoq_Mumkin_DavrQaytadi()
@@ -150,6 +151,51 @@ public sealed class DiaryDayPolicyTests
     [Fact]
     public void Kelajak_DavrQoidasidanUstun()
         => Evaluate([], Today.AddDays(3)).Block.Should().Be(DiaryDayBlock.Future);
+
+    [Fact]
+    public void OtganKunlarYopiq_OtganKun_YozuvYoq_RadEtiladi()
+    {
+        var decision = Evaluate([Autumn], Monday, allowPastDays: false);
+
+        decision.CanWrite.Should().BeFalse();
+        decision.Block.Should().Be(DiaryDayBlock.PastDaysClosed);
+        decision.Reason.Should().Be(
+            "O'tgan kunlar uchun hisobot yuklash yopilgan — faqat bugungi hisobotni yuklash mumkin.");
+    }
+
+    [Fact]
+    public void OtganKunlarYopiq_OtganKun_Rewrite_QaytaYuklashMumkin()
+    {
+        var decision = Evaluate([Autumn], Monday, DiaryStatus.Rewrite, allowPastDays: false);
+
+        decision.CanWrite.Should().BeTrue();
+        decision.Period.Should().BeSameAs(Autumn);
+    }
+
+    [Fact]
+    public void OtganKunlarYopiq_OtganKun_YozuvBor_AllaqachonYuborilgan()
+        => Evaluate([Autumn], Monday, DiaryStatus.Submitted, allowPastDays: false)
+            .Block.Should().Be(DiaryDayBlock.AlreadySubmitted);
+
+    [Fact]
+    public void OtganKunlarYopiq_Bugun_Mumkin()
+    {
+        Evaluate([Autumn], Today, allowPastDays: false).CanWrite.Should().BeTrue();
+        // Eski "bugun" yo'li (requireWorkDay = false) ham ta'sirlanmaydi.
+        Evaluate([Autumn], Today, requireWorkDay: false, allowPastDays: false).CanWrite.Should().BeTrue();
+    }
+
+    [Fact]
+    public void OtganKunlarYopiq_Kelajak_AvvalgidekKelajakXatosi()
+        => Evaluate([Autumn], Today.AddDays(1), allowPastDays: false).Block.Should().Be(DiaryDayBlock.Future);
+
+    [Fact]
+    public void OtganKunlarOchiq_Standart_OtganKunMumkin()
+    {
+        // Sukut (allowPastDays = true) — avvalgi xatti-harakat.
+        Evaluate([Autumn], Monday, allowPastDays: true).CanWrite.Should().BeTrue();
+        Evaluate([Autumn], Saturday, allowPastDays: true).Block.Should().Be(DiaryDayBlock.NotWorkDay);
+    }
 
     [Fact]
     public void KechYuborilgan_ToshkentSanasiBoyicha()

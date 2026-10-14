@@ -21,6 +21,7 @@ export type SettingKey =
   | 'checkinQrRequired'
   | 'maxStudentsPerCompany'
   | 'diaryPdfRequired'
+  | 'diaryAllowPastDays'
   | 'faceVerificationEnabled'
   | 'faceMatchThreshold'
   | 'trackingEnabled'

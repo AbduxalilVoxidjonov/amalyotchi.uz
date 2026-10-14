@@ -93,6 +93,27 @@ describe('SettingsPage', () => {
     expect(pdf).toBeChecked();
   });
 
+  it("diaryAllowPastDays switch (sukut yoqiq) → o'chirish → PUT 'false'", async () => {
+    const user = userEvent.setup();
+    const bodies = capturePuts();
+    renderWithProviders(<SettingsPage />);
+    await screen.findByRole('region', { name: 'Davomat va geofence' });
+    const report = group('Talaba hisoboti — nimalar majburiy');
+    const past = within(report).getByRole('switch', { name: "O'tgan kunlarga hisobot yuklash" });
+    expect(past).toBeChecked();
+    expect(
+      within(report).getByText("O'chirilsa talaba faqat bugungi kun uchun hisobot yuklay oladi."),
+    ).toBeInTheDocument();
+
+    await user.click(past);
+    expect(past).not.toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Saqlash' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Saqlandi');
+    expect(bodies).toEqual([{ values: { diaryAllowPastDays: 'false' } }]);
+    expect(past).not.toBeChecked();
+  });
+
   it("workDays chip'lari → to'g'ri CSV yuboriladi", async () => {
     const user = userEvent.setup();
     const bodies = capturePuts();

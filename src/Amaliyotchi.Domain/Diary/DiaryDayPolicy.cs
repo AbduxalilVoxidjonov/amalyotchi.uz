@@ -18,7 +18,10 @@ public enum DiaryDayBlock
     NotWorkDay = 3,
 
     /// <summary>Shu kunga yozuv bor va u <c>rewrite</c> holatida emas (→ 409).</summary>
-    AlreadySubmitted = 4
+    AlreadySubmitted = 4,
+
+    /// <summary>Kun bugundan oldin, shu kunga yozuv yo'q va sozlama <c>diaryAllowPastDays</c> o'chiq.</summary>
+    PastDaysClosed = 5
 }
 
 /// <summary>Bitta kun uchun qaror: yozish mumkinmi, yozuv qaysi davrga bog'lanadi, aks holda sabab.</summary>
@@ -32,6 +35,9 @@ public readonly record struct DiaryDayDecision(PracticePeriod? Period, DiaryDayB
 /// <c>GET /api/student/period-days</c> (<c>canSubmitDiary</c>) uchun yagona manba. Tartib:
 /// <list type="number">
 /// <item>kun ≤ bugun (Toshkent), aks holda <see cref="FutureMessage"/>;</item>
+/// <item>sozlama <c>diaryAllowPastDays</c> o'chiq bo'lsa (<paramref name="allowPastDays"/> = false) kun bugundan oldin va
+/// shu kunga yozuv yo'q — <see cref="PastDaysClosedMessage"/>. Yozuv bor bo'lsa bu qoida qo'llanmaydi: <c>rewrite</c>
+/// (admin qayta yuklashni so'ragan) — qayta yuklash mumkin, boshqa holat — keyingi qoidalar ("allaqachon yuborilgan");</item>
 /// <item>kun joriy guruhning ochiq (yopilmagan) davri ichida (<see cref="PeriodSelection.Ongoing{T}"/>), aks holda
 /// <see cref="PeriodBlockReason"/>;</item>
 /// <item>kun shu davr bo'yicha ish kuni (<see cref="PracticePeriod.IsWorkDay"/> — hafta kuni va bayram emas), aks holda
@@ -45,6 +51,8 @@ public static class DiaryDayPolicy
     public const string PeriodEndedMessage = "Amaliyot davri yakunlangan — yangi kundalik yozuvi qo'shib bo'lmaydi.";
     public const string PeriodNotStartedMessage = "Amaliyot davri hali boshlanmagan.";
     public const string NoPeriodMessage = "Faol amaliyot davri yo'q — hisobot yozib bo'lmaydi.";
+    public const string PastDaysClosedMessage =
+        "O'tgan kunlar uchun hisobot yuklash yopilgan — faqat bugungi hisobotni yuklash mumkin.";
 
     /// <summary>Bugungi kun uchun (eski matn — TWA bilan moslik).</summary>
     public const string AlreadySubmittedTodayMessage = "Bugungi hisobot allaqachon yuborilgan.";
@@ -79,16 +87,21 @@ public static class DiaryDayPolicy
     /// <param name="date">Hisobot kuni.</param>
     /// <param name="existingStatus">Shu kungi yozuv holati (yo'q bo'lsa <c>null</c>).</param>
     /// <param name="requireWorkDay">Ish kuni shartini tekshirish (<c>date</c> aniq berilganda va period-days'da — true).</param>
+    /// <param name="allowPastDays">Sozlama <c>diaryAllowPastDays</c>: false — o'tgan kunga yangi yozuv taqiqlanadi.</param>
     public static DiaryDayDecision Evaluate(
         IReadOnlyCollection<PracticePeriod> groupPeriods,
         Func<DateOnly, bool> isHoliday,
         DateOnly today,
         DateOnly date,
         DiaryStatus? existingStatus,
-        bool requireWorkDay = true)
+        bool requireWorkDay = true,
+        bool allowPastDays = true)
     {
         if (date > today)
             return new(null, DiaryDayBlock.Future, FutureMessage);
+
+        if (!allowPastDays && date < today && existingStatus is null)
+            return new(null, DiaryDayBlock.PastDaysClosed, PastDaysClosedMessage);
 
         var period = OngoingPeriod(groupPeriods, date);
         if (period is null)

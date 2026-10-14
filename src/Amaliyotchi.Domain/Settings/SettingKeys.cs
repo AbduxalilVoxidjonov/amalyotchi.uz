@@ -62,6 +62,7 @@ public static class SettingKeys
     public const string CheckInPhotoRequired = "checkinPhotoRequired";
     public const string CheckInQrRequired = "checkinQrRequired";
     public const string DiaryPdfRequired = "diaryPdfRequired";
+    public const string DiaryAllowPastDays = "diaryAllowPastDays";
     public const string MaxStudentsPerCompany = "maxStudentsPerCompany";
     public const string FaceVerificationEnabled = "faceVerificationEnabled";
     public const string FaceMatchThreshold = "faceMatchThreshold";
@@ -93,6 +94,9 @@ public static class SettingKeys
             "Shundan qisqa hisobot qabul qilinmaydi.", "150", 0, 5000),
         new(DiaryPdfRequired, "Hisobotga PDF majburiy", SettingType.Bool, null,
             "Yoqilgan bo'lsa talaba kundalik hisobotiga kamida bitta PDF fayl biriktirmasa hisobot qabul qilinmaydi.", "false"),
+        // Kontrakt §6.36 (v3.31): o'tgan kunlarga yangi hisobot; rewrite holatidagi yozuvni qayta yuklash har doim mumkin.
+        new(DiaryAllowPastDays, "O'tgan kunlarga hisobot yuklash", SettingType.Bool, null,
+            "O'chirilsa talaba faqat bugungi kun uchun hisobot yuklay oladi.", "true"),
         new(CheckInWindow, "Check-in oynasi", SettingType.Int, UnitMinutes,
             "Ish boshlanishidan shuncha daqiqa o'tgach check-in yopiladi va talaba \"kelmadi\" bo'ladi.", "90", 15, 480),
         new(CheckInPhotoRequired, "Check-in uchun rasm majburiy", SettingType.Bool, null,
