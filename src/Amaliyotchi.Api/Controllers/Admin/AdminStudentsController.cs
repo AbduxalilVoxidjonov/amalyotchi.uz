@@ -4,6 +4,7 @@ using Amaliyotchi.Application.Features.Admin.Students;
 using Amaliyotchi.Application.Features.Student.Common;
 using Amaliyotchi.Application.Features.Supervision.Diaries;
 using Amaliyotchi.Application.Features.Supervision.Students;
+using Amaliyotchi.Application.Features.Supervision.Tracking;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -144,6 +145,16 @@ public sealed class AdminStudentsController(ISender sender) : ControllerBase
         [FromQuery] Guid? periodId,
         CancellationToken cancellationToken)
         => Ok(await sender.Send(new GetStudentAttendanceQuery(id, from, to, periodId), cancellationToken));
+
+    /// <summary>Live joylashuv: talabaning bir kunlik (<c>?date=YYYY-MM-DD</c>, berilmasa — bugun) ping'lari, korxona
+    /// geozonasi va xulosa (docs/LIVE-JOYLASHUV.md). Talaba topilmasa (yoki ko'lamdan tashqari) → 404.</summary>
+    [HttpGet("{id:guid}/location-pings")]
+    [ProducesResponseType<StudentLocationPingsDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<StudentLocationPingsDto>> LocationPings(
+        Guid id, [FromQuery] DateOnly? date, CancellationToken cancellationToken)
+        => Ok(await sender.Send(new GetStudentLocationPingsQuery(id, date), cancellationToken));
 
     /// <summary>Talabaning tanlangan davrdagi (<c>?periodId=</c>) kundaliklari — sana bo'yicha kamayish tartibida. Talaba topilmasa → 404.</summary>
     [HttpGet("{id:guid}/diaries")]

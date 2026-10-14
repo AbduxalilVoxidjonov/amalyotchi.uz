@@ -93,3 +93,38 @@ public sealed class AttendanceEventConfiguration : IEntityTypeConfiguration<Atte
         builder.HasIndex(x => new { x.StudentUserId, x.ReceivedAt }).IsDescending(false, true);
     }
 }
+
+public sealed class LocationPingConfiguration : IEntityTypeConfiguration<LocationPing>
+{
+    public void Configure(EntityTypeBuilder<LocationPing> builder)
+    {
+        builder.ToTable("location_pings");
+        builder.HasKey(x => x.Id);
+
+        builder.Property(x => x.Status).HasConversion<int>().IsRequired();
+        builder.Property(x => x.Source).HasConversion<int>().IsRequired();
+
+        builder.ComplexProperty(x => x.Location, location =>
+        {
+            location.Property(p => p.Latitude).HasColumnName("latitude").IsRequired();
+            location.Property(p => p.Longitude).HasColumnName("longitude").IsRequired();
+        });
+
+        // Ping — hosila texnik ma'lumot: talaba yoki davomat yozuvi jismonan o'chirilsa (demo purge) ping'lar ham ketadi.
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(x => x.StudentUserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne<DailyAttendance>()
+            .WithMany()
+            .HasForeignKey(x => x.AttendanceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Idempotentlik: bir talaba bo'yicha bir xil occurredAt — bitta ping. Shu indeks talaba tarixini vaqt bo'yicha ham beradi.
+        builder.HasIndex(x => new { x.StudentUserId, x.OccurredAt }).IsUnique();
+        // Admin "bugun" agregatsiyasi (date = bugun) va 60 kunlik tozalash (date < chegara).
+        builder.HasIndex(x => new { x.Date, x.StudentUserId });
+        builder.HasIndex(x => x.AttendanceId);
+    }
+}

@@ -249,6 +249,85 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                     b.ToTable("daily_attendances", (string)null);
                 });
 
+            modelBuilder.Entity("Amaliyotchi.Domain.Attendance.LocationPing", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<double>("AccuracyM")
+                        .HasColumnType("double precision")
+                        .HasColumnName("accuracy_m");
+
+                    b.Property<Guid>("AttendanceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("attendance_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<double>("DistanceM")
+                        .HasColumnType("double precision")
+                        .HasColumnName("distance_m");
+
+                    b.Property<bool>("IsMocked")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_mocked");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<int>("RadiusM")
+                        .HasColumnType("integer")
+                        .HasColumnName("radius_m");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("integer")
+                        .HasColumnName("source");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("StudentUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_user_id");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Location", "Amaliyotchi.Domain.Attendance.LocationPing.Location#GeoPoint", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<double>("Latitude")
+                                .HasColumnType("double precision")
+                                .HasColumnName("latitude");
+
+                            b1.Property<double>("Longitude")
+                                .HasColumnType("double precision")
+                                .HasColumnName("longitude");
+                        });
+
+                    b.HasKey("Id")
+                        .HasName("pk_location_pings");
+
+                    b.HasIndex("AttendanceId")
+                        .HasDatabaseName("ix_location_pings_attendance_id");
+
+                    b.HasIndex("Date", "StudentUserId")
+                        .HasDatabaseName("ix_location_pings_date_student_user_id");
+
+                    b.HasIndex("StudentUserId", "OccurredAt")
+                        .IsUnique()
+                        .HasDatabaseName("ix_location_pings_student_user_id_occurred_at");
+
+                    b.ToTable("location_pings", (string)null);
+                });
+
             modelBuilder.Entity("Amaliyotchi.Domain.Auditing.AuditLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1930,6 +2009,10 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("student_group_id");
 
+                    b.Property<DateTimeOffset?>("TrackingConsentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("tracking_consent_at");
+
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -2039,6 +2122,23 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_daily_attendances_users_student_user_id");
+                });
+
+            modelBuilder.Entity("Amaliyotchi.Domain.Attendance.LocationPing", b =>
+                {
+                    b.HasOne("Amaliyotchi.Domain.Attendance.DailyAttendance", null)
+                        .WithMany()
+                        .HasForeignKey("AttendanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_location_pings_daily_attendances_attendance_id");
+
+                    b.HasOne("Amaliyotchi.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("StudentUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_location_pings_users_student_user_id");
                 });
 
             modelBuilder.Entity("Amaliyotchi.Domain.Diary.DiaryAttachment", b =>

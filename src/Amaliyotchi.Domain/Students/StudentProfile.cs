@@ -50,6 +50,18 @@ public sealed class StudentProfile : AuditableEntity, ISoftDeletable
     public TimeOnly? PreviousWorkStart { get; private set; }
     public TimeOnly? PreviousWorkEnd { get; private set; }
 
+    /// <summary>Talaba ish vaqtida fonda joylashuv kuzatuviga rozilik bergan vaqt (UTC); null — rozilik yo'q
+    /// (yoki qaytarib olingan). Rozilik bo'lmasa fonda ping'lar qabul qilinmaydi (docs/LIVE-JOYLASHUV.md).</summary>
+    public DateTimeOffset? TrackingConsentAt { get; private set; }
+
+    public bool HasTrackingConsent => TrackingConsentAt is not null;
+
+    /// <summary>Rozilik beradi. Allaqachon berilgan bo'lsa — dastlabki vaqt saqlanadi (idempotent).</summary>
+    public void GiveTrackingConsent(DateTimeOffset at) => TrackingConsentAt ??= at;
+
+    /// <summary>Rozilikni qaytarib oladi — keyingi ping'lar qabul qilinmaydi.</summary>
+    public void WithdrawTrackingConsent() => TrackingConsentAt = null;
+
     public static StudentProfile Create(Guid userId, string hemisId, Guid studentGroupId)
     {
         if (userId == Guid.Empty)

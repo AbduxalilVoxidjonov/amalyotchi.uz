@@ -43,6 +43,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<PracticeApplication> PracticeApplications => Set<PracticeApplication>();
     public DbSet<DailyAttendance> DailyAttendances => Set<DailyAttendance>();
     public DbSet<AttendanceEvent> AttendanceEvents => Set<AttendanceEvent>();
+    public DbSet<LocationPing> LocationPings => Set<LocationPing>();
     public DbSet<DiaryEntry> DiaryEntries => Set<DiaryEntry>();
     public DbSet<DiaryAttachment> DiaryAttachments => Set<DiaryAttachment>();
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();

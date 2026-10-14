@@ -1,4 +1,5 @@
 using Amaliyotchi.Application.Common.Models;
+using Amaliyotchi.Application.Features.Supervision.Tracking;
 using Amaliyotchi.Domain.Attendance;
 
 namespace Amaliyotchi.Application.Features.Supervision.Today;
@@ -12,6 +13,13 @@ public enum TodayFilter
     Excused = 4,
     Pending = 5,
     Suspicious = 6
+}
+
+/// <summary><c>?presence=</c> filtri (live joylashuv): hozir tashqarida yoki signal yo'q.</summary>
+public enum TodayPresenceFilter
+{
+    Outside = 1,
+    SignalLost = 2
 }
 
 public enum TodayAlertKind
@@ -33,6 +41,7 @@ public sealed record TodayStats(int Present, int Late, int Absent, int Excused, 
 /// <param name="MaxDistanceM">Faqat <c>outOfRadius</c> uchun — bugungi eng uzoq rad etilgan urinish (m).</param>
 public sealed record TodayAlert(TodayAlertKind Kind, int Count, string Href, double? MaxDistanceM = null);
 
+/// <param name="Presence">Live joylashuv holati (docs/LIVE-JOYLASHUV.md); null — bugun check-in yo'q yoki kuzatuv o'chiq.</param>
 public sealed record AttendanceRow(
     Guid StudentId,
     string Name,
@@ -46,6 +55,7 @@ public sealed record AttendanceRow(
     AttendanceStatus Status,
     bool Suspicious,
     bool Manual,
-    bool AutoClosed);
+    bool AutoClosed,
+    PresenceDto? Presence = null);
 
 public sealed record TodayResponse(DateOnly Date, TodayStats Stats, IReadOnlyList<TodayAlert> Alerts, Paged<AttendanceRow> Rows);

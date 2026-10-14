@@ -1,6 +1,6 @@
-# API-CONTRACT v3.28
+# API-CONTRACT v3.29
 
-Oxirgi yangilanish: 04.10.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
+Oxirgi yangilanish: 14.10.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
 esa haqiqiy controller/DTO/validator/handler kodidan olingan — har bir maydon, chegara va status kod kodda bor.
 Frontend (`web/dashboard`, `web/twa`, `web/shared`) shu shaklga moslanishi kerak; v1 bilan farqlar §5 da,
@@ -31,7 +31,10 @@ v3.25 (bitta talabani forma orqali qo'shish — `POST /api/admin/students`, `GET
 v3.26 (talabaning o'z ish vaqti — `PUT /api/student/profile/work-hours`; check-in oynasi qisqa kunga moslashadi) — §6.32,
 v3.27 (yuzni tasdiqlash — talaba etalon selfisi, tyutor tasdig'i, check-in selfisini solishtirish — `/api/student/face`, `/api/tutor/face-enrollments`) — §6.33,
 v3.28 (**tyutor roli olib tashlandi** — barcha tyutor endpoint'lari adminga ko'chdi; **bosh admin** adminlarni boshqaradi —
-`/api/admin/admins`, `isSuperAdmin`) — §6.34.
+`/api/admin/admins`, `isSuperAdmin`) — §6.34,
+v3.29 (**live joylashuv** — ish vaqtida fonda kuzatuv: `today.tracking`, `PUT /api/student/tracking/consent`,
+`POST /api/student/location-pings`, admin `today.rows[].presence`, `GET /api/admin/students/{id}/location-pings`,
+3 ta yangi sozlama) — §6.35.
 
 > v3.28: tyutor bo'limi (§2.5) va `/api/admin/tutors*` (§2.3.3) olib tashlandi, kundalik nazorat endpoint'lari
 > `/api/admin/*` ga ko'chdi, `/api/admin/admins*` qo'shildi — quyidagi sonlar v3.27 holati; farqi §6.34 da.
@@ -1285,7 +1288,7 @@ interface SettingDto {
   label: string;
   value: string /*xom*/;
   type: 'int' | 'bool' | 'weekdays';
-  unit: 'm' | 'min' | 'chars' | null;
+  unit: 'm' | 'min' | 'chars' | 'sec' /*v3.29*/ | null;
   note: string;
   min: number | null;
   max: number | null /*faqat int*/;
@@ -1311,7 +1314,8 @@ Sozlamalar (kalit · tur · birlik · default · min–max): `geofenceRadius` in
 `dailyReportRequired` bool `true` · `minReportLength` int chars `150` 0–5000 · **`diaryPdfRequired`** bool `false` ·
 `checkInWindow` int min `90` 15–480 ·
 **`checkinPhotoRequired`** bool **`true`** (v3.7 gacha `false`) · **`checkinQrRequired`** bool `true` (v3.7) ·
-**`maxStudentsPerCompany`** int `10` 1–200.
+**`maxStudentsPerCompany`** int `10` 1–200 · `faceVerificationEnabled` bool `false` · `faceMatchThreshold` int `36` 0–100 ·
+**`trackingEnabled`** bool `true` · **`trackingIntervalSec`** int sec `300` 60–900 · **`trackingDistanceFilterM`** int m `50` 10–500 (v3.29, §6.35).
 Ro'yxat tartibi — shu; `checkinPhotoRequired`/`maxStudentsPerCompany` v3 da qo'shildi (§6); `diaryPdfRequired` — keyinroq
 (`minReportLength` dan keyin); `checkinQrRequired` — v3.7 (§6.13).
 Bazada yo'q kalit default bilan qaytadi (`updatedAt: null`).
@@ -1786,6 +1790,7 @@ interface AttendanceRow {
   suspicious: boolean;
   manual: boolean;
   autoClosed: boolean;
+  presence: PresenceDto | null /*v3.29 — §6.35*/;
 }
 ```
 
@@ -3613,3 +3618,74 @@ adminlarni yaratadi, tahrirlaydi, bloklaydi va parolini tiklaydi.
   e'tiborsiz qoldiriladi). `GET /api/admin/today` javobidagi `alerts[].href` eski `/tutor...` yo'l bo'lsa ham frontend
   uni `/admin/...` ga moslaydi.
 - **Frontend (TWA):** profilda "Tyutor" bloki yo'q; matnlardagi "tyutor" → "admin"/"administrator".
+
+### 6.35 v3.28 → v3.29 (14.10.2026): live joylashuv — ish vaqtida fonda kuzatuv
+
+Kontrakt va qoidalar manbasi — `docs/LIVE-JOYLASHUV.md`. Barcha vaqtlar UTC (`+00:00`), enum'lar camelCase string.
+
+- **Sozlamalar** (`GET/PUT /api/admin/settings`, ro'yxat oxirida): `trackingEnabled` bool `true` · `trackingIntervalSec`
+  int, `unit: "sec"` (yangi birlik), `300`, 60–900 · `trackingDistanceFilterM` int m `50` 10–500. Oraliqdan tashqari → 400
+  `errors.<key>` (boshqa sozlamalar kabi).
+- **`GET /api/student/today`** (va `POST /checkin|/checkout` javobidagi `TodayDto`) — yangi maydon, doim keladi:
+  ```ts
+  interface TrackingDto {
+    enabled: boolean;        // trackingEnabled VA sessiya faol (bugun checkInAt bor, checkOutAt yo'q, auto-close vaqti o'tmagan)
+    consentGiven: boolean;   // rozilik (enabled'ga ta'sir qilmaydi — alohida)
+    intervalSec: number;
+    distanceFilterM: number;
+    activeUntil: string | null; // auto-close momenti (ish tugashi + autoCheckout, sukut 18:00 Toshkent); sessiya faol bo'lmasa null
+  }
+  ```
+- **`PUT /api/student/tracking/consent`** · StudentOnly · `{ consent: boolean }` → 204. `true` — rozilik (vaqti saqlanadi,
+  takror `true` dastlabki vaqtni o'zgartirmaydi); `false` — qaytarib olish. `consent` yo'q → 400 `errors.Consent`.
+- **`POST /api/student/location-pings`** · StudentOnly · rate `location-pings` — **talaba bo'yicha** 30 so'rov/daqiqa
+  (`RateLimiting:LocationPingsPerMinute`) → 429.
+  ```ts
+  // so'rov: 1..100 ta (eskidan yangiga); 0 yoki >100 yoki pings yo'q → 400 errors.Pings
+  { pings: { lat: number; lng: number; accuracyM: number; occurredAt: string; isMocked?: boolean;
+             source?: 'foreground' | 'background' /*sukut background*/ }[] }
+  // 200
+  interface LocationPingsResultDto {
+    accepted: number;
+    tracking: TrackingDto;
+    last: { status: 'inside' | 'outside' | 'inaccurate'; distanceM: number; occurredAt: string } | null; // bugungi oxirgi saqlangan ping
+  }
+  ```
+  Tashlanadi (xato emas, `accepted` ga kirmaydi): `occurredAt` 24 soatdan eski yoki 2 daqiqadan ko'proq kelajakda;
+  takror `occurredAt` (talaba bo'yicha, millisekund aniqlikda — idempotent); o'z kunining sessiyasidan tashqari
+  (`checkInAt ≤ occurredAt ≤ checkOutAt ?? auto-close`; check-out'dan keyin yuborilgan **navbatdagi sessiya ping'lari
+  qabul qilinadi**); yaroqsiz koordinata/aniqlik. Rozilik yo'q yoki `trackingEnabled=false` → 200, `accepted: 0`.
+  Holat server'da check-in geozona qoidasi bilan: `accuracyM > minGpsAccuracy` (sukut 100) → `inaccurate`;
+  `distanceM ≤ radiusM` → `inside`, aks holda `outside`. Ping'lar audit jurnaliga yozilmaydi; 60 kundan keyin o'chiriladi.
+- **`GET /api/admin/today`** — har qatorga `presence` (yangi ixtiyoriy filtr `?presence=outside|signalLost`):
+  ```ts
+  interface PresenceDto {             // null — bugun check-in yo'q yoki trackingEnabled=false
+    state: 'inside' | 'outside' | 'inaccurate' | 'signalLost' | 'stopped' | 'noConsent';
+    lastPingAt: string | null;        // bugun ping yo'q bo'lsa null
+    distanceM: number | null;         // oxirgi ping masofasi (butun m); ping yo'q bo'lsa — check-in masofasi
+    outsideMinutes: number;
+    mocked: boolean;                  // bugun kamida bitta isMocked ping
+  }
+  ```
+  Tartib: check-out / auto-close o'tgan → `stopped`; rozilik yo'q → `noConsent`; oxirgi ping (ping bo'lmasa — check-in)
+  `3 × intervalSec` dan eski → `signalLost`; aks holda oxirgi ping holati; check-in'dan beri ping yo'q va hali
+  `3 × intervalSec` o'tmagan → `inside`. `outsideMinutes`: ketma-ket ping'lar orasidagi vaqt, oldingi ping `outside`
+  bo'lsa qo'shiladi, bitta oraliq `2 × intervalSec` da kesiladi; oxirgi ping'dan keyingi vaqt kirmaydi; daqiqa pastga yaxlitlanadi.
+- **`GET /api/admin/students/{id}/location-pings?date=YYYY-MM-DD`** · AdminOnly · 200 · 404 (talaba yo'q) — `date`
+  berilmasa bugun (Toshkent):
+  ```ts
+  interface StudentLocationPingsDto {
+    date: string;
+    place: { name: string; lat: number; lng: number; radiusM: number } | null; // shu kun davomati davrining tasdiqlangan arizasi
+    checkInAt: string | null;
+    checkOutAt: string | null;
+    consentGiven: boolean;            // hozirgi rozilik holati
+    pings: { occurredAt: string; lat: number; lng: number; accuracyM: number; distanceM: number;
+             status: 'inside' | 'outside' | 'inaccurate'; isMocked: boolean; source: 'foreground' | 'background' }[]; // vaqt o'sishida
+    summary: { total: number; inside: number; outside: number; inaccurate: number;
+               outsideMinutes: number; longestGapMinutes: number /*ketma-ket ping'lar orasidagi, kesilmagan*/;
+               lastPingAt: string | null };
+  }
+  ```
+- **Enum'lar:** `LocationPingStatus` `inside|outside|inaccurate`; `LocationPingSource` `foreground|background`;
+  `PresenceState` `inside|outside|inaccurate|signalLost|stopped|noConsent`.

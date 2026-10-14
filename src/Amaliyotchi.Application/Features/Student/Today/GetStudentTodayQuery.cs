@@ -2,6 +2,7 @@ using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Common.Time;
 using Amaliyotchi.Application.Features.Student.Common;
+using Amaliyotchi.Application.Features.Student.Tracking;
 using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Common;
 using Amaliyotchi.Domain.Diary;
@@ -37,6 +38,7 @@ internal static class TodayBuilder
         // Belgilanish esa faqat davom etayotgan davrda mumkin (Availability).
         var practice = await db.LoadStudentPracticeAsync(studentUserId, today, PeriodPurpose.Current, cancellationToken);
         var rules = practice.Rules;
+        var consentGiven = practice.Student.HasTrackingConsent;
 
         var window = new TodayWindowDto(
             PracticeTime.Hm(rules.DailyStart),
@@ -63,7 +65,8 @@ internal static class TodayBuilder
                 AttendanceStatus.Pending, null, null, null, null, null, false, false, StudentPractice.NoPeriodMessage,
                 practice.Settings.CheckInPhotoRequired, practice.Settings.CheckInQrRequired,
                 practice.Settings.FaceVerificationEnabled);
-            return new TodayDto(today, window, noPeriod, null, diaryDto, null, canWriteDiary, diaryBlockedReason);
+            return new TodayDto(today, window, noPeriod, null, diaryDto, null, canWriteDiary, diaryBlockedReason,
+                TrackingState.Inactive(practice.Settings, consentGiven));
         }
 
         var periodId = practice.Period.Id;
@@ -120,7 +123,8 @@ internal static class TodayBuilder
         return new TodayDto(
             today, window with { IsOpen = isOpen }, checkin, place, diaryDto,
             StudentPeriodSet.ToOption(practice.Period, today, isDefault: true),
-            canWriteDiary, diaryBlockedReason);
+            canWriteDiary, diaryBlockedReason,
+            TrackingState.Build(practice.Settings, consentGiven, todayRow, today, rules, clock.UtcNow));
     }
 
     /// <summary>Hozirgi bosqich uchun amal mumkinmi va bo'lmasa — sababi. GPS/masofa hisobga olinmaydi

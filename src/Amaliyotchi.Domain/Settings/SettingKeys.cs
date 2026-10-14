@@ -4,7 +4,7 @@ using Amaliyotchi.Domain.Practice;
 namespace Amaliyotchi.Domain.Settings;
 
 /// <summary>Bitta sozlama kalitining ta'rifi: tur, birlik, chegaralar, standart qiymat.</summary>
-/// <param name="Unit">Kontrakt bo'yicha: "m", "min", "chars" yoki null.</param>
+/// <param name="Unit">Kontrakt bo'yicha: "m", "min", "chars", "sec" yoki null.</param>
 public sealed record SettingDefinition(
     string Key,
     string Label,
@@ -65,10 +65,14 @@ public static class SettingKeys
     public const string MaxStudentsPerCompany = "maxStudentsPerCompany";
     public const string FaceVerificationEnabled = "faceVerificationEnabled";
     public const string FaceMatchThreshold = "faceMatchThreshold";
+    public const string TrackingEnabled = "trackingEnabled";
+    public const string TrackingIntervalSec = "trackingIntervalSec";
+    public const string TrackingDistanceFilterM = "trackingDistanceFilterM";
 
     public const string UnitMeters = "m";
     public const string UnitMinutes = "min";
     public const string UnitChars = "chars";
+    public const string UnitSeconds = "sec";
 
     /// <summary>Kontraktdagi tartibda.</summary>
     public static IReadOnlyList<SettingDefinition> All { get; } =
@@ -101,7 +105,14 @@ public static class SettingKeys
             "Yoqilgan bo'lsa check-in selfisi (rasm majburiy bo'ladi) talabaning etalon yuz rasmi bilan solishtiriladi; mos kelmasa urinish rad etiladi.", "false"),
         // 36% — SFace modeli mualliflari tavsiya etgan kosinus chegarasi (~0.363). Pastroq — yumshoqroq, balandroq — qat'iyroq.
         new(FaceMatchThreshold, "Yuz mosligi chegarasi (%)", SettingType.Int, null,
-            "Selfi va etalon o'xshashligi (0–100%) shundan past bo'lsa check-in rad etiladi. Tavsiya: 36.", "36", 0, 100)
+            "Selfi va etalon o'xshashligi (0–100%) shundan past bo'lsa check-in rad etiladi. Tavsiya: 36.", "36", 0, 100),
+        // Live joylashuv (docs/LIVE-JOYLASHUV.md): ish vaqtida fonda kuzatuv.
+        new(TrackingEnabled, "Ish vaqtida joylashuvni kuzatish", SettingType.Bool, null,
+            "Yoqilgan bo'lsa check-in'dan check-out'gacha ilova fonda joylashuvni yuboradi (talaba roziligi bilan); admin talaba ish joyidan chiqib ketganini ko'radi.", "true"),
+        new(TrackingIntervalSec, "Kuzatuv oralig'i", SettingType.Int, UnitSeconds,
+            "Fonda joylashuv har shuncha soniyada olinadi. Oxirgi ping 3 × oraliqdan eski bo'lsa — \"signal yo'q\".", "300", 60, 900),
+        new(TrackingDistanceFilterM, "Kuzatuv masofa filtri", SettingType.Int, UnitMeters,
+            "Talaba shuncha metr siljisa oraliqni kutmasdan joylashuv olinadi.", "50", 10, 500)
     ];
 
     private static readonly Dictionary<string, SettingDefinition> ByKey =

@@ -114,6 +114,14 @@ public static class DependencyInjection
         return services;
     }
 
+    /// <summary>Live joylashuv ping'larini 60 kundan keyin o'chiruvchi fon xizmati
+    /// (<see cref="LocationPingRetentionService"/>) — faqat API host'ida.</summary>
+    public static IServiceCollection AddLocationPingRetention(this IServiceCollection services)
+    {
+        services.AddHostedService<LocationPingRetentionService>();
+        return services;
+    }
+
     /// <summary>Yuz dvigatelini startup'da yuklash va holatini log'ga yozish (modellar yo'q → ogohlantirish) —
     /// faqat API host'ida (yuz tahlili faqat API so'rovlarida ishlaydi).</summary>
     public static IServiceCollection AddFaceEngineStartupCheck(this IServiceCollection services)

@@ -40,6 +40,8 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddTelegramBot();
 // "Xabarlar" yetkazish dispetcheri (DB-navbat, ≤ 25 xabar/s) — faqat Telegram:BotToken'ga bog'liq, BotEnabled'ga emas.
 builder.Services.AddBroadcastDispatcher();
+// Live joylashuv ping'lari 60 kundan keyin o'chiriladi (har 6 soatda tekshiriladi).
+builder.Services.AddLocationPingRetention();
 // "Yuzni tasdiqlash" modellari startup'da yuklanadi; yo'q bo'lsa — ogohlantirish (check-in 503, jim o'tkazilmaydi).
 builder.Services.AddFaceEngineStartupCheck();
 // Fon xizmati (bot) kutilmagan xato bilan yiqilsa butun API to'xtamasin — xato log'ga yoziladi, HTTP ishlashda davom etadi.
@@ -119,8 +121,10 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 
 app.UseCors();
-app.UseRateLimiter();
+// Limiter autentifikatsiyadan KEYIN: talaba bo'yicha siyosat (RateLimitPolicies.LocationPings) chelak kalitini
+// token'dagi foydalanuvchi id'sidan oladi. Anonim endpoint'lar (auth) IP bo'yicha — o'zgarishsiz.
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapControllers();

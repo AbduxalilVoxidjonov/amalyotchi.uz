@@ -40,6 +40,14 @@ public static class ScopeQueries
             _ => query.Where(_ => false)
         };
 
+    public static IQueryable<LocationPing> InScope(this IQueryable<LocationPing> query, DataScope scope)
+        => scope.Kind switch
+        {
+            ScopeKind.Unrestricted => query,
+            ScopeKind.Self => query.Where(p => p.StudentUserId == scope.UserId),
+            _ => query.Where(_ => false)
+        };
+
     public static IQueryable<DiaryEntry> InScope(this IQueryable<DiaryEntry> query, DataScope scope)
         => scope.Kind switch
         {

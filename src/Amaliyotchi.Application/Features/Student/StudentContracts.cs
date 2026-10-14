@@ -1,4 +1,5 @@
 using Amaliyotchi.Application.Common.Practice;
+using Amaliyotchi.Application.Features.Student.Tracking;
 using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Diary;
 using Amaliyotchi.Domain.Practice;
@@ -13,6 +14,7 @@ namespace Amaliyotchi.Application.Features.Student;
 /// <param name="CanWriteDiary"><c>POST /api/student/diary</c> bugun davr/holat sababli rad etilmaydimi — o'sha qoida
 /// (<c>DiaryWritePolicy</c>): ochiq, bugunni o'z ichiga olgan davr bor va bugungi yozuv yo'q yoki <c>rewrite</c> holatida.</param>
 /// <param name="DiaryBlockedReason"><see cref="CanWriteDiary"/> = <c>false</c> bo'lsa — POST qaytaradigan <c>detail</c> matni; aks holda null.</param>
+/// <param name="Tracking">Ish vaqtida fonda joylashuv kuzatuvi holati (docs/LIVE-JOYLASHUV.md) — doim keladi.</param>
 public sealed record TodayDto(
     DateOnly Date,
     TodayWindowDto Window,
@@ -21,7 +23,8 @@ public sealed record TodayDto(
     TodayDiaryDto Diary,
     StudentPeriodOption? Period,
     bool CanWriteDiary,
-    string? DiaryBlockedReason);
+    string? DiaryBlockedReason,
+    TrackingDto Tracking);
 
 /// <param name="Start">Check-in ochiladigan vaqt (09:00).</param>
 /// <param name="End">Shu vaqtdan boshlab "kech keldi" (09:15).</param>

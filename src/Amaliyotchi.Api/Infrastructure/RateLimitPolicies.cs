@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -14,8 +15,13 @@ public static class RateLimitPolicies
     /// shuning uchun login chelagidan alohida va kengroq.</summary>
     public const string Refresh = "refresh";
 
+    /// <summary>Live joylashuv ping'lari (<c>POST /api/student/location-pings</c>): talaba (token'dagi user id) bo'yicha
+    /// daqiqasiga 30 so'rov; token bo'lmasa — IP bo'yicha.</summary>
+    public const string LocationPings = "location-pings";
+
     private const int DefaultAuthPerMinute = 10;
     private const int DefaultRefreshPerMinute = 60;
+    private const int DefaultLocationPingsPerMinute = 30;
 
     /// <summary>Chegaralar <c>RateLimiting:AuthPerMinute</c> / <c>RateLimiting:RefreshPerMinute</c> dan
     /// o'zgartiriladi (integratsiya testlari bitta IP'dan yuzlab so'rov yuboradi).</summary>
@@ -23,6 +29,7 @@ public static class RateLimitPolicies
     {
         var authPerMinute = configuration.GetValue<int?>("RateLimiting:AuthPerMinute") ?? DefaultAuthPerMinute;
         var refreshPerMinute = configuration.GetValue<int?>("RateLimiting:RefreshPerMinute") ?? DefaultRefreshPerMinute;
+        var pingsPerMinute = configuration.GetValue<int?>("RateLimiting:LocationPingsPerMinute") ?? DefaultLocationPingsPerMinute;
 
         return services.AddRateLimiter(options =>
         {
@@ -33,7 +40,28 @@ public static class RateLimitPolicies
 
             // Refresh: bitta IP dan daqiqasiga 60 urinish.
             options.AddPolicy(Refresh, context => PerIp(context, refreshPerMinute));
+
+            // Ping'lar: talaba bo'yicha daqiqasiga 30 so'rov (bir NAT ortidagi talabalar bir-biriga xalaqit bermasin).
+            options.AddPolicy(LocationPings, context => PerUser(context, pingsPerMinute));
         });
+    }
+
+    /// <summary>Autentifikatsiyalangan foydalanuvchi bo'yicha chelak (<c>UseAuthentication</c> limiter'dan oldin turadi);
+    /// token yo'q bo'lsa — IP bo'yicha.</summary>
+    private static RateLimitPartition<string> PerUser(HttpContext context, int permitLimit)
+    {
+        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? context.User.FindFirstValue("sub");
+        if (string.IsNullOrEmpty(userId))
+            return PerIp(context, permitLimit);
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            "user:" + userId,
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            });
     }
 
     // RemoteIpAddress to'g'ri bo'lishi uchun Program.cs da UseForwardedHeaders limiter dan oldin turadi

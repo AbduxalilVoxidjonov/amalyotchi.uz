@@ -3,7 +3,10 @@ using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Common.Models;
 using Amaliyotchi.Application.Common.Scoping;
 using Amaliyotchi.Application.Common.Time;
+using Amaliyotchi.Application.Features.Student.Common;
+using Amaliyotchi.Application.Features.Student.Tracking;
 using Amaliyotchi.Application.Features.Supervision.Common;
+using Amaliyotchi.Application.Features.Supervision.Tracking;
 using Amaliyotchi.Domain.Attendance;
 using Amaliyotchi.Domain.Common;
 using Amaliyotchi.Domain.Leave;
@@ -18,6 +21,9 @@ namespace Amaliyotchi.Application.Features.Supervision.Today;
 public sealed record GetTodayAttendanceQuery : PagedQuery, IRequest<TodayResponse>
 {
     public TodayFilter? Status { get; init; }
+
+    /// <summary><c>?presence=outside|signalLost</c> — live joylashuv holati bo'yicha filtr (ixtiyoriy).</summary>
+    public TodayPresenceFilter? Presence { get; init; }
 }
 
 internal sealed class GetTodayAttendanceQueryHandler(IApplicationDbContext db, IScopeResolver scopeResolver, IClock clock)
@@ -70,6 +76,28 @@ internal sealed class GetTodayAttendanceQueryHandler(IApplicationDbContext db, I
         var newApplications = await db.PracticeApplications.AsNoTracking().InScope(scope)
             .CountAsync(a => a.Status == ApplicationStatus.Submitted, cancellationToken);
 
+        // Live joylashuv (presence): bugungi barcha ping'lar BITTA so'rov bilan (tor proyeksiya), talaba bo'yicha
+        // xotirada guruhlanadi — N+1 yo'q. Kuzatuv sozlamada o'chiq bo'lsa so'rov ham yo'q (presence = null).
+        var settings = await db.LoadStudentSettingsAsync(cancellationToken);
+        var now = clock.UtcNow;
+        ILookup<Guid, PingSample> pingsByStudent = Array.Empty<PingSample>().ToLookup(_ => Guid.Empty);
+        HashSet<Guid> consented = [];
+        if (settings.TrackingEnabled)
+        {
+            var pings = await db.LocationPings.AsNoTracking().InScope(scope)
+                .Where(p => p.Date == today)
+                .OrderBy(p => p.StudentUserId).ThenBy(p => p.OccurredAt)
+                .Select(p => new { p.StudentUserId, p.OccurredAt, p.Status, p.DistanceM, p.IsMocked })
+                .ToListAsync(cancellationToken);
+            pingsByStudent = pings.ToLookup(
+                p => p.StudentUserId, p => new PingSample(p.OccurredAt, p.Status, p.DistanceM, p.IsMocked));
+
+            consented = await db.StudentProfiles.AsNoTracking().InScope(scope)
+                .Where(p => p.TrackingConsentAt != null)
+                .Select(p => p.UserId)
+                .ToHashSetAsync(cancellationToken);
+        }
+
         var rows = new List<AttendanceRow>(students.Count);
         foreach (var student in students)
         {
@@ -89,6 +117,17 @@ internal sealed class GetTodayAttendanceQueryHandler(IApplicationDbContext db, I
             else if (isWorkDay && status is AttendanceStatus.Present or AttendanceStatus.Late or AttendanceStatus.Pending)
                 diary = DiaryState.Pending;
 
+            PresenceDto? presence = null;
+            if (settings.TrackingEnabled && row?.CheckInAt is { } checkInAt)
+            {
+                var rowPeriod = periods.ForPeriod(row.PeriodId) ?? period;
+                var rules = rowPeriod?.RulesFor(student.HoursOn(today)) ?? CheckInRules.Default;
+                presence = PresenceDto.From(LocationTracking.Evaluate(new PresenceInput(
+                    checkInAt, row.CheckOutAt, TrackingState.AutoCloseMoment(today, rules), row.CheckInDistanceM,
+                    consented.Contains(student.UserId), pingsByStudent[student.UserId].ToList(), now,
+                    settings.TrackingIntervalSec)));
+            }
+
             var outOfRadius = row is null
                 ? rejectedDistance is not null
                 : placement is not null && row.CheckInDistanceM > placement.RadiusM;
@@ -106,7 +145,8 @@ internal sealed class GetTodayAttendanceQueryHandler(IApplicationDbContext db, I
                 status,
                 row?.IsSuspicious ?? false,
                 row?.IsManual ?? false,
-                row?.AutoClosed ?? false));
+                row?.AutoClosed ?? false,
+                presence));
         }
 
         var stats = new TodayStats(
@@ -139,6 +179,12 @@ internal sealed class GetTodayAttendanceQueryHandler(IApplicationDbContext db, I
                 TodayFilter.Pending => filtered.Where(r => r.Status == AttendanceStatus.Pending),
                 _ => filtered
             };
+        }
+
+        if (request.Presence is { } presenceFilter)
+        {
+            var wanted = presenceFilter == TodayPresenceFilter.Outside ? PresenceState.Outside : PresenceState.SignalLost;
+            filtered = filtered.Where(r => r.Presence?.State == wanted);
         }
 
         if (request.Q is { } q)

@@ -36,6 +36,7 @@ public interface IApplicationDbContext
     DbSet<PracticeApplication> PracticeApplications { get; }
     DbSet<DailyAttendance> DailyAttendances { get; }
     DbSet<AttendanceEvent> AttendanceEvents { get; }
+    DbSet<LocationPing> LocationPings { get; }
     DbSet<DiaryEntry> DiaryEntries { get; }
     DbSet<DiaryAttachment> DiaryAttachments { get; }
     DbSet<LeaveRequest> LeaveRequests { get; }
