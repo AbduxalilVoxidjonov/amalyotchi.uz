@@ -10,7 +10,11 @@ import { clampLat, clampLng, PICKED_ZOOM, START_ZOOM, TASHKENT, type MapPoint } 
  * `@/shared/ui` barrel'i orqali hamma sahifaga tushmaydi (alohida chunk).
  */
 
-const OSM_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+/**
+ * Rasmiy OSM manzili — eski `{s}` (a/b/c) subdomenlari OSM tomonidan eskirgan, b/c ko'pincha
+ * javob bermay xarita kulrang qolardi.
+ */
+const OSM_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const OSM_ATTRIBUTION = '&copy; OpenStreetMap';
 
 /**
@@ -39,7 +43,7 @@ function ClickCatcher({ disabled, onPick }: { disabled: boolean; onPick: (p: Map
 /**
  * Birinchi nuqta paydo bo'lganda (klik yoki tahrirlashda yuklangan qiymat) xarita o'sha yerga
  * yaqinlashadi; keyin foydalanuvchi zoom'i saqlanadi va faqat nuqta ko'rinmay qolgan bo'lsa
- * markaz suriladi. Modal ichida ochilgani uchun konteyner o'lchami qayta hisoblanadi.
+ * (qidiruv, geolokatsiya, qo'lda kiritish) xarita o'sha yerga yaqinlashib o'tadi. Modal ichida ochilgani uchun konteyner o'lchami qayta hisoblanadi.
  */
 function ViewSync({ lat, lng }: { lat: number | null; lng: number | null }) {
   const map = useMap();
@@ -61,7 +65,7 @@ function ViewSync({ lat, lng }: { lat: number | null; lng: number | null }) {
       zoomedRef.current = true;
       map.setView(latLng, Math.max(map.getZoom(), PICKED_ZOOM));
     } else if (!map.getBounds().contains(latLng)) {
-      map.panTo(latLng);
+      map.setView(latLng, Math.max(map.getZoom(), PICKED_ZOOM));
     }
   }, [map, lat, lng]);
 
@@ -95,7 +99,13 @@ export default function MapPickerCanvas({
       doubleClickZoom={!disabled}
       className={styles.canvas ?? ''}
     >
-      <TileLayer url={OSM_URL} attribution={OSM_ATTRIBUTION} maxZoom={19} />
+      <TileLayer
+        url={OSM_URL}
+        attribution={OSM_ATTRIBUTION}
+        maxZoom={19}
+        // Surishda chetlar bo'sh qolmasin — atrofdagi plitalar oldindan saqlanadi.
+        keepBuffer={4}
+      />
       <ClickCatcher disabled={disabled} onPick={onPick} />
       <ViewSync lat={lat} lng={lng} />
       {lat !== null && lng !== null && (

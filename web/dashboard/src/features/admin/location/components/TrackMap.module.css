@@ -83,3 +83,63 @@
   stroke: var(--color-text);
   stroke-dasharray: 3 2;
 }
+/* Yo'nalish strelkalari va boshlanish/tugash belgilari (Leaflet divIcon) */
+.arrowIcon {
+  background: none;
+  border: 0;
+}
+.arrowIcon svg {
+  display: block;
+  fill: var(--color-text);
+  stroke: var(--color-surface);
+  stroke-width: 1.2;
+  transform-origin: 50% 50%;
+}
+.endpoint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--color-surface);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-surface);
+  line-height: 1;
+}
+.endpointStart {
+  background: var(--color-ok-strong);
+}
+.endpointEnd {
+  background: var(--color-text);
+}
+.dot[data-kind='start'] {
+  background: var(--color-ok-strong);
+}
+.dot[data-kind='end'] {
+  background: var(--color-text);
+}
+.arrowLegend {
+  font-weight: 700;
+  color: var(--color-text);
+}
+.stack {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.legendBelow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-muted);
+}
+.legendBelow li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}

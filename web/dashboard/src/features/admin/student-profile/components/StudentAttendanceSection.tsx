@@ -207,6 +207,8 @@ function AttendanceFilters({
                 days={days}
                 radiusM={detail.company?.radiusM ?? null}
                 diaries={diaries.data ?? []}
+                studentId={detail.id}
+                studentName={detail.name}
               />
             </div>
           )}

@@ -121,3 +121,60 @@ describe('MapPicker — "Hozirgi joylashuvim"', () => {
     expect(screen.getByRole('button', { name: LOCATE })).toBeDisabled();
   });
 });
+
+describe('MapPicker — manzil qidiruvi', () => {
+  function mockFetch(body: unknown, ok = true) {
+    const fetchMock = vi.fn(async (_url: string) => ({
+      ok,
+      status: ok ? 200 : 500,
+      json: async () => body,
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+  const SEARCH = { name: 'Manzil bo‘yicha qidirish' };
+
+  it('bitta natija → darhol nuqta qo‘yiladi; Enter formani yubormaydi', async () => {
+    const fetchMock = mockFetch([{ lat: '40.7821', lon: '72.3442', display_name: 'Andijon' }]);
+    const onChange = vi.fn();
+    const onSubmit = vi.fn((e: { preventDefault: () => void }) => e.preventDefault());
+    render(
+      <form onSubmit={onSubmit}>
+        <MapPicker value={null} onChange={onChange} label="Korxona joylashuvi" />
+      </form>,
+    );
+    await userEvent.type(screen.getByRole('searchbox', SEARCH), 'Andijon{Enter}');
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(onChange).toHaveBeenCalledWith({ lat: 40.7821, lng: 72.3442 }));
+    const url = String(fetchMock.mock.calls[0]![0]);
+    expect(url).toContain('nominatim.openstreetmap.org/search');
+    expect(url).toContain('q=Andijon');
+    expect(url).toContain('countrycodes=uz');
+  });
+
+  it('bir nechta natija → ro‘yxatdan tanlanadi', async () => {
+    mockFetch([
+      { lat: '41.1', lon: '69.1', display_name: 'Chilonzor, Toshkent' },
+      { lat: '41.2', lon: '69.2', display_name: 'Chilonzor tumani' },
+    ]);
+    const onChange = vi.fn();
+    render(<MapPicker value={null} onChange={onChange} label="Korxona joylashuvi" />);
+    await userEvent.type(screen.getByRole('searchbox', SEARCH), 'Chilonzor');
+    await userEvent.click(screen.getByRole('button', { name: 'Topish' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Chilonzor tumani' }));
+    expect(onChange).toHaveBeenCalledWith({ lat: 41.2, lng: 69.2 });
+    expect(screen.queryByRole('list', { name: 'Qidiruv natijalari' })).not.toBeInTheDocument();
+  });
+
+  it('natija yo‘q va tarmoq xatosi — tushunarli xabar', async () => {
+    mockFetch([]);
+    render(<MapPicker value={null} onChange={vi.fn()} label="Korxona joylashuvi" />);
+    await userEvent.type(screen.getByRole('searchbox', SEARCH), 'zzzz{Enter}');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Hech narsa topilmadi');
+
+    mockFetch(null, false);
+    await userEvent.click(screen.getByRole('button', { name: 'Topish' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Qidiruv ishlamadi');
+  });
+});

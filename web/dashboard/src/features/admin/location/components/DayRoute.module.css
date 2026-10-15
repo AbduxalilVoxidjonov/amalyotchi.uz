@@ -1,0 +1,42 @@
+.route {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.meta {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs2);
+  color: var(--color-text-muted);
+}
+.note {
+  margin: 0;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}
+.empty {
+  display: grid;
+  gap: 2px;
+  padding: 12px;
+  border: var(--border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  text-align: center;
+}
+.emptyTitle {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+.emptyNote {
+  margin: 0;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+}

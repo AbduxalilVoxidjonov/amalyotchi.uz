@@ -97,7 +97,12 @@ export function LocationTrackPage() {
                 </div>
               )}
               <div className={styles.grid}>
-                <TrackMap place={d.place} pings={d.pings} />
+                <TrackMap
+                  place={d.place}
+                  pings={d.pings}
+                  checkInAt={d.checkInAt}
+                  checkOutAt={d.checkOutAt}
+                />
                 <TrackSummary summary={d.summary} mockedCount={mockedCount} />
               </div>
               <TrackTimeline

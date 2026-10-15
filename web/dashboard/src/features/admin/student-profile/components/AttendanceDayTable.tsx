@@ -4,6 +4,7 @@ import { errorMessage } from '@/shared/api';
 import { fmtDateOnly, fmtDistance } from '../../shared/fmt';
 import { useDiaryReview } from '../../diaries/hooks';
 import { DIARY_STATUS_LABEL, type DiaryEntry } from '../../diaries/types';
+import { DayRoute } from '../../location/components/DayRoute';
 import {
   dayFaceScore,
   dayStatusLabel,
@@ -174,6 +175,10 @@ export interface AttendanceDayTableProps {
   radiusM: number | null;
   /** Talabaning kundaliklari — kun oynasida o'sha kunga tegishlisi ochiladi. */
   diaries?: readonly DiaryEntry[];
+  /** Berilsa — kun oynasida o'sha kundagi harakat yo'li (jonli joylashuv izi) xaritasi. */
+  studentId?: string | undefined;
+  /** "To'liq izni ochish" havolasidagi sarlavha uchun. */
+  studentName?: string | undefined;
 }
 
 /** Bitta belgilanish (kirish/chiqish) — ixcham ustun: sarlavha (vaqt), masofa/aniqlik,
@@ -333,10 +338,17 @@ function AttemptsGallery({
  * Kundalik jadval (KONTRAKT §2.2) — har bir amaliyot kuni bir qator.
  * Sana bosilsa, o'sha kun ixcham **oynada** (modal, ~640px) ochiladi: tepada kirish va chiqish
  * yonma-yon (vaqt, masofa, aniqlik, koordinata, selfi thumbnail), ostida kun sanoqlari bir qatorda
- * (urinishlar · ish kuni · radius), keyin "Urinishlar" galereyasi (kunning har bir urinishi — selfi, vaqt,
+ * (urinishlar · ish kuni · radius), keyin "Harakat yo'li" xaritasi (`studentId` berilsa — o'sha kun ping'lari,
+ * yo'nalish strelkalari, boshlanish/tugash, korxona radiusi), "Urinishlar" galereyasi (kunning har bir urinishi — selfi, vaqt,
  * turi, qabul/rad holati, rad sababi, masofa), oxirida kundalik (qisqartirilgan matn, baholash, fayllar).
  */
-export function AttendanceDayTable({ days, radiusM, diaries = [] }: AttendanceDayTableProps) {
+export function AttendanceDayTable({
+  days,
+  radiusM,
+  diaries = [],
+  studentId,
+  studentName,
+}: AttendanceDayTableProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const selected = days.find((d) => d.date === selectedDate) ?? null;
   const diary = selected ? (diaries.find((e) => e.date === selected.date) ?? null) : null;
@@ -412,6 +424,10 @@ export function AttendanceDayTable({ days, radiusM, diaries = [] }: AttendanceDa
               )}
               {selected.manualReason && <p className={styles.reason}>{selected.manualReason}</p>}
             </section>
+
+            {studentId && (
+              <DayRoute studentId={studentId} studentName={studentName} date={selected.date} />
+            )}
 
             <AttemptsGallery date={selected.date} events={selected.events} />
 

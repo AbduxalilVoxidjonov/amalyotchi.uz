@@ -7,9 +7,11 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type KeyboardEvent,
   type ReactNode,
 } from 'react';
 import { Button, cn, Input } from '@amaliyotchi/shared/ui';
+import { geocode, type GeocodeResult } from './geocode';
 import styles from './MapPicker.module.css';
 import { clampLat, clampLng, type MapPickerProps } from './types';
 
@@ -24,7 +26,10 @@ const GEO_INSECURE =
   'Joylashuv faqat xavfsiz ulanishda (https) ishlaydi — xaritadan qo‘lda belgilang.';
 const GEO_DENIED =
   'Joylashuvga ruxsat berilmadi — brauzer sozlamalaridan ruxsat bering yoki xaritadan belgilang.';
-const GEO_FAILED = 'Joylashuvni aniqlab bo‘lmadi. Qaytadan urinib ko‘ring yoki xaritadan belgilang.';
+const GEO_FAILED =
+  'Joylashuvni aniqlab bo‘lmadi. Qaytadan urinib ko‘ring yoki xaritadan belgilang.';
+const SEARCH_EMPTY = 'Hech narsa topilmadi — boshqacha yozib ko‘ring (masalan, “Chilonzor 9”).';
+const SEARCH_FAILED = 'Qidiruv ishlamadi. Internetni tekshiring yoki xaritadan belgilang.';
 
 /** `GeolocationPositionError.PERMISSION_DENIED` (jsdom'da konstanta bo'lmasligi mumkin). */
 const PERMISSION_DENIED = 1;
@@ -66,8 +71,8 @@ class MapBoundary extends Component<{ children: ReactNode }, { failed: boolean }
 }
 
 /**
- * Xaritadan koordinata tanlash (Leaflet + OpenStreetMap). Asosiy yo'l — xaritaga bosish yoki
- * markerni sudrash; zaxira yo'l (klaviatura, xarita yuklanmagan holat) — "Koordinatani qo'lda
+ * Xaritadan koordinata tanlash (Leaflet + OpenStreetMap). Asosiy yo'l — manzil qidiruvi, xaritaga
+ * bosish yoki markerni sudrash; zaxira yo'l (klaviatura, xarita yuklanmagan holat) — "Koordinatani qo'lda
  * kiritish" bloki (default yopiq).
  */
 export function MapPicker({
@@ -134,6 +139,55 @@ export function MapPicker({
     );
   }
 
+  // Manzil qidiruvi — natija tanlansa nuqta qo'yiladi va xarita o'sha yerga o'tadi.
+  const [query, setQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState<GeocodeResult[] | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const searchAbort = useRef<AbortController | null>(null);
+  useEffect(() => () => searchAbort.current?.abort(), []);
+
+  async function search() {
+    const q = query.trim();
+    if (disabled || searching || q.length < 2) return;
+    searchAbort.current?.abort();
+    const ctrl = new AbortController();
+    searchAbort.current = ctrl;
+    setSearching(true);
+    setSearchError(null);
+    setResults(null);
+    try {
+      const found = await geocode(q, ctrl.signal);
+      if (!aliveRef.current || ctrl.signal.aborted) return;
+      if (found.length === 1) {
+        pickResult(found[0]!);
+      } else {
+        setResults(found);
+        if (found.length === 0) setSearchError(SEARCH_EMPTY);
+      }
+    } catch {
+      if (!aliveRef.current || ctrl.signal.aborted) return;
+      setSearchError(SEARCH_FAILED);
+    } finally {
+      if (aliveRef.current && !ctrl.signal.aborted) setSearching(false);
+    }
+  }
+
+  function pickResult(r: GeocodeResult) {
+    setResults(null);
+    setSearchError(null);
+    setAccuracyM(null);
+    onChange({ lat: clampLat(r.lat), lng: clampLng(r.lng) });
+  }
+
+  function onSearchKey(e: KeyboardEvent<HTMLInputElement>) {
+    // Forma ichida — Enter korxona formasini yubormasin, qidiruvni ishga tushirsin.
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      void search();
+    }
+  }
+
   // Qo'lda kiritish inputlari — xaritadan kelgan qiymat bilan sinxron.
   const [manual, setManual] = useState({ lat: '', lng: '' });
   useEffect(() => {
@@ -158,6 +212,46 @@ export function MapPicker({
   return (
     <div className={styles.wrap}>
       <span className={styles.label}>{label}</span>
+      <div className={styles.search} role="search">
+        <label htmlFor={`${id}-q`} className={styles.srOnly}>
+          Manzil bo‘yicha qidirish
+        </label>
+        <input
+          id={`${id}-q`}
+          type="search"
+          className={styles.searchInput}
+          placeholder="Manzil yoki joy nomi (masalan, Andijon, Bobur ko‘chasi)"
+          autoComplete="off"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={onSearchKey}
+          disabled={disabled}
+        />
+        <Button
+          variant="secondary"
+          size="xs"
+          onClick={() => void search()}
+          disabled={disabled || searching || query.trim().length < 2}
+        >
+          {searching ? 'Qidirilmoqda…' : 'Topish'}
+        </Button>
+      </div>
+      {results && results.length > 0 && (
+        <ul className={styles.results} aria-label="Qidiruv natijalari">
+          {results.map((r) => (
+            <li key={`${r.lat},${r.lng},${r.label}`}>
+              <button type="button" className={styles.result} onClick={() => pickResult(r)}>
+                {r.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {searchError && (
+        <p role="alert" className={styles.error}>
+          {searchError}
+        </p>
+      )}
       <div
         className={styles.map}
         style={{ '--map-picker-h': `${height}px` } as CSSProperties}

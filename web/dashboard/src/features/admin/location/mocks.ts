@@ -33,21 +33,62 @@ interface PingSeed {
   isMocked?: boolean;
 }
 
-function toPing(date: string, place: TrackPlace, seed: PingSeed, i: number): LocationPing {
-  const distanceM = seed.status === 'outside' ? 380 + (i % 4) * 25 : 20 + ((i * 17) % 70);
-  const angle = (i * 47 * Math.PI) / 180;
-  return {
-    occurredAt: at(date, seed.time),
-    lat: place.lat + (Math.cos(angle) * distanceM) / M_PER_DEG,
-    lng:
-      place.lng +
-      (Math.sin(angle) * distanceM) / (M_PER_DEG * Math.cos((place.lat * Math.PI) / 180)),
-    accuracyM: seed.status === 'inaccurate' ? 160 : 8 + (i % 5) * 3,
-    distanceM,
-    status: seed.status,
-    isMocked: seed.isMocked ?? false,
-    source: i % 6 === 0 ? 'foreground' : 'background',
-  };
+/** Sanadan barqaror "tasodifiy" son (0..1) — har kun yo'l boshqacha, lekin qayta yuklashda bir xil. */
+function dateSeed(date: string): number {
+  let h = 0;
+  for (const ch of date) h = (h * 31 + ch.charCodeAt(0)) % 1_000_003;
+  return (h % 997) / 997;
+}
+
+/**
+ * Real yurishga o'xshash iz: ichkarida talaba korxona atrofida sekin aylanib yuradi (masofa va burchak
+ * silliq o'zgaradi), tashqariga chiqqanda — bir yo'nalishda uzoqlashib, aylanib, qaytib keladi.
+ * Shu sababli xaritada chiziq uzluksiz va yo'nalish strelkalari ma'noli.
+ */
+function buildTrack(date: string, place: TrackPlace, seeds: readonly PingSeed[]): LocationPing[] {
+  const seed = dateSeed(date);
+  const baseAngle = seed * 2 * Math.PI;
+  const cosLat = Math.cos((place.lat * Math.PI) / 180);
+  // Tashqarida ketma-ketliklar: har ping uchun [run ichidagi indeks, run uzunligi].
+  const runPos: [number, number][] = [];
+  for (let i = 0; i < seeds.length;) {
+    if (seeds[i]!.status !== 'outside') {
+      runPos.push([0, 0]);
+      i++;
+      continue;
+    }
+    let j = i;
+    while (j < seeds.length && seeds[j]!.status === 'outside') j++;
+    for (let k = i; k < j; k++) runPos.push([k - i, j - i]);
+    i = j;
+  }
+
+  let angle = baseAngle;
+  let exitAngle = baseAngle;
+  return seeds.map((s, i) => {
+    const [k, n] = runPos[i]!;
+    let distanceM: number;
+    if (s.status === 'outside') {
+      if (k === 0) exitAngle = angle;
+      // Chiqish → eng uzoq nuqta (~420 m) → qaytish; yo'l biroz egilib aylanadi.
+      const t = (k + 1) / (n + 1);
+      distanceM = Math.round(place.radiusM + 40 + 260 * Math.sin(Math.PI * t));
+      angle = exitAngle + 0.9 * t;
+    } else {
+      distanceM = Math.round(25 + 45 * (0.5 - 0.5 * Math.cos(i / 6 + seed * 6)));
+      angle += 0.09 + 0.05 * Math.sin(i / 11);
+    }
+    return {
+      occurredAt: at(date, s.time),
+      lat: place.lat + (Math.cos(angle) * distanceM) / M_PER_DEG,
+      lng: place.lng + (Math.sin(angle) * distanceM) / (M_PER_DEG * cosLat),
+      accuracyM: s.status === 'inaccurate' ? 160 : 8 + (i % 5) * 3,
+      distanceM,
+      status: s.status,
+      isMocked: s.isMocked ?? false,
+      source: i % 6 === 0 ? 'foreground' : 'background',
+    };
+  });
 }
 
 /** `from`..`to` oralig'ida har `INTERVAL_MIN` (2) daqiqada ping; `status(time)` holatni beradi. */
@@ -142,21 +183,34 @@ const SCENARIOS: Record<string, Scenario> = {
   's-341047': { checkIn: '08:45', checkOut: null, consentGiven: false, pings: [] },
 };
 
+/** Dam olish kuni (Sha/Yak) — ping yo'q (profil jadvalidagi bo'sh kunlar bilan mos). */
+function noWorkDay(date: string): boolean {
+  const dow = new Date(`${date}T00:00:00Z`).getUTCDay();
+  return dow === 0 || dow === 6;
+}
+
 export function buildLocationPings(studentId: string, date: string): LocationPingsResponse | null {
   const row = mockTodayRows.find((r) => r.studentId === studentId);
   if (!row) return null;
   const place = row.company
     ? (PLACES[row.company] ?? { ...FALLBACK_PLACE, name: row.company })
     : null;
-  const scenario: Scenario = SCENARIOS[studentId] ?? {
-    checkIn: row.checkIn,
-    checkOut: row.checkOut,
-    consentGiven: true,
-    pings: row.checkIn
-      ? series(addMin(row.checkIn, 3), row.checkOut ?? '12:00', () => 'inside')
-      : [],
-  };
-  const pings = place ? scenario.pings.map((s, i) => toPing(date, place, s, i)) : [];
+  const scenario: Scenario = noWorkDay(date)
+    ? {
+        checkIn: null,
+        checkOut: null,
+        consentGiven: SCENARIOS[studentId]?.consentGiven ?? true,
+        pings: [],
+      }
+    : (SCENARIOS[studentId] ?? {
+        checkIn: row.checkIn,
+        checkOut: row.checkOut,
+        consentGiven: true,
+        pings: row.checkIn
+          ? series(addMin(row.checkIn, 3), row.checkOut ?? '12:00', () => 'inside')
+          : [],
+      });
+  const pings = place ? buildTrack(date, place, scenario.pings) : [];
   return {
     date,
     place,
