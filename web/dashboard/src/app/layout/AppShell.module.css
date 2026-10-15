@@ -28,7 +28,7 @@
 .actionsSlot:empty {
   display: none;
 }
-/* Sidebar — drawer (fixed, ☰ bilan ochiladi); ochiqligida backdrop. */
+/* Backdrop — faqat tor ekrandagi drawer ochiq bo'lganda (AppShell data-open beradi). */
 .backdrop {
   display: none;
 }

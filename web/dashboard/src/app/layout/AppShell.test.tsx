@@ -15,6 +15,7 @@ import { issueSession, mockUsers } from '@/mocks/data';
 import { server } from '@/mocks/server';
 import { useAuthStore } from '@/shared/auth/store';
 import { formatClock } from './useClock';
+import { SIDEBAR_OPEN_STORAGE_KEY } from './useSidebarOpen';
 
 function renderApp(path: string) {
   const router = createTestRouter([path]);
@@ -301,6 +302,28 @@ describe('AppShell', () => {
       'aria-expanded',
       'false',
     );
+  });
+
+  it('☰ desktop: sidebar ochib-yopiladi, holat sahifaga o‘tganda va qayta yuklanganda saqlanadi', async () => {
+    window.localStorage.removeItem(SIDEBAR_OPEN_STORAGE_KEY);
+    loginAs(0);
+    const router = renderApp('/admin/today');
+    await screen.findByRole('navigation', { name: 'Asosiy' });
+    const sidebar = document.getElementById('app-sidebar')!;
+    // Sukut — ochiq; desktop'da yopish (×) tugmasi va backdrop yo'q, ☰ boshqaradi.
+    expect(sidebar).toHaveAttribute('data-open', 'true');
+    expect(within(sidebar).queryByRole('button', { name: 'Yopish' })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Menyuni yopish' }));
+    expect(sidebar).not.toHaveAttribute('data-open');
+    expect(window.localStorage.getItem(SIDEBAR_OPEN_STORAGE_KEY)).toBe('false');
+
+    await act(() => router.navigate('/admin/map'));
+    expect(document.getElementById('app-sidebar')).not.toHaveAttribute('data-open');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Menyuni ochish' }));
+    await act(() => router.navigate('/admin/today'));
+    expect(document.getElementById('app-sidebar')).toHaveAttribute('data-open', 'true');
   });
 
   it("eski /tutor yo'llari endi yo'q (404)", async () => {

@@ -8,23 +8,20 @@
   flex-direction: column;
   height: 100vh;
   height: 100dvh;
-  /* Drawer: sukut bo'yicha yopiq, Topbar'dagi ☰ bosilganda ochiladi (barcha kengliklarda). */
-  position: fixed;
+  /* Desktop: ☰ bilan ichkariga kirib-chiqadi (kontent kengayadi); holat sahifalar orasida saqlanadi. */
+  position: sticky;
   top: 0;
-  left: 0;
-  bottom: 0;
-  z-index: var(--z-drawer);
-  transform: translateX(-100%);
+  margin-left: calc(-1 * var(--sidebar-w));
   visibility: hidden;
   transition:
-    transform 0.18s ease,
+    margin-left 0.18s ease,
     visibility 0s linear 0.18s;
 }
-/* Yopiq drawer'dagi havolalar Tab bilan fokuslanmasin — visibility ochilishda darhol qaytadi. */
+/* Yopiq sidebar'dagi havolalar Tab bilan fokuslanmasin — visibility ochilishda darhol qaytadi. */
 .sidebar[data-open='true'] {
-  transform: translateX(0);
+  margin-left: 0;
   visibility: visible;
-  transition: transform 0.18s ease;
+  transition: margin-left 0.18s ease;
 }
 .brand {
   padding: var(--sidebar-brand-pad);
@@ -96,6 +93,24 @@
   font-size: var(--fs-lg);
   line-height: 1;
   cursor: pointer;
+}
+/* ❓ Tor ekran (≤900px) — kontent ustiga chiqadigan drawer; sahifaga o'tilganda yopiladi. */
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    z-index: var(--z-drawer);
+    margin-left: 0;
+    transform: translateX(-100%);
+    transition:
+      transform 0.18s ease,
+      visibility 0s linear 0.18s;
+  }
+  .sidebar[data-open='true'] {
+    transform: translateX(0);
+    transition: transform 0.18s ease;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .sidebar,

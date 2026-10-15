@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useLogout } from '@/features/auth/hooks';
 import { homePathForRole, useAuth } from '@/shared/auth/useAuth';
@@ -8,10 +8,11 @@ import { navBadges, navCrumb, useNavData } from '../nav-data';
 import styles from './AppShell.module.css';
 import { PageHeaderContext, type PageHeaderOverride } from './page-header-context';
 import { Sidebar } from './Sidebar';
+import { useSidebarOpen } from './useSidebarOpen';
 import { useClock } from './useClock';
 
 /**
- * Kirgan foydalanuvchi qobig'i (SPEC-SCREENS §2): sidebar (drawer, ☰ bilan ochiladi) + sticky Topbar + content.
+ * Kirgan foydalanuvchi qobig'i (SPEC-SCREENS §2): sidebar (☰ bilan ochiladi/yopiladi) + sticky Topbar + content.
  * `RequireRole` ichida layout route sifatida ishlatiladi; sahifalar `<Outlet/>` orqali.
  * Sahifa sarlavhasi/amallari: `usePageHeader()`.
  */
@@ -21,7 +22,6 @@ export function AppShell() {
   const logout = useLogout();
   const clock = useClock();
   const [override, setOverride] = useState<PageHeaderOverride>({});
-  const [menuOpen, setMenuOpen] = useState(false);
   const [actionsEl, setActionsEl] = useState<HTMLElement | null>(null);
 
   // Badge/crumb — real API; yuklanish yoki xatoda badge yo'q, crumb faqat "Admin".
@@ -34,22 +34,20 @@ export function AppShell() {
   const title = override.title ?? titleForPath(items, location.pathname);
   const crumb = override.crumb ?? navCrumb(nav.data);
 
-  const closeMenu = useCallback(() => setMenuOpen(false), []);
-  // Qidiruv yorlig'i: sidebar drawer — yopiq bo'lsa avval ochiladi.
-  const openMenuForSearch = useCallback(() => setMenuOpen(true), []);
-  useEffect(() => {
-    // Marshrut o'zgarganda drawer yopiladi.
-    setMenuOpen(false);
-  }, [location.pathname]);
+  // ☰ — desktop'da ochib-yopadi (sahifalar orasida saqlanadi), tor ekranda drawer.
+  const sidebar = useSidebarOpen(location.pathname);
+  const menuOpen = sidebar.isOpen;
+  const drawerOpen = sidebar.drawer && menuOpen;
+  const closeDrawer = sidebar.close;
   useEffect(() => {
     // Esc — ochiq drawer'ni yopadi (qidiruv maydoni Esc'ni o'zi ushlaydi).
-    if (!menuOpen) return;
+    if (!drawerOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !e.defaultPrevented) setMenuOpen(false);
+      if (e.key === 'Escape' && !e.defaultPrevented) closeDrawer();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [menuOpen]);
+  }, [drawerOpen, closeDrawer]);
 
   const ctx = useMemo(() => ({ override, setOverride, actionsEl }), [override, actionsEl]);
 
@@ -64,17 +62,21 @@ export function AppShell() {
           onLogout={() => logout.mutate()}
           logoutPending={logout.isPending}
           open={menuOpen}
-          onClose={closeMenu}
-          onSearchShortcut={openMenuForSearch}
+          onClose={sidebar.drawer ? sidebar.close : undefined}
+          onSearchShortcut={sidebar.open}
         />
-        <div className={styles.backdrop} data-open={menuOpen || undefined} onClick={closeMenu} />
+        <div
+          className={styles.backdrop}
+          data-open={drawerOpen || undefined}
+          onClick={sidebar.close}
+        />
         <main className={styles.main}>
           <Topbar
             crumb={crumb}
             title={title}
             clock={clock}
             actions={<div ref={setActionsEl} className={styles.actionsSlot} />}
-            onMenuClick={() => setMenuOpen((v) => !v)}
+            onMenuClick={sidebar.toggle}
             menuOpen={menuOpen}
           />
           <div className={styles.content}>
