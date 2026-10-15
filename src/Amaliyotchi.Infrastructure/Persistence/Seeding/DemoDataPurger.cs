@@ -1,3 +1,4 @@
+using Amaliyotchi.Application.Common.Caching;
 using System.Data;
 using System.Globalization;
 using System.Text.Json;
@@ -65,6 +66,7 @@ public sealed class DemoDataPurger(
     AppDbContext db,
     IFileStorage storage,
     IClock clock,
+    IAppCache cache,
     ILogger<DemoDataPurger> logger)
 {
     public const string AnchorStudentName = "Aliyev Akmal";
@@ -149,6 +151,9 @@ public sealed class DemoDataPurger(
 
         if (!report.Applied)
             return report;
+
+        // ExecuteDelete kesh interceptor'idan o'tmaydi — barcha teglar qo'lda bekor qilinadi (Redis bo'lsa API'niki ham).
+        await cache.InvalidateAsync(CacheTags.All, CancellationToken.None);
 
         logger.LogWarning("purge-demo: demo ma'lumot o'chirildi — {Rows} qator ({Tables})",
             report.TotalRows, string.Join(", ", report.Counts.Where(c => c.Count > 0).Select(c => $"{c.Table}={c.Count}")));

@@ -368,9 +368,10 @@ Ildizdagi `compose.yaml` — `deploy/docker-compose.yml` ni (production rejimi, 
 ildizdan `docker compose up -d --build` ham ishlaydi; dev override bilan:
 `docker compose -f compose.yaml -f deploy/docker-compose.dev.yml up -d --build`.
 
-### Eski stack'dan o'tish (MinIO/Redis olib tashlandi)
+### Eski stack'dan o'tish (MinIO olib tashlandi; Redis — faqat kesh)
 
-Kod MinIO/Redis ishlatmaydi (fayllar — `LocalFileStorage`, `api-data` volume). `deploy.sh` eski konteynerlarni
+Kod MinIO ishlatmaydi (fayllar — `LocalFileStorage`, `api-data` volume). Redis (v3.35 dan) — faqat o'qish keshi
+(`redis` servisi, volume'siz, host porti yo'q, `allkeys-lru`); eski `amaliyotchi_redis*` volume'lari kerak emas. `deploy.sh` eski konteynerlarni
 `--remove-orphans` bilan o'chiradi va bazadagi eski postgres parolini (`amaliyotchi`) `.env` dagisiga moslaydi.
 Volume'lar qo'lda: `docker volume rm amaliyotchi_minio-data`. Seq volume avval autentifikatsiyasiz yaratilgan
 bo'lsa, `SEQ_ADMIN_PASSWORD` qo'llanmaydi — Seq UI → Settings → Users'da autentifikatsiyani yoqing (yoki

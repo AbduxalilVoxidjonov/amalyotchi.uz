@@ -1,5 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { http, HttpResponse } from 'msw';
+import { server } from '@/mocks/server';
 import { renderAdminRoute } from '../shared/renderAdminRoute';
 
 describe('DiariesPage (/admin/diaries)', () => {
@@ -59,5 +61,44 @@ describe('DiariesPage (/admin/diaries)', () => {
     const onTime = screen.getByRole('article', { name: 'Kundalik: Aliyev Akmal' });
     expect(within(onTime).queryByText('Kech yuborilgan')).not.toBeInTheDocument();
     expect(within(onTime).queryByText('PDF hisobot')).not.toBeInTheDocument();
+  });
+
+  it("limit bilan so'raladi; javob limitga teng bo'lsa — \"Ko'proq ko'rsatish\" limitni oshiradi", async () => {
+    const user = userEvent.setup();
+    const limits: string[] = [];
+    server.use(
+      http.get('/api/admin/diaries', ({ request }) => {
+        const limit = Number(new URL(request.url).searchParams.get('limit'));
+        limits.push(String(limit));
+        const count = limit === 100 ? 100 : 130;
+        return HttpResponse.json(
+          Array.from({ length: count }, (_, i) => ({
+            id: `bulk-${i}`,
+            studentId: `s-${i}`,
+            studentName: `Talaba ${i}`,
+            group: '412-22',
+            date: '2026-10-11',
+            submittedAt: '2026-10-11T12:42:00Z',
+            submittedLate: false,
+            status: 'approved',
+            text: 'Matn',
+            learned: null,
+            files: [],
+            score: 5,
+            comment: null,
+            reviewedAt: '2026-10-11T13:00:00Z',
+          })),
+        );
+      }),
+    );
+    renderAdminRoute('/admin/diaries');
+    await screen.findByRole('article', { name: 'Kundalik: Talaba 99' });
+    expect(limits).toEqual(['100']);
+
+    await user.click(screen.getByRole('button', { name: "Ko'proq ko'rsatish" }));
+    await screen.findByRole('article', { name: 'Kundalik: Talaba 129' });
+    expect(limits).toEqual(['100', '200']);
+    // 130 < 200 — boshqa yozuv yo'q, tugma yashiriladi.
+    expect(screen.queryByRole('button', { name: "Ko'proq ko'rsatish" })).not.toBeInTheDocument();
   });
 });

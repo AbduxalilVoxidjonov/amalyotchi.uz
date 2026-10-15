@@ -29,9 +29,13 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          react: ['react', 'react-dom', 'react-router-dom'],
-          query: ['@tanstack/react-query'],
+        // Funksiya shakli: obyekt shakli faqat paket kirish modulini oladi — `react-dom/client` (asosiy hajm)
+        // ilova entry chunk'iga tushib, har deploy'da ~84 kB gzip vendor kodi kesh'dan chiqib ketardi.
+        manualChunks(id) {
+          if (/[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(id))
+            return 'react';
+          if (/[\\/]node_modules[\\/]@tanstack[\\/]/.test(id)) return 'query';
+          return undefined;
         },
       },
     },

@@ -383,7 +383,7 @@ interface AdminNavDto {
     // v3.28 — sobiq `GET /api/tutor/nav` sonlari (kalit nomlari o'zgarmagan); `tutors` olib tashlandi:
     today: number;                  // = GET /api/admin/today (sukut) total
     applications: number;           // = GET /api/admin/applications?status=submitted soni
-    diaries: number;                // = GET /api/admin/diaries (sukut) soni
+    diaries: number;                // tekshirilmagan (submitted/seen) kundaliklar jami soni (ro'yxat endi limitli, v3.35)
     pendingFaceEnrollments: number; // = GET /api/admin/face-enrollments?status=pending soni
   };
   context: { academicYear: string | null }; // joriy (faol) o'quv yili nomi, masalan "2026-2027"; yo'q → null
@@ -3980,3 +3980,14 @@ o'zi **qayta topshira olmaydi** — faqat admin rad etsa yoki "qayta olish" (res
   Talaba ilovaga kira olmasligining sababi odatda **parol yo'qligi** (`hasPassword=false`) — admin "Parol berish" qiladi.
 - Endpoint soni: Admin +1.
 
+
+### 6.40 v3.34 → v3.35 (15.10.2026): tezlik — kundaliklar limiti, server keshi
+
+- `GET /api/admin/diaries` — **yangi** ixtiyoriy `?limit=` (sukut **100**, 1..1000 ga keltiriladi). Avval cheklov yo'q edi:
+  butun tarix (har talaba × har kun, matn bilan) bitta javobda kelardi. Tartib o'zgarmadi (tekshirilmaganlar birinchi,
+  keyin `submittedAt` kamayish bo'yicha; teng bo'lsa `id`). Javob uzunligi `limit` ga teng bo'lsa — yana yozuv bor
+  (dashboard "Ko'proq ko'rsatish" limitni +100 oshiradi). Javob shakli (massiv) o'zgarmadi.
+- `GET /api/admin/nav` sonlari endi server keshidan (≤ 60 s), `GET /api/admin/dashboard` (≤ 30 s), `GET /api/admin/settings`,
+  `GET /api/admin/students/filters`, `GET /api/admin/students/group-options` ham keshlanadi. Har qanday yozuv (admin
+  yoki talaba amali) tegishli keshni **darhol** bekor qiladi — mutatsiyadan keyingi `invalidateQueries` yangi son oladi.
+  Kontrakt (shakllar) o'zgarmadi.

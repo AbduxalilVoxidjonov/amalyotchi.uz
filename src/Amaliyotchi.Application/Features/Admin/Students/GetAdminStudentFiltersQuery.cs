@@ -1,3 +1,4 @@
+using Amaliyotchi.Application.Common.Caching;
 using Amaliyotchi.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -21,10 +22,18 @@ public sealed record AdminStudentFiltersDto(
 /// <c>Course</c> qiymatlari, o'sish tartibida. 3 ta yengil SELECT.</summary>
 public sealed record GetAdminStudentFiltersQuery : IRequest<AdminStudentFiltersDto>;
 
-internal sealed class GetAdminStudentFiltersQueryHandler(IApplicationDbContext db)
+internal sealed class GetAdminStudentFiltersQueryHandler(IApplicationDbContext db, IAppCache cache)
     : IRequestHandler<GetAdminStudentFiltersQuery, AdminStudentFiltersDto>
 {
+    private static readonly string[] Tags = [CacheTags.Organization];
+
+    /// <summary>Ma'lumotnoma — keshlanadi; tuzilma yozuvi <see cref="CacheTags.Organization"/> ni darhol bekor qiladi.</summary>
     public async Task<AdminStudentFiltersDto> Handle(GetAdminStudentFiltersQuery request, CancellationToken cancellationToken)
+        => await cache.GetOrCreateAsync(
+            CacheKeys.StudentFilters, ct => new ValueTask<AdminStudentFiltersDto>(LoadAsync(ct)),
+            CacheKeys.OrganizationTtl, Tags, cancellationToken);
+
+    private async Task<AdminStudentFiltersDto> LoadAsync(CancellationToken cancellationToken)
     {
         var faculties = await db.Faculties
             .AsNoTracking()

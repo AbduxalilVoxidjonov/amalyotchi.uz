@@ -86,6 +86,17 @@ public static class StudentStatsCalculator
         }
     }
 
+    /// <summary><see cref="ComputeDiary"/> ning SQL agregatlari (jami, ballangan, ballar yig'indisi) bo'yicha varianti —
+    /// natija aynan bir xil (o'rtacha 1 xonagacha, AwayFromZero).</summary>
+    public static DiaryStats DiaryFromTotals(int count, int scoredCount, int scoreSum)
+    {
+        if (count == 0)
+            return DiaryStats.Empty;
+
+        var avg = scoredCount == 0 ? 0 : Math.Round((double)scoreSum / scoredCount, 1, MidpointRounding.AwayFromZero);
+        return new DiaryStats(count, scoredCount, avg);
+    }
+
     public static DiaryStats ComputeDiary(IReadOnlyCollection<int?> scores)
     {
         if (scores.Count == 0)

@@ -29,7 +29,7 @@ public sealed class AdminDiariesTests(ApiFixture fixture)
             return entry;
         });
 
-        var response = await s.Client.GetAsync("/api/admin/diaries");
+        var response = await s.Client.GetAsync("/api/admin/diaries?limit=1000");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var list = (await response.Content.ReadAsync<List<DiaryReviewEntry>>())!;
@@ -42,7 +42,7 @@ public sealed class AdminDiariesTests(ApiFixture fixture)
         first.Score.Should().BeNull();
         list.Single(d => d.Id == approved.Id).Score.Should().Be(4);
 
-        var onlyApproved = (await (await s.Client.GetAsync("/api/admin/diaries?status=approved")).Content.ReadAsync<List<DiaryReviewEntry>>())!;
+        var onlyApproved = (await (await s.Client.GetAsync("/api/admin/diaries?status=approved&limit=1000")).Content.ReadAsync<List<DiaryReviewEntry>>())!;
         onlyApproved.Select(d => d.Id).Should().Contain(approved.Id).And.NotContain(pending.Id);
     }
 
@@ -84,10 +84,38 @@ public sealed class AdminDiariesTests(ApiFixture fixture)
         var body = new { action = "approve", score = 4 };
 
         (await s.Client.PostJsonAsync($"/api/admin/diaries/{Guid.CreateVersion7()}/review", body)).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await (await s.Client.GetAsync("/api/admin/diaries")).Content.ReadAsync<List<DiaryReviewEntry>>())!
+        (await (await s.Client.GetAsync("/api/admin/diaries?limit=1000")).Content.ReadAsync<List<DiaryReviewEntry>>())!
             .Should().Contain(d => d.Id == entry.Id, "admin barcha kundaliklarni ko'radi");
 
         var studentClient = await Factory.LoginAsStudentAsync(s.Student);
         (await studentClient.PostJsonAsync($"/api/admin/diaries/{entry.Id}/review", body)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    /// <summary>v3.35: ro'yxat limitli (sukut 100, 1..1000) — tartib saqlanadi: tekshirilmaganlar birinchi, keyin eng yangisi;
+    /// limitdan kichik javob — boshqa yozuv yo'q.</summary>
+    [Fact]
+    public async Task List_Limit_TartibniSaqlaydi_VaChegaralanadi()
+    {
+        var s = await Factory.CreateAdminScenarioAsync();
+        var days = await Factory.PastWorkDaysAsync(s.Period, 2);
+        await Factory.AddDiaryAsync(s.Student, s.Period, days[0], s.Admin.Id, score: 5);
+        await Factory.AddDiaryAsync(s.Student, s.Period, days[1]);
+
+        var all = (await (await s.Client.GetAsync("/api/admin/diaries?limit=1000")).Content.ReadAsync<List<DiaryReviewEntry>>())!;
+        all.Count.Should().BeGreaterThanOrEqualTo(2);
+        var unreviewed = all.TakeWhile(d => d.Status is DiaryStatus.Submitted or DiaryStatus.Seen).ToList();
+        all.Skip(unreviewed.Count).Should().OnlyContain(d => d.Status != DiaryStatus.Submitted && d.Status != DiaryStatus.Seen,
+            "tekshirilmaganlar birinchi");
+        unreviewed.Select(d => d.SubmittedAt).Should().BeInDescendingOrder();
+        all.Skip(unreviewed.Count).Select(d => d.SubmittedAt).Should().BeInDescendingOrder();
+
+        var two = (await (await s.Client.GetAsync("/api/admin/diaries?limit=2")).Content.ReadAsync<List<DiaryReviewEntry>>())!;
+        two.Select(d => d.Id).Should().Equal(all.Take(2).Select(d => d.Id));
+
+        // Chegaradan tashqari qiymatlar 1..1000 ga keltiriladi (400 emas).
+        var clampedLow = (await (await s.Client.GetAsync("/api/admin/diaries?limit=0")).Content.ReadAsync<List<DiaryReviewEntry>>())!;
+        clampedLow.Should().ContainSingle().Which.Id.Should().Be(all[0].Id);
+        var byDefault = (await (await s.Client.GetAsync("/api/admin/diaries")).Content.ReadAsync<List<DiaryReviewEntry>>())!;
+        byDefault.Count.Should().Be(Math.Min(all.Count, 100));
     }
 }

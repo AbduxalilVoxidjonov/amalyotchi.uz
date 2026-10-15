@@ -1,3 +1,4 @@
+using Amaliyotchi.Application.Common.Caching;
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Scoping;
 using Amaliyotchi.Application.Features.Admin.Companies;
@@ -36,16 +37,32 @@ public sealed record AdminNavContext(string? AcademicYear);
 public sealed record AdminNavDto(AdminNavCounts Counts, AdminNavContext Context);
 
 /// <summary><c>GET /api/admin/nav</c> — har sahifada chaqiriladi, shuning uchun faqat COUNT va bitta skalyar so'rov.
-/// Manbalar ro'yxat handler'larining o'zidan (<c>Source(db)</c>) olinadi — predikatlar nusxalanmaydi.</summary>
+/// Manbalar ro'yxat handler'larining o'zidan (<c>Source(db)</c>) olinadi — predikatlar nusxalanmaydi.
+/// <para>Natija keshlanadi (<see cref="CacheKeys.AdminNav"/>, 60 s): admin ko'lami cheklovsiz, ya'ni hamma admin bir xil
+/// sonlarni ko'radi. Tegishli jadvallarga (talaba, ariza, kundalik, yuz, tuzilma ...) har qanday yozuv — admin yoki
+/// talaba amali — <see cref="CacheTags.AdminNav"/> ni darhol bekor qiladi (SaveChanges interceptor).</para></summary>
 public sealed record GetAdminNavQuery : IRequest<AdminNavDto>;
 
-internal sealed class GetAdminNavQueryHandler(IApplicationDbContext db, IScopeResolver scopeResolver)
+internal sealed class GetAdminNavQueryHandler(IApplicationDbContext db, IScopeResolver scopeResolver, IAppCache cache)
     : IRequestHandler<GetAdminNavQuery, AdminNavDto>
 {
+    private static readonly string[] Tags = [CacheTags.AdminNav];
+
     public async Task<AdminNavDto> Handle(GetAdminNavQuery request, CancellationToken cancellationToken)
     {
         var scope = await scopeResolver.ResolveAsync(cancellationToken);
 
+        // Kalitda foydalanuvchi yo'q — faqat cheklovsiz ko'lam keshlanadi (boshqa ko'lam bo'lsa — to'g'ridan-to'g'ri baza).
+        if (!scope.IsUnrestricted)
+            return await LoadAsync(scope, cancellationToken);
+
+        return await cache.GetOrCreateAsync(
+            CacheKeys.AdminNav, ct => new ValueTask<AdminNavDto>(LoadAsync(scope, ct)),
+            CacheKeys.AdminNavTtl, Tags, cancellationToken);
+    }
+
+    private async Task<AdminNavDto> LoadAsync(DataScope scope, CancellationToken cancellationToken)
+    {
         // Bitta DbContext — so'rovlar ketma-ket (parallel emas).
         var faculties = await GetFacultiesQueryHandler.Source(db).CountAsync(cancellationToken);
         var companies = await GetCompaniesQueryHandler.Source(db).CountAsync(cancellationToken);

@@ -36,16 +36,32 @@ internal static class GradingRowBuilder
                 .ToListAsync(cancellationToken))
             .ToLookup(l => (l.StudentUserId, l.PeriodId), l => (l.DateFrom, l.DateTo));
 
+        // Kundalik statistikasi SQL'da agregatlanadi (talaba × davr bo'yicha bitta qator) — har yozuvni xotiraga olib
+        // kelmaymiz; o'rtacha qiymat ComputeDiary bilan bir xil yaxlitlanadi (DiaryFromTotals).
         var diaries = (await db.DiaryEntries.AsNoTracking().InScope(scope)
                 .Where(d => studentIds.Contains(d.StudentUserId) && periodIds.Contains(d.PeriodId))
-                .Select(d => new { d.StudentUserId, d.PeriodId, d.Score })
+                .GroupBy(d => new { d.StudentUserId, d.PeriodId })
+                .Select(g => new
+                {
+                    g.Key.StudentUserId,
+                    g.Key.PeriodId,
+                    Count = g.Count(),
+                    Scored = g.Count(d => d.Score != null),
+                    Sum = g.Sum(d => d.Score ?? 0)
+                })
                 .ToListAsync(cancellationToken))
-            .ToLookup(d => (d.StudentUserId, d.PeriodId), d => d.Score);
+            .ToDictionary(
+                d => (d.StudentUserId, d.PeriodId),
+                d => StudentStatsCalculator.DiaryFromTotals(d.Count, d.Scored, d.Sum));
 
         var grades = await db.PracticeGrades.AsNoTracking().InScope(scope)
             .Where(g => studentIds.Contains(g.StudentUserId) && periodIds.Contains(g.PeriodId))
             .Select(g => new { g.StudentUserId, g.PeriodId, g.TutorPoints, g.ReferencePoints })
             .ToListAsync(cancellationToken);
+
+        var gradeByKey = grades
+            .GroupBy(g => (g.StudentUserId, g.PeriodId))
+            .ToDictionary(g => g.Key, g => g.First());
 
         var rows = new List<GradingRow>(students.Count);
         foreach (var student in students)
@@ -57,8 +73,8 @@ internal static class GradingRowBuilder
             var key = (student.UserId, period.Period.Id);
             var stats = StudentStatsCalculator.ComputeAttendance(
                 period, attendance[student.UserId].ToList(), leaves[key].ToList(), today, localNow, student.HoursOn(today));
-            var diary = StudentStatsCalculator.ComputeDiary(diaries[key].ToList());
-            var grade = grades.FirstOrDefault(g => g.StudentUserId == student.UserId && g.PeriodId == period.Period.Id);
+            var diary = diaries.GetValueOrDefault(key) ?? DiaryStats.Empty;
+            var grade = gradeByKey.GetValueOrDefault(key);
 
             var result = GradeCalculator.Compute(
                 stats.AttendancePct, diary.ScoredCount, diary.Avg, grade?.TutorPoints, grade?.ReferencePoints);

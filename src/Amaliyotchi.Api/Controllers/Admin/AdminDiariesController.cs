@@ -12,13 +12,14 @@ namespace Amaliyotchi.Api.Controllers.Admin;
 [Authorize(Policy = Policies.AdminOnly)]
 public sealed class AdminDiariesController(ISender sender) : ControllerBase
 {
-    /// <summary><c>?status=submitted|seen|rewrite|approved</c> (berilmasa — hammasi, tekshirilmaganlar birinchi).</summary>
+    /// <summary><c>?status=submitted|seen|rewrite|approved</c> (berilmasa — hammasi, tekshirilmaganlar birinchi);
+    /// <c>?limit=</c> — eng ko'p yozuv (sukut 100, maks. 1000).</summary>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<DiaryReviewEntry>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<IReadOnlyList<DiaryReviewEntry>>> List(
-        [FromQuery] DiaryStatus? status, CancellationToken cancellationToken)
-        => Ok(await sender.Send(new GetDiariesQuery(status), cancellationToken));
+        [FromQuery] DiaryStatus? status, [FromQuery] int? limit, CancellationToken cancellationToken)
+        => Ok(await sender.Send(new GetDiariesQuery(status, limit), cancellationToken));
 
     /// <summary>Kundalikni baholash (<see cref="ReviewDiaryCommand"/>): <c>approve</c> (ball ixtiyoriy) ·
     /// <c>score</c> (ball 1–5 majburiy) · <c>rewrite</c> (izoh majburiy). Tekshiruvchi sifatida joriy admin yoziladi va

@@ -54,7 +54,7 @@ public sealed class DiaryDateTests(ApiFixture fixture)
 
         // Admin ro'yxatida ham kech belgisi va bo'sh matn.
         var admin = await Factory.LoginAsAdminAsync();
-        using var list = JsonDocument.Parse(await (await admin.GetAsync("/api/admin/diaries")).Content.ReadAsStringAsync());
+        using var list = JsonDocument.Parse(await (await admin.GetAsync("/api/admin/diaries?limit=1000")).Content.ReadAsStringAsync());
         var row = list.RootElement.EnumerateArray().Single(e => e.GetProperty("id").GetGuid() == entry.Id);
         row.GetProperty("submittedLate").GetBoolean().Should().BeTrue();
         row.GetProperty("text").GetString().Should().BeEmpty();

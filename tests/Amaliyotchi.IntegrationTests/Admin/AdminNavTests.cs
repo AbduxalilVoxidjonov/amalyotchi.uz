@@ -74,7 +74,7 @@ public sealed class AdminNavTests(ApiFixture fixture)
         nav.Counts.Today.Should().Be(today.Stats.Total).And.Be(today.Rows.Total);
         var applications = (await (await client.GetAsync("/api/admin/applications")).Content.ReadAsync<ApplicationListResponse>())!;
         nav.Counts.Applications.Should().Be(applications.Counts.Submitted).And.BePositive();
-        var diaries = (await (await client.GetAsync("/api/admin/diaries")).Content.ReadAsync<List<DiaryReviewEntry>>())!;
+        var diaries = (await (await client.GetAsync("/api/admin/diaries?limit=1000")).Content.ReadAsync<List<DiaryReviewEntry>>())!;
         nav.Counts.Diaries.Should().Be(diaries.Count(d => d.Status is DiaryStatus.Submitted or DiaryStatus.Seen));
         var faces = (await (await client.GetAsync("/api/admin/face-enrollments")).Content.ReadAsync<FaceEnrollmentList>())!;
         nav.Counts.PendingFaceEnrollments.Should().Be(faces.Items.Count);

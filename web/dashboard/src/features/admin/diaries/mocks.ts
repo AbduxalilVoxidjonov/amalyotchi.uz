@@ -94,10 +94,15 @@ const validation = (errors: Record<string, string[]>) =>
 
 export const diariesHandlers: HttpHandler[] = [
   http.get('/api/admin/diaries', ({ request }) => {
-    const status = new URL(request.url).searchParams.get('status');
+    const params = new URL(request.url).searchParams;
+    const status = params.get('status');
     if (status !== null && !(STATUSES as string[]).includes(status))
       return validation({ Status: [`The value '${status}' is not valid for Status.`] });
-    return HttpResponse.json(mockDiaries.filter((d) => status === null || d.status === status));
+    // Backend kabi: limit 1..1000, sukut 100.
+    const limit = Math.min(Math.max(Number(params.get('limit') ?? 100) || 100, 1), 1000);
+    return HttpResponse.json(
+      mockDiaries.filter((d) => status === null || d.status === status).slice(0, limit),
+    );
   }),
 
   // Baholash — Kundaliklar sahifasi va talaba profili uchun bitta endpoint.

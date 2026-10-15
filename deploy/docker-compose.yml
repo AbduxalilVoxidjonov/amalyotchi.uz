@@ -68,6 +68,38 @@ services:
         limits:
           memory: ${POSTGRES_MEM_LIMIT:-1g}
 
+  # ---------- Kesh (Redis) ----------
+  # Faqat o'qish keshi (HybridCache L2: sidebar badge'lari, dashboard, sozlamalar, ma'lumotnomalar) — manba emas.
+  # Diskka yozmaydi (--save "" --appendonly no), volume yo'q: restart'da bo'sh boshlanadi, API bazadan to'ldiradi.
+  # Xotira chegarasi + allkeys-lru: to'lsa eng eski kalitlar chiqariladi (OOM emas). Host porti YO'Q — faqat ichki tarmoq.
+  # Redis to'xtasa API ishlashda davom etadi (L1 xotira kesh + baza; ulanish fonda tiklanadi).
+  redis:
+    <<: *defaults
+    image: redis:7.4.6-alpine
+    container_name: amaliyotchi-redis
+    command:
+      - redis-server
+      - --maxmemory
+      - ${REDIS_MAXMEMORY:-96mb}
+      - --maxmemory-policy
+      - allkeys-lru
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+    networks:
+      - amaliyotchi
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      start_period: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: ${REDIS_MEM_LIMIT:-128m}
+
   # ---------- Loglar (Seq) ----------
   # UI faqat 127.0.0.1:SEQ_PORT da — serverdan tashqarida: ssh -L 5341:127.0.0.1:5341 user@server → http://127.0.0.1:5341
   seq:
@@ -110,6 +142,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      # service_started (healthy emas): Redis — ixtiyoriy kesh, uning nosozligi API startini to'xtatmasin.
+      redis:
+        condition: service_started
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_HTTP_PORTS: "8080"
@@ -125,6 +160,8 @@ services:
       Seed__Demo: ${SEED_DEMO:-false}
       Seed__AdminHemisId: ${ADMIN_HEMIS_ID:?ADMIN_HEMIS_ID deploy/.env da berilishi shart (birinchi admin login'i, faqat raqamlar)}
       Seed__AdminPassword: ${ADMIN_PASSWORD:?ADMIN_PASSWORD deploy/.env da berilishi shart (openssl rand -base64 18)}
+      # O'qish keshi (HybridCache L2). Bo'sh qoldirilsa — faqat jarayon ichidagi L1 kesh.
+      ConnectionStrings__Redis: ${REDIS_CONNECTION:-redis:6379}
       Storage__RootPath: /app/data/files
       # DataProtection kalitlari volume'da — konteyner qayta yaratilganda saqlanadi (zaxiraga kirmaydi, README).
       DataProtection__KeysPath: /app/data/keys

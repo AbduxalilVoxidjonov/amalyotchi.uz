@@ -1,3 +1,4 @@
+using Amaliyotchi.Application.Common.Caching;
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Common.Practice;
 using Amaliyotchi.Application.Features.Admin.Common;
@@ -72,15 +73,28 @@ public sealed record AdminDashboardDto(
     IReadOnlyList<FacultyAttendanceDto> Faculties,
     IReadOnlyList<AuditEntryDto> Audit);
 
-/// <summary><c>GET /api/admin/dashboard</c>. Bo'sh bazada ham 200 — hamma qiymat 0 / bo'sh ro'yxat.</summary>
+/// <summary><c>GET /api/admin/dashboard</c>. Bo'sh bazada ham 200 — hamma qiymat 0 / bo'sh ro'yxat.
+/// <para>~20 ta agregat so'rov — natija 30 s keshlanadi (<see cref="CacheTags.AdminDashboard"/>). Kalit daqiqagacha
+/// vaqtni o'z ichiga oladi ("bugun/kecha", "muddati o'tgan ariza" vaqtga bog'liq). Tegishli jadvallarga yozuv (davomat,
+/// ariza, kundalik, audit ...) keshni darhol bekor qiladi.</para></summary>
 public sealed record GetAdminDashboardQuery : IRequest<AdminDashboardDto>;
 
-internal sealed class GetAdminDashboardQueryHandler(IApplicationDbContext db, IClock clock)
+internal sealed class GetAdminDashboardQueryHandler(IApplicationDbContext db, IClock clock, IAppCache cache)
     : IRequestHandler<GetAdminDashboardQuery, AdminDashboardDto>
 {
+    private static readonly string[] Tags = [CacheTags.AdminDashboard];
+
     public async Task<AdminDashboardDto> Handle(GetAdminDashboardQuery request, CancellationToken cancellationToken)
     {
         var now = clock.UtcNow;
+        return await cache.GetOrCreateAsync(
+            CacheKeys.AdminDashboard(now),
+            ct => new ValueTask<AdminDashboardDto>(LoadAsync(now, ct)),
+            CacheKeys.AdminDashboardTtl, Tags, cancellationToken);
+    }
+
+    private async Task<AdminDashboardDto> LoadAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    {
         var calendar = await PracticeCalendar.LoadAsync(db, clock, cancellationToken);
         var today = calendar.Today;
 

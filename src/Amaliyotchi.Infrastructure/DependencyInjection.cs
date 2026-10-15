@@ -1,7 +1,9 @@
+using Amaliyotchi.Application.Common.Caching;
 using Amaliyotchi.Application.Common.Interfaces;
 using Amaliyotchi.Application.Features.Admin.Companies;
 using Amaliyotchi.Application.Features.Admin.Students;
 using Amaliyotchi.Infrastructure.Bot;
+using Amaliyotchi.Infrastructure.Caching;
 using Amaliyotchi.Infrastructure.Excel;
 using Amaliyotchi.Infrastructure.Faces;
 using Amaliyotchi.Infrastructure.Identity;
@@ -12,8 +14,10 @@ using Amaliyotchi.Infrastructure.Persistence.Seeding;
 using Amaliyotchi.Infrastructure.Services;
 using Amaliyotchi.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using StackExchange.Redis;
 
 namespace Amaliyotchi.Infrastructure;
 
@@ -32,15 +36,19 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUser, CurrentUser>();
         services.AddScoped<AuditSaveChangesInterceptor>();
         services.AddScoped<UserSessionCacheInterceptor>();
+        services.AddScoped<CacheInvalidationInterceptor>();
         // Access token stamp keshi (UserSessionValidator) — har so'rovda DB'ga bormaslik uchun.
         services.AddMemoryCache();
+        AddAppCache(services, configuration);
 
         services.AddDbContext<AppDbContext>((sp, options) =>
         {
             ConfigureNpgsql(options, connectionString);
+            // Tartib muhim: kesh interceptor'i audit yozuvlari (AuditLog) qo'shilgandan KEYIN o'zgarishlarni yig'adi.
             options.AddInterceptors(
                 sp.GetRequiredService<AuditSaveChangesInterceptor>(),
-                sp.GetRequiredService<UserSessionCacheInterceptor>());
+                sp.GetRequiredService<UserSessionCacheInterceptor>(),
+                sp.GetRequiredService<CacheInvalidationInterceptor>());
         });
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<AppDbContext>());
@@ -95,6 +103,42 @@ public static class DependencyInjection
         services.AddScoped<DemoDataPurger>();
 
         return services;
+    }
+
+    /// <summary>O'qish keshi (<see cref="IAppCache"/>): HybridCache — L1 jarayon xotirasi, <c>ConnectionStrings:Redis</c>
+    /// berilsa L2 Redis (restart'dan keyin ham issiq, CLI bilan umumiy). Berilmasa — faqat L1 (testlar, lokal dev).
+    /// Redis ishlamay qolsa so'rovlar yiqilmaydi: ulanish fonda tiklanadi (<c>AbortOnConnectFail=false</c>), qisqa
+    /// timeout'lar, kesh xatosida qiymat bazadan olinadi (<see cref="HybridAppCache"/>).</summary>
+    private static void AddAppCache(IServiceCollection services, IConfiguration configuration)
+    {
+        var redis = configuration.GetConnectionString("Redis");
+        if (!string.IsNullOrWhiteSpace(redis))
+        {
+            services.AddStackExchangeRedisCache(options =>
+            {
+                var config = ConfigurationOptions.Parse(redis);
+                config.AbortOnConnectFail = false;
+                // Ulanish yo'q paytda buyruqlar navbatda (backlog) kutmasin — darhol xato, HybridCache uni "miss" deb
+                // bazadan o'qiydi. Aks holda Redis to'xtaganda har L1 miss AsyncTimeout qadar (1 s+) kechikardi.
+                config.BacklogPolicy = BacklogPolicy.FailFast;
+                config.ConnectTimeout = Math.Min(config.ConnectTimeout, 2000);
+                config.SyncTimeout = Math.Min(config.SyncTimeout, 1000);
+                config.AsyncTimeout = Math.Min(config.AsyncTimeout, 1000);
+                options.ConfigurationOptions = config;
+                options.InstanceName = "amaliyotchi:";
+            });
+        }
+
+        services.AddHybridCache(options =>
+        {
+            options.MaximumPayloadBytes = 4 * 1024 * 1024;
+            options.DefaultEntryOptions = new HybridCacheEntryOptions
+            {
+                Expiration = TimeSpan.FromMinutes(1),
+                LocalCacheExpiration = TimeSpan.FromMinutes(1)
+            };
+        });
+        services.AddSingleton<IAppCache, HybridAppCache>();
     }
 
     /// <summary>Telegram bot (long polling) — faqat API host'ida ro'yxatdan o'tadi (Worker'da emas: bir vaqtda
