@@ -1,6 +1,6 @@
 import { Button, Select } from '@/shared/ui';
 import type { StudentFilters } from '../types';
-import type { StudentFilterValues } from '../useStudentListParams';
+import type { StudentAccessFilter, StudentFilterValues } from '../useStudentListParams';
 import styles from './StudentFiltersBar.module.css';
 
 export interface StudentFiltersBarProps {
@@ -13,6 +13,8 @@ export interface StudentFiltersBarProps {
   onFacultyChange: (facultyId: string) => void;
   onDirectionChange: (directionId: string) => void;
   onCourseChange: (course: string) => void;
+  /** v3.34 — "Ilova" filtri (parolsiz — ilovaga kira olmaydiganlar). Berilmasa select yo'q. */
+  onAccessChange?: (access: StudentAccessFilter) => void;
   /** Faol filtr bor — "Filtrlarni tozalash" tugmasi chiqadi. */
   hasFilters: boolean;
   onClear: () => void;
@@ -20,7 +22,10 @@ export interface StudentFiltersBarProps {
   total: number | undefined;
 }
 
-/** Qidiruv yonidagi filtrlar: Fakultet · Yo'nalish (fakultetga bog'liq) · Kurs + tozalash + jami. */
+/**
+ * Qidiruv yonidagi filtrlar: Fakultet · Yo'nalish (fakultetga bog'liq) · Kurs · Ilova (v3.34) +
+ * tozalash + jami.
+ */
 export function StudentFiltersBar({
   options,
   isLoading,
@@ -29,6 +34,7 @@ export function StudentFiltersBar({
   onFacultyChange,
   onDirectionChange,
   onCourseChange,
+  onAccessChange,
   hasFilters,
   onClear,
   total,
@@ -88,6 +94,19 @@ export function StudentFiltersBar({
             ))}
           </Select>
         </>
+      )}
+      {onAccessChange && (
+        <Select
+          aria-label="Ilovaga kirish"
+          variant="search"
+          wrapperClassName={styles.filter}
+          value={values.access ?? ''}
+          onChange={(e) => onAccessChange(e.target.value as StudentAccessFilter)}
+        >
+          <option value="">Ilova: barchasi</option>
+          <option value="noPassword">Ilovaga kira olmaydi (parol yo'q)</option>
+          <option value="hasPassword">Paroli bor</option>
+        </Select>
       )}
       {hasFilters && (
         <Button size="xs" onClick={onClear}>

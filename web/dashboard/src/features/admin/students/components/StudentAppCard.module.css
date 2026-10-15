@@ -1,0 +1,44 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.access {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.title {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.login {
+  font-family: var(--font-mono);
+}
+.never {
+  color: var(--color-text-faint);
+}
+.note {
+  margin: 0;
+  font-size: var(--fs-xs2);
+  color: var(--color-text-faint);
+  line-height: var(--lh-note);
+}
+.warn {
+  margin: 0;
+  font-size: var(--fs-xs2);
+  color: var(--color-bad-fg);
+  line-height: var(--lh-note);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.divider {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+}

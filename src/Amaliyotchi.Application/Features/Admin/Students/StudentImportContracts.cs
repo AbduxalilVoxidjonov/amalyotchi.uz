@@ -30,3 +30,16 @@ public sealed record StudentImportRow(int RowNumber, string? FullName, string? H
 
 /// <summary>Shablonning "Guruhlar" varag'idagi qator — admin guruh nomini qo'lda yozmasdan shu yerdan ko'chiradi.</summary>
 public sealed record StudentImportGroupRef(string Group, int Course, string Direction, string Department, string Faculty);
+
+/// <summary>v3.34: import paytida yaratilgan vaqtinchalik parol (faqat <c>generatePasswords=true</c> bo'lsa). Parol bazada
+/// faqat xesh sifatida saqlanadi — bu javobdan keyin uni qayta ko'rib bo'lmaydi.</summary>
+public sealed record StudentImportCredential(int Row, string FullName, string HemisId, string Password);
+
+/// <summary><c>POST /api/admin/students/import</c> javobi: umumiy <see cref="ImportResult"/> maydonlari +
+/// <paramref name="Credentials"/> (v3.34; parol yaratilmagan bo'lsa — bo'sh ro'yxat).</summary>
+public sealed record StudentImportResult(
+    int TotalRows,
+    int Created,
+    int Failed,
+    IReadOnlyList<ImportError> Errors,
+    IReadOnlyList<StudentImportCredential> Credentials);

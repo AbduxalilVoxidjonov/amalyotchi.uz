@@ -107,7 +107,7 @@ export function StudentPasswordModal({ open, student, onClose }: StudentPassword
         open={open}
         onClose={handleClose}
         title="Parol o'rnatildi"
-        description={`${student.name} uchun kirish ma'lumotini talabaga bering.`}
+        description={`${student.name} uchun ilovaga kirish ma'lumotini talabaga bering.`}
         width="440px"
         footer={
           <Button type="button" variant="primary" onClick={handleClose}>
@@ -133,7 +133,9 @@ export function StudentPasswordModal({ open, student, onClose }: StudentPassword
               </span>
             )}
           </div>
-          <p className={styles.note}>Talaba birinchi kirishda parolni o'zgartiradi.</p>
+          <p className={styles.note}>
+            Talaba ilovaga birinchi kirishda parolini o'zgartiradi va yuzini topshiradi.
+          </p>
         </div>
       </Modal>
     );
@@ -151,7 +153,7 @@ export function StudentPasswordModal({ open, student, onClose }: StudentPassword
       open={open}
       onClose={handleClose}
       title="Parol o'rnatish"
-      description={`${student.name} (HEMIS ${student.hemisId}) uchun parol o'rnatiladi. Eski parol bo'lsa, ishlamay qoladi.`}
+      description={`${student.name} (HEMIS ${student.hemisId}) uchun vaqtinchalik parol o'rnatiladi. Eski parol bo'lsa, ishlamay qoladi va ilovadagi sessiyalar yopiladi.`}
       width="440px"
       footer={
         <>

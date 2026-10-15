@@ -146,5 +146,8 @@ public enum AuditAction
     AdminStatusChanged = 77,
 
     /// <summary>Bosh admin admin parolini tikladi (vaqtinchalik parol; refresh tokenlar bekor qilinadi).</summary>
-    AdminPasswordReset = 78
+    AdminPasswordReset = 78,
+
+    /// <summary>Admin talabaning HEMIS ID sini (ilova logini) o'zgartirdi (v3.34). <c>changes</c> — <c>{ old, new }</c>.</summary>
+    StudentHemisIdChanged = 79
 }

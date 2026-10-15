@@ -17,16 +17,19 @@ import type {
 
 /**
  * Backend: `AdminStudentsController`.
- * GET  /api/admin/students?q=&page=&pageSize=&facultyId=&directionId=&course=
+ * GET  /api/admin/students?q=&page=&pageSize=&facultyId=&directionId=&course=&hasPassword=
  *                                             → Paged<Student> (`q`: FISH, HEMIS ID, telefon, guruh;
  *                                               filtrlar ixtiyoriy, AND; `total` — filtrlangan)
- * POST /api/admin/students                    → 201 Student (bitta talaba; parolsiz) · 400 · 409
+ * POST /api/admin/students                    → 201 Student (bitta talaba; v3.34 ixtiyoriy `password`
+ *                                               — vaqtinchalik parol) · 400 · 409
  * GET  /api/admin/students/filters            → StudentFilters (fakultet/yo'nalish/kurs variantlari)
  * GET  /api/admin/students/group-options?facultyId=&directionId=&course=
  *                                             → StudentGroupOption[] (faqat faol guruhlar)
  * GET  /api/admin/students/{id}?periodId=     → AdminStudentDetail · 404 (talaba yoki begona davr)
  * GET  /api/admin/students/import/template    → .xlsx shablon (Bearer talab qiladi — `downloadAuthFile`)
- * POST /api/admin/students/import             → StudentImportResult (multipart `file`) · 400
+ * POST /api/admin/students/import             → ImportResult (multipart `file`, v3.34 `generatePasswords`
+ *                                               → `credentials`) · 400
+ * PUT  /api/admin/students/{id}/hemis-id      → 204 · 400 `errors.hemisId` · 404 · 409 (v3.34, ilova logini)
  * POST /api/admin/students/assign-company     → AssignCompanyResult · 400 · 404 · 409
  * POST /api/admin/students/{id}/company       → AdminStudentDetail · 400 · 404 · 409
  *   (profildan bitta talabani biriktirish yoki boshqa korxonaga o'tkazish)
@@ -66,6 +69,10 @@ export const STUDENTS_ASSIGN_COMPANY_ENDPOINT = `${STUDENTS_ENDPOINT}/assign-com
 export const studentCompanyEndpoint = (id: string) =>
   `${STUDENTS_ENDPOINT}/${encodeURIComponent(id)}/company`;
 
+/** v3.34: talabaning HEMIS ID si (ilova logini). */
+export const studentHemisIdEndpoint = (id: string) =>
+  `${STUDENTS_ENDPOINT}/${encodeURIComponent(id)}/hemis-id`;
+
 /** Talabaning ish vaqti (kelish/ketish). */
 export const studentWorkHoursEndpoint = (id: string) =>
   `${STUDENTS_ENDPOINT}/${encodeURIComponent(id)}/work-hours`;
@@ -74,15 +81,19 @@ export const studentWorkHoursEndpoint = (id: string) =>
 export const STUDENTS_TEMPLATE_FILE_NAME = 'talabalar-import-shablon.xlsx';
 
 export const studentsApi = {
-  list: ({ facultyId, directionId, course, ...params }: StudentListParams) =>
+  list: ({ facultyId, directionId, course, hasPassword, ...params }: StudentListParams) =>
     api.get<Paged<Student>>(STUDENTS_ENDPOINT, {
       query: {
         ...toQuery(params),
         facultyId: facultyId || undefined,
         directionId: directionId || undefined,
         course,
+        hasPassword: hasPassword === undefined ? undefined : String(hasPassword),
       },
     }),
+  /** v3.34: talabaning HEMIS ID sini (ilova logini) o'zgartirish → 204 · 400 · 404 · 409. */
+  setHemisId: (id: string, hemisId: string) =>
+    api.put<void>(studentHemisIdEndpoint(id), { hemisId }),
   filters: () => api.get<StudentFilters>(STUDENTS_FILTERS_ENDPOINT),
   create: (input: StudentCreateInput) => api.post<Student>(STUDENTS_ENDPOINT, input),
   groupOptions: ({ facultyId, directionId, course }: StudentGroupOptionParams) =>
@@ -91,9 +102,11 @@ export const studentsApi = {
     }),
   detail: (id: string, periodId: string | null = null) =>
     api.get<AdminStudentDetail>(`${STUDENTS_ENDPOINT}/${id}`, { query: { periodId } }),
-  importExcel: (file: File) => {
+  /** v3.34: `generatePasswords` — yangi talabalarga vaqtinchalik parol (javobda `credentials`). */
+  importExcel: (file: File, generatePasswords = false) => {
     const body = new FormData();
     body.append('file', file);
+    if (generatePasswords) body.append('generatePasswords', 'true');
     return api.post<ImportResult>(STUDENTS_IMPORT_ENDPOINT, body);
   },
   assignCompany: (input: AssignCompanyInput) =>

@@ -79,6 +79,7 @@ export const AUDIT_ACTION_LABEL: Record<AuditAction, { label: string; kind: Stat
   adminUpdated: { label: "Admin ma'lumotlari o'zgartirildi", kind: 'neu' },
   adminStatusChanged: { label: "Admin holati o'zgartirildi", kind: 'late' },
   adminPasswordReset: { label: 'Admin paroli tiklandi', kind: 'late' },
+  studentHemisIdChanged: { label: "Talaba HEMIS ID si o'zgartirildi", kind: 'late' },
 };
 
 /** `tutor` — v3.28 da olib tashlangan rol; eski yozuvlarda tarix sifatida ko'rinadi. */

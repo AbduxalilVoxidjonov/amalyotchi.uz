@@ -34,9 +34,10 @@ public sealed class StudentFaceEnrollmentTests(ApiFixture fixture)
         await using (await Factory.UseSettingAsync(SettingKeys.FaceVerificationEnabled, "true"))
             (await client.GetFromJsonSafeAsync<StudentFaceDto>("/api/student/face")).Required.Should().BeTrue();
 
-        // JSON shakli: status camelCase string.
+        // JSON shakli: status camelCase string; v3.34 — enrollmentRequired doim true (sozlamadan mustaqil), canSubmit.
         var raw = await client.GetStringAsync("/api/student/face");
-        raw.Should().Contain("\"status\":\"none\"").And.Contain("\"photoUrl\":null");
+        raw.Should().Contain("\"status\":\"none\"").And.Contain("\"photoUrl\":null")
+            .And.Contain("\"required\":false").And.Contain("\"enrollmentRequired\":true").And.Contain("\"canSubmit\":true");
     }
 
     [Fact]
@@ -76,13 +77,27 @@ public sealed class StudentFaceEnrollmentTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Post_PendingniAlmashtiradi_RadEtilgandanKeyinHam()
+    public async Task Post_Pending_409_KodBilan_RadEtilgandanKeyinRuxsat()
     {
         var (student, client) = await StudentAsync();
         var first = await client.EnrollAsync("ali");
-        var second = await client.EnrollAsync("ali");
-        second.PhotoUrl.Should().NotBe(first.PhotoUrl);
-        second.Status.Should().Be(StudentFaceStatus.Pending);
+        first.CanSubmit.Should().BeFalse();
+        first.EnrollmentRequired.Should().BeTrue();
+
+        // v3.34: yuborilgan (pending) etalonni talaba o'zi almashtira olmaydi.
+        using (var form = FaceTestData.FaceForm(FakeFaceEngine.Photo("ali")))
+        {
+            var response = await client.PostAsync("/api/student/face", form);
+            response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+            var problem = await response.ProblemAsync();
+            problem.GetProperty("code").GetString().Should().Be("faceAlreadyEnrolled");
+            problem.GetProperty("faceStatus").GetString().Should().Be("pending");
+            problem.GetProperty("detail").GetString().Should().Be(StudentFaceEnrollment.AlreadySubmittedMessage);
+        }
+
+        var unchanged = await client.GetFromJsonSafeAsync<StudentFaceDto>("/api/student/face");
+        unchanged.PhotoUrl.Should().Be(first.PhotoUrl);
+        unchanged.Status.Should().Be(StudentFaceStatus.Pending);
 
         await Factory.WithDbAsync(async db =>
         {
@@ -90,32 +105,44 @@ public sealed class StudentFaceEnrollmentTests(ApiFixture fixture)
             e.Reject(student.Id, "Xira", DateTimeOffset.UtcNow);
             await db.SaveChangesAsync();
         });
-        (await client.GetFromJsonSafeAsync<StudentFaceDto>("/api/student/face")).RejectReason.Should().Be("Xira");
+        var rejected = await client.GetFromJsonSafeAsync<StudentFaceDto>("/api/student/face");
+        rejected.RejectReason.Should().Be("Xira");
+        rejected.CanSubmit.Should().BeTrue();
 
         var third = await client.EnrollAsync("ali");
         third.Status.Should().Be(StudentFaceStatus.Pending);
         third.RejectReason.Should().BeNull();
+        third.PhotoUrl.Should().NotBe(first.PhotoUrl);
         (await Factory.WithDbAsync(db => db.StudentFaceEnrollments.CountAsync(f => f.StudentUserId == student.Id))).Should().Be(1);
     }
 
     [Fact]
-    public async Task Post_Tasdiqlangan_409()
+    public async Task Post_AdminResetdanKeyin_QaytaYuborishMumkin()
     {
         var (student, client) = await StudentAsync();
         await client.EnrollAsync("ali");
-        await Factory.WithDbAsync(async db =>
+        var admin = await Factory.LoginAsAdminAsync();
+        (await admin.PostAsync($"/api/admin/students/{student.Id}/face/approve", null)).EnsureSuccessStatusCode();
+
+        using (var form = FaceTestData.FaceForm(FakeFaceEngine.Photo("ali")))
         {
-            var e = await db.StudentFaceEnrollments.SingleAsync(f => f.StudentUserId == student.Id);
-            e.Approve(student.Id, DateTimeOffset.UtcNow);
-            await db.SaveChangesAsync();
-        });
+            var locked = await client.PostAsync("/api/student/face", form);
+            locked.StatusCode.Should().Be(HttpStatusCode.Conflict);
+            (await locked.ProblemAsync()).GetProperty("faceStatus").GetString().Should().Be("approved");
+        }
 
-        using var form = FaceTestData.FaceForm(FakeFaceEngine.Photo("ali"));
-        var response = await client.PostAsync("/api/student/face", form);
+        var reset = await admin.PostAsync($"/api/admin/students/{student.Id}/face/reset", null);
+        reset.StatusCode.Should().Be(HttpStatusCode.OK);
+        var afterReset = (await reset.Content.ReadAsync<StudentFaceDto>())!;
+        afterReset.Status.Should().Be(StudentFaceStatus.None);
+        afterReset.CanSubmit.Should().BeTrue();
 
-        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
-        (await response.ProblemAsync()).GetProperty("detail").GetString()
-            .Should().Be("Yuz allaqachon tasdiqlangan. O'zgartirish uchun administratorga murojaat qiling.");
+        var face = await client.GetFromJsonSafeAsync<StudentFaceDto>("/api/student/face");
+        face.Status.Should().Be(StudentFaceStatus.None);
+        face.CanSubmit.Should().BeTrue();
+
+        var again = await client.EnrollAsync("ali");
+        again.Status.Should().Be(StudentFaceStatus.Pending);
     }
 
     [Theory]

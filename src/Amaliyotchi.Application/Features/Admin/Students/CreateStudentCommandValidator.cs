@@ -1,3 +1,4 @@
+using Amaliyotchi.Application.Features.Admin.Common;
 using FluentValidation;
 
 namespace Amaliyotchi.Application.Features.Admin.Students;
@@ -28,6 +29,16 @@ public sealed class CreateStudentCommandValidator : AbstractValidator<CreateStud
         {
             if (StudentFieldRules.PhoneError(value, out _) is { } error)
                 context.AddFailure(CreateStudentFields.PhoneNumber, error);
+        });
+
+        // v3.34: ixtiyoriy vaqtinchalik parol — berilgan bo'lsa admin paroli qoidalari (8–128 belgi).
+        When(x => x.Password is not null, () =>
+        {
+            RuleFor(x => x.Password!)
+                .Cascade(CascadeMode.Stop)
+                .NotEmpty().WithMessage(AccountValidationRules.PasswordRequiredMessage)
+                .Must(AccountValidationRules.IsValidPassword).WithMessage(AccountValidationRules.PasswordLengthMessage)
+                .OverridePropertyName(CreateStudentFields.Password);
         });
     }
 }

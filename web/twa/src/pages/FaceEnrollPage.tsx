@@ -5,6 +5,7 @@ import { useStudentFaceQuery, useSubmitFace } from '@/features/face/hooks';
 import {
   FACE_CONSENT_TEXT,
   FACE_STATUS,
+  canSubmitFace,
   needsFaceEnrollment,
   type StudentFaceDto,
 } from '@/features/face/types';
@@ -38,7 +39,8 @@ export function FaceEnrollPage() {
   }
   const face = q.data;
   const gated = needsFaceEnrollment(face);
-  const canSubmit = face.status === 'none' || face.status === 'rejected';
+  // v3.34: pending/approved — talaba etalonni o'zi almashtira olmaydi (server 409).
+  const canSubmit = canSubmitFace(face);
 
   return (
     <div className={pages.stack}>
@@ -72,7 +74,7 @@ function StatusCard({ face, gated }: { face: StudentFaceDto; gated: boolean }) {
       {face.status === 'pending' && (
         <p className={styles.text} role="status">
           Rasmingiz yuborildi. Admin tekshirmoqda — tasdiqlangach davomatda yuzingiz shu rasm bilan
-          solishtiriladi.
+          solishtiriladi. Rasmni almashtirish kerak bo‘lsa, administratorga murojaat qiling.
         </p>
       )}
       {face.status === 'approved' && (

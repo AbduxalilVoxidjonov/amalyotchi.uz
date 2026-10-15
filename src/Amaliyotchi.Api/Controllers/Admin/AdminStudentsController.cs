@@ -11,10 +11,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Amaliyotchi.Api.Controllers.Admin;
 
-/// <summary>Multipart forma: <c>file</c> — shablon bo'yicha to'ldirilgan <c>.xlsx</c>.</summary>
+/// <summary>Multipart forma: <c>file</c> — shablon bo'yicha to'ldirilgan <c>.xlsx</c>; <c>generatePasswords</c> — "true"
+/// bo'lsa yangi talabalarga vaqtinchalik parol yaratiladi (v3.34, ixtiyoriy).</summary>
 public sealed class StudentImportForm
 {
     public IFormFile? File { get; init; }
+    public string? GeneratePasswords { get; init; }
 }
 
 [ApiController]
@@ -45,7 +47,7 @@ public sealed class AdminStudentsController(ISender sender) : ControllerBase
         [FromQuery] Guid? facultyId, [FromQuery] Guid? directionId, [FromQuery] int? course, CancellationToken cancellationToken)
         => Ok(await sender.Send(new GetStudentGroupOptionsQuery(facultyId, directionId, course), cancellationToken));
 
-    /// <summary>Bitta talabani forma orqali qo'shish: <c>{ fullName, hemisId, groupId, phoneNumber? }</c> → 201 + Location
+    /// <summary>Bitta talabani forma orqali qo'shish: <c>{ fullName, hemisId, groupId, phoneNumber?, password? }</c> → 201 + Location
     /// (<c>/api/admin/students/{id}</c>), tana — ro'yxat qatori (<see cref="StudentRow"/>). Qoidalar Excel import bilan bir xil.
     /// Maydon xatosi yoki faol guruh topilmasa → 400 (<c>errors.fullName|hemisId|groupId|phoneNumber</c>);
     /// HEMIS ID yoki telefon band → 409.</summary>
@@ -78,17 +80,18 @@ public sealed class AdminStudentsController(ISender sender) : ControllerBase
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(ExcelImport.MaxFileBytes + 64 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = ExcelImport.MaxFileBytes + 64 * 1024)]
-    [ProducesResponseType<ImportResult>(StatusCodes.Status200OK)]
+    [ProducesResponseType<StudentImportResult>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<ImportResult>> Import(
+    public async Task<ActionResult<StudentImportResult>> Import(
         [FromForm] StudentImportForm form, CancellationToken cancellationToken)
     {
         var file = form.File is { } uploaded
             ? new UploadedFile(uploaded.FileName, uploaded.ContentType, uploaded.Length, uploaded.OpenReadStream)
             : null;
 
-        return Ok(await sender.Send(new ImportStudentsCommand(file), cancellationToken));
+        var generatePasswords = string.Equals(form.GeneratePasswords?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
+        return Ok(await sender.Send(new ImportStudentsCommand(file, generatePasswords), cancellationToken));
     }
 
     /// <summary>Belgilangan talabalarni korxonaga biriktirish: har biriga tasdiqlangan ariza
@@ -178,6 +181,21 @@ public sealed class AdminStudentsController(ISender sender) : ControllerBase
     public async Task<ActionResult<IReadOnlyList<DiaryReviewEntry>>> Diaries(
         Guid id, [FromQuery] Guid? periodId, CancellationToken cancellationToken)
         => Ok(await sender.Send(new GetStudentDiariesQuery(id, periodId), cancellationToken));
+
+    /// <summary>v3.34: talabaning HEMIS ID sini (ilova logini) o'zgartirish: <c>{ hemisId }</c> → 204. 400
+    /// <c>errors.hemisId</c>; boshqa talaba/admin logini band → 409; talaba topilmasa → 404.</summary>
+    [HttpPut("{id:guid}/hemis-id")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> SetHemisId(
+        Guid id, SetStudentHemisIdCommand command, CancellationToken cancellationToken)
+    {
+        await sender.Send(command with { Id = id }, cancellationToken);
+        return NoContent();
+    }
 
     /// <summary>Talabaga brauzer orqali (HEMIS ID + parol) kirish uchun vaqtinchalik parol o'rnatish: <c>{ password }</c> → 204.
     /// Talaba keyingi kirishda parolini almashtirishi kerak (<c>mustChangePassword=true</c>); barcha refresh tokenlari

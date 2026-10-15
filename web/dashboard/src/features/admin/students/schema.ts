@@ -18,6 +18,8 @@ export const STUDENT_FORM_MESSAGES = {
   hemisFormat: `HEMIS ID ${HEMIS_ID_MIN}–${HEMIS_ID_MAX} ta raqamdan iborat bo'lishi kerak.`,
   groupRequired: "Guruh bo'sh.",
   phoneFormat: "Telefon raqami noto'g'ri. Namuna: +998901234567",
+  passwordRequired: 'Parolni kiriting.',
+  passwordLength: "Parol 8–128 ta belgidan iborat bo'lishi kerak.",
 } as const;
 
 /**
@@ -57,6 +59,15 @@ export const studentCreateSchema = z.object({
       }
       return normalized;
     }),
+  /**
+   * v3.34: vaqtinchalik parol — formada MAJBURIY (sukut — yaratilgan parol), talaba ilovaga darhol
+   * kiradi. Qoidalar admin parol tiklash bilan bir xil (8–128).
+   */
+  password: z
+    .string()
+    .min(1, STUDENT_FORM_MESSAGES.passwordRequired)
+    .min(8, STUDENT_FORM_MESSAGES.passwordLength)
+    .max(128, STUDENT_FORM_MESSAGES.passwordLength),
 });
 
 export type StudentCreateFormValues = z.input<typeof studentCreateSchema>;

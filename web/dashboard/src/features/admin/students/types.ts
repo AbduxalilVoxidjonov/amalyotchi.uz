@@ -25,6 +25,11 @@ export interface Student {
   suspiciousDays: number;
   telegramLinked: boolean;
   status: StudentStatus;
+  /**
+   * v3.34 — paroli bor: talaba mobil ilovaga HEMIS ID + parol bilan kira oladi. `false` — kira
+   * olmaydi (admin parol berishi kerak). Eski server yubormaydi → ustun "—".
+   */
+  hasPassword?: boolean;
 }
 
 export const STUDENT_STATUS_LABEL: Record<
@@ -55,6 +60,13 @@ export interface AdminStudentDetail extends StudentProfileDetail {
    * "Ish vaqti" kartasi ko'rsatilmaydi.
    */
   workHours?: StudentWorkHours;
+  /**
+   * v3.34 — parol vaqtinchalik (admin bergan, talaba hali o'zgartirmagan). Parol yo'q → false.
+   * Eski server yubormaydi → "o'rnatilgan" deb ko'rsatiladi.
+   */
+  mustChangePassword?: boolean;
+  /** v3.34 — oxirgi muvaffaqiyatli kirish (ilova, brauzer yoki Telegram), ISO; hech qachon → null. */
+  lastLoginAt?: string | null;
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -156,13 +168,15 @@ export interface StudentListParams extends ListParams {
   facultyId?: string;
   directionId?: string;
   course?: number;
+  /** v3.34: `false` — faqat parolsiz (ilovaga kira olmaydigan) talabalar. */
+  hasPassword?: boolean;
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Bitta talabani qo'lda yaratish — `POST /api/admin/students` → 201 `Student` (ro'yxat qatori).
- * Parol yaratilmaydi: talaba Telegram orqali kiradi (brauzer uchun parol — profildagi
- * "Parol o'rnatish"). Xatolar: 400 (`errors`: fullName/hemisId/groupId/phoneNumber) · 409
- * (HEMIS ID yoki telefon band).
+ * v3.34: ixtiyoriy `password` — talabaga vaqtinchalik parol beriladi va u darhol mobil ilovaga
+ * HEMIS ID + shu parol bilan kiradi (birinchi kirishda almashtiradi). Xatolar: 400 (`errors`:
+ * fullName/hemisId/groupId/phoneNumber/password) · 409 (HEMIS ID yoki telefon band).
  * ──────────────────────────────────────────────────────────────────────────── */
 
 export interface StudentCreateInput {
@@ -172,6 +186,8 @@ export interface StudentCreateInput {
   groupId: string;
   /** E.164 "+998901234567" yoki null (ixtiyoriy). */
   phoneNumber?: string | null;
+  /** v3.34: vaqtinchalik parol (8–128 belgi); berilmasa talaba parolsiz yaratiladi. */
+  password?: string;
 }
 
 /** `GET /api/admin/students/group-options` — faqat faol guruhlar (yaratish formasidagi tanlov). */

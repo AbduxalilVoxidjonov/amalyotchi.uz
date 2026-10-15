@@ -6,6 +6,7 @@ namespace Amaliyotchi.Domain.Faces;
 /// <summary>Talabaning etalon yuz rasmi ("Yuzni tasdiqlash"): har talabaga BITTA qator (yagona faol etalon).
 /// Talaba rozilik bilan selfi yuboradi → <see cref="FaceEnrollmentStatus.Pending"/>; admin tasdiqlaydi yoki rad etadi;
 /// "reset" — qator o'chiriladi (holat "none", talaba qayta yuboradi). Tarix audit jurnalida.
+/// v3.34: talaba etalonni FAQAT yo'q yoki rad etilgan holatda yuboradi — pending/approved qulflangan.
 /// Check-in selfisi shu <see cref="Embedding"/> bilan solishtiriladi (pending ham, approved ham).</summary>
 public sealed class StudentFaceEnrollment : AuditableEntity
 {
@@ -13,6 +14,16 @@ public sealed class StudentFaceEnrollment : AuditableEntity
 
     public const string AlreadyApprovedMessage =
         "Yuz allaqachon tasdiqlangan. O'zgartirish uchun administratorga murojaat qiling.";
+
+    public const string AlreadySubmittedMessage =
+        "Yuz rasmingiz allaqachon yuborilgan va administrator tekshiruvida. Qayta topshirish uchun administratorga murojaat qiling.";
+
+    /// <summary>ProblemDetails <c>code</c> kengaytmasi: talaba etalonni qayta yubora olmaydi (pending/approved).</summary>
+    public const string LockedErrorCode = "faceAlreadyEnrolled";
+
+    /// <summary>ProblemDetails kengaytma kalitlari (camelCase).</summary>
+    public const string CodeExtension = "code";
+    public const string FaceStatusExtension = "faceStatus";
 
     private StudentFaceEnrollment() { }
 
@@ -47,13 +58,29 @@ public sealed class StudentFaceEnrollment : AuditableEntity
         return enrollment;
     }
 
-    /// <summary>Qayta yuborish (pending'ni almashtiradi yoki rad etilgandan keyin). Tasdiqlangan bo'lsa — 409.</summary>
+    /// <summary>Talaba hozir etalon yubora oladimi: faqat rad etilgandan keyin (yoki qator yo'q — admin "reset" qilgan /
+    /// hali yubormagan). <c>pending</c>/<c>approved</c> — qulflangan (v3.34).</summary>
+    public bool CanStudentSubmit => Status == FaceEnrollmentStatus.Rejected;
+
+    /// <summary>Qayta yuborish — faqat rad etilgandan keyin. <c>pending</c>/<c>approved</c> → 409
+    /// (<see cref="LockedConflict"/>, <c>code=faceAlreadyEnrolled</c>).</summary>
     public void Resubmit(Guid photoFileId, float[] embedding, DateTimeOffset now)
     {
-        if (Status == FaceEnrollmentStatus.Approved)
-            throw new ConflictException(AlreadyApprovedMessage);
+        if (!CanStudentSubmit)
+            throw LockedConflict(Status);
 
         Apply(photoFileId, embedding, now);
+    }
+
+    /// <summary>Talaba etalonni qayta yubora olmaydi: 409, <c>code=faceAlreadyEnrolled</c>,
+    /// <c>faceStatus=pending|approved</c>.</summary>
+    public static ConflictException LockedConflict(FaceEnrollmentStatus status)
+    {
+        var exception = new ConflictException(
+            status == FaceEnrollmentStatus.Approved ? AlreadyApprovedMessage : AlreadySubmittedMessage);
+        exception.Extensions[CodeExtension] = LockedErrorCode;
+        exception.Extensions[FaceStatusExtension] = status == FaceEnrollmentStatus.Approved ? "approved" : "pending";
+        return exception;
     }
 
     /// <summary>Faqat kutilayotgan rasm tasdiqlanadi.</summary>

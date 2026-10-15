@@ -96,3 +96,21 @@
   font-family: var(--font-mono);
   white-space: nowrap;
 }
+/* v3.34 — yaratilgan vaqtinchalik parollar */
+.credentials {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.warn {
+  margin: 0;
+  font-size: var(--fs-xs2);
+  color: var(--color-late-fg, var(--color-text));
+  line-height: var(--lh-note);
+}

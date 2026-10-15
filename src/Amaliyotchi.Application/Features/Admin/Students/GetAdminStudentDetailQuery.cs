@@ -16,7 +16,9 @@ namespace Amaliyotchi.Application.Features.Admin.Students;
 /// ro'yxatdagi holat va guruh identifikatori. <c>activeCompany</c> — tanlangan davrdan mustaqil aktiv korxona
 /// (ro'yxatdagi <c>company</c> bilan bir xil qoida), <c>company</c> esa tanlangan davr bo'yicha.
 /// <c>workHours</c> — admin belgilagan ish vaqti (<c>PUT /api/admin/students/{id}/work-hours</c>), kuchga kirish sanasi,
-/// bugun amaldagi va sukut davri soatlari (tanlangan davrdan mustaqil).</summary>
+/// bugun amaldagi va sukut davri soatlari (tanlangan davrdan mustaqil).
+/// v3.34: <c>mustChangePassword</c> — parol vaqtinchalik (admin bergan, talaba hali almashtirmagan; parol yo'q bo'lsa
+/// <c>false</c>), <c>lastLoginAt</c> — oxirgi muvaffaqiyatli kirish (ilova, brauzer yoki Telegram; hech qachon → null).</summary>
 public sealed record AdminStudentDetail(
     Guid Id,
     string Name,
@@ -44,7 +46,9 @@ public sealed record AdminStudentDetail(
     bool HasPassword,
     ActiveCompanyRef? ActiveCompany,
     StudentFaceDto Face,
-    StudentWorkHoursDto WorkHours);
+    StudentWorkHoursDto WorkHours,
+    bool MustChangePassword,
+    DateTimeOffset? LastLoginAt);
 
 /// <summary><c>GET /api/admin/students/{id}?periodId=</c> — talaba profili (davrga bog'liq bloklar tanlangan davr bo'yicha).
 /// Talaba topilmasa yoki <c>periodId</c> talabaga tegishli bo'lmasa → 404.</summary>
@@ -69,7 +73,9 @@ internal sealed class GetAdminStudentDetailQueryHandler(IApplicationDbContext db
                          {
                              GroupId = g.Id,
                              Department = dept.Name,
-                             TelegramLinked = p.User.TelegramUserId != null
+                             TelegramLinked = p.User.TelegramUserId != null,
+                             p.User.MustChangePassword,
+                             p.User.LastLoginAt
                          })
             .FirstAsync(cancellationToken);
 
@@ -103,6 +109,8 @@ internal sealed class GetAdminStudentDetailQueryHandler(IApplicationDbContext db
             profile.HasPassword,
             profile.ActiveCompany,
             profile.Face,
-            await StudentWorkHoursMapper.LoadAsync(db, profile.Id, clock.LocalToday(), cancellationToken));
+            await StudentWorkHoursMapper.LoadAsync(db, profile.Id, clock.LocalToday(), cancellationToken),
+            profile.HasPassword && org.MustChangePassword,
+            org.LastLoginAt);
     }
 }

@@ -30,14 +30,16 @@ public sealed class StudentFaceController(ISender sender) : ControllerBase
     /// <summary>Bitta rasm (5 MB) + forma maydonlari uchun yetarli chegara.</summary>
     private const long MaxRequestBodyBytes = 6 * 1024 * 1024;
 
-    /// <summary>Etalon holati: <c>none|pending|approved|rejected</c>, <c>required</c> — sozlama <c>faceVerificationEnabled</c>.</summary>
+    /// <summary>Etalon holati: <c>none|pending|approved|rejected</c>, <c>required</c> — sozlama <c>faceVerificationEnabled</c>
+    /// (check-in solishtiriladimi), <c>enrollmentRequired</c> — doim <c>true</c>, <c>canSubmit</c> — hozir yuborish mumkinmi (v3.34).</summary>
     [HttpGet]
     [ProducesResponseType<StudentFaceDto>(StatusCodes.Status200OK)]
     public async Task<ActionResult<StudentFaceDto>> Get(CancellationToken cancellationToken)
         => Ok(await sender.Send(new GetStudentFaceQuery(), cancellationToken));
 
     /// <summary>Etalon selfi yuborish → 200 (<c>pending</c>). 400 — rozilik yo'q (<c>errors.Consent</c>), rasm qoidalari,
-    /// yuz topilmadi / bir nechta yuz (<c>errors.Photo</c>); 409 — allaqachon tasdiqlangan; 503 — yuz modellari ishlamayapti.</summary>
+    /// yuz topilmadi / bir nechta yuz (<c>errors.Photo</c>); 409 — etalon yuborilgan (pending) yoki tasdiqlangan
+    /// (<c>code=faceAlreadyEnrolled</c>, <c>faceStatus</c>); 503 — yuz modellari ishlamayapti.</summary>
     [HttpPost]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(MaxRequestBodyBytes)]

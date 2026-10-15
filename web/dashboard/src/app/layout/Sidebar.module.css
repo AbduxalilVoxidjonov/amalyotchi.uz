@@ -33,10 +33,6 @@
   margin-top: 3px;
   font-family: var(--font-mono);
 }
-.nav {
-  padding: var(--sidebar-nav-pad);
-  overflow-y: auto;
-}
 .user {
   margin-top: auto;
   padding: var(--sidebar-user-pad);

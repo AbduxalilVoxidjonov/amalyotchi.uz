@@ -1,8 +1,9 @@
 import { useEffect, useId, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import type { UseMutationResult } from '@tanstack/react-query';
+import { copyText } from '@/features/shared/student-password';
 import { errorMessage } from '@/shared/api';
 import { Button, Modal } from '@/shared/ui';
-import type { ImportResult } from '../shared/types';
+import type { ImportCredential, ImportResult } from '../shared/types';
 import type { TemplateDownload } from '../shared/useTemplateDownload';
 import styles from './ExcelImportModal.module.css';
 
@@ -19,6 +20,8 @@ export interface ExcelImportModalProps {
   emptyHint: string;
   template: TemplateDownload;
   mutation: UseMutationResult<ImportResult, Error, File>;
+  /** Fayl maydoni ustidagi qo'shimcha sozlamalar (talabalar: "vaqtinchalik parol yaratish"). */
+  options?: ReactNode;
 }
 
 /**
@@ -36,6 +39,7 @@ export function ExcelImportModal({
   emptyHint,
   template,
   mutation,
+  options,
 }: ExcelImportModalProps) {
   const fileId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -112,6 +116,8 @@ export function ExcelImportModal({
           )}
         </section>
 
+        {options}
+
         <div className={styles.field}>
           <label className={styles.label} htmlFor={fileId}>
             To‘ldirilgan fayl (.xlsx)
@@ -148,6 +154,10 @@ function ImportReport({ result, emptyHint }: { result: ImportResult; emptyHint: 
 
       {result.totalRows === 0 && <p className={styles.hint}>{emptyHint}</p>}
 
+      {result.credentials && result.credentials.length > 0 && (
+        <CredentialsReport credentials={result.credentials} />
+      )}
+
       {result.errors.length > 0 && (
         <div className={styles.tableWrap}>
           <table className={styles.table}>
@@ -174,5 +184,81 @@ function ImportReport({ result, emptyHint }: { result: ImportResult; emptyHint: 
         </div>
       )}
     </section>
+  );
+}
+
+/** CSV maydoni: vergul/qo'shtirnoq/yangi qator bo'lsa qo'shtirnoqqa olinadi. */
+const csvCell = (v: string) => (/[",\n;]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+
+/**
+ * v3.34 — import paytida yaratilgan vaqtinchalik parollar (faqat shu javobda — serverda xesh).
+ * Admin jadvalni nusxalaydi yoki CSV yuklab oladi va talabalarga tarqatadi.
+ */
+function CredentialsReport({ credentials }: { credentials: ImportCredential[] }) {
+  const [copied, setCopied] = useState(false);
+  const header = ['FISH', 'HEMIS ID', 'Parol'];
+  const rows = credentials.map((c) => [c.fullName, c.hemisId, c.password]);
+
+  async function copyAll() {
+    const tsv = [header, ...rows].map((r) => r.join('\t')).join('\n');
+    setCopied(await copyText(tsv));
+  }
+
+  function downloadCsv() {
+    // BOM — Excel o'zbekcha harflarni to'g'ri ochishi uchun.
+    const csv = '\uFEFF' + [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'talabalar-parollar.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  return (
+    <div className={styles.credentials}>
+      <p className={styles.warn} role="note">
+        Ilovaga kirish parollari faqat hozir ko‘rsatiladi — oynani yopishdan oldin nusxalang yoki
+        yuklab oling. Talaba birinchi kirishda parolini almashtiradi va yuzini topshiradi.
+      </p>
+      <div className={styles.tools}>
+        <Button type="button" size="xs" onClick={() => void copyAll()}>
+          Jadvalni nusxalash
+        </Button>
+        <Button type="button" size="xs" onClick={downloadCsv}>
+          CSV yuklab olish
+        </Button>
+        {copied && (
+          <span role="status" className={styles.success}>
+            Nusxalandi
+          </span>
+        )}
+      </div>
+      <div className={styles.tableWrap}>
+        <table className={styles.table}>
+          <caption className={styles.caption}>Ilovaga kirish ma‘lumotlari</caption>
+          <thead>
+            <tr>
+              <th scope="col">Qator</th>
+              <th scope="col">FISH</th>
+              <th scope="col">HEMIS ID</th>
+              <th scope="col">Parol</th>
+            </tr>
+          </thead>
+          <tbody>
+            {credentials.map((c) => (
+              <tr key={`${c.row}-${c.hemisId}`}>
+                <td className={styles.num}>{c.row}</td>
+                <td>{c.fullName}</td>
+                <td className={styles.value}>{c.hemisId}</td>
+                <td className={styles.value}>{c.password}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

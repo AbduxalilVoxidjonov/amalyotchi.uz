@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Button, Card, EmptyState, Pill, PillGroup } from '@/shared/ui';
+import { Button, Card, ConfirmDialog, EmptyState, Pill, PillGroup } from '@/shared/ui';
 import { QueryState } from '../components/QueryState';
 import { mutationErrorMessage } from '../shared/errors';
 import { fmtDate, fmtTime } from '../shared/fmt';
@@ -14,7 +14,7 @@ import styles from './FaceEnrollmentsPage.module.css';
 const EMPTY: Record<FaceEnrollmentTab, { title: string; description: string }> = {
   pending: {
     title: "Tekshiruvni kutayotgan yuz rasmi yo'q",
-    description: 'Talaba etalon selfi yuborganda shu yerda ko‘rinadi.',
+    description: 'Talaba ilovaga birinchi kirishda yuzini topshiradi — rasm shu yerda ko‘rinadi.',
   },
   approved: { title: "Tasdiqlangan yuz rasmlari yo'q", description: '' },
   rejected: { title: "Rad etilgan yuz rasmlari yo'q", description: '' },
@@ -24,8 +24,9 @@ const fmtDateTime = (iso: string | null) => (iso ? `${fmtDate(iso)} ${fmtTime(is
 
 /**
  * Admin · Yuz tasdiqlash (`/admin/face`, kontrakt §6.33) — talabalarning etalon yuz rasmlari.
- * Tab (`?status=`) bo'yicha ro'yxat; "Kutilmoqda" da — Tasdiqlash va Rad etish (sabab majburiy).
- * Tasdiqlangan rasm keyingi check-in selfilari bilan solishtiriladi.
+ * Tab (`?status=`) bo'yicha ro'yxat; "Kutilmoqda" da — Tasdiqlash va Rad etish (sabab majburiy);
+ * "Tasdiqlangan" da — Qayta olish (reset: talaba keyingi kirishda yuzini qayta topshiradi).
+ * v3.34: talaba etalonni o'zi almashtira olmaydi — faqat rad etilganda yoki reset'dan keyin.
  */
 export function FaceEnrollmentsPage() {
   const [params, setParams] = useSearchParams();
@@ -34,6 +35,7 @@ export function FaceEnrollmentsPage() {
   const list = useFaceEnrollmentsQuery({ status: tab });
   const action = useFaceAction();
   const [rejecting, setRejecting] = useState<FaceEnrollment | null>(null);
+  const [resetting, setResetting] = useState<FaceEnrollment | null>(null);
   /** Qaysi qatorda amal bajarilmoqda (tugmalar faqat shu qatorda bloklanadi). */
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
@@ -66,6 +68,19 @@ export function FaceEnrollmentsPage() {
       { kind: 'reject', studentId: id, reason },
       {
         onSuccess: () => setRejecting(null),
+        onSettled: () => setBusyId(null),
+      },
+    );
+  };
+
+  const reset = () => {
+    if (!resetting) return;
+    const id = resetting.studentId;
+    setBusyId(id);
+    action.mutate(
+      { kind: 'reset', studentId: id },
+      {
+        onSuccess: () => setResetting(null),
         onSettled: () => setBusyId(null),
       },
     );
@@ -173,6 +188,20 @@ export function FaceEnrollmentsPage() {
                           </Button>
                         </div>
                       )}
+                      {item.status === 'approved' && (
+                        <div className={styles.actions}>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              action.reset();
+                              setResetting(item);
+                            }}
+                            disabled={busy}
+                          >
+                            Qayta olish
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </Card>
                 </li>
@@ -191,6 +220,18 @@ export function FaceEnrollmentsPage() {
         error={rejecting && action.isError ? mutationErrorMessage(action.error) : undefined}
         onSubmit={reject}
         onClose={() => setRejecting(null)}
+      />
+      <ConfirmDialog
+        open={resetting !== null}
+        title="Yuz etalonini qayta olish"
+        description={`${resetting?.fullName ?? ''} ning etalon rasmi o'chiriladi. Talaba keyingi kirishda yuzini qayta topshiradi.`}
+        confirmLabel="Qayta olish"
+        cancelLabel="Qaytish"
+        danger
+        isLoading={action.isPending}
+        error={resetting && action.isError ? mutationErrorMessage(action.error) : undefined}
+        onConfirm={reset}
+        onCancel={() => setResetting(null)}
       />
     </div>
   );

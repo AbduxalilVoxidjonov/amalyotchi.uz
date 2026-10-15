@@ -167,13 +167,13 @@ export function LoginPage() {
   );
 }
 
-/** Talaba dashboard'ga kirmaydi — TWA havolasi (`VITE_TWA_URL`) yoki Telegram bot. */
+/** Talaba dashboard'ga kirmaydi — Amaliyotchi mobil ilovasi (v3.34); veb manzil (`VITE_TWA_URL`) bo'lsa — havola. */
 function StudentAppNotice() {
   const twaUrl = getTwaUrl();
-  if (!twaUrl) return <>Talabalar Telegram bot orqali kiradi.</>;
+  if (!twaUrl) return <>Talabalar Amaliyotchi mobil ilovasiga HEMIS ID va parol bilan kiradi.</>;
   return (
     <>
-      Talabalar uchun alohida ilova:{' '}
+      Talabalar Amaliyotchi mobil ilovasiga HEMIS ID va parol bilan kiradi. Brauzerda:{' '}
       <a className={styles.studentAppLink} href={twaUrl}>
         {twaUrl}
       </a>

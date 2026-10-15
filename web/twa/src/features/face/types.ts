@@ -10,6 +10,13 @@ export interface StudentFaceDto {
   status: FaceStatus;
   /** Sozlama `faceVerificationEnabled` — yoqilgan bo'lsa check-in uchun tasdiqlangan etalon kerak. */
   required: boolean;
+  /** v3.34: etalon topshirish sozlamadan mustaqil majburiy (mobil ilova darvozasi). TWA darvozasi `required` da qoladi. */
+  enrollmentRequired?: boolean;
+  /**
+   * v3.34: talaba hozir etalon yubora oladimi — faqat `none`/`rejected`. `pending`/`approved` da
+   * POST → 409 (`code: faceAlreadyEnrolled`); qayta topshirish faqat admin rad etsa yoki reset qilsa.
+   */
+  canSubmit?: boolean;
   /** `/api/files/{id}` — etalon rasmi (Bearer bilan ochiladi); yuborilmagan → null. */
   photoUrl: string | null;
   /** ISO 8601 */
@@ -40,6 +47,11 @@ export const FACE_PATH = '/face';
  * Darvoza: tekshiruv yoqilgan va ishlatsa bo'ladigan etalon yo'q (yuborilmagan yoki rad etilgan) —
  * talaba ilovadan foydalanishdan oldin `/face` sahifasida etalon yuboradi. `pending`/`approved` — oddiy ilova.
  */
+/** Talaba hozir etalon yubora oladimi (eski server `canSubmit` yubormasa — holatdan). */
+export function canSubmitFace(face: StudentFaceDto): boolean {
+  return face.canSubmit ?? (face.status === 'none' || face.status === 'rejected');
+}
+
 export function needsFaceEnrollment(face: StudentFaceDto | undefined): boolean {
   return Boolean(face?.required && (face.status === 'none' || face.status === 'rejected'));
 }

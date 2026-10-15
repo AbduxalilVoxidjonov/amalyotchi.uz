@@ -26,7 +26,9 @@ export function StudentsPage() {
   const query = useStudentsQuery(list.params);
   const filterOptions = useStudentFilters();
   const template = useStudentImportTemplate();
-  const importStudents = useImportStudents();
+  /** v3.34: importda yangi talabalarga vaqtinchalik parol (sukut — yoqilgan: talaba darhol kiradi). */
+  const [generatePasswords, setGeneratePasswords] = useState(true);
+  const importStudents = useImportStudents(generatePasswords);
   const [importOpen, setImportOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -85,9 +87,9 @@ export function StudentsPage() {
     setCreateOpen(true);
   }
 
-  function handleCreated(student: Student, keepOpen: boolean) {
+  /** Modal o'zi yopilmaydi (kirish ma'lumoti ko'rsatiladi) — flash modal yopilgach chiqadi. */
+  function handleCreated(student: Student) {
     setCreated(student);
-    if (!keepOpen) setCreateOpen(false);
   }
 
   return (
@@ -131,6 +133,7 @@ export function StudentsPage() {
             onFacultyChange={handleFacultyChange}
             onDirectionChange={(directionId) => setFilters({ directionId })}
             onCourseChange={(course) => setFilters({ course })}
+            onAccessChange={(access) => setFilters({ access })}
             hasFilters={hasFilters}
             onClear={clearFilters}
             total={query.isPending || query.isError ? undefined : query.data?.total}
@@ -150,6 +153,21 @@ export function StudentsPage() {
         onClose={() => setImportOpen(false)}
         title="Talabalarni Excel orqali qo'shish"
         description="Shablonni yuklab oling, to'ldiring va shu yerga yuklang. Xato qatorlar qabul qilinmaydi — ular ro'yxat bo'lib chiqadi, to'g'rilari saqlanadi."
+        options={
+          <label className={styles.importOption}>
+            <input
+              type="checkbox"
+              checked={generatePasswords}
+              disabled={importStudents.isPending}
+              onChange={(e) => setGeneratePasswords(e.target.checked)}
+            />
+            <span>
+              Har bir yangi talabaga vaqtinchalik parol yaratish — talaba mobil ilovaga darhol
+              kiradi. Parollar natijada bir marta ko‘rsatiladi (nusxalash / CSV). Belgilanmasa,
+              parolni har bir talaba sahifasidan berasiz.
+            </span>
+          </label>
+        }
         hint={
           <>
             Ustunlar: <b>FISH*</b>, <b>HEMIS ID*</b>, <b>Guruh*</b>, Telefon. Sarlavha nomlarini

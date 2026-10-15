@@ -104,6 +104,7 @@ public sealed class StudentFaceEnrollmentTests
         e.Invoking(x => x.Reject(Tutor, "yana", Now)).Should().Throw<ConflictException>();
         e.Invoking(x => x.Approve(Tutor, Now)).Should().Throw<ConflictException>();
 
+        e.CanStudentSubmit.Should().BeTrue();
         var photo = Guid.CreateVersion7();
         e.Resubmit(photo, [1f], Now.AddDays(1));
         e.Status.Should().Be(FaceEnrollmentStatus.Pending);
@@ -117,8 +118,25 @@ public sealed class StudentFaceEnrollmentTests
     {
         var e = Pending();
         e.Approve(Tutor, Now);
-        e.Invoking(x => x.Resubmit(Guid.CreateVersion7(), [1f], Now))
-            .Should().Throw<ConflictException>().WithMessage(StudentFaceEnrollment.AlreadyApprovedMessage);
+        e.CanStudentSubmit.Should().BeFalse();
+        var ex = e.Invoking(x => x.Resubmit(Guid.CreateVersion7(), [1f], Now))
+            .Should().Throw<ConflictException>().WithMessage(StudentFaceEnrollment.AlreadyApprovedMessage).Which;
+        ex.Extensions["code"].Should().Be(StudentFaceEnrollment.LockedErrorCode);
+        ex.Extensions["faceStatus"].Should().Be("approved");
+    }
+
+    [Fact]
+    public void Kutilayotgan_TalabaAlmashtiraOlmaydi_v334()
+    {
+        var e = Pending();
+        e.CanStudentSubmit.Should().BeFalse();
+        var photo = e.PhotoFileId;
+        var ex = e.Invoking(x => x.Resubmit(Guid.CreateVersion7(), [1f], Now))
+            .Should().Throw<ConflictException>().WithMessage(StudentFaceEnrollment.AlreadySubmittedMessage).Which;
+        ex.Extensions["code"].Should().Be("faceAlreadyEnrolled");
+        ex.Extensions["faceStatus"].Should().Be("pending");
+        e.PhotoFileId.Should().Be(photo);
+        e.Status.Should().Be(FaceEnrollmentStatus.Pending);
     }
 
     [Fact]

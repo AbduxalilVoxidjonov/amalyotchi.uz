@@ -24,12 +24,12 @@ describe('generatePassword', () => {
 });
 
 describe('studentCredentialsText', () => {
-  it("TWA manzili bo'lsa Kirish qo'shiladi, bo'lmasa tushiriladi", () => {
+  it("TWA manzili bo'lsa Brauzerda qo'shiladi, bo'lmasa tushiriladi", () => {
     expect(studentCredentialsText('341030', 'Abc234defg', 'https://app.example.uz')).toBe(
-      'HEMIS ID: 341030 · Parol: Abc234defg · Kirish: https://app.example.uz',
+      'Ilovaga kirish · HEMIS ID: 341030 · Parol: Abc234defg · Brauzerda: https://app.example.uz',
     );
     expect(studentCredentialsText('341030', 'Abc234defg', null)).toBe(
-      'HEMIS ID: 341030 · Parol: Abc234defg',
+      'Ilovaga kirish · HEMIS ID: 341030 · Parol: Abc234defg',
     );
   });
 });

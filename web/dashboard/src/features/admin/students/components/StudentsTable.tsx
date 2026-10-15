@@ -41,6 +41,22 @@ const BASE_COLUMNS: DataTableColumn<Student>[] = [
     ),
   },
   {
+    // v3.34 — mobil ilovaga kira oladimi (parol bor). Eski server `hasPassword` yubormaydi → "—".
+    key: 'hasPassword',
+    header: 'Ilova',
+    width: 'minmax(120px,.8fr)',
+    render: (r) =>
+      r.hasPassword === undefined ? (
+        <span data-dim>—</span>
+      ) : r.hasPassword ? (
+        <Badge status="ok">Kira oladi</Badge>
+      ) : (
+        <Badge status="bad" title="Parol yo'q — talaba profilidan parol bering">
+          Kira olmaydi
+        </Badge>
+      ),
+  },
+  {
     key: 'status',
     header: 'Holat',
     width: 'minmax(140px,.9fr)',
@@ -140,7 +156,7 @@ export function StudentsTable({
       aria-label="Talabalar"
       columns={columns}
       rowKey={(r) => r.id}
-      minWidth="980px"
+      minWidth="1100px"
       emptyTitle="Talabalar yo'q"
       {...(emptyDescription ? { emptyDescription } : {})}
       filters={filters}

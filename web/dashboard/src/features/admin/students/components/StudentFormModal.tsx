@@ -1,6 +1,12 @@
 import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  CredentialsBox,
+  generatePassword,
+  studentCredentialsText,
+} from '@/features/shared/student-password';
 import { errorMessage, isApiError } from '@/shared/api';
+import { getTwaUrl } from '@/shared/lib/env';
 import { Button, Input, Modal, Select } from '@/shared/ui';
 import { formatPhone } from '../../shared/format';
 import { useCreateStudent, useStudentGroupOptions } from '../hooks';
@@ -17,17 +23,31 @@ import styles from './StudentFormModal.module.css';
 type FieldKey = keyof StudentCreateFormValues;
 
 /** Fokus tartibi — birinchi xatoli maydonga o'tish uchun. */
-const FIELD_ORDER: readonly FieldKey[] = ['fullName', 'hemisId', 'groupId', 'phoneNumber'];
+const FIELD_ORDER: readonly FieldKey[] = [
+  'fullName',
+  'hemisId',
+  'groupId',
+  'phoneNumber',
+  'password',
+];
 
-const EMPTY_VALUES: StudentCreateFormValues = {
+/** Bo'sh forma — parol har safar yangidan yaratiladi (admin xohlasa o'zgartiradi). */
+const emptyValues = (groupId = ''): StudentCreateFormValues => ({
   fullName: '',
   hemisId: '',
-  groupId: '',
+  groupId,
   phoneNumber: '',
-};
+  password: generatePassword(),
+});
 
 const STUDENT_LOGIN_NOTE =
-  "Talaba Telegram orqali kiradi. Brauzerdan kirishi uchun talaba sahifasida parol o'rnatishingiz mumkin.";
+  'Talaba mobil ilovaga HEMIS ID va shu vaqtinchalik parol bilan darhol kiradi: birinchi kirishda parolini almashtiradi va yuzini topshiradi.';
+
+/** Yaratilgan talaba va unga berilgan vaqtinchalik parol (kirish ma'lumoti ko'rsatiladi). */
+interface Created {
+  student: Student;
+  password: string;
+}
 
 /** "412-22 · 3-kurs · Kompyuter injiniringi · Axborot texnologiyalari" */
 function groupOptionLabel(g: StudentGroupOption): string {
@@ -42,7 +62,10 @@ export interface StudentFormModalProps {
   initialScope: StudentFilterValues;
   /** Fakultet/yo'nalish/kurs variantlari (`GET /students/filters`). */
   filterOptions: StudentFilters | undefined;
-  /** Talaba yaratildi. `keepOpen` — "Saqlash va yana qo'shish" (modal ochiq qoladi). */
+  /**
+   * Talaba yaratildi. Modal o'zi yopilmaydi: "Saqlash" dan keyin kirish ma'lumoti (HEMIS ID + parol)
+   * ko'rsatiladi, "Saqlash va yana qo'shish" — forma tozalanadi.
+   */
   onCreated: (student: Student, keepOpen: boolean) => void;
 }
 
@@ -82,7 +105,9 @@ function initialScopeFor(scope: StudentFilterValues, options: StudentFilters | u
 
 /**
  * "Talaba qo'shish" — bitta talabani yaratish (`POST /api/admin/students`). Guruh fakultet →
- * yo'nalish → kurs bilan toraytirilib tanlanadi (faqat faol guruhlar). Parol so'ralmaydi.
+ * yo'nalish → kurs bilan toraytirilib tanlanadi (faqat faol guruhlar). v3.34: vaqtinchalik parol
+ * MAJBURIY (sukut — yaratilgan) — saqlangach admin "Ilovaga kirish · HEMIS ID … · Parol …" ni
+ * nusxalab talabaga beradi.
  * Har ochilishda yangidan mount qilinadi (sahifada shartli render) — holat o'z-o'zidan tozalanadi.
  */
 export function StudentFormModal({
@@ -96,9 +121,11 @@ export function StudentFormModal({
   const [scope, setScope] = useState<StudentFilterValues>(() =>
     initialScopeFor(initialScope, filterOptions),
   );
-  const [values, setValues] = useState<StudentCreateFormValues>(EMPTY_VALUES);
+  const [values, setValues] = useState<StudentCreateFormValues>(() => emptyValues());
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldKey, string>>>({});
-  const [lastAdded, setLastAdded] = useState<Student | null>(null);
+  const [lastAdded, setLastAdded] = useState<Created | null>(null);
+  /** "Saqlash" muvaffaqiyatli — yakuniy qadam (kirish ma'lumoti). */
+  const [done, setDone] = useState<Created | null>(null);
   // Fokus render'dan keyin o'tkaziladi: so'rov paytida maydonlar disabled — darhol `focus()` ishlamaydi.
   const [focusRequest, setFocusRequest] = useState<{ key: FieldKey } | null>(null);
 
@@ -135,6 +162,11 @@ export function StudentFormModal({
     onClose();
   }
 
+  function regeneratePassword() {
+    setValues((v) => ({ ...v, password: generatePassword() }));
+    setFieldErrors(({ password: _dropped, ...rest }) => rest);
+  }
+
   function field(key: Exclude<FieldKey, 'groupId'>) {
     return (e: ChangeEvent<HTMLInputElement>) =>
       setValues((v) => ({ ...v, [key]: e.target.value }));
@@ -163,13 +195,17 @@ export function StudentFormModal({
     }
     setFieldErrors({});
     setLastAdded(null);
+    const password = parsed.data.password;
     createStudent.mutate(parsed.data, {
       onSuccess: (student) => {
         onCreated(student, keepOpen);
-        if (!keepOpen) return;
+        if (!keepOpen) {
+          setDone({ student, password });
+          return;
+        }
         // Guruh va toraytirish saqlanadi — odatda bir guruhga ketma-ket bir nechta talaba qo'shiladi.
-        setValues((v) => ({ ...EMPTY_VALUES, groupId: v.groupId }));
-        setLastAdded(student);
+        setValues((v) => emptyValues(v.groupId));
+        setLastAdded({ student, password });
         createStudent.reset();
         setFocusRequest({ key: 'fullName' });
       },
@@ -200,6 +236,34 @@ export function StudentFormModal({
         ? "Mos faol guruh yo'q"
         : 'Guruhni tanlang';
   const spinner = <span className={styles.spinner} aria-hidden="true" />;
+  const credentialsOf = (c: Created) =>
+    studentCredentialsText(c.student.hemisId, c.password, getTwaUrl());
+
+  if (done) {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        title="Talaba qo'shildi"
+        description={`«${done.student.fullName}» uchun ilovaga kirish ma'lumotini talabaga bering.`}
+        width="480px"
+        footer={
+          <Button type="button" variant="primary" onClick={onClose}>
+            Tayyor
+          </Button>
+        }
+      >
+        <div className={styles.form}>
+          <CredentialsBox text={credentialsOf(done)} />
+          <p className={styles.note}>
+            Parol faqat hozir ko'rsatiladi. Talaba birinchi kirishda parolini almashtiradi va yuzini
+            topshiradi.{' '}
+            <Link to={`/admin/students/${done.student.id}`}>Talaba sahifasini ochish</Link>
+          </p>
+        </div>
+      </Modal>
+    );
+  }
 
   return (
     <Modal
@@ -230,10 +294,13 @@ export function StudentFormModal({
     >
       <form id={formId} className={styles.form} noValidate onSubmit={handleSubmit}>
         {lastAdded && (
-          <p className={styles.success} role="status">
-            «{lastAdded.fullName}» qo'shildi.{' '}
-            <Link to={`/admin/students/${lastAdded.id}`}>Talaba sahifasini ochish</Link>
-          </p>
+          <div className={styles.added}>
+            <p className={styles.success} role="status">
+              «{lastAdded.student.fullName}» qo'shildi.{' '}
+              <Link to={`/admin/students/${lastAdded.student.id}`}>Talaba sahifasini ochish</Link>
+            </p>
+            <CredentialsBox text={credentialsOf(lastAdded)} />
+          </div>
         )}
         {server.general && (
           <p role="alert" className={styles.error}>
@@ -349,6 +416,25 @@ export function StudentFormModal({
           error={shown('phoneNumber')}
           disabled={pending}
         />
+        <div className={styles.passwordRow}>
+          <Input
+            ref={bind('password')}
+            id="student-password"
+            label="Vaqtinchalik parol"
+            variant="form"
+            mono
+            autoComplete="new-password"
+            hint="Kamida 8 ta belgi. Talabaga beriladi."
+            value={values.password}
+            onChange={field('password')}
+            error={shown('password')}
+            disabled={pending}
+            aria-required="true"
+          />
+          <Button type="button" size="xs" onClick={regeneratePassword} disabled={pending}>
+            Yangi parol
+          </Button>
+        </div>
         <p className={styles.note}>{STUDENT_LOGIN_NOTE}</p>
       </form>
     </Modal>

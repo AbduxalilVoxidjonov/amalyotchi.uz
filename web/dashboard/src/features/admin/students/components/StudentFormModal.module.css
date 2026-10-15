@@ -72,3 +72,19 @@
     animation-duration: 2s;
   }
 }
+/* v3.34: vaqtinchalik parol maydoni + "Yangi parol" tugmasi */
+.passwordRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+}
+/* Tugma input bilan bir qatorda (yorliq balandligi ostida). */
+.passwordRow > button {
+  margin-top: 26px;
+}
+.added {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

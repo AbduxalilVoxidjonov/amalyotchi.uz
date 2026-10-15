@@ -37,6 +37,7 @@ export function useSubmitFace() {
       qc.setQueryData(faceKeys.all, data);
       void qc.invalidateQueries({ queryKey: todayKeys.all });
     },
+    // 409 (`faceAlreadyEnrolled`, v3.34) — server xabari formada ko'rsatiladi.
     onError: () => haptic('error'),
   });
 }

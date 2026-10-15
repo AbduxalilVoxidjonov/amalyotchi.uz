@@ -1,9 +1,12 @@
 import { Link } from 'react-router-dom';
-import { Avatar, Button, SidebarNav, type SidebarNavItem } from '@/shared/ui';
+import { Avatar, Button } from '@/shared/ui';
+import type { NavGroup } from '../nav';
 import styles from './Sidebar.module.css';
+import { SidebarNavGroups } from './SidebarNavGroups';
 
 export interface SidebarProps {
-  items: readonly SidebarNavItem[];
+  /** Bo'limlar (rol bo'yicha filtrlangan, badge'lar bilan) — `adminNavGroups()`. */
+  groups: readonly NavGroup[];
   userName: string;
   userRole: string;
   /** Logo bosilganda boriladigan yo'l (rol uy sahifasi). */
@@ -13,11 +16,13 @@ export interface SidebarProps {
   /** ❓ Mobil drawer holati. */
   open?: boolean;
   onClose?: (() => void) | undefined;
+  /** Qidiruv yorlig'i (`/`, Ctrl/Cmd+K) — mobil rejimda drawer'ni ochish. */
+  onSearchShortcut?: (() => void) | undefined;
 }
 
-/** Chap dark panel: brend + nav + user bloki (SPEC-TOKENS 4.10). */
+/** Chap dark panel: brend + qidiruv + bo'limlarga ajratilgan nav + user bloki (SPEC-TOKENS 4.10). */
 export function Sidebar({
-  items,
+  groups,
   userName,
   userRole,
   homePath,
@@ -25,6 +30,7 @@ export function Sidebar({
   logoutPending = false,
   open = false,
   onClose,
+  onSearchShortcut,
 }: SidebarProps) {
   return (
     <aside id="app-sidebar" className={styles.sidebar} data-open={open || undefined}>
@@ -39,7 +45,7 @@ export function Sidebar({
           </button>
         )}
       </div>
-      <SidebarNav items={items} className={styles.nav} onNavigate={onClose} />
+      <SidebarNavGroups groups={groups} onNavigate={onClose} onSearchShortcut={onSearchShortcut} />
       <div className={styles.user}>
         <Avatar name={userName} variant="sidebar" />
         <div className={styles.userText}>

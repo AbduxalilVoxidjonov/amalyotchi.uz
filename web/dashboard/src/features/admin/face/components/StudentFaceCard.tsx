@@ -1,14 +1,5 @@
 import { useState } from 'react';
-import {
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  ConfirmDialog,
-  EmptyState,
-  FactGrid,
-  type FactItem,
-} from '@/shared/ui';
+import { Button, ConfirmDialog, EmptyState, FactGrid, type FactItem } from '@/shared/ui';
 import { mutationErrorMessage } from '../../shared/errors';
 import { fmtDate, fmtTime } from '../../shared/fmt';
 import { PhotoPreview } from '../../student-profile/components/PhotoPreview';
@@ -20,23 +11,39 @@ import styles from './StudentFaceCard.module.css';
 
 const fmtDateTime = (iso: string | null) => (iso ? `${fmtDate(iso)} ${fmtTime(iso)}` : '—');
 
-export interface StudentFaceCardProps {
+/** Holatga qarab adminga qisqa izoh (v3.34 siyosati: talaba etalonni o'zi almashtira olmaydi). */
+const STATUS_NOTE: Record<StudentFace['status'], string> = {
+  none: 'Talaba yuzini ilovaga birinchi kirishda topshiradi.',
+  pending:
+    'Talaba rasmni yubordi — tasdiqlang yoki rad eting. Shu vaqtgacha check-in selfisi shu rasm bilan solishtiriladi.',
+  approved: "Talaba etalonni o'zi almashtira olmaydi — kerak bo'lsa «Qayta olish».",
+  rejected: 'Talaba keyingi kirishda yuzini qayta topshiradi.',
+};
+
+export interface StudentFacePanelProps {
   studentId: string;
   studentName: string;
   face: StudentFace;
   /**
-   * Tasdiqlash/rad etish/bekor qilish amallari (`/api/admin/students/:id/face/*`). false —
-   * karta faqat ko'rish uchun.
+   * Tasdiqlash/rad etish/qayta olish amallari (`/api/admin/students/:id/face/*`). false — faqat
+   * ko'rish uchun.
    */
   canManage: boolean;
 }
 
 /**
- * Talaba profili · "Yuz" kartasi (kontrakt §6.33): etalon rasm, holat, yuborilgan/ko'rib chiqilgan
- * vaqt, rad sababi. `pending` — Tasdiqlash / Rad etish (sabab majburiy); `approved` — Bekor qilish
- * (tasdiq dialogi bilan; talaba yangi rasm yuborishi kerak bo'ladi).
+ * Talaba profili · "Ilova" kartasidagi "Yuz etaloni" bo'limi (kontrakt §6.33, v3.34 siyosati):
+ * etalon rasm, holat, yuborilgan/ko'rib chiqilgan vaqt, rad sababi. Talaba etalonni ilovaga birinchi
+ * kirishda MAJBURIY topshiradi va o'zi almashtira olmaydi. `pending` — Tasdiqlash / Rad etish (sabab
+ * majburiy) / Qayta olish; `approved` — Rad etish / Qayta olish (reset: etalon o'chiriladi, talaba
+ * keyingi kirishda yuzini qayta topshiradi).
  */
-export function StudentFaceCard({ studentId, studentName, face, canManage }: StudentFaceCardProps) {
+export function StudentFacePanel({
+  studentId,
+  studentName,
+  face,
+  canManage,
+}: StudentFacePanelProps) {
   const action = useFaceAction();
   const [rejectOpen, setRejectOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
@@ -46,7 +53,7 @@ export function StudentFaceCard({ studentId, studentName, face, canManage }: Stu
     { k: 'Holat', v: <FaceStatusBadge status={face.status} /> },
     { k: 'Yuborilgan', v: fmtDateTime(face.submittedAt) },
     { k: "Ko'rib chiqilgan", v: fmtDateTime(face.reviewedAt) },
-    { k: 'Check-in tekshiruvi', v: face.required ? 'Yoqilgan' : "O'chirilgan" },
+    { k: 'Davomatda solishtirish', v: face.required ? 'Yoqilgan' : "O'chirilgan (sozlama)" },
   ];
 
   const approve = () => {
@@ -57,85 +64,75 @@ export function StudentFaceCard({ studentId, studentName, face, canManage }: Stu
     );
   };
 
+  const openReject = () => {
+    action.reset();
+    setInlineError(null);
+    setRejectOpen(true);
+  };
+
+  const openReset = () => {
+    action.reset();
+    setInlineError(null);
+    setResetOpen(true);
+  };
+
+  const hasEnrollment = face.status !== 'none';
+
   return (
-    <Card as="section" aria-label="Yuz">
-      <CardHeader
-        title="Yuz"
-        subtitle="Etalon rasm — check-in selfilari shu bilan solishtiriladi"
-      />
-      <CardBody>
-        {face.status === 'none' && !face.photoUrl ? (
-          <EmptyState
-            title="Etalon yuz rasmi yuborilmagan"
-            description={
-              face.required
-                ? 'Talaba ilovaga kirganda avval yuz rasmini yuboradi.'
-                : 'Yuzni tekshirish sozlamada o‘chirilgan.'
-            }
-          />
-        ) : (
-          <div className={styles.layout}>
-            <div className={styles.photo}>
-              {face.photoUrl ? (
-                <PhotoPreview
-                  url={face.photoUrl}
-                  label={`${studentName} etalon yuz rasmi`}
-                  size="tile"
-                />
-              ) : (
-                <div className={styles.noPhoto}>Rasm yo'q</div>
-              )}
-            </div>
-            <div className={styles.info}>
-              <FactGrid variant="detail" min={170} items={facts} />
-              {face.rejectReason && (
-                <p className={styles.reason}>
-                  <span className={styles.reasonLabel}>Rad etish sababi: </span>
-                  {face.rejectReason}
-                </p>
-              )}
-              {inlineError && (
-                <p className={styles.error} role="alert">
-                  {inlineError}
-                </p>
-              )}
-              {canManage && face.status === 'pending' && (
-                <div className={styles.actions}>
+    <section className={styles.panel} aria-label="Yuz etaloni">
+      <h3 className={styles.title}>Yuz etaloni</h3>
+      {!hasEnrollment && !face.photoUrl ? (
+        <EmptyState
+          title="Etalon yuz rasmi topshirilmagan"
+          description={`${STATUS_NOTE.none}${
+            face.required ? '' : ' Davomatda solishtirish hozir sozlamada o‘chirilgan.'
+          }`}
+        />
+      ) : (
+        <div className={styles.layout}>
+          <div className={styles.photo}>
+            {face.photoUrl ? (
+              <PhotoPreview
+                url={face.photoUrl}
+                label={`${studentName} etalon yuz rasmi`}
+                size="tile"
+              />
+            ) : (
+              <div className={styles.noPhoto}>Rasm yo'q</div>
+            )}
+          </div>
+          <div className={styles.info}>
+            <FactGrid variant="detail" min={170} items={facts} />
+            {face.rejectReason && (
+              <p className={styles.reason}>
+                <span className={styles.reasonLabel}>Rad etish sababi: </span>
+                {face.rejectReason}
+              </p>
+            )}
+            <p className={styles.note}>{STATUS_NOTE[face.status]}</p>
+            {inlineError && (
+              <p className={styles.error} role="alert">
+                {inlineError}
+              </p>
+            )}
+            {canManage && (face.status === 'pending' || face.status === 'approved') && (
+              <div className={styles.actions}>
+                {face.status === 'pending' && (
                   <Button size="sm" variant="primary" onClick={approve} disabled={action.isPending}>
                     Tasdiqlash
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => {
-                      action.reset();
-                      setInlineError(null);
-                      setRejectOpen(true);
-                    }}
-                    disabled={action.isPending}
-                  >
-                    Rad etish
-                  </Button>
-                </div>
-              )}
-              {canManage && face.status === 'approved' && (
-                <div className={styles.actions}>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      action.reset();
-                      setResetOpen(true);
-                    }}
-                    disabled={action.isPending}
-                  >
-                    Bekor qilish
-                  </Button>
-                </div>
-              )}
-            </div>
+                )}
+                <Button size="sm" variant="danger" onClick={openReject} disabled={action.isPending}>
+                  Rad etish
+                </Button>
+                <Button size="sm" onClick={openReset} disabled={action.isPending}>
+                  Qayta olish
+                </Button>
+              </div>
+            )}
           </div>
-        )}
-      </CardBody>
+        </div>
+      )}
 
       {canManage && (
         <>
@@ -154,9 +151,9 @@ export function StudentFaceCard({ studentId, studentName, face, canManage }: Stu
           />
           <ConfirmDialog
             open={resetOpen}
-            title="Yuz rasmini bekor qilish"
-            description={`${studentName} uchun tasdiqlangan etalon rasm o'chiriladi. Talaba keyingi kirishda yangi rasm yuborishi kerak bo'ladi.`}
-            confirmLabel="Bekor qilish"
+            title="Yuz etalonini qayta olish"
+            description={`${studentName} ning etalon rasmi o'chiriladi. Talaba keyingi kirishda yuzini qayta topshiradi; shu vaqtgacha (solishtirish yoqilgan bo'lsa) davomat belgilay olmaydi.`}
+            confirmLabel="Qayta olish"
             cancelLabel="Qaytish"
             danger
             isLoading={action.isPending}
@@ -168,6 +165,6 @@ export function StudentFaceCard({ studentId, studentName, face, canManage }: Stu
           />
         </>
       )}
-    </Card>
+    </section>
   );
 }

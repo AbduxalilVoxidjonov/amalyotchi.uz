@@ -38,16 +38,27 @@ function countPosts() {
 }
 
 describe("Admin talabalar · Talaba qo'shish", () => {
-  it("Excel import yonida 'Talaba qo'shish' tugmasi; formada Telegram izohi", async () => {
-    const { dialog } = await openForm();
+  it("Excel import yonida 'Talaba qo'shish' tugmasi; formada ilova izohi va yaratilgan parol", async () => {
+    const { user, dialog } = await openForm();
     expect(screen.getByRole('button', { name: 'Excel import' })).toBeInTheDocument();
     expect(
       dialog.getByText(
-        "Talaba Telegram orqali kiradi. Brauzerdan kirishi uchun talaba sahifasida parol o'rnatishingiz mumkin.",
+        'Talaba mobil ilovaga HEMIS ID va shu vaqtinchalik parol bilan darhol kiradi: birinchi kirishda parolini almashtiradi va yuzini topshiradi.',
       ),
     ).toBeInTheDocument();
-    // Parol maydoni yo'q.
-    expect(dialog.queryByLabelText(/parol/i)).not.toBeInTheDocument();
+    // v3.34: parol majburiy, sukut — yaratilgan (10 belgi).
+    const password = dialog.getByLabelText('Vaqtinchalik parol');
+    expect((password as HTMLInputElement).value).toMatch(/^[A-Za-z2-9]{10}$/);
+    const before = (password as HTMLInputElement).value;
+    await user.click(dialog.getByRole('button', { name: 'Yangi parol' }));
+    expect((password as HTMLInputElement).value).not.toBe(before);
+
+    await user.clear(password);
+    await user.click(dialog.getByRole('button', { name: 'Saqlash' }));
+    expect(dialog.getByText('Parolni kiriting.')).toBeInTheDocument();
+    await user.type(password, 'abc');
+    await user.click(dialog.getByRole('button', { name: 'Saqlash' }));
+    expect(dialog.getByText("Parol 8–128 ta belgidan iborat bo'lishi kerak.")).toBeInTheDocument();
   });
 
   it("majburiy maydonlar: xatolar maydon ostida, fokus birinchi xatoga, so'rov yuborilmaydi", async () => {
@@ -81,7 +92,7 @@ describe("Admin talabalar · Talaba qo'shish", () => {
     expect(posts.n).toBe(0);
   });
 
-  it("muvaffaqiyat: modal yopiladi, flash + profil havolasi, talaba ro'yxatda paydo bo'ladi", async () => {
+  it("muvaffaqiyat: kirish ma'lumoti (HEMIS ID + parol) → Tayyor → flash + profil havolasi, talaba ro'yxatda", async () => {
     let body: unknown;
     server.events.on('request:start', async ({ request }) => {
       if (request.method === 'POST' && new URL(request.url).pathname === STUDENTS_ENDPOINT)
@@ -91,16 +102,24 @@ describe("Admin talabalar · Talaba qo'shish", () => {
     await user.type(dialog.getByLabelText('FISH'), '  Yangi Talaba  ');
     await user.type(dialog.getByLabelText('HEMIS ID'), '399001');
     await user.type(dialog.getByLabelText('Telefon'), '90 111 22 33');
+    await user.clear(dialog.getByLabelText('Vaqtinchalik parol'));
+    await user.type(dialog.getByLabelText('Vaqtinchalik parol'), 'Vaqtincha-7');
     await pickGroup(user, dialog);
     await user.click(dialog.getByRole('button', { name: 'Saqlash' }));
 
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    const done = await screen.findByRole('dialog', { name: "Talaba qo'shildi" });
+    expect(within(done).getByTestId('student-credentials')).toHaveTextContent(
+      'Ilovaga kirish · HEMIS ID: 399001 · Parol: Vaqtincha-7',
+    );
     expect(body).toEqual({
       fullName: 'Yangi Talaba',
       hemisId: '399001',
       groupId: 'g1',
       phoneNumber: '+998901112233',
+      password: 'Vaqtincha-7',
     });
+    await user.click(within(done).getByRole('button', { name: 'Tayyor' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     const flash = await screen.findByText(/«Yangi Talaba» talabalar ro'yxatiga qo'shildi/);
     expect(within(flash).getByRole('link', { name: 'Talaba sahifasini ochish' })).toHaveAttribute(
       'href',
@@ -118,6 +137,12 @@ describe("Admin talabalar · Talaba qo'shish", () => {
     await user.click(dialog.getByRole('button', { name: "Saqlash va yana qo'shish" }));
 
     expect(await dialog.findByText(/«Birinchi Talaba» qo'shildi/)).toBeInTheDocument();
+    expect(dialog.getByTestId('student-credentials')).toHaveTextContent(
+      /^Ilovaga kirish · HEMIS ID: 399002 · Parol: [A-Za-z2-9]{10}/,
+    );
+    expect((dialog.getByLabelText('Vaqtinchalik parol') as HTMLInputElement).value).toMatch(
+      /^[A-Za-z2-9]{10}$/,
+    );
     expect(dialog.getByLabelText('FISH')).toHaveValue('');
     expect(dialog.getByLabelText('HEMIS ID')).toHaveValue('');
     expect(dialog.getByLabelText('Guruh')).toHaveValue('g1');

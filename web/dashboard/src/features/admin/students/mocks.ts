@@ -1,4 +1,7 @@
-import { hasMockStudentPassword } from '@/features/shared/student-password/passwordStore';
+import {
+  hasMockStudentPassword,
+  setMockStudentPassword,
+} from '@/features/shared/student-password/passwordStore';
 import { http, HttpResponse, type HttpHandler } from 'msw';
 import { problem } from '@/mocks/data';
 import {
@@ -294,6 +297,9 @@ async function createStudentMock(request: Request) {
   if (!body?.groupId) errors['groupId'] = [STUDENT_FORM_MESSAGES.groupRequired];
   else if (!group) errors['groupId'] = ["Bunday faol guruh yo'q."];
   if (rawPhone && !phone) errors['phoneNumber'] = [STUDENT_FORM_MESSAGES.phoneFormat];
+  // v3.34: ixtiyoriy vaqtinchalik parol (8–128).
+  if (body?.password !== undefined && (body.password.length < 8 || body.password.length > 128))
+    errors['password'] = ["Parol 8–128 ta belgidan iborat bo'lishi kerak."];
   if (Object.keys(errors).length > 0) {
     return problemResponse(400, "Ma'lumotlar noto'g'ri", "Bir yoki bir nechta maydon noto'g'ri.", {
       errors,
@@ -320,6 +326,7 @@ async function createStudentMock(request: Request) {
     status: 'unlinked',
   };
   mockStudents.push(student);
+  if (body?.password !== undefined) setMockStudentPassword(student.id);
   if (phone) createdPhones.set(phone, student.id);
   return HttpResponse.json(student, { status: 201 });
 }
@@ -479,7 +486,10 @@ function applyStudentFilters(rows: readonly Student[], url: string): Student[] {
   const facultyId = sp.get('facultyId');
   const directionId = sp.get('directionId');
   const course = sp.get('course');
+  const hasPassword = sp.get('hasPassword');
   return rows.filter((row) => {
+    if (hasPassword !== null && hasMockStudentPassword(row.id) !== (hasPassword === 'true'))
+      return false;
     const scope = studentScope(row);
     if (facultyId && scope.faculty?.id !== facultyId) return false;
     if (directionId && scope.direction?.id !== directionId) return false;
@@ -540,7 +550,16 @@ export const studentsHandlers: HttpHandler[] = [
     if (!(file instanceof File) || file.size === 0) {
       return problemResponse(400, "Ma'lumotlar noto'g'ri", 'Excel fayl tanlanmagan.');
     }
-    return HttpResponse.json(mockImportResult);
+    // v3.34: `generatePasswords=true` — yaratilganlarning vaqtinchalik parollari.
+    const credentials =
+      form?.get('generatePasswords') === 'true'
+        ? [
+            { row: 2, fullName: 'Import Birinchi', hemisId: '390001', password: 'Ab3cdEfgh4' },
+            { row: 3, fullName: 'Import Ikkinchi', hemisId: '390002', password: 'Xy7zKmnpq2' },
+            { row: 5, fullName: 'Import Uchinchi', hemisId: '390003', password: 'Qw5rTyupa8' },
+          ]
+        : [];
+    return HttpResponse.json({ ...mockImportResult, credentials });
   }),
 
   // Ommaviy biriktirish: birinchi talaba biriktiriladi, ikkinchisi (bo'lsa) sabab bilan tashlanadi
@@ -656,6 +675,24 @@ export const studentsHandlers: HttpHandler[] = [
     return detail && detail !== 'periodNotFound' ? HttpResponse.json(detail) : notFound();
   }),
 
+  // v3.34: HEMIS ID (ilova logini) o'zgartirish — format 400, band 409, noma'lum 404.
+  http.put(`${STUDENTS_ENDPOINT}/:id/hemis-id`, async ({ params, request }) => {
+    const row = findRow(String(params['id']));
+    if (!row) return notFound();
+    const body = (await request.json().catch(() => null)) as { hemisId?: string } | null;
+    const hemisId = (body?.hemisId ?? '').trim();
+    if (!/^\d{5,20}$/.test(hemisId)) {
+      return problemResponse(400, "Ma'lumotlar noto'g'ri", STUDENT_FORM_MESSAGES.hemisFormat, {
+        errors: { hemisId: [STUDENT_FORM_MESSAGES.hemisFormat] },
+      });
+    }
+    if (mockStudents.some((s) => s.hemisId === hemisId && s.id !== row.id)) {
+      return problemResponse(409, 'Amal bajarilmadi', HEMIS_TAKEN);
+    }
+    row.hemisId = hemisId;
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   http.post(STUDENTS_ENDPOINT, ({ request }) => createStudentMock(request)),
 
   // `/:id` dan oldin — aks holda "filters"/"group-options" talaba id'si sifatida tushib qoladi.
@@ -690,7 +727,8 @@ export const studentsHandlers: HttpHandler[] = [
         withStudentPageSize(request.url),
         applyStudentFilters(mockStudents, request.url).map((s) => {
           const override = companyOverrides.get(s.id);
-          return override ? { ...s, company: override.company.name } : s;
+          const row = { ...s, hasPassword: hasMockStudentPassword(s.id) };
+          return override ? { ...row, company: override.company.name } : row;
         }),
         (s) => [s.fullName, s.hemisId, s.group, s.faculty],
       ),

@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { StudentFaceCard } from '../../face/components/StudentFaceCard';
 import { todayInTashkent } from '../../shared/fmt';
 import type { StudentProfileDetail } from '../types';
 import { StudentAttendanceSection } from './StudentAttendanceSection';
@@ -14,7 +13,10 @@ export interface StudentProfileProps {
   onSelectPeriod: (periodId: string) => void;
   /** Yangi davr yuklanmoqda — eski ma'lumot xiralashgan holda ko'rinadi. */
   isPlaceholderData: boolean;
-  /** Profil bloklari va davomat jadvali orasidagi qo'shimcha bloklar (admin: tashkiliy ma'lumot). */
+  /**
+   * Profil bloklari va davomat jadvali orasidagi qo'shimcha bloklar (admin: "Ilova" — kirish va yuz
+   * etaloni, tashkiliy ma'lumot, ish vaqti).
+   */
   children?: ReactNode;
   /** Sarlavha kartasidagi amallar (parol o'rnatish). */
   headerActions?: ReactNode;
@@ -64,15 +66,6 @@ export function StudentProfile({
           actions={headerActions}
           labelPeriodCompany={labelPeriodCompany}
         />
-        {/* v3.27: "Yuz" kartasi — server `face` yuborsa; v3.28 dan amallar adminda. */}
-        {detail.face && (
-          <StudentFaceCard
-            studentId={detail.id}
-            studentName={detail.name}
-            face={detail.face}
-            canManage
-          />
-        )}
         {children}
         <StudentAttendanceSection detail={detail} period={shownPeriod} />
       </div>

@@ -32,7 +32,8 @@ internal sealed class GetStudentFaceQueryHandler(IApplicationDbContext db, ICurr
 }
 
 /// <summary><c>POST /api/student/face</c> (multipart: <c>photo</c>, <c>consent=true</c>) → 200 <see cref="StudentFaceDto"/>
-/// (holat <c>pending</c>). Ruxsat: none/pending/rejected (pending almashtiriladi); approved → 409.
+/// (holat <c>pending</c>). Ruxsat (v3.34): faqat none/rejected (admin "reset" qilgandan keyin ham none);
+/// pending/approved → 409 ProblemDetails <c>code=faceAlreadyEnrolled</c>, <c>faceStatus</c>.
 /// Rasmda aynan bitta yuz bo'lishi shart (400, <c>errors.Photo</c>). Modellar yo'q → 503.
 /// Audit: <see cref="AuditAction.FaceEnrollmentSubmitted"/>.</summary>
 public sealed record SubmitStudentFaceCommand(UploadedFile? Photo, bool Consent) : IRequest<StudentFaceDto>;
@@ -83,13 +84,14 @@ internal sealed class SubmitStudentFaceCommandHandler(
         if (!await db.StudentProfiles.AsNoTracking().AnyAsync(p => p.UserId == userId, cancellationToken))
             throw new NotFoundException("Talaba profili topilmadi.");
 
-        // Tasdiqlangan etalonni talaba o'zi almashtira olmaydi — og'ir tahlildan oldin tekshiriladi.
+        // Yuborilgan (pending) yoki tasdiqlangan etalonni talaba o'zi almashtira olmaydi (v3.34) — og'ir tahlildan
+        // oldin tekshiriladi. Qayta topshirish faqat admin rad etganda yoki "reset" qilganda.
         var existingStatus = await db.StudentFaceEnrollments.AsNoTracking()
             .Where(f => f.StudentUserId == userId)
             .Select(f => (FaceEnrollmentStatus?)f.Status)
             .FirstOrDefaultAsync(cancellationToken);
-        if (existingStatus == FaceEnrollmentStatus.Approved)
-            throw new ConflictException(StudentFaceEnrollment.AlreadyApprovedMessage);
+        if (existingStatus is FaceEnrollmentStatus.Pending or FaceEnrollmentStatus.Approved)
+            throw StudentFaceEnrollment.LockedConflict(existingStatus.Value);
 
         var analysis = await faceEngine.AnalyzeOrThrowAsync(photo, cancellationToken);
         var problem = !analysis.Readable ? UnreadableMessage
@@ -120,7 +122,7 @@ internal sealed class SubmitStudentFaceCommandHandler(
             }
             else
             {
-                // Oraliqda tasdiqlangan bo'lsa domain 409 beradi; parallel birinchi yuborish — unique indeks → 409.
+                // Oraliqda holat o'zgargan bo'lsa domain 409 beradi; parallel birinchi yuborish — unique indeks → 409.
                 enrollment.Resubmit(stored.Id, analysis.Embedding!, now);
             }
 

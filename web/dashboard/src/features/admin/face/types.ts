@@ -9,8 +9,18 @@ export type FaceStatus = 'none' | 'pending' | 'approved' | 'rejected';
 /** `StudentFaceDto` — talaba profili (`detail.face`) va approve/reject/reset javobi. */
 export interface StudentFace {
   status: FaceStatus;
-  /** Sozlama `faceVerificationEnabled` — check-in uchun etalon rasm shartmi. */
+  /**
+   * Sozlama `faceVerificationEnabled` — check-in selfisi etalon bilan solishtiriladimi. Etalon
+   * TOPSHIRISH majburiyligi bunga bog'liq emas (`enrollmentRequired`).
+   */
   required: boolean;
+  /** v3.34: etalon topshirish har doim majburiy (talaba ilovaga birinchi kirishda topshiradi). */
+  enrollmentRequired?: boolean;
+  /**
+   * v3.34: talaba hozir etalon yubora oladimi (`none`/`rejected`). `pending`/`approved` — qulflangan,
+   * qayta topshirish faqat admin rad etsa yoki "qayta olish" (reset) qilsa.
+   */
+  canSubmit?: boolean;
   /** `/api/files/{id}` — etalon rasm; yo'q bo'lsa null. */
   photoUrl: string | null;
   /** ISO 8601 */

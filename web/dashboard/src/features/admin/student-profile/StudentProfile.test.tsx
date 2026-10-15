@@ -482,7 +482,7 @@ describe('StudentDetailPage · "Yuz" kartasi (v3.27)', () => {
   it('pending: rasm, holat, Tasdiqlash → holat "Tasdiqlangan" bo‘ladi', async () => {
     const user = userEvent.setup();
     renderStudentDetail('/admin/students/s-341031');
-    const card = await screen.findByRole('region', { name: 'Yuz' });
+    const card = await screen.findByRole('region', { name: 'Yuz etaloni' });
     expect(within(card).getByText('Tekshirilmoqda')).toHaveAttribute('data-status', 'late');
     expect(within(card).getByText('11.10.2026 09:05')).toBeInTheDocument();
     expect(
@@ -490,16 +490,16 @@ describe('StudentDetailPage · "Yuz" kartasi (v3.27)', () => {
         name: 'Karimov Bekzod etalon yuz rasmi — kattalashtirish',
       }),
     ).toBeInTheDocument();
-    expect(within(card).queryByRole('button', { name: 'Bekor qilish' })).not.toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: 'Qayta olish' })).toBeInTheDocument();
 
     await user.click(within(card).getByRole('button', { name: 'Tasdiqlash' }));
     await waitFor(() =>
       expect(
-        within(screen.getByRole('region', { name: 'Yuz' })).getByText('Tasdiqlangan'),
+        within(screen.getByRole('region', { name: 'Yuz etaloni' })).getByText('Tasdiqlangan'),
       ).toBeInTheDocument(),
     );
     expect(
-      within(screen.getByRole('region', { name: 'Yuz' })).queryByRole('button', {
+      within(screen.getByRole('region', { name: 'Yuz etaloni' })).queryByRole('button', {
         name: 'Tasdiqlash',
       }),
     ).not.toBeInTheDocument();
@@ -508,7 +508,7 @@ describe('StudentDetailPage · "Yuz" kartasi (v3.27)', () => {
   it('pending: Rad etish — sababsiz yuborilmaydi; sabab bilan → "Rad etilgan" va sabab ko‘rinadi', async () => {
     const user = userEvent.setup();
     renderStudentDetail('/admin/students/s-341032');
-    const card = await screen.findByRole('region', { name: 'Yuz' });
+    const card = await screen.findByRole('region', { name: 'Yuz etaloni' });
     await user.click(within(card).getByRole('button', { name: 'Rad etish' }));
     const dialog = await screen.findByRole('dialog', { name: 'Yuz rasmini rad etish' });
     await user.click(within(dialog).getByRole('button', { name: 'Rad etish' }));
@@ -516,34 +516,34 @@ describe('StudentDetailPage · "Yuz" kartasi (v3.27)', () => {
     await user.type(within(dialog).getByLabelText('Rad etish sababi'), 'Boshqa odam');
     await user.click(within(dialog).getByRole('button', { name: 'Rad etish' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    const updated = screen.getByRole('region', { name: 'Yuz' });
+    const updated = screen.getByRole('region', { name: 'Yuz etaloni' });
     await waitFor(() => expect(within(updated).getByText('Rad etilgan')).toBeInTheDocument());
     expect(within(updated).getByText('Boshqa odam')).toBeInTheDocument();
   });
 
-  it('approved: Bekor qilish — tasdiq dialogi → reset → "Yuborilmagan" bo‘sh holat', async () => {
+  it('approved: Qayta olish — tasdiq dialogi → reset → "topshirilmagan" bo‘sh holat', async () => {
     const user = userEvent.setup();
     renderStudentDetail('/admin/students/s-341030');
-    const card = await screen.findByRole('region', { name: 'Yuz' });
+    const card = await screen.findByRole('region', { name: 'Yuz etaloni' });
     expect(within(card).getByText('Tasdiqlangan')).toHaveAttribute('data-status', 'ok');
     expect(within(card).getByText('01.10.2026 10:40')).toBeInTheDocument();
 
-    await user.click(within(card).getByRole('button', { name: 'Bekor qilish' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Yuz rasmini bekor qilish' });
+    await user.click(within(card).getByRole('button', { name: 'Qayta olish' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Yuz etalonini qayta olish' });
     // "Qaytish" — hech narsa o'zgarmaydi.
     await user.click(within(dialog).getByRole('button', { name: 'Qaytish' }));
     expect(within(card).getByText('Tasdiqlangan')).toBeInTheDocument();
 
-    await user.click(within(card).getByRole('button', { name: 'Bekor qilish' }));
+    await user.click(within(card).getByRole('button', { name: 'Qayta olish' }));
     await user.click(
-      within(await screen.findByRole('dialog', { name: 'Yuz rasmini bekor qilish' })).getByRole(
+      within(await screen.findByRole('dialog', { name: 'Yuz etalonini qayta olish' })).getByRole(
         'button',
-        { name: 'Bekor qilish' },
+        { name: 'Qayta olish' },
       ),
     );
     expect(
-      await within(screen.getByRole('region', { name: 'Yuz' })).findByText(
-        'Etalon yuz rasmi yuborilmagan',
+      await within(screen.getByRole('region', { name: 'Yuz etaloni' })).findByText(
+        'Etalon yuz rasmi topshirilmagan',
       ),
     ).toBeInTheDocument();
   });

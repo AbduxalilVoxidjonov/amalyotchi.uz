@@ -12,8 +12,12 @@ namespace Amaliyotchi.Application.Features.Admin.Students;
 /// (ro'yxat qatori bilan bir xil shakl). Talaba Excel import bilan AYNAN bir xil yaratiladi
 /// (<see cref="StudentFieldRules"/>, <see cref="StudentRegistration"/>): maydon qoidalari va xabarlari, faol guruh to'plami,
 /// HEMIS ID/telefon bandligi (o'chirilmaganlar orasida). Maydon xatolari → 400 <c>errors.fullName|hemisId|groupId|phoneNumber</c>
-/// (camelCase); guruh topilmasa yoki faol emas → 400 <c>errors.groupId</c>; HEMIS ID yoki telefon band → 409.</summary>
-public sealed record CreateStudentCommand(string? FullName, string? HemisId, Guid? GroupId, string? PhoneNumber)
+/// (camelCase); guruh topilmasa yoki faol emas → 400 <c>errors.groupId</c>; HEMIS ID yoki telefon band → 409.
+/// v3.34: ixtiyoriy <c>password</c> — berilsa talabaga shu VAQTINCHALIK parol o'rnatiladi (<c>MustChangePassword=true</c>,
+/// qoidalar <c>POST /api/admin/students/{id}/password</c> bilan bir xil, 400 <c>errors.password</c>) — talaba darhol
+/// ilovaga HEMIS ID + shu parol bilan kiradi. Berilmasa (null) — parolsiz (eski xulq).</summary>
+public sealed record CreateStudentCommand(
+    string? FullName, string? HemisId, Guid? GroupId, string? PhoneNumber, string? Password = null)
     : IRequest<StudentRow>;
 
 /// <summary>Yakka yaratishga xos xabarlar (maydon xabarlari — <see cref="StudentImportMessages"/>, import bilan umumiy).</summary>
@@ -30,9 +34,11 @@ internal static class CreateStudentFields
     public const string HemisId = "hemisId";
     public const string GroupId = "groupId";
     public const string PhoneNumber = "phoneNumber";
+    public const string Password = "password";
 }
 
-internal sealed class CreateStudentCommandHandler(IApplicationDbContext db, IClock clock, IAuditWriter audit)
+internal sealed class CreateStudentCommandHandler(
+    IApplicationDbContext db, IClock clock, IAuditWriter audit, IPasswordHasher passwordHasher)
     : IRequestHandler<CreateStudentCommand, StudentRow>
 {
     public async Task<StudentRow> Handle(CreateStudentCommand request, CancellationToken cancellationToken)
@@ -53,11 +59,18 @@ internal sealed class CreateStudentCommandHandler(IApplicationDbContext db, IClo
             throw new ConflictException(StudentImportMessages.PhoneTakenMessage);
 
         var user = StudentRegistration.Add(db, fullName, hemisId, group, phone);
+        var withPassword = request.Password is not null;
+        if (withPassword)
+            user.SetTemporaryPassword(passwordHasher.Hash(request.Password!));
 
         await audit.WriteAsync(
             AuditAction.StudentCreated, nameof(User), user.Id.ToString(),
-            changes: JsonSerializer.Serialize(new { hemisId, groupId = group.GroupId }),
+            changes: JsonSerializer.Serialize(new { hemisId, groupId = group.GroupId, temporaryPassword = withPassword }),
             cancellationToken: cancellationToken);
+        if (withPassword)
+            await audit.WriteAsync(
+                AuditAction.StudentPasswordSet, nameof(User), user.Id.ToString(),
+                cancellationToken: cancellationToken);
 
         await db.SaveChangesAsync(cancellationToken);
 

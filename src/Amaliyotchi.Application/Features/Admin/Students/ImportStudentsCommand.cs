@@ -13,8 +13,10 @@ namespace Amaliyotchi.Application.Features.Admin.Students;
 /// <summary><c>POST /api/admin/students/import</c> (multipart, <c>file</c>) → 200 <see cref="ImportResult"/>.
 /// Shablon bo'yicha to'ldirilgan <c>.xlsx</c> dan talabalarni ommaviy qo'shadi. Xato qatorlar tashlab yuboriladi
 /// va hisobotda ko'rsatiladi, TO'G'RILARI saqlanadi (qisman import — FUNKSIONAL-QOLLANMA T2).
-/// Fayl o'qilmasa yoki sarlavha qatori topilmasa → 400.</summary>
-public sealed record ImportStudentsCommand(UploadedFile? File) : IRequest<ImportResult>;
+/// Fayl o'qilmasa yoki sarlavha qatori topilmasa → 400.
+/// v3.34: <paramref name="GeneratePasswords"/> — har yangi talabaga vaqtinchalik parol yaratiladi
+/// (<c>MustChangePassword=true</c>) va javobning <c>credentials</c> ro'yxatida BIR MARTA qaytadi.</summary>
+public sealed record ImportStudentsCommand(UploadedFile? File, bool GeneratePasswords = false) : IRequest<StudentImportResult>;
 
 /// <summary>Qator xatolari matni — hisobotda foydalanuvchiga shu ko'rinishda chiqadi. Maydon xabarlari
 /// (<see cref="StudentFieldRules"/>) yakka talaba formasida (<c>POST /api/admin/students</c>) ham ishlatiladi.</summary>
@@ -34,10 +36,10 @@ public static class StudentImportMessages
 }
 
 internal sealed class ImportStudentsCommandHandler(
-    IApplicationDbContext db, IStudentImportExcel excel, IAuditWriter audit)
-    : IRequestHandler<ImportStudentsCommand, ImportResult>
+    IApplicationDbContext db, IStudentImportExcel excel, IAuditWriter audit, IPasswordHasher passwordHasher)
+    : IRequestHandler<ImportStudentsCommand, StudentImportResult>
 {
-    public async Task<ImportResult> Handle(ImportStudentsCommand request, CancellationToken cancellationToken)
+    public async Task<StudentImportResult> Handle(ImportStudentsCommand request, CancellationToken cancellationToken)
     {
         // Validator allaqachon tekshirgan; bu — nullable kontrakt uchun himoya tarmog'i.
         var file = request.File ?? throw new DomainException(ImportStudentsCommandValidator.RequiredMessage);
@@ -62,6 +64,7 @@ internal sealed class ImportStudentsCommandHandler(
 
         var errors = new List<ImportError>();
         var created = 0;
+        var newStudents = new List<(Domain.Identity.User User, StudentImportRow Row, string FullName, string HemisId)>();
 
         foreach (var row in rows)
         {
@@ -106,13 +109,18 @@ internal sealed class ImportStudentsCommandHandler(
             if (errors.Count != before || group is null)
                 continue;
 
-            StudentRegistration.Add(db, fullName, hemisId, group, phone);
+            var user = StudentRegistration.Add(db, fullName, hemisId, group, phone);
+            newStudents.Add((user, row, fullName, hemisId));
 
             fileHemis.Add(hemisId);
             if (phone is not null)
                 filePhones.Add(phone);
             created++;
         }
+
+        var credentials = request.GeneratePasswords && newStudents.Count > 0
+            ? AssignTemporaryPasswords(newStudents, cancellationToken)
+            : [];
 
         if (created > 0)
         {
@@ -123,14 +131,38 @@ internal sealed class ImportStudentsCommandHandler(
                     fileName = file.FileName,
                     total = rows.Count,
                     created,
-                    failed = rows.Count - created
+                    failed = rows.Count - created,
+                    temporaryPasswords = credentials.Count
                 }),
                 cancellationToken: cancellationToken);
 
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        return new ImportResult(rows.Count, created, rows.Count - created, errors);
+        return new StudentImportResult(rows.Count, created, rows.Count - created, errors, credentials);
+    }
+
+    /// <summary>Har yangi talabaga vaqtinchalik parol. PBKDF2 xeshi qimmat (yuzlab qator) — parallel hisoblanadi;
+    /// xesherlovchi holatsiz (thread-safe).</summary>
+    private List<StudentImportCredential> AssignTemporaryPasswords(
+        List<(Domain.Identity.User User, StudentImportRow Row, string FullName, string HemisId)> students,
+        CancellationToken cancellationToken)
+    {
+        var passwords = students.Select(_ => TemporaryPasswords.Generate()).ToArray();
+        var hashes = new string[passwords.Length];
+        Parallel.For(0, passwords.Length,
+            new ParallelOptions { CancellationToken = cancellationToken, MaxDegreeOfParallelism = Environment.ProcessorCount },
+            i => hashes[i] = passwordHasher.Hash(passwords[i]));
+
+        var result = new List<StudentImportCredential>(students.Count);
+        for (var i = 0; i < students.Count; i++)
+        {
+            var (user, row, fullName, hemisId) = students[i];
+            user.SetTemporaryPassword(hashes[i]);
+            result.Add(new StudentImportCredential(row.RowNumber, fullName, hemisId, passwords[i]));
+        }
+
+        return result;
     }
 
     private static ImportError Error(StudentImportRow row, string column, string? value, string message)

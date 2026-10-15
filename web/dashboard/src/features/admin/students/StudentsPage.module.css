@@ -33,3 +33,17 @@
   outline: none;
   box-shadow: var(--focus-ring);
 }
+
+/* v3.34 — import: vaqtinchalik parol yaratish belgisi */
+.importOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: var(--fs-sm2);
+  color: var(--color-text);
+  line-height: var(--lh-note);
+  cursor: pointer;
+}
+.importOption input {
+  margin-top: 3px;
+}

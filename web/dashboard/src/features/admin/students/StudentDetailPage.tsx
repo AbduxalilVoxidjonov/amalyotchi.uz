@@ -1,7 +1,6 @@
 import { Breadcrumb, Button, EmptyState, type BreadcrumbItem } from '@/shared/ui';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { StudentPasswordAction } from '@/features/shared/student-password';
 import { isApiError } from '@/shared/api';
 import { StudentProfile } from '@/features/admin/student-profile/components/StudentProfile';
 import { todayInTashkent } from '@/features/admin/shared/fmt';
@@ -10,6 +9,7 @@ import { periodPhase, usePeriodParam } from '@/features/admin/student-profile/pe
 import { LoadingState } from '../components/PageStatus';
 import { HierarchyListPage } from '../faculties/components/HierarchyListPage';
 import { AdminStudentMetaCard } from './components/AdminStudentMetaCard';
+import { StudentAppCard } from './components/StudentAppCard';
 import { StudentCompanyModal } from './components/StudentCompanyModal';
 import { StudentWorkHoursCard, StudentWorkHoursModal } from './components/StudentWorkHoursCard';
 import { useStudentQuery } from './hooks';
@@ -35,9 +35,9 @@ function canChangeCompany(
 
 /**
  * Admin · Talaba profili (`/admin/students/:studentId`): profil bloklari (davr tanlagichi,
- * sarlavha kartasi, korxona, ariza, davr, yuz kartasi, kundalik jadval) + tashkiliy ma'lumot
- * (kafedra, Telegram). Davomat/kundalik `/api/admin/students/:id/...` dan so'raladi; parol
- * o'rnatish va yuz tasdiqlash/rad etish/bekor qilish (v3.28) shu sahifada. Tashkiliy blokdagi tugma talabani korxonaga
+ * sarlavha kartasi, korxona, ariza, davr, kundalik jadval) + "Ilova" kartasi (v3.34: login, parol
+ * holati va parol berish, oxirgi kirish, yuz etaloni — tasdiqlash/rad etish/qayta olish) + tashkiliy
+ * ma'lumot (kafedra, Telegram). Davomat/kundalik `/api/admin/students/:id/...` dan so'raladi. Tashkiliy blokdagi tugma talabani korxonaga
  * biriktiradi yoki boshqa korxonaga o'tkazadi (faqat shu sahifada — ommaviy biriktirish alohida).
  * Sarlavhadagi "Joylashuv izi" — bugungi kunlik iz sahifasiga (LIVE-JOYLASHUV.md; sana o'sha yerda tanlanadi).
  * "Ish vaqti" kartasi (v3.32) — talabaning kelish/ketish vaqtini FAQAT admin shu yerda belgilaydi.
@@ -122,10 +122,10 @@ export function StudentDetailPage() {
                     Joylashuv izi
                   </Link>
                 </Button>
-                <StudentPasswordAction student={detail} />
               </div>
             }
           >
+            <StudentAppCard detail={detail} onMessage={setFlash} />
             <AdminStudentMetaCard
               detail={detail}
               onChangeCompany={

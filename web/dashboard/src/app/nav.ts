@@ -1,3 +1,4 @@
+import { formatCount } from '@/features/admin/shared/format';
 import type { SidebarNavItem } from '@/shared/ui';
 
 /**
@@ -12,29 +13,109 @@ export interface NavBadges {
 /** "Adminlar" — faqat bosh admin uchun (`user.isSuperAdmin`). */
 export const ADMINS_NAV_PATH = '/admin/admins';
 
+/** Sidebar bandi + qidiruv uchun qo'shimcha kalit so'zlar (sinonimlar, ichki sahifalar). */
+export interface AdminNavItem extends SidebarNavItem {
+  keywords?: readonly string[];
+  /**
+   * Badge — "kutilayotgan ish" soni (ko'rib chiqilmagan ariza, tasdiqlanmagan yuz, tekshirilmagan
+   * kundalik). Faqat shular yopiq bo'lim yig'indisiga kiradi; ma'lumot sonlari (talabalar,
+   * korxonalar, fakultetlar jami, bugungi jadval qatorlari) kirmaydi.
+   */
+  pending?: true;
+}
+
+export type NavGroupId = 'main' | 'students' | 'structure' | 'practice' | 'comms' | 'system';
+
+/** Sidebar bo'limi (yig'iladigan guruh). */
+export interface NavGroup {
+  id: NavGroupId;
+  label: string;
+  items: AdminNavItem[];
+}
+
+interface NavGroupDef {
+  id: NavGroupId;
+  label: string;
+  items: readonly AdminNavItem[];
+}
+
 /**
- * Tartib: umumiy ko'rinish → kundalik nazorat (Bugun, Arizalar, Yuz, Kundaliklar, Baholash,
- * Kalendar, Xarita) → ma'lumotnomalar (Talabalar, Korxonalar, Fakultetlar, davrlar) →
- * aloqa/hisobot → boshqaruv (Adminlar, Audit, Sozlamalar).
+ * Bo'limlar: umumiy ko'rinish → talabalar bilan kundalik ish → tuzilma → amaliyot tashkiloti →
+ * aloqa/hisobot → tizim boshqaruvi. Tartib shu yerda yagona manba (`adminNav` — tekis ro'yxat).
  */
-const ADMIN_NAV: readonly SidebarNavItem[] = [
-  { label: 'Dashboard', to: '/admin', end: true },
-  { label: 'Bugun', to: '/admin/today' },
-  { label: 'Arizalar', to: '/admin/applications' },
-  { label: 'Yuz tasdiqlash', to: '/admin/face' },
-  { label: 'Kundaliklar', to: '/admin/diaries' },
-  { label: 'Baholash', to: '/admin/grading' },
-  { label: 'Kalendar', to: '/admin/calendar' },
-  { label: 'Xarita', to: '/admin/map' },
-  { label: 'Talabalar', to: '/admin/students' },
-  { label: 'Korxonalar', to: '/admin/companies' },
-  { label: 'Fakultetlar', to: '/admin/faculties' },
-  { label: 'Amaliyot davrlari', to: '/admin/practice-periods' },
-  { label: 'Xabarlar', to: '/admin/messages' },
-  { label: 'Hisobotlar', to: '/admin/reports' },
-  { label: 'Adminlar', to: ADMINS_NAV_PATH },
-  { label: 'Audit jurnali', to: '/admin/audit' },
-  { label: 'Sozlamalar', to: '/admin/settings' },
+const ADMIN_NAV_GROUPS: readonly NavGroupDef[] = [
+  {
+    id: 'main',
+    label: 'Asosiy',
+    items: [
+      { label: 'Dashboard', to: '/admin', end: true, keywords: ['umumiy', 'bosh sahifa'] },
+      { label: 'Bugun', to: '/admin/today', keywords: ['davomat', 'check-in', 'kelganlar'] },
+      { label: 'Xarita', to: '/admin/map', keywords: ['joylashuv', 'lokatsiya', 'geo'] },
+    ],
+  },
+  {
+    id: 'students',
+    label: 'Talabalar',
+    items: [
+      { label: 'Talabalar', to: '/admin/students', keywords: ['talaba', 'amaliyotchi'] },
+      {
+        label: 'Arizalar',
+        to: '/admin/applications',
+        pending: true,
+        keywords: ["so'rov", 'ruxsat'],
+      },
+      {
+        label: 'Yuz tasdiqlash',
+        to: '/admin/face',
+        pending: true,
+        keywords: ['yuz etaloni', 'etalon', 'face'],
+      },
+      {
+        label: 'Kundaliklar',
+        to: '/admin/diaries',
+        pending: true,
+        keywords: ['kundalik', 'hisobot'],
+      },
+      { label: 'Baholash', to: '/admin/grading', keywords: ['baho', 'ball', 'reyting'] },
+    ],
+  },
+  {
+    id: 'structure',
+    label: 'Tuzilma',
+    items: [
+      {
+        label: 'Fakultetlar',
+        to: '/admin/faculties',
+        keywords: ['fakultet', 'kafedra', "yo'nalish", 'guruh'],
+      },
+    ],
+  },
+  {
+    id: 'practice',
+    label: 'Amaliyot',
+    items: [
+      { label: 'Amaliyot davrlari', to: '/admin/practice-periods', keywords: ['davr', 'guruh'] },
+      { label: 'Korxonalar', to: '/admin/companies', keywords: ['kompaniya', 'tashkilot'] },
+      { label: 'Kalendar', to: '/admin/calendar', keywords: ['jadval', 'sana', 'taqvim'] },
+    ],
+  },
+  {
+    id: 'comms',
+    label: 'Aloqa va hisobot',
+    items: [
+      { label: 'Xabarlar', to: '/admin/messages', keywords: ["e'lon", 'bildirishnoma', 'xabar'] },
+      { label: 'Hisobotlar', to: '/admin/reports', keywords: ['eksport', 'excel', 'statistika'] },
+    ],
+  },
+  {
+    id: 'system',
+    label: 'Tizim',
+    items: [
+      { label: 'Adminlar', to: ADMINS_NAV_PATH, keywords: ['admin', 'foydalanuvchi'] },
+      { label: 'Audit jurnali', to: '/admin/audit', keywords: ['log', 'tarix'] },
+      { label: 'Sozlamalar', to: '/admin/settings', keywords: ['settings', 'telegram'] },
+    ],
+  },
 ];
 
 /** SPEC-NAV §6 — title = TITLE_OVERRIDE[route] ?? nav label. */
@@ -54,11 +135,50 @@ export interface AdminNavOptions {
   isSuperAdmin?: boolean;
 }
 
-/** `badges` yo'q bo'lsa — hech bir elementda badge ko'rsatilmaydi (soxta son chiqmasin). */
-export function adminNav(badges?: NavBadges, options: AdminNavOptions = {}): SidebarNavItem[] {
-  return ADMIN_NAV.filter((it) => it.to !== ADMINS_NAV_PATH || options.isSuperAdmin === true).map(
-    (it) => ({ ...it, badge: badges?.[it.to] }),
+/**
+ * Rol bo'yicha filtrlangan bo'limlar (bo'sh bo'lim tashlanadi). `badges` yo'q bo'lsa — hech bir
+ * elementda badge ko'rsatilmaydi (soxta son chiqmasin).
+ */
+export function adminNavGroups(badges?: NavBadges, options: AdminNavOptions = {}): NavGroup[] {
+  return ADMIN_NAV_GROUPS.map((g) => ({
+    id: g.id,
+    label: g.label,
+    items: g.items
+      .filter((it) => it.to !== ADMINS_NAV_PATH || options.isSuperAdmin === true)
+      .map((it) => ({ ...it, badge: badges?.[it.to] })),
+  })).filter((g) => g.items.length > 0);
+}
+
+/** Tekis ro'yxat (bo'limlar tartibida) — sarlavha/aktiv band hisoblash uchun. */
+export function adminNav(badges?: NavBadges, options: AdminNavOptions = {}): AdminNavItem[] {
+  return adminNavGroups(badges, options).flatMap((g) => g.items);
+}
+
+/** Joriy pathname joylashgan bo'lim (aktiv band bo'yicha). */
+export function activeGroupId(
+  groups: readonly NavGroup[],
+  pathname: string,
+): NavGroupId | undefined {
+  const active = activeNavItem(
+    groups.flatMap((g) => g.items),
+    pathname,
   );
+  return active ? groups.find((g) => g.items.includes(active))?.id : undefined;
+}
+
+/**
+ * Bo'lim sarlavhasidagi badge — faqat "kutilayotgan ish" (`pending`) bandlari badge'lari yig'indisi
+ * (yopiq bo'lganda ko'rsatiladi). Ma'lumot sonlari qo'shilmaydi — aralash raqam chalg'itadi.
+ * Badge'lar formatlangan ("1 284") bo'lishi mumkin → raqamlar ajratib olinadi. 0 → undefined.
+ */
+export function groupBadge(group: NavGroup): string | undefined {
+  let sum = 0;
+  for (const it of group.items) {
+    if (it.pending !== true || it.badge === undefined || it.badge === '') continue;
+    const n = typeof it.badge === 'number' ? it.badge : Number(String(it.badge).replace(/\D/g, ''));
+    if (Number.isFinite(n)) sum += n;
+  }
+  return sum > 0 ? formatCount(sum) : undefined;
 }
 
 /** Joriy pathname uchun aktiv nav elementi (eng uzun mos prefiks). */

@@ -42,4 +42,21 @@ export interface ImportResult {
   created: number;
   failed: number;
   errors: ImportError[];
+  /**
+   * v3.34 — faqat talabalar importi (`generatePasswords=true`): yangi talabalarning vaqtinchalik
+   * parollari. Korxonalar importida yo'q.
+   */
+  credentials?: ImportCredential[];
+}
+
+/**
+ * v3.34 — import paytida yaratilgan vaqtinchalik parol. Serverda faqat xesh saqlanadi — javobdan
+ * keyin parolni qayta ko'rib bo'lmaydi.
+ */
+export interface ImportCredential {
+  /** Exceldagi qator raqami. */
+  row: number;
+  fullName: string;
+  hemisId: string;
+  password: string;
 }

@@ -3,7 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useLogout } from '@/features/auth/hooks';
 import { homePathForRole, useAuth } from '@/shared/auth/useAuth';
 import { Topbar } from '@/shared/ui';
-import { adminNav, roleLabel, titleForPath } from '../nav';
+import { adminNavGroups, roleLabel, titleForPath } from '../nav';
 import { navBadges, navCrumb, useNavData } from '../nav-data';
 import styles from './AppShell.module.css';
 import { PageHeaderContext, type PageHeaderOverride } from './page-header-context';
@@ -26,14 +26,23 @@ export function AppShell() {
 
   // Badge/crumb — real API; yuklanish yoki xatoda badge yo'q, crumb faqat "Admin".
   const nav = useNavData();
-  const items = useMemo(
-    () => adminNav(nav.data ? navBadges(nav.data) : undefined, { isSuperAdmin }),
+  const groups = useMemo(
+    () => adminNavGroups(nav.data ? navBadges(nav.data) : undefined, { isSuperAdmin }),
     [nav.data, isSuperAdmin],
   );
+  const items = useMemo(() => groups.flatMap((g) => g.items), [groups]);
   const title = override.title ?? titleForPath(items, location.pathname);
   const crumb = override.crumb ?? navCrumb(nav.data);
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+  // Qidiruv yorlig'i: drawer rejimida (≤900px) sidebar ekrandan tashqarida — avval ochiladi.
+  const openMenuForSearch = useCallback(() => {
+    try {
+      if (window.matchMedia('(max-width: 900px)').matches) setMenuOpen(true);
+    } catch {
+      // matchMedia yo'q (eski brauzer/test muhiti) — desktop deb hisoblanadi.
+    }
+  }, []);
   useEffect(() => {
     // Marshrut o'zgarganda drawer yopiladi.
     setMenuOpen(false);
@@ -45,7 +54,7 @@ export function AppShell() {
     <PageHeaderContext.Provider value={ctx}>
       <div className={styles.root}>
         <Sidebar
-          items={items}
+          groups={groups}
           userName={user?.fullName ?? ''}
           userRole={roleLabel(isSuperAdmin)}
           homePath={homePathForRole(user?.role)}
@@ -53,6 +62,7 @@ export function AppShell() {
           logoutPending={logout.isPending}
           open={menuOpen}
           onClose={closeMenu}
+          onSearchShortcut={openMenuForSearch}
         />
         <div className={styles.backdrop} data-open={menuOpen || undefined} onClick={closeMenu} />
         <main className={styles.main}>

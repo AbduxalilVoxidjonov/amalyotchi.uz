@@ -79,6 +79,8 @@ export const AUDIT_ACTIONS = [
   'adminUpdated',
   'adminStatusChanged',
   'adminPasswordReset',
+  // v3.34 — admin talabaning HEMIS ID sini (ilova logini) o'zgartirdi.
+  'studentHemisIdChanged',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

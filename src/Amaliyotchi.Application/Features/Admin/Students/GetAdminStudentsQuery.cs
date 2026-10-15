@@ -16,7 +16,8 @@ namespace Amaliyotchi.Application.Features.Admin.Students;
 /// <paramref name="Id"/> — talabaning <c>User.Id</c> (admin endpoint'laridagi <c>studentId</c> bilan bir xil).
 /// <paramref name="Company"/> — talabaning HOZIRDA aktiv korxonasi nomi (<see cref="ActiveCompanyQueries"/>: tasdiqlangan
 /// ariza, yopilmagan va bugun davom etayotgan davr, guruh hali davrga biriktirilgan); aktivi bo'lmasa <c>null</c> —
-/// oldingi (yopilgan/tugagan davrdagi) korxonaga fallback yo'q.</summary>
+/// oldingi (yopilgan/tugagan davrdagi) korxonaga fallback yo'q.
+/// <paramref name="HasPassword"/> (v3.34) — parol bor: talaba ilovaga HEMIS ID + parol bilan kira oladi; <c>false</c> — kira olmaydi.</summary>
 public sealed record StudentRow(
     Guid Id,
     string FullName,
@@ -29,7 +30,8 @@ public sealed record StudentRow(
     int AttendancePct,
     int SuspiciousDays,
     bool TelegramLinked,
-    AdminStudentStatus Status);
+    AdminStudentStatus Status,
+    bool HasPassword);
 
 /// <summary><c>GET /api/admin/students?q&amp;page&amp;pageSize&amp;facultyId&amp;directionId&amp;course</c> (<c>pageSize</c> ≤ 500,
 /// boshqa ro'yxatlarda ≤ 100) — <c>q</c>: FISH,
@@ -49,6 +51,9 @@ public sealed record GetAdminStudentsQuery : PagedQuery, IRequest<Paged<StudentR
 
     /// <summary>Guruh kursi (<see cref="StudentGroup.MinCourse"/>..<see cref="StudentGroup.MaxCourse"/>).</summary>
     public int? Course { get; init; }
+
+    /// <summary>v3.34: <c>false</c> — faqat parolsiz (ilovaga kira olmaydigan) talabalar; <c>true</c> — faqat paroli borlar.</summary>
+    public bool? HasPassword { get; init; }
 }
 
 internal sealed class GetAdminStudentsQueryHandler(IApplicationDbContext db, IClock clock)
@@ -74,6 +79,8 @@ internal sealed class GetAdminStudentsQueryHandler(IApplicationDbContext db, ICl
             students = students.Where(x => x.Group.DirectionId == directionId);
         if (request.Course is { } course)
             students = students.Where(x => x.Group.Course == course);
+        if (request.HasPassword is { } hasPassword)
+            students = students.Where(x => (x.User.PasswordHash != null) == hasPassword);
 
         if (request.Q is { } q)
         {
@@ -116,7 +123,8 @@ internal sealed class GetAdminStudentsQueryHandler(IApplicationDbContext db, ICl
             Group = x.Group.Name,
             Course = x.Group.Course,
             Faculty = x.Faculty.Name,
-            TelegramLinked = x.User.TelegramUserId != null
+            TelegramLinked = x.User.TelegramUserId != null,
+            HasPassword = x.User.PasswordHash != null
         };
 
     /// <summary>Bazadan olingan asosiy maydonlarga davomat foizi, shubhali kunlar, aktiv korxona va holatni qo'shadi.</summary>
@@ -160,7 +168,7 @@ internal sealed class GetAdminStudentsQueryHandler(IApplicationDbContext db, ICl
             return new StudentRow(
                 s.Id, s.FullName, s.HemisId, s.GroupId, s.Group, s.Course, s.Faculty,
                 companies.GetValueOrDefault(s.Id)?.Name,
-                pct, suspicious, s.TelegramLinked, status);
+                pct, suspicious, s.TelegramLinked, status, s.HasPassword);
         }).ToList();
     }
 }
@@ -176,6 +184,7 @@ internal sealed class StudentRowSeed
     public required int Course { get; init; }
     public required string Faculty { get; init; }
     public required bool TelegramLinked { get; init; }
+    public required bool HasPassword { get; init; }
 }
 
 /// <summary>Admin talabalar ro'yxati manbasi qatori (EF kompozitsiyasi uchun init-xossali tur, konstruktor emas).</summary>

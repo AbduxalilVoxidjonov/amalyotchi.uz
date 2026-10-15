@@ -50,9 +50,11 @@ internal static class StudentFieldRules
 internal static class StudentRegistration
 {
     /// <summary>Band HEMIS ID'lar — o'chirilmagan profillar (bazadagi unikal indeks <c>is_deleted = false</c> sharti bilan bir xil;
-    /// o'chirilgan talabaning HEMIS ID si qayta ishlatilishi mumkin).</summary>
+    /// o'chirilgan talabaning HEMIS ID si qayta ishlatilishi mumkin) VA admin loginlari (<c>User.HemisId</c>): login avval
+    /// admin bo'yicha qidiradi — admin logini bilan bir xil HEMIS ID'li talaba ilovaga kira olmasdi (v3.34).</summary>
     public static IQueryable<string> TakenHemisIds(IApplicationDbContext db)
-        => db.StudentProfiles.AsNoTracking().Select(p => p.HemisId);
+        => db.StudentProfiles.AsNoTracking().Select(p => p.HemisId)
+            .Concat(db.Users.AsNoTracking().Where(u => u.HemisId != null).Select(u => u.HemisId!));
 
     /// <summary>Band telefonlar — o'chirilmagan foydalanuvchilar (unikal indeks sharti bilan bir xil).</summary>
     public static IQueryable<string> TakenPhones(IApplicationDbContext db)

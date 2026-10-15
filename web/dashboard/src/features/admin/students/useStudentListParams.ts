@@ -5,7 +5,7 @@ import { useDebouncedValue } from '../shared/useDebouncedValue';
 import { clampPageSize } from './pageSize';
 import type { StudentListParams } from './types';
 
-/** URL kalitlari: `?q=&page=&size=&faculty=&direction=&course=`. */
+/** URL kalitlari: `?q=&page=&size=&faculty=&direction=&course=&access=`. */
 const KEY = {
   q: 'q',
   page: 'page',
@@ -13,6 +13,7 @@ const KEY = {
   faculty: 'faculty',
   direction: 'direction',
   course: 'course',
+  access: 'access',
 };
 
 /** Tanlangan filtrlar (`''` — barchasi). */
@@ -21,12 +22,24 @@ export interface StudentFilterValues {
   directionId: string;
   /** `''` yoki kurs raqami matn ko'rinishida (`<select>` qiymati). */
   course: string;
+  /**
+   * v3.34 — ilovaga kirish: `''` — barchasi, `noPassword` — paroli yo'q (ilovaga kira olmaydi),
+   * `hasPassword` — paroli bor.
+   */
+  access?: StudentAccessFilter;
+}
+
+export type StudentAccessFilter = '' | 'noPassword' | 'hasPassword';
+
+function parseAccess(raw: string | null): StudentAccessFilter {
+  return raw === 'noPassword' || raw === 'hasPassword' ? raw : '';
 }
 
 const FILTER_KEYS: Record<keyof StudentFilterValues, string> = {
   facultyId: KEY.faculty,
   directionId: KEY.direction,
   course: KEY.course,
+  access: KEY.access,
 };
 
 /** `?size=` → 1..500 (noto'g'ri/yo'q bo'lsa — sukut). */
@@ -55,6 +68,7 @@ export function useStudentListParams(defaultPageSize = DEFAULT_PAGE_SIZE) {
       facultyId: searchParams.get(KEY.faculty) ?? '',
       directionId: searchParams.get(KEY.direction) ?? '',
       course: parseCourse(searchParams.get(KEY.course)),
+      access: parseAccess(searchParams.get(KEY.access)),
     }),
     [searchParams],
   );
@@ -123,9 +137,15 @@ export function useStudentListParams(defaultPageSize = DEFAULT_PAGE_SIZE) {
     [update],
   );
 
-  /** Fakultet/yo'nalish/kurs filtrlarini tozalash (qidiruv matni saqlanadi). */
+  /** Fakultet/yo'nalish/kurs/ilova filtrlarini tozalash (qidiruv matni saqlanadi). */
   const clearFilters = useCallback(
-    () => update({ [KEY.faculty]: null, [KEY.direction]: null, [KEY.course]: null }),
+    () =>
+      update({
+        [KEY.faculty]: null,
+        [KEY.direction]: null,
+        [KEY.course]: null,
+        [KEY.access]: null,
+      }),
     [update],
   );
 
@@ -137,11 +157,14 @@ export function useStudentListParams(defaultPageSize = DEFAULT_PAGE_SIZE) {
       ...(filters.facultyId ? { facultyId: filters.facultyId } : {}),
       ...(filters.directionId ? { directionId: filters.directionId } : {}),
       ...(filters.course ? { course: Number(filters.course) } : {}),
+      ...(filters.access ? { hasPassword: filters.access === 'hasPassword' } : {}),
     }),
     [urlQ, page, pageSize, filters],
   );
 
-  const hasFilters = Boolean(filters.facultyId || filters.directionId || filters.course);
+  const hasFilters = Boolean(
+    filters.facultyId || filters.directionId || filters.course || filters.access,
+  );
 
   return {
     search,

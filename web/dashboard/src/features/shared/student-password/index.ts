@@ -4,3 +4,5 @@ export { generatePassword } from './generatePassword';
 export { StudentPasswordAction, type StudentPasswordActionProps } from './StudentPasswordAction';
 export { StudentPasswordModal, type StudentPasswordModalProps } from './StudentPasswordModal';
 export { studentCredentialsText } from './credentials';
+export { CredentialsBox } from './CredentialsBox';
+export { copyText } from './copyText';

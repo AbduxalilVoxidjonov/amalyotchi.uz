@@ -241,11 +241,11 @@ describe('Admin StudentDetailPage — amaliyot davri tanlagichi (v3.5)', () => {
     expect(prev).toBeDisabled();
   });
 
-  it('"Yuz" kartasi — v3.28 dan admin amallari bor (tasdiqlangan → "Bekor qilish")', async () => {
+  it('"Yuz" kartasi — v3.28 dan admin amallari bor (tasdiqlangan → "Qayta olish")', async () => {
     renderPage();
-    const card = await screen.findByRole('region', { name: 'Yuz' });
+    const card = await screen.findByRole('region', { name: 'Yuz etaloni' });
     expect(within(card).getByText('Tasdiqlangan')).toBeInTheDocument();
-    expect(within(card).getByRole('button', { name: 'Bekor qilish' })).toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: 'Qayta olish' })).toBeInTheDocument();
     expect(within(card).queryByRole('button', { name: 'Tasdiqlash' })).not.toBeInTheDocument();
   });
 });

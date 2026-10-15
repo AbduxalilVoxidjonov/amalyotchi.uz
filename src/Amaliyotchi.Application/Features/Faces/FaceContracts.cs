@@ -13,7 +13,8 @@ public enum StudentFaceStatus
 }
 
 /// <summary><c>GET/POST /api/student/face</c>, admin approve/reject/reset javobi va talaba profilidagi <c>face</c> bloki.</summary>
-/// <param name="Required">Sozlama <c>faceVerificationEnabled</c>: <c>true</c> bo'lsa check-in selfisi etalon bilan solishtiriladi.</param>
+/// <param name="Required">Sozlama <c>faceVerificationEnabled</c>: <c>true</c> bo'lsa check-in selfisi etalon bilan solishtiriladi.
+/// Etalon TOPSHIRISH majburiyligi bunga bog'liq emas — <see cref="EnrollmentRequired"/>.</param>
 /// <param name="PhotoUrl">Etalon rasm havolasi ("/api/files/&lt;guid&gt;") yoki null.</param>
 /// <param name="RejectReason">Admin rad etgan bo'lsa — sabab.</param>
 public sealed record StudentFaceDto(
@@ -24,6 +25,14 @@ public sealed record StudentFaceDto(
     DateTimeOffset? ReviewedAt,
     string? RejectReason)
 {
+    /// <summary>v3.34: etalon topshirish har doim majburiy (sozlamadan mustaqil) — mobil ilova birinchi kirishda
+    /// (yoki etalon yo'q / rad etilgan bo'lsa) yuz topshirish darvozasini ko'rsatadi.</summary>
+    public bool EnrollmentRequired => true;
+
+    /// <summary>v3.34: talaba hozir <c>POST /api/student/face</c> yubora oladimi — faqat <c>none</c>/<c>rejected</c>.
+    /// <c>pending</c>/<c>approved</c> → POST 409 (<c>code=faceAlreadyEnrolled</c>).</summary>
+    public bool CanSubmit => Status is StudentFaceStatus.None or StudentFaceStatus.Rejected;
+
     public static StudentFaceDto From(StudentFaceEnrollment? enrollment, bool required)
         => enrollment is null
             ? new StudentFaceDto(StudentFaceStatus.None, required, null, null, null, null)

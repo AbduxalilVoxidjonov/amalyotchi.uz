@@ -34,6 +34,13 @@ function crumbText(): string | null {
   return prev ? prev.textContent : null;
 }
 
+/** Sidebar'dagi barcha yopiq bo'limlarni ochadi (bo'lim tugmalari — `aria-expanded`). */
+async function expandAll(nav: HTMLElement) {
+  for (const b of within(nav).queryAllByRole('button', { expanded: false })) {
+    await userEvent.click(b);
+  }
+}
+
 function loginAs(index: 0 | 1) {
   useAuthStore.getState().setSession(issueSession(mockUsers[index]!));
 }
@@ -45,6 +52,27 @@ describe('AppShell', () => {
     const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
     const ops = opsNavCounts();
     const withBadge = (label: string, n: number) => (n > 0 ? `${label}${n}` : label);
+    // Bo'limlar: faqat aktiv ("Asosiy") ochiq; qolganlari yopiq.
+    expect(
+      within(nav)
+        .getAllByRole('button')
+        .map((b) => [b.textContent?.replace(/[\d\u2009]/g, ''), b.getAttribute('aria-expanded')]),
+    ).toEqual([
+      ['Asosiy', 'true'],
+      ['Talabalar', 'false'],
+      ['Tuzilma', 'false'],
+      ['Amaliyot', 'false'],
+      ['Aloqa va hisobot', 'false'],
+      ['Tizim', 'false'],
+    ]);
+    await waitFor(() =>
+      expect(
+        within(nav)
+          .getAllByRole('link')
+          .map((l) => l.textContent),
+      ).toEqual(['Dashboard', withBadge('Bugun', ops.today), 'Xarita']),
+    );
+    await expandAll(nav);
     // Badge'lar — `GET /api/admin/nav` (mock: ro'yxat endpoint'larining jami + kundalik nazorat sonlari).
     await waitFor(() =>
       expect(
@@ -54,16 +82,16 @@ describe('AppShell', () => {
       ).toEqual([
         'Dashboard',
         withBadge('Bugun', ops.today),
+        'Xarita',
+        `Talabalar${mockStudents.length}`,
         withBadge('Arizalar', ops.applications),
         withBadge('Yuz tasdiqlash', ops.pendingFaceEnrollments),
         withBadge('Kundaliklar', ops.diaries),
         'Baholash',
-        'Kalendar',
-        'Xarita',
-        `Talabalar${mockStudents.length}`,
-        `Korxonalar${mockCompanies.length}`,
         `Fakultetlar${mockFaculties.length}`,
         'Amaliyot davrlari',
+        `Korxonalar${mockCompanies.length}`,
+        'Kalendar',
         'Xabarlar',
         'Hisobotlar',
         'Audit jurnali',
@@ -88,6 +116,7 @@ describe('AppShell', () => {
     loginAs(0);
     renderApp('/admin');
     const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
+    await expandAll(nav);
     const labels = within(nav)
       .getAllByRole('link')
       .map((l) => l.textContent ?? '');
@@ -127,6 +156,19 @@ describe('AppShell', () => {
     loginAs(0);
     renderApp('/admin');
     const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
+    // Yopiq bo'lim sarlavhasida — faqat kutilayotgan ishlar yig'indisi (arizalar 7 + yuz 3 +
+    // kundaliklar 0 = 10); talabalar jami (1 284) kirmaydi.
+    await waitFor(() =>
+      expect(within(nav).getByRole('button', { name: /Talabalar/ }).textContent).toBe(
+        'Talabalar10',
+      ),
+    );
+    expect(within(nav).getByRole('button', { name: /Tuzilma/ }).textContent).toBe('Tuzilma');
+    // Korxonalar jami (412) — ma'lumot soni, yig'indiga kirmaydi.
+    expect(within(nav).getByRole('button', { name: /Amaliyot/ }).textContent).toBe('Amaliyot');
+    await expandAll(nav);
+    // Ochiq bo'limda yig'indi ko'rinmaydi (bandlarda ko'rinadi).
+    expect(within(nav).getByRole('button', { name: /Talabalar/ }).textContent).toBe('Talabalar');
     // Ming ajratgich — thin space (U+2009), `formatCount` uslubi.
     await waitFor(() =>
       expect(within(nav).getByRole('link', { name: /Talabalar/ }).textContent).toBe(
@@ -170,6 +212,7 @@ describe('AppShell', () => {
     renderApp('/admin');
     const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
     expect(await screen.findByText('Jami amaliyotchi')).toBeInTheDocument();
+    await expandAll(nav);
     expect(within(nav).getByRole('link', { name: /Talabalar/ }).textContent).toBe('Talabalar');
     expect(crumbText()).toBe('Admin');
   });
@@ -184,6 +227,7 @@ describe('AppShell', () => {
       </AppProviders>,
     );
     const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
+    await userEvent.click(within(nav).getByRole('button', { name: /Talabalar/ }));
     const link = () => within(nav).getByRole('link', { name: /Arizalar/ });
     await waitFor(() => expect(link()).toHaveTextContent(`Arizalar${pending.length}`));
 
@@ -211,6 +255,7 @@ describe('AppShell', () => {
     );
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Bugun');
 
+    await userEvent.click(within(nav).getByRole('button', { name: /Talabalar/ }));
     await userEvent.click(within(nav).getByRole('link', { name: /Kundaliklar/ }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/admin/diaries'));
     // Lazy sahifa: title chunk yuklangach yangilanadi.
@@ -223,6 +268,38 @@ describe('AppShell', () => {
     ).toBeInTheDocument();
     // Sidebar hali ham bor (shell ichida)
     expect(screen.getByRole('navigation', { name: 'Asosiy' })).toBeInTheDocument();
+  });
+
+  it("aktiv sahifa bo'limi avtomatik ochiq; qidiruv → Enter → birinchi natija", async () => {
+    loginAs(0);
+    const router = renderApp('/admin/students');
+    const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
+    expect(within(nav).getByRole('button', { name: /Talabalar/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(within(nav).getByRole('link', { name: /Talabalar/ })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+
+    const search = screen.getByRole('searchbox', { name: 'Sahifalarni qidirish' });
+    await userEvent.type(search, 'kafedra');
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((l) => l.textContent?.replace(/[\d\u2009]/g, '')),
+    ).toEqual(['Fakultetlar']);
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(router.state.location.pathname).toBe('/admin/faculties'));
+    expect(search).toHaveValue('');
+    // Yangi aktiv bo'lim ochildi.
+    await waitFor(() =>
+      expect(within(nav).getByRole('button', { name: /Tuzilma/ })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      ),
+    );
   });
 
   it("eski /tutor yo'llari endi yo'q (404)", async () => {

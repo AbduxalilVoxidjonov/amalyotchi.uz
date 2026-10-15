@@ -82,12 +82,15 @@ export function useStudentQuery(id: string, periodId: string | null = null) {
   });
 }
 
-/** Excel import: qabul qilingan qatorlar darhol ro'yxatda ko'rinishi uchun ro'yxat va dashboard yangilanadi. */
-export function useImportStudents() {
+/**
+ * Excel import: qabul qilingan qatorlar darhol ro'yxatda ko'rinishi uchun ro'yxat va dashboard yangilanadi.
+ * `generatePasswords` (v3.34) — yangi talabalarga vaqtinchalik parol (natijada `credentials`).
+ */
+export function useImportStudents(generatePasswords = false) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ['admin', 'students', 'import'],
-    mutationFn: (file: File) => studentsApi.importExcel(file),
+    mutationFn: (file: File) => studentsApi.importExcel(file, generatePasswords),
     onSuccess: (result) => {
       if (result.created === 0) return;
       void queryClient.invalidateQueries({ queryKey: adminKeys.studentsAll() });
@@ -176,6 +179,20 @@ export function useSetStudentWorkHours(studentId: string) {
         queryKey: ['admin', 'student', studentId],
         predicate: (q) => q.queryKey[3] !== null,
       });
+    },
+  });
+}
+
+/** v3.34: talabaning HEMIS ID sini (ilova logini) o'zgartirish → profil va ro'yxat yangilanadi. */
+export function useSetStudentHemisId() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ['admin', 'students', 'set-hemis-id'],
+    mutationFn: ({ id, hemisId }: { id: string; hemisId: string }) =>
+      studentsApi.setHemisId(id, hemisId),
+    onSuccess: (_data, { id }) => {
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'student', id] });
+      void queryClient.invalidateQueries({ queryKey: adminKeys.studentsAll() });
     },
   });
 }

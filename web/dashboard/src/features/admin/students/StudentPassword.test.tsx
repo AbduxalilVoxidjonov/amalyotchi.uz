@@ -13,9 +13,13 @@ function renderPage(studentId: string) {
   ]);
 }
 
+/** v3.34: parol holati va "Parol berish/tiklash" — profildagi "Ilova" kartasida. */
 async function profile(name: string) {
-  return within(await screen.findByRole('article', { name: `Talaba: ${name}` }));
+  await screen.findByRole('article', { name: `Talaba: ${name}` });
+  return within(await screen.findByRole('region', { name: 'Ilova' }));
 }
+
+const PASSWORD_BUTTON = /^(Parol berish|Parolni tiklash)$/;
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -24,13 +28,18 @@ describe("Admin talaba profili · Parol o'rnatish", () => {
     renderPage('s1');
     const p = await profile('Aliyev Akmal');
     expect(p.getByText("Parol o'rnatilgan")).toBeInTheDocument();
-    expect(p.getByRole('button', { name: "Parol o'rnatish" })).toBeInTheDocument();
+    expect(p.getByRole('button', { name: 'Parolni tiklash' })).toBeInTheDocument();
+    expect(p.getByText('341030')).toBeInTheDocument();
   });
 
   it("parol yo'q talaba — belgisi 'Parol yo'q'", async () => {
     renderPage('s2');
     const p = await profile('Sobirov Diyor');
     expect(p.getByText("Parol yo'q")).toBeInTheDocument();
+    expect(p.getByRole('button', { name: 'Parol berish' })).toBeInTheDocument();
+    expect(
+      p.getByText('Talaba ilovaga kira olmaydi — vaqtinchalik parol bering.'),
+    ).toBeInTheDocument();
   });
 
   it('validatsiya: qisqa parol va mos kelmagan tasdiq mijozda ushlanadi', async () => {
@@ -41,7 +50,7 @@ describe("Admin talaba profili · Parol o'rnatish", () => {
     });
     renderPage('s2');
     await user.click(
-      (await profile('Sobirov Diyor')).getByRole('button', { name: "Parol o'rnatish" }),
+      (await profile('Sobirov Diyor')).getByRole('button', { name: PASSWORD_BUTTON }),
     );
     const dialog = await screen.findByRole('dialog', { name: "Parol o'rnatish" });
 
@@ -74,7 +83,7 @@ describe("Admin talaba profili · Parol o'rnatish", () => {
     });
     renderPage('s2');
     await user.click(
-      (await profile('Sobirov Diyor')).getByRole('button', { name: "Parol o'rnatish" }),
+      (await profile('Sobirov Diyor')).getByRole('button', { name: PASSWORD_BUTTON }),
     );
     const dialog = await screen.findByRole('dialog', { name: "Parol o'rnatish" });
 
@@ -95,10 +104,12 @@ describe("Admin talaba profili · Parol o'rnatish", () => {
     await user.click(within(dialog).getByRole('button', { name: 'Saqlash' }));
     const done = await screen.findByRole('dialog', { name: "Parol o'rnatildi" });
     expect(body).toEqual({ password: generated });
-    const text = `HEMIS ID: 341061 · Parol: ${generated} · Kirish: https://app.amaliyotchi.test`;
+    const text = `Ilovaga kirish · HEMIS ID: 341061 · Parol: ${generated} · Brauzerda: https://app.amaliyotchi.test`;
     expect(within(done).getByTestId('student-credentials')).toHaveTextContent(text);
     expect(
-      within(done).getByText("Talaba birinchi kirishda parolni o'zgartiradi."),
+      within(done).getByText(
+        "Talaba ilovaga birinchi kirishda parolini o'zgartiradi va yuzini topshiradi.",
+      ),
     ).toBeInTheDocument();
 
     await user.click(within(done).getByRole('button', { name: 'Nusxalash' }));
@@ -112,12 +123,12 @@ describe("Admin talaba profili · Parol o'rnatish", () => {
     server.events.removeAllListeners();
   });
 
-  it("VITE_TWA_URL bo'lmasa Kirish qatori ko'rsatilmaydi", async () => {
+  it("VITE_TWA_URL bo'lmasa Brauzerda qatori ko'rsatilmaydi", async () => {
     vi.stubEnv('VITE_TWA_URL', '');
     const user = userEvent.setup();
     renderPage('s2');
     await user.click(
-      (await profile('Sobirov Diyor')).getByRole('button', { name: "Parol o'rnatish" }),
+      (await profile('Sobirov Diyor')).getByRole('button', { name: PASSWORD_BUTTON }),
     );
     const dialog = await screen.findByRole('dialog', { name: "Parol o'rnatish" });
     await user.type(within(dialog).getByLabelText('Yangi parol'), 'Qwerty2345');
@@ -126,15 +137,15 @@ describe("Admin talaba profili · Parol o'rnatish", () => {
 
     const done = await screen.findByRole('dialog', { name: "Parol o'rnatildi" });
     const credentials = within(done).getByTestId('student-credentials');
-    expect(credentials).toHaveTextContent('HEMIS ID: 341061 · Parol: Qwerty2345');
-    expect(credentials).not.toHaveTextContent('Kirish');
+    expect(credentials).toHaveTextContent('Ilovaga kirish · HEMIS ID: 341061 · Parol: Qwerty2345');
+    expect(credentials).not.toHaveTextContent('Brauzerda');
   });
 
   it("400 ValidationProblem: errors.password maydon ostida ko'rsatiladi, modal ochiq qoladi", async () => {
     const user = userEvent.setup();
     renderPage('s2');
     await user.click(
-      (await profile('Sobirov Diyor')).getByRole('button', { name: "Parol o'rnatish" }),
+      (await profile('Sobirov Diyor')).getByRole('button', { name: PASSWORD_BUTTON }),
     );
     const dialog = await screen.findByRole('dialog', { name: "Parol o'rnatish" });
     await user.type(within(dialog).getByLabelText('Yangi parol'), MOCK_REJECTED_STUDENT_PASSWORD);
@@ -162,7 +173,7 @@ describe("Admin talaba profili · Parol o'rnatish", () => {
     const user = userEvent.setup();
     renderPage('s2');
     await user.click(
-      (await profile('Sobirov Diyor')).getByRole('button', { name: "Parol o'rnatish" }),
+      (await profile('Sobirov Diyor')).getByRole('button', { name: PASSWORD_BUTTON }),
     );
     const dialog = await screen.findByRole('dialog', { name: "Parol o'rnatish" });
     await user.type(within(dialog).getByLabelText('Yangi parol'), 'Qwerty2345');

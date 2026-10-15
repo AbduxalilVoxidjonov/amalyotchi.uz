@@ -45,3 +45,19 @@
   gap: 8px;
   flex-wrap: wrap;
 }
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.title {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.note {
+  margin: 0;
+  color: var(--color-text-faint);
+  font-size: var(--fs-xs2);
+}

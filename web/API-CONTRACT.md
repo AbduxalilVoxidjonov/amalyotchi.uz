@@ -1,4 +1,4 @@
-# API-CONTRACT v3.33
+# API-CONTRACT v3.34
 
 Oxirgi yangilanish: 15.10.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
@@ -41,7 +41,11 @@ v3.31 (sozlama **`diaryAllowPastDays`** — admin o'tgan kunlarga hisobot yuklas
 v3.32 (**ish vaqtini faqat admin belgilaydi** — `PUT /api/student/profile/work-hours` olib tashlandi,
 `PUT /api/admin/students/{id}/work-hours` qo'shildi, `AdminStudentDetail.workHours`) — §6.37,
 v3.33 (**talaba xabarlar qutisi** — `/api/student/messages*`; "Xabarlar" auditoriyasi barcha faol talabalar, Telegram'siz
-talabaga `appOnly` yetkazish; `MessageRecipientRow.telegramLinked`, `MessageSummary.appOnly`, `MessageDeliveryRow.readAt`) — §6.38.
+talabaga `appOnly` yetkazish; `MessageRecipientRow.telegramLinked`, `MessageSummary.appOnly`, `MessageDeliveryRow.readAt`) — §6.38,
+v3.34 (**mobil ilova: talaba kiritildi → darhol kiradi; yuz etaloni birinchi kirishda majburiy va qulflangan** —
+`StudentFaceDto.enrollmentRequired/canSubmit`, `POST /api/student/face` pending/approved → 409 `code=faceAlreadyEnrolled`,
+yaratishda `password`, importda `generatePasswords`→`credentials`, `PUT /api/admin/students/{id}/hemis-id`,
+`StudentRow.hasPassword` + `?hasPassword=`, `AdminStudentDetail.mustChangePassword/lastLoginAt`) — §6.39.
 
 > v3.28: tyutor bo'limi (§2.5) va `/api/admin/tutors*` (§2.3.3) olib tashlandi, kundalik nazorat endpoint'lari
 > `/api/admin/*` ga ko'chdi, `/api/admin/admins*` qo'shildi — quyidagi sonlar v3.27 holati; farqi §6.34 da.
@@ -822,6 +826,9 @@ egasidan ajratish kerak.
 
 #### GET `/api/admin/students` — `q`: FISH, HEMIS ID, telefon, guruh; `&facultyId=&directionId=&course=` — v3.20
 
+> **v3.34:** qo'shimcha filtr `hasPassword=true|false` (`false` — paroli yo'q, ya'ni mobil ilovaga kira olmaydigan
+> talabalar); har qatorda yangi `hasPassword: boolean` (§6.39).
+
 `pageSize` — **1..500** (v3.21; boshqa ro'yxatlarda 1..100); oraliqdan tashqarida → 20 (§1.6, xato emas).
 
 Filtrlar (hammasi ixtiyoriy, `q` va bir-biri bilan **AND**; `total` — filtrlangan natija bo'yicha):
@@ -892,6 +899,11 @@ interface StudentGroupOption {
 
 #### POST `/api/admin/students` · 201 · 400 · 401 · 403 · 409 — v3.25
 
+> **v3.34:** body'ga ixtiyoriy `password?: string` (8–128) — berilsa talabaga shu **vaqtinchalik** parol o'rnatiladi
+> (`mustChangePassword=true`, audit `studentPasswordSet`) va u darhol ilovaga HEMIS ID + parol bilan kiradi; xato →
+> 400 `errors.password`. Berilmasa — parolsiz (eski xulq). HEMIS ID bandligi endi admin loginlarini (`User.HemisId`)
+> ham hisobga oladi (409) — import ham shunday (§6.39). Admin panel formasida parol majburiy (sukut — yaratilgan).
+
 Bitta talabani forma orqali qo'shish. Talaba Excel import bilan **aynan bir xil** yaratiladi (umumiy qoidalar va
 xabarlar — quyidagi import jadvalidagi FISH/HEMIS ID/Telefon matnlari bilan bir xil).
 
@@ -941,6 +953,10 @@ Endpoint `AdminOnly`, ya'ni oddiy `<a href>` bilan ochilmaydi (401) — frontend
 orqali token bilan oladi (§6.7 bilan bir xil sabab).
 
 #### POST `/api/admin/students/import` · `multipart/form-data` · 200 · 400
+
+> **v3.34:** ixtiyoriy forma maydoni `generatePasswords` (`"true"`) — har yangi talabaga vaqtinchalik parol
+> yaratiladi (10 belgi, o'xshash belgilarsiz; `mustChangePassword=true`). Javob `ImportResult` + **`credentials:
+> { row, fullName, hemisId, password }[]`** (bayroqsiz — `[]`). Parol faqat shu javobda; bazada — xesh (§6.39).
 
 Forma: **`file`** — shablon bo'yicha to'ldirilgan `.xlsx` (≤ 5 MB, ≤ 1000 ma'lumot qatori).
 
@@ -1044,6 +1060,10 @@ Talaba profilidan **bitta** talabani korxonaga biriktirish yoki **boshqa korxona
 
 #### GET `/api/admin/students/{id}?periodId=` · 200 · 404
 
+> **v3.34:** yangi maydonlar `mustChangePassword: boolean` (parol vaqtinchalik — admin bergan, talaba hali
+> almashtirmagan; parol yo'q → `false`) va `lastLoginAt: string | null` (oxirgi muvaffaqiyatli kirish — ilova, brauzer
+> yoki Telegram; hech qachon → `null`). `face` (`StudentFaceDto`) ga `enrollmentRequired`, `canSubmit` (§6.39).
+
 404 — talaba yo'q (`detail`: `"Talaba topilmadi (id: …)."`) yoki `periodId` talabaga tegishli emas
 (`"Amaliyot davri topilmadi."`). `periodId` / `periods` / `selectedPeriodId` — tyutornikidek (§2.5). Umumiy bloklar tyutor profili bilan **bir xil**
 (`GET /api/tutor/students/{id}`, §2.5 — ayni handler hisoblaydi), admin ko'lami cheklovsiz bo'lgani uchun
@@ -1110,6 +1130,13 @@ Ikkalasi ham tyutornikidek (`StudentAttendanceDay[]`, `TutorDiaryEntry[]` — §
 davr — `periodId` (berilmasa sukut bo'yicha davr), oraliq berilmasa davr boshidan `min(bugun, davr oxiri)` gacha va
 davr chegaralariga qisiladi, teskari yoki 400 kundan uzun oraliq → 400, davr bo'lmasa — bo'sh massiv,
 begona `periodId` → 404.
+
+#### PUT `/api/admin/students/{id}/hemis-id` · 204 · 400 · 403 · 404 · 409 — v3.34
+
+Body `{ hemisId: string }` — talabaning ilova logini (`StudentProfile.HemisId`) ni o'zgartirish (xato kiritilgan HEMIS
+ID'ni tuzatish). Qoida yaratish/import bilan bir xil (trim, 5–20 raqam) → 400 `errors.hemisId`; boshqa talaba yoki
+admin logini band → 409 `"Bu HEMIS ID bilan talaba allaqachon mavjud."`; joriy bilan bir xil → 204 (o'zgarishsiz);
+talaba yo'q → 404. Parol va sessiyalarga tegmaydi. Audit `studentHemisIdChanged` (`changes: { old, new }`).
 
 #### POST `/api/admin/students/{id}/password` · 204 · 400 · 404 — v3.8
 
@@ -3661,7 +3688,8 @@ server tomonida etalon bilan solishtiriladi; moslik chegaradan past → urinish 
   - `POST /api/student/face` — `multipart/form-data`: `photo` (fayl; check-in selfisi qoidalari — ≤5 MB,
     JPEG/PNG/WEBP/HEIC/HEIF) + `consent` (`"true"`) → 200 `StudentFaceDto` (`status=pending`). 400 `errors.Photo` /
     `errors.Consent`: "Rozilik berilishi kerak.", "Rasmda yuz topilmadi. …", "Rasmda faqat bitta yuz bo'lishi kerak.";
-    409 — etalon allaqachon tasdiqlangan. `rejected`/`pending` holatida qayta yuborish mumkin (yangi etalon `pending`).
+    409 — etalon allaqachon tasdiqlangan. ~~`rejected`/`pending` holatida qayta yuborish mumkin~~ — **v3.34 dan faqat
+    `none`/`rejected`**; `pending` ham 409 (§6.39).
   - TWA darvozasi: `required && (status === 'none' || status === 'rejected')` → talaba avval `/face` sahifasiga
     yo'naltiriladi (tab-bar yashirin, "Chiqish" bor); `pending`/`approved` — oddiy ilova.
 - **`TodayDto.checkin.faceRequired: boolean`** — `true` bo'lsa selfi majburiy ("Rasmsiz davom etish" yo'q).
@@ -3899,3 +3927,56 @@ Talabalar Flutter mobil ilovadan ham foydalanadi — ilovada xabarlar qutisi.
   `Bot bloklangan` / `Telegram'siz` belgisi), tafsilotda "Faqat ilovada" ko'rsatkichi, yetkazishlarda "Ilovada o'qilgan"
   ustuni va `appOnly` holat filtri.
 - Endpoint soni: Student +4.
+
+### 6.39 v3.33 → v3.34 (15.10.2026): mobil ilova — "talaba kiritildi → darhol kiradi", yuz etaloni siyosati
+
+Talabalar Flutter mobil ilovadan **HEMIS ID + parol** bilan kiradi (`POST /api/auth/login`, vaqtinchalik parolda
+`mustChangePassword=true` — §2.1). Yangi siyosat: talaba ilovaga birinchi kirganda (yoki etaloni yo'q / rad etilgan
+bo'lsa) yuzini **majburiy** topshiradi; keyingi check-in selfilari shu etalon bilan solishtiriladi; talaba etalonni
+o'zi **qayta topshira olmaydi** — faqat admin rad etsa yoki "qayta olish" (reset) qilsa.
+
+**Yuz etaloni (StudentOnly, §6.33 o'zgarishlari):**
+- `StudentFaceDto` (`GET/POST /api/student/face`, admin approve/reject/reset javobi, admin profil `face`) — **additive**:
+  ```ts
+  interface StudentFaceDto {
+    status: 'none' | 'pending' | 'approved' | 'rejected';
+    required: boolean;            // O'ZGARMADI: = faceVerificationEnabled — check-in selfisi etalon bilan solishtiriladimi
+    enrollmentRequired: boolean;  // v3.34: DOIM true — etalon topshirish sozlamadan mustaqil majburiy
+    canSubmit: boolean;           // v3.34: status ∈ {none, rejected} — hozir POST qilish mumkin
+    photoUrl: string | null;
+    submittedAt: string | null;
+    reviewedAt: string | null;
+    rejectReason: string | null;
+  }
+  ```
+- `POST /api/student/face`: ruxsat **faqat** `none` (hech qachon yubormagan yoki admin reset qilgan) va `rejected`.
+  `pending` yoki `approved` → **409** ProblemDetails, kengaytmalar:
+  `code: "faceAlreadyEnrolled"`, `faceStatus: "pending" | "approved"`; `detail`:
+  pending — `"Yuz rasmingiz allaqachon yuborilgan va administrator tekshiruvida. Qayta topshirish uchun administratorga murojaat qiling."`,
+  approved — `"Yuz allaqachon tasdiqlangan. O'zgartirish uchun administratorga murojaat qiling."`.
+  Tekshiruv og'ir yuz tahlilidan **oldin**; parallel birinchi yuborish — unikal indeks → 409 (umumiy matn, `code`siz).
+- **Sozlama va majburiylik bog'liqligi:** `faceVerificationEnabled` (`required`) faqat **davomatda solishtirishni**
+  boshqaradi (`AttendanceAttempt` — o'zgarmadi: yoqilgan bo'lsa check-in selfisi majburiy, etalon `pending`/`approved`
+  bo'lmasa `faceNotEnrolled`, moslik `faceMatchThreshold` dan past → `faceMismatch`). **Etalon topshirish majburiyligi
+  sozlamaga bog'liq emas** — `enrollmentRequired` doim `true`. Mobil ilova darvozasi:
+  `enrollmentRequired && canSubmit` (ya'ni `none`/`rejected`) → yuz topshirish ekrani; `pending`/`approved` — oddiy ilova.
+  TWA (`web/twa`) darvozasi o'zgarmadi (`required && (none|rejected)`), u ham `canSubmit` bo'yicha formani ko'rsatadi.
+- Admin amallari o'zgarmadi: approve (faqat `pending`), reject (`pending`/`approved`, sabab majburiy), reset (har qanday
+  mavjud etalon → `none`, talaba keyingi kirishda qayta topshiradi). Admin panel: talaba profilida "Ilova" kartasi →
+  "Yuz etaloni" bo'limi (Tasdiqlash / Rad etish / **Qayta olish**), "Yuz tasdiqlash" sahifasida tasdiqlanganlar uchun
+  "Qayta olish".
+
+**Admin — talabani ilovaga tayyorlash:**
+- `POST /api/admin/students` — ixtiyoriy `password` (vaqtinchalik parol; 400 `errors.password`).
+- `POST /api/admin/students/import` — forma `generatePasswords=true` → javobda `credentials[]` (`row, fullName,
+  hemisId, password`); parollar PBKDF2 bilan parallel xeshlanadi.
+- **Yangi** `PUT /api/admin/students/{id}/hemis-id` `{ hemisId }` → 204 · 400 `errors.hemisId` · 404 · 409.
+  `AuditAction` + **`studentHemisIdChanged`** (79).
+- `GET /api/admin/students` — `StudentRow.hasPassword: boolean` (yangi), filtr `?hasPassword=true|false`.
+- `GET /api/admin/students/{id}` — `mustChangePassword: boolean`, `lastLoginAt: string | null` (yangi).
+- HEMIS ID bandligi (yaratish, import, hemis-id) endi admin loginlarini (`User.HemisId`) ham tekshiradi: login avval admin
+  bo'yicha qidirgani uchun admin logini bilan bir xil HEMIS ID'li talaba hech qachon kira olmas edi.
+- Eslatma: talabada `users.hemis_id` **doim NULL** — bu normal (talaba logini `student_profiles.hemis_id` da, §2.1).
+  Talaba ilovaga kira olmasligining sababi odatda **parol yo'qligi** (`hasPassword=false`) — admin "Parol berish" qiladi.
+- Endpoint soni: Admin +1.
+

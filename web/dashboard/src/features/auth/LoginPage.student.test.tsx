@@ -44,7 +44,9 @@ describe('LoginPage · talaba roli', () => {
     await loginAsStudent();
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Talabalar uchun alohida ilova: https://app.amaliyotchi.test');
+    expect(alert).toHaveTextContent(
+      'Talabalar Amaliyotchi mobil ilovasiga HEMIS ID va parol bilan kiradi. Brauzerda: https://app.amaliyotchi.test',
+    );
     expect(
       within(alert).getByRole('link', { name: 'https://app.amaliyotchi.test' }),
     ).toHaveAttribute('href', 'https://app.amaliyotchi.test');
@@ -61,12 +63,12 @@ describe('LoginPage · talaba roli', () => {
     expect(mockSessions.size).toBe(0);
   });
 
-  it("VITE_TWA_URL bo'lmasa — 'Talabalar Telegram bot orqali kiradi'", async () => {
+  it("VITE_TWA_URL bo'lmasa — mobil ilova izohi (havolasiz)", async () => {
     vi.stubEnv('VITE_TWA_URL', '');
     renderLogin();
     await loginAsStudent();
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Talabalar Telegram bot orqali kiradi.',
+      'Talabalar Amaliyotchi mobil ilovasiga HEMIS ID va parol bilan kiradi.',
     );
     expect(screen.queryByRole('link', { name: /http/ })).not.toBeInTheDocument();
     expect(useAuthStore.getState().accessToken).toBeNull();
