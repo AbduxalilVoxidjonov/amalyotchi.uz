@@ -4,7 +4,7 @@ import { DASH, formatDateTime } from '../../shared/format';
 import { DELIVERY_STATUS_LABEL, type DeliveryStatus, type MessageDeliveryRow } from '../types';
 import styles from './Messages.module.css';
 
-const STATUS_OPTIONS: DeliveryStatus[] = ['sent', 'failed', 'blocked', 'pending'];
+const STATUS_OPTIONS: DeliveryStatus[] = ['sent', 'failed', 'blocked', 'pending', 'appOnly'];
 
 const COLUMNS: DataTableColumn<MessageDeliveryRow>[] = [
   { key: 'fullName', header: 'FISH', width: 'minmax(180px,1.4fr)', strong: true },
@@ -35,6 +35,14 @@ const COLUMNS: DataTableColumn<MessageDeliveryRow>[] = [
     render: (d) => formatDateTime(d.sentAt),
   },
   {
+    key: 'readAt',
+    header: 'Ilovada o‘qilgan',
+    width: 'minmax(130px,.8fr)',
+    mono: true,
+    dim: true,
+    render: (d) => formatDateTime(d.readAt),
+  },
+  {
     key: 'error',
     header: 'Xato',
     width: 'minmax(200px,1.6fr)',
@@ -55,7 +63,7 @@ export function DeliveriesTable({ status, onStatusChange, ...state }: Deliveries
       aria-label="Yetkazishlar"
       columns={COLUMNS}
       rowKey={(d) => d.userId}
-      minWidth="820px"
+      minWidth="960px"
       emptyTitle="Yetkazish topilmadi"
       {...(status && !state.search
         ? { emptyDescription: "Tanlangan holat bo'yicha yozuv yo'q." }

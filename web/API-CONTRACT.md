@@ -1,6 +1,6 @@
-# API-CONTRACT v3.32
+# API-CONTRACT v3.33
 
-Oxirgi yangilanish: 14.10.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
+Oxirgi yangilanish: 15.10.2026. **Manba — backend kodi** (`src/Amaliyotchi.Api`, `src/Amaliyotchi.Application`,
 `src/Amaliyotchi.Domain`, `src/Amaliyotchi.Infrastructure`). v1 frontend mock'lari asosida yozilgan edi; bu hujjat
 esa haqiqiy controller/DTO/validator/handler kodidan olingan — har bir maydon, chegara va status kod kodda bor.
 Frontend (`web/dashboard`, `web/twa`, `web/shared`) shu shaklga moslanishi kerak; v1 bilan farqlar §5 da,
@@ -39,7 +39,9 @@ v3.30 (**kundalik har kunga alohida, PDF hisobot** — `POST /api/student/diary`
 `period-days` `days[].canSubmitDiary`, `DiaryEntryDto`/admin kundalik `submittedLate`) — §6.36,
 v3.31 (sozlama **`diaryAllowPastDays`** — admin o'tgan kunlarga hisobot yuklashni yopa oladi; `rewrite` istisno) — §6.36,
 v3.32 (**ish vaqtini faqat admin belgilaydi** — `PUT /api/student/profile/work-hours` olib tashlandi,
-`PUT /api/admin/students/{id}/work-hours` qo'shildi, `AdminStudentDetail.workHours`) — §6.37.
+`PUT /api/admin/students/{id}/work-hours` qo'shildi, `AdminStudentDetail.workHours`) — §6.37,
+v3.33 (**talaba xabarlar qutisi** — `/api/student/messages*`; "Xabarlar" auditoriyasi barcha faol talabalar, Telegram'siz
+talabaga `appOnly` yetkazish; `MessageRecipientRow.telegramLinked`, `MessageSummary.appOnly`, `MessageDeliveryRow.readAt`) — §6.38.
 
 > v3.28: tyutor bo'limi (§2.5) va `/api/admin/tutors*` (§2.3.3) olib tashlandi, kundalik nazorat endpoint'lari
 > `/api/admin/*` ga ko'chdi, `/api/admin/admins*` qo'shildi — quyidagi sonlar v3.27 holati; farqi §6.34 da.
@@ -1595,12 +1597,15 @@ mumkin (kuzgi + bahorgi); kesishadigan ochiq davrga → 409.
 
 ### 2.3.5 Xabarlar — `AdminMessagesController` (`/api/admin/messages`) — v3.24
 
-Admin Telegram'ni HEMIS ID bilan bog'lagan talabalarga bot nomidan xabar yuboradi: bittasiga, tanlanganlarga yoki
-filtr bo'yicha ommaviy. Hammasi `AdminOnly` (tyutor/talaba → **403**). Yuborishni fon dispetcheri bajaradi
-(DB-navbat, ≤ 25 xabar/s) — `POST` faqat navbatga qo'yadi va darhol **201** qaytaradi; holat `GET` bilan kuzatiladi
-(polling, masalan 2–3 s).
+Admin faol talabalarga xabar yuboradi: bittasiga, tanlanganlarga yoki filtr bo'yicha ommaviy. Hammasi `AdminOnly`
+(talaba → **403**). **v3.33:** xabar har bir qabul qiluvchining **ilova qutisiga** (`/api/student/messages`, §2.6)
+yaratilgan zahoti tushadi; Telegram bog'langan talabalarga **qo'shimcha ravishda** bot nomidan ham yuboriladi.
+Telegram yuborishni fon dispetcheri bajaradi (DB-navbat, ≤ 25 xabar/s) — `POST` faqat navbatga qo'yadi va darhol
+**201** qaytaradi; holat `GET` bilan kuzatiladi (polling, masalan 2–3 s).
 
-**Qabul qiluvchi** — rol `student`, `User.TelegramUserId != null`, faol (`isActive`), o'chirilmagan. Ro'yxat va
+**Qabul qiluvchi** — rol `student`, faol (`isActive`), o'chirilmagan. **v3.33 dan Telegram bog'laganlik shart emas**
+(avval `User.TelegramUserId != null` edi): Telegram'siz talabaning yetkazishi `appOnly` holatida yaratiladi va Telegram
+navbatiga tushmaydi. Ro'yxat va
 auditoriyani resolve qilish **bir xil** manba va filtrdan foydalanadi. Profil → guruh → yo'nalish → kafedra → fakultet
 zanjiri to'liq bo'lmagan talaba ro'yxatda bor (akademik maydonlari `null`), lekin fakultet/yo'nalish/guruh/kurs
 filtriga tushmaydi.
@@ -1610,9 +1615,10 @@ interface MessageRecipientRow {
   userId: string;                 // User.Id
   fullName: string;
   hemisId: string | null;         // StudentProfile.HemisId
-  telegramUserId: number;         // int64 (JS'da xavfsiz oraliqda)
-  telegramLinkedAt: string | null;// ISO; v3.24 dan oldin bog'langan va audit yozuvi yo'q bo'lsa null
-  botBlocked: boolean;            // bot unga oxirgi marta yoza olmagan (403 / chat not found); yuborishga to'sqinlik qilmaydi
+  telegramLinked: boolean;        // v3.33: Telegram bog'langan — bot orqali ham yuboriladi; false — faqat ilova qutisi
+  telegramUserId: number | null;  // int64 (JS'da xavfsiz oraliqda); v3.33: bog'lanmagan bo'lsa null
+  telegramLinkedAt: string | null;// ISO; bog'lanmagan yoki v3.24 dan oldin bog'langan va audit yozuvi yo'q bo'lsa null
+  botBlocked: boolean;            // bot unga oxirgi marta yoza olmagan (403 / chat not found); yuborishga to'sqinlik qilmaydi; bog'lanmaganda false
   facultyName: string | null;
   directionName: string | null;
   groupName: string | null;
@@ -1625,7 +1631,7 @@ type MessageAudience =
   | { kind: 'all' };
 
 type MessageStatus = 'queued' | 'sending' | 'completed';
-type DeliveryStatus = 'pending' | 'sent' | 'failed' | 'blocked';
+type DeliveryStatus = 'pending' | 'sent' | 'failed' | 'blocked' | 'appOnly'; // appOnly — v3.33
 
 interface MessageSummary {
   id: string;
@@ -1635,11 +1641,12 @@ interface MessageSummary {
   audienceLabel: string;          // server yasaydi, pastda
   attachAppButton: boolean;
   status: MessageStatus;
-  total: number;                  // = sent + failed + blocked + pending
+  total: number;                  // = sent + failed + blocked + pending + appOnly — barcha qabul qiluvchilar (v3.33)
   sent: number;
   failed: number;
   blocked: number;
   pending: number;
+  appOnly: number;                // v3.33: Telegram bog'lamagan — xabar faqat ilova qutisida (yakuniy holat)
 }
 
 interface MessageDeliveryRow {
@@ -1648,35 +1655,40 @@ interface MessageDeliveryRow {
   hemisId: string | null;
   status: DeliveryStatus;
   error: string | null;           // o'zbekcha qisqa sabab (failed/blocked; pending'da — oxirgi vaqtinchalik xato)
-  sentAt: string | null;          // ISO
+  sentAt: string | null;          // ISO (Telegram qabul qilgan vaqt; appOnly'da doim null)
+  readAt: string | null;          // v3.33: ISO — talaba ilova qutisida o'qigan vaqt; null — o'qilmagan
 }
 ```
 
-**`status` qoidasi**: `pending == total` (hech biri yakunlanmagan) → `queued`; `pending > 0` → `sending`; aks holda
-`completed`.
+**`status` qoidasi** (faqat Telegram yetkazishlari bo'yicha, `tg = total − appOnly`): `pending == tg > 0` (hech biri
+yakunlanmagan) → `queued`; `pending > 0` → `sending`; aks holda `completed`. Hamma qabul qiluvchi Telegram'siz bo'lsa
+(`tg = 0`) — darhol `completed`.
 
-**`audienceLabel`**: `all` → `"Barcha ulanganlar"`; `selected` → `"Tanlangan: 3 ta talaba"` (haqiqiy qabul qiluvchilar
+**`audienceLabel`**: `all` → `"Barcha talabalar"` (v3.33; avval `"Barcha ulanganlar"` — eski xabarlarda saqlangan yorliq o'zgarmaydi); `selected` → `"Tanlangan: 3 ta talaba"` (haqiqiy qabul qiluvchilar
 soni, tashlab yuborilganlarsiz); `filter` → berilgan qismlar `" · "` bilan shu tartibda: fakultet **nomi** · yo'nalish nomi ·
 `"3-kurs"` · guruh nomi · `«q»` (masalan `"Axborot texnologiyalari · 3-kurs · 412-22"`); hech biri berilmasa —
-`"Barcha ulanganlar"`.
+`"Barcha talabalar"`.
 
 **Yetkazish holatlari** (dispetcher): `sent` — Telegram qabul qildi; `blocked` — 403 (botni bloklagan, hisob o'chirilgan,
 botni ishga tushirmagan) yoki 400 chat not found, `error: "Talaba botni bloklagan yoki botni ishga tushirmagan"`, talabada
 `botBlocked = true` bo'ladi (keyingi muvaffaqiyatli yuborish yoki `allows_write_to_pm=true` bilan Telegram kirishi
 tozalaydi); 429 — `retry_after` dan keyin qayta (urinish hisoblanmaydi, `pending` qoladi); tarmoq/5xx — eksponensial
 backoff (5 s, 10 s, 20 s, 40 s), **5 urinishdan keyin `failed`**; boshqa 400/401 yoki bot tokeni sozlanmagan →
-darhol `failed` (`"Bot tokeni sozlanmagan"`). Matn oddiy (formatlashsiz, `parse_mode` yo'q), havola preview'i o'chiq.
+darhol `failed` (`"Bot tokeni sozlanmagan"`); `appOnly` (v3.33) — Telegram'siz talaba, yaratilganda yakuniy, dispetcher
+va `retry` unga tegmaydi. Matn oddiy (formatlashsiz, `parse_mode` yo'q), havola preview'i o'chiq. Ilova qutisidagi
+o'qilganlik (`readAt`) Telegram holatidan mustaqil.
 
 #### GET `/api/admin/messages/recipients?q&facultyId&directionId&groupId&course&page&pageSize` · 200 · 400 · 403
 
-→ `Paged<MessageRecipientRow>`, FISH bo'yicha. `pageSize` **1..500** (§1.6: oraliqdan tashqari → 20). `q` (≤ 100):
+→ `Paged<MessageRecipientRow>` — **barcha faol talabalar** (v3.33; Telegram bog'langanligi `telegramLinked` belgisi),
+FISH bo'yicha. `pageSize` **1..500** (§1.6: oraliqdan tashqari → 20). `q` (≤ 100):
 FISH yoki HEMIS ID (qism, case-insensitive) **yoki** Telegram ID (aniq son). Filtrlar ixtiyoriy, **AND**;
 `course` 1..6, aks holda **400** `errors.Course`. Fakultet/yo'nalish/kurs variantlari — mavjud
 `GET /api/admin/students/filters` (§2.3), guruhlar — quyidagi endpoint.
 
 #### GET `/api/admin/messages/recipients/groups?facultyId&directionId&course` · 200 · 400 · 403
 
-→ `{ id: string; name: string }[]` — faqat Telegram ulangan faol talabasi bor guruhlar, nom bo'yicha. Filtrlar
+→ `{ id: string; name: string }[]` — faol talabasi bor guruhlar (v3.33: Telegram shart emas), nom bo'yicha. Filtrlar
 ixtiyoriy (AND).
 
 #### POST `/api/admin/messages` · 201 (+ `Location: /api/admin/messages/{id}`) · 400 · 403
@@ -1688,20 +1700,24 @@ ixtiyoriy (AND).
 // 201 → MessageSummary
 { "id": "…", "text": "Ertaga 9:00 da yig'ilish", "createdAt": "2026-10-02T09:00:00+00:00",
   "createdByName": "Bosh Admin", "audienceLabel": "Axborot texnologiyalari · 3-kurs", "attachAppButton": true,
-  "status": "queued", "total": 54, "sent": 0, "failed": 0, "blocked": 0, "pending": 54 }
+  "status": "queued", "total": 54, "sent": 0, "failed": 0, "blocked": 0, "pending": 50, "appOnly": 4 }
 ```
 
 - `text` — trim qilinadi, **1..4000** belgi (Telegram chegarasi 4096). Bo'sh/faqat bo'shliq → 400 `errors.Text`
   ("Xabar matnini kiriting."), > 4000 → 400.
 - `audience` majburiy (yo'q → 400 `errors.Audience`); noma'lum `kind` → 400 (JSON). `selected`: `userIds` **1..5000**
-  (bo'sh → 400 "Kamida bitta talabani tanlang."), takrorlar olib tashlanadi; Telegram ulanmagan / faol emas / mavjud
-  bo'lmagan id'lar **jim** tashlanadi. `filter`: `q` ≤ 100, `course` 1..6.
+  (bo'sh → 400 "Kamida bitta talabani tanlang."), takrorlar olib tashlanadi; faol emas / mavjud bo'lmagan id'lar **jim** tashlanadi
+  (v3.33: Telegram ulanmagan talaba **tashlanmaydi** — `appOnly`). `filter`: `q` ≤ 100, `course` 1..6.
 - Auditoriya server tomonda, yuborish paytidagi holat bo'yicha resolve qilinadi (snapshot — keyin talaba ulansa/uzilsa
   ham qabul qiluvchilar o'zgarmaydi). Natija **0** → **400**
-  `detail: "Tanlangan auditoriyada Telegram ulangan talaba yo'q."` (`errors.Audience` ham shu matn).
+  `detail: "Tanlangan auditoriyada faol talaba yo'q."` (`errors.Audience` ham shu matn; v3.33 gacha
+  "…Telegram ulangan talaba yo'q.").
+- Har qabul qiluvchi uchun bitta yetkazish yozuvi (u talabaning ilova qutisidagi xabar ham): Telegram bog'langan →
+  `pending` (Telegram navbati), bog'lanmagan → `appOnly`.
 - `attachAppButton: true` → xabar ostida **"Ilovani ochish"** inline web_app tugmasi (`Telegram:WebAppUrl` HTTPS
   bo'lsa; aks holda tugmasiz yuboriladi).
-- Audit: `broadcastMessageCreated` (`changes`: auditoriya, qabul qiluvchilar soni, matnning dastlabki 200 belgisi).
+- Audit: `broadcastMessageCreated` (`changes`: auditoriya, qabul qiluvchilar soni, v3.33 — `telegram` (bot orqali
+  yuboriladiganlar soni), matnning dastlabki 200 belgisi).
 
 #### GET `/api/admin/messages?page&pageSize` · 200 · 403
 
@@ -1713,7 +1729,7 @@ ixtiyoriy (AND).
 
 #### GET `/api/admin/messages/{id}/deliveries?status&q&page&pageSize` · 200 · 400 · 403 · 404
 
-→ `Paged<MessageDeliveryRow>`, FISH bo'yicha. `status` ixtiyoriy (`pending|sent|failed|blocked`, noto'g'ri qiymat → 400);
+→ `Paged<MessageDeliveryRow>`, FISH bo'yicha. `status` ixtiyoriy (`pending|sent|failed|blocked|appOnly`, noto'g'ri qiymat → 400);
 `q` — FISH yoki HEMIS ID; `pageSize` 1..500. Talaba keyin o'chirilgan/faolsizlantirilgan bo'lsa ham qator ko'rinadi.
 
 #### POST `/api/admin/messages/{id}/retry` · 200 · 403 · 404
@@ -2710,6 +2726,40 @@ interface PortfolioDto {
 }
 ```
 
+#### Xabarlar qutisi — `StudentMessagesController` (`/api/student/messages`) — v3.33
+
+Mobil ilova (va TWA) uchun talabaning xabarlar qutisi: admin "Xabarlar" bo'limidan (§2.3.5) yuborgan xabarlar. Talaba
+**faqat o'ziga yuborilganlarni** ko'radi; xabar admin yaratgan zahoti qutida (Telegram yetkazilishini kutmaydi) —
+Telegram bog'lamagan talaba ham oladi. Hammasi `StudentOnly` (admin → **403**, tokensiz → **401**).
+
+```ts
+interface StudentMessageDto {
+  id: string;               // xabar id'si (MessageSummary.id bilan bir xil)
+  text: string;             // 1..4000, oddiy matn
+  createdAt: string;        // ISO, UTC offset bilan ("2026-10-15T07:30:00+00:00")
+  readAt: string | null;    // ISO, UTC offset bilan; null — o'qilmagan
+}
+```
+
+##### GET `/api/student/messages?page=1&pageSize=20` · 200 · 401 · 403
+
+→ `Paged<StudentMessageDto>` (§1.6), **yangi birinchi** (`createdAt` kamayish, teng bo'lsa `id`). `pageSize` 1..100
+(oraliqdan tashqari → 20, §1.6). Xabar yo'q → `{ items: [], page, pageSize, total: 0 }`.
+
+##### GET `/api/student/messages/unread-count` · 200 · 401 · 403
+
+→ `{ count: number }` — `readAt == null` xabarlar soni.
+
+##### POST `/api/student/messages/{id}/read` · 204 · 401 · 403 · 404
+
+Xabarni o'qilgan deb belgilaydi. **Idempotent** — qayta chaqiruv ham 204, birinchi `readAt` saqlanadi. Talabaga
+yuborilmagan (begona) yoki mavjud bo'lmagan `id` → **404** `"Xabar topilmadi."`. Body yo'q.
+
+##### POST `/api/student/messages/read-all` · 204 · 401 · 403
+
+Talabaning barcha o'qilmagan xabarlarini o'qilgan deb belgilaydi (bitta `UPDATE`); o'qilmagani bo'lmasa ham 204.
+Avval o'qilganlarning `readAt` i o'zgarmaydi. Body yo'q.
+
 ---
 
 
@@ -3615,7 +3665,8 @@ server tomonida etalon bilan solishtiriladi; moslik chegaradan past → urinish 
   - TWA darvozasi: `required && (status === 'none' || status === 'rejected')` → talaba avval `/face` sahifasiga
     yo'naltiriladi (tab-bar yashirin, "Chiqish" bor); `pending`/`approved` — oddiy ilova.
 - **`TodayDto.checkin.faceRequired: boolean`** — `true` bo'lsa selfi majburiy ("Rasmsiz davom etish" yo'q).
-- **`CheckInRejectReason` + `faceNotEnrolled`** (tasdiqlangan etalon yo'q), **`faceNotDetected`** (selfida yuz topilmadi),
+- **`CheckInRejectReason` + `faceNotEnrolled`** (etalon yo'q yoki rad etilgan; `pending` etalon admin ko'rmagan bo'lsa
+  ham solishtirishda ishlatiladi — `AttendanceAttempt.VerifyFaceAsync`), **`faceNotDetected`** (selfida yuz topilmadi),
   **`faceMismatch`** (moslik `faceMatchThreshold` dan past). Xato — ProblemDetails, `detail` — o'zbekcha xabar.
   Frontend sababni ProblemDetails `rejectReason` kengaytmasidan (bo'lsa) yoki `detail` matnidan ("yuz" so'zi) ajratadi:
   `faceNotDetected`/`faceMismatch` → selfi qayta olinadi; `faceNotEnrolled` → xabar + "Yuzni tasdiqlash" (`/face`) tugmasi.
@@ -3824,3 +3875,27 @@ Mahsulot qarori: talabaning ish vaqti (kelish/ketish) ilovada belgilanmaydi — 
   o'zgarmadi — manba endi admin.
 - Admin panel: talaba profilida "Ish vaqti" kartasi + "Ish vaqtini belgilash" modali (kelish/ketish, "Davr vaqtiga qaytarish").
 - Endpoint soni o'zgarmadi (Student −1, Admin +1). Migratsiya yo'q (ustunlar v3.26 dagi).
+
+### 6.38 v3.32 → v3.33 (15.10.2026): talaba xabarlar qutisi, auditoriya — barcha faol talabalar
+
+Talabalar Flutter mobil ilovadan ham foydalanadi — ilovada xabarlar qutisi.
+- **Yangi endpoint'lar (StudentOnly, §2.6):** `GET /api/student/messages?page&pageSize` → `Paged<StudentMessageDto>`
+  (`{ id, text, createdAt, readAt }`, yangi birinchi, `pageSize` ≤ 100); `GET /api/student/messages/unread-count` →
+  `{ count }`; `POST /api/student/messages/{id}/read` → 204 (idempotent; begona/yo'q → 404);
+  `POST /api/student/messages/read-all` → 204.
+- **"Xabarlar" auditoriyasi (§2.3.5):** endi **barcha faol talabalar** — Telegram bog'lamaganlar ham. Har qabul qiluvchiga
+  bitta yetkazish yozuvi = ilova qutisidagi xabar. Telegram bog'langan → `pending` (bot orqali yuborish o'zgarmadi);
+  bog'lanmagan → yangi yakuniy holat **`appOnly`** (Telegram navbatiga tushmaydi, dispetcher va `retry` tegmaydi).
+  Bo'sh auditoriya xabari: `"Tanlangan auditoriyada faol talaba yo'q."`. `all` yorlig'i: `"Barcha talabalar"`.
+- **O'zgargan shakllar (additive, admin panel moslangan):** `MessageRecipientRow.telegramLinked: boolean` (yangi),
+  `telegramUserId: number | null` (avval doim son); `MessageSummary.appOnly: number` (yangi), `total` endi
+  `sent + failed + blocked + pending + appOnly`; `status` faqat Telegram yetkazishlari bo'yicha (hammasi `appOnly` →
+  darhol `completed`); `DeliveryStatus` ga `appOnly`; `MessageDeliveryRow.readAt: string | null` (yangi).
+  `recipients/groups` — faol talabasi bor guruhlar (Telegram shart emas).
+- **Migratsiya `20261015070611_StudentMessageInbox`:** `broadcast_deliveries.chat_id` nullable, `read_at timestamptz NULL`,
+  indeks `(recipient_user_id)` → `(recipient_user_id, read_at)`. Mavjud (v3.33 dan oldingi) yetkazishlar o'qilgan deb
+  belgilanadi (`read_at = COALESCE(sent_at, now())`) — eski Telegram xabarlari qutida "o'qilmagan" bo'lib to'planmaydi.
+- Admin panel: "Ulanganlar" varag'i → **"Talabalar"** (barcha faol talabalar, "Telegram" ustunida `Ulangan` /
+  `Bot bloklangan` / `Telegram'siz` belgisi), tafsilotda "Faqat ilovada" ko'rsatkichi, yetkazishlarda "Ilovada o'qilgan"
+  ustuni va `appOnly` holat filtri.
+- Endpoint soni: Student +4.

@@ -99,7 +99,7 @@ export function SentMessagesTable({
       tone="plain"
       className={styles.empty}
       title="Hali xabar yuborilmagan"
-      description="«Ulanganlar» bo'limida talabalarni tanlab, birinchi xabarni yuboring."
+      description="«Talabalar» bo'limida talabalarni tanlab, birinchi xabarni yuboring."
     />
   );
 

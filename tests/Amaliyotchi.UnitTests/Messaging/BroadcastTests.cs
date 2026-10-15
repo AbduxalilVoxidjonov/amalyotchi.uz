@@ -17,10 +17,10 @@ namespace Amaliyotchi.UnitTests.Messaging;
 public sealed class AudienceLabelTests
 {
     [Fact]
-    public void All_VaBoshFiltr_BarchaUlanganlar()
+    public void All_VaBoshFiltr_BarchaTalabalar()
     {
-        AudienceLabel.Build(BroadcastAudienceKind.All).Should().Be("Barcha ulanganlar");
-        AudienceLabel.Build(BroadcastAudienceKind.Filter).Should().Be("Barcha ulanganlar");
+        AudienceLabel.Build(BroadcastAudienceKind.All).Should().Be("Barcha talabalar");
+        AudienceLabel.Build(BroadcastAudienceKind.Filter).Should().Be("Barcha talabalar");
     }
 
     [Fact]
@@ -51,6 +51,28 @@ public sealed class BroadcastStatusRuleTests
 public sealed class BroadcastDeliveryTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 2, 9, 0, 0, TimeSpan.Zero);
+
+    [Fact]
+    public void Create_ChatIdBilan_Pending_ChatIdsiz_AppOnly()
+    {
+        var linked = BroadcastDelivery.Create(Guid.NewGuid(), Guid.NewGuid(), 42, Now);
+        (linked.Status, linked.ChatId, linked.ReadAt).Should().Be((BroadcastDeliveryStatus.Pending, (long?)42, (DateTimeOffset?)null));
+
+        var appOnly = BroadcastDelivery.Create(Guid.NewGuid(), Guid.NewGuid(), null, Now);
+        (appOnly.Status, appOnly.ChatId).Should().Be((BroadcastDeliveryStatus.AppOnly, (long?)null));
+        appOnly.Requeue(Now).Should().BeFalse("app-only qayta navbatga qo'yilmaydi");
+        appOnly.Defer(Now.AddMinutes(5));
+        appOnly.Status.Should().Be(BroadcastDeliveryStatus.AppOnly);
+    }
+
+    [Fact]
+    public void MarkRead_Idempotent_BirinchiVaqtSaqlanadi()
+    {
+        var delivery = BroadcastDelivery.Create(Guid.NewGuid(), Guid.NewGuid(), null, Now);
+        delivery.MarkRead(Now.AddMinutes(1));
+        delivery.MarkRead(Now.AddMinutes(9));
+        delivery.ReadAt.Should().Be(Now.AddMinutes(1));
+    }
 
     [Theory]
     [InlineData(1, 5)]

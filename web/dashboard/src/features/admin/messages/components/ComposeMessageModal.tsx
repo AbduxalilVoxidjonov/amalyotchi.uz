@@ -24,12 +24,13 @@ function recipientLabel(target: ComposeTarget): string {
     case 'filter':
       return `Filtr bo'yicha: ${target.description} — taxminan ${formatCount(target.estimate)} ta talaba`;
     case 'all':
-      return `Barcha ulanganlar — ${formatCount(target.estimate)} ta`;
+      return `Barcha talabalar — ${formatCount(target.estimate)} ta`;
   }
 }
 
 /**
- * Xabar yozish oynasi (bitta komponent — bitta talaba / tanlanganlar / filtr / hammaga).
+ * Xabar yozish oynasi (bitta komponent — bitta talaba / tanlanganlar / filtr / hammaga). Xabar har bir
+ * talabaning ilova qutisiga tushadi; Telegram bog'langanlarga bot orqali ham yuboriladi.
  * Matn (≤ 4000, bo'sh bo'lsa yuborilmaydi), "Ilovani ochish" tugmasi (sukut — yoqiq), Telegram
  * pufagiga o'xshash oldindan ko'rish (oddiy matn, `pre-wrap`). Ommaviy yoki 20 dan ko'p kishiga
  * yuborishda ikkinchi qadam — tasdiq.

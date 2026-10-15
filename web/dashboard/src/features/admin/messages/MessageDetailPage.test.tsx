@@ -22,11 +22,12 @@ describe('MessageDetailPage', () => {
   it("to'liq matn, statistika va yetkazishlar", async () => {
     renderDetail('m1');
     expect(await screen.findByText(/Amaliyot davri 1-oktabrdan boshlanadi/)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Barcha ulanganlar' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Barcha talabalar' })).toBeInTheDocument();
     expect(stat('Jami')).toHaveTextContent(String(mockRecipients.length));
     expect(stat('Xato')).toHaveTextContent('2');
     expect(stat('Bloklangan')).toHaveTextContent('2');
     expect(stat('Navbatda')).toHaveTextContent('0');
+    expect(stat('Faqat ilovada')).toHaveTextContent('2');
     expect(screen.getByText('Yuborish yakunlangan')).toBeInTheDocument();
     expect(await screen.findByRole('table', { name: 'Yetkazishlar' })).toBeInTheDocument();
   });

@@ -13,7 +13,7 @@ import {
 /** Yuborish davom etayotganda ro'yxat/tafsilot shu oraliqda qayta so'raladi (tugagach to'xtaydi). */
 export const MESSAGE_POLL_MS = 3000;
 
-/** Telegram ulangan talabalar (filtr + sahifa). */
+/** Xabar qabul qiluvchi faol talabalar (filtr + sahifa). */
 export function useRecipientsQuery(params: RecipientListParams) {
   return useQuery({
     queryKey: adminKeys.messageRecipients(params),

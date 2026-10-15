@@ -5,7 +5,7 @@ import { server } from '@/mocks/server';
 import { problemResponse } from '../shared/mockProblem';
 import { renderHierarchyPage } from '../shared/renderHierarchyPage';
 import { MESSAGES_ENDPOINT } from './api';
-import { BOT_BLOCKED_HINT } from './components/RecipientsTable';
+import { BOT_BLOCKED_HINT, NO_TELEGRAM_HINT } from './components/RecipientsTable';
 import { MessagesPage } from './MessagesPage';
 import { mockRecipients } from './mocks';
 
@@ -15,18 +15,19 @@ function renderPage(url = '/admin/messages') {
 
 const sorted = [...mockRecipients];
 
-describe('MessagesPage · Ulanganlar', () => {
-  it("ro'yxat, jami soni va bot bloklangan badge (tooltip bilan)", async () => {
+describe('MessagesPage · Talabalar', () => {
+  it("ro'yxat, jami soni, bot bloklangan va Telegram'siz belgilari (tooltip bilan)", async () => {
     renderPage('/admin/messages?size=50');
     expect(await screen.findByText(sorted[0]!.fullName)).toBeInTheDocument();
     expect(screen.getByText(`Jami: ${mockRecipients.length} ta`)).toBeInTheDocument();
     const blocked = screen.getAllByText('Bot bloklangan');
     expect(blocked).toHaveLength(2);
     expect(blocked[0]!.closest('[title]')).toHaveAttribute('title', BOT_BLOCKED_HINT);
-    expect(screen.getByRole('tab', { name: 'Ulanganlar' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
+    // Telegram bog'lamaganlar ham ro'yxatda — belgi bilan (xabar faqat ilova qutisiga).
+    const unlinked = screen.getAllByText("Telegram'siz");
+    expect(unlinked).toHaveLength(mockRecipients.filter((r) => !r.telegramLinked).length);
+    expect(unlinked[0]!.closest('[title]')).toHaveAttribute('title', NO_TELEGRAM_HINT);
+    expect(screen.getByRole('tab', { name: 'Talabalar' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('tanlov sahifalar va filtr o‘zgarishida saqlanadi; "Tanlovni tozalash"', async () => {
@@ -110,7 +111,7 @@ describe('MessagesPage · Ulanganlar', () => {
     expect(await screen.findByTestId('location')).toHaveTextContent('/admin/messages/m3');
   });
 
-  it('ommaviy xabar (filtrsiz) — barcha ulanganlar, tasdiq bosqichi', async () => {
+  it('ommaviy xabar (filtrsiz) — barcha talabalar, tasdiq bosqichi', async () => {
     const user = userEvent.setup();
     let body: unknown = null;
     server.events.on('request:start', async ({ request }) => {
@@ -124,7 +125,7 @@ describe('MessagesPage · Ulanganlar', () => {
 
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByTestId('compose-target')).toHaveTextContent(
-      `Barcha ulanganlar — ${mockRecipients.length} ta`,
+      `Barcha talabalar — ${mockRecipients.length} ta`,
     );
     await user.type(within(dialog).getByRole('textbox', { name: 'Xabar matni' }), 'Diqqat');
     await user.click(
@@ -160,11 +161,7 @@ describe('MessagesPage · Ulanganlar', () => {
   it('server xatosi (400) oyna ichida ko‘rsatiladi', async () => {
     server.use(
       http.post(MESSAGES_ENDPOINT, () =>
-        problemResponse(
-          400,
-          "Ma'lumotlar noto'g'ri",
-          "Tanlangan auditoriyada Telegram ulangan talaba yo'q.",
-        ),
+        problemResponse(400, "Ma'lumotlar noto'g'ri", "Tanlangan auditoriyada faol talaba yo'q."),
       ),
     );
     const user = userEvent.setup();
@@ -176,7 +173,7 @@ describe('MessagesPage · Ulanganlar', () => {
     await user.type(within(dialog).getByRole('textbox', { name: 'Xabar matni' }), 'Salom');
     await user.click(within(dialog).getByRole('button', { name: 'Yuborish' }));
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      "Tanlangan auditoriyada Telegram ulangan talaba yo'q.",
+      "Tanlangan auditoriyada faol talaba yo'q.",
     );
     expect(screen.queryByTestId('location')).not.toBeInTheDocument();
   });
@@ -188,7 +185,7 @@ describe('MessagesPage · Yuborilganlar', () => {
     const table = await screen.findByRole('table', { name: 'Yuborilgan xabarlar' });
     expect(await within(table).findByText(/412-22 guruh talabalari, diqqat!/)).toBeInTheDocument();
     expect(within(table).getAllByText('Yakunlangan')).toHaveLength(2);
-    expect(within(table).getByText(/Barcha ulanganlar · Admin Adminov/)).toBeInTheDocument();
+    expect(within(table).getByText(/Barcha talabalar · Admin Adminov/)).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Yuborilganlar' })).toHaveAttribute(
       'aria-selected',
       'true',
@@ -203,7 +200,7 @@ describe('MessagesPage · Yuborilganlar', () => {
     );
     await user.click(screen.getByRole('tab', { name: 'Yuborilganlar' }));
     await screen.findByRole('table', { name: 'Yuborilgan xabarlar' });
-    await user.click(screen.getByRole('tab', { name: 'Ulanganlar' }));
+    await user.click(screen.getByRole('tab', { name: 'Talabalar' }));
     expect(
       await screen.findByRole('button', { name: 'Tanlanganlarga yozish (1)' }),
     ).toBeInTheDocument();

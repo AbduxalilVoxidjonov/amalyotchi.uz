@@ -126,6 +126,7 @@ function MessageDetail({ message }: { message: MessageSummary }) {
         <StatTile label="Xato" dot="bad" value={formatCount(message.failed)} />
         <StatTile label="Bloklangan" dot="late" value={formatCount(message.blocked)} />
         <StatTile label="Navbatda" dot="neu" value={formatCount(message.pending)} />
+        <StatTile label="Faqat ilovada" value={formatCount(message.appOnly)} />
       </StatGrid>
 
       <div className={styles.progressCard}>

@@ -8,8 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amaliyotchi.Application.Features.Admin.Messages;
 
-/// <summary>Xabar qabul qiluvchilar manbasi: Telegram ulangan (<c>TelegramUserId != null</c>), faol, o'chirilmagan talabalar
-/// (soft-delete filtri). Profil → guruh → yo'nalish → kafedra → fakultet zanjiri LEFT JOIN — zanjiri to'liq bo'lmagan
+/// <summary>Xabar qabul qiluvchilar manbasi: barcha faol, o'chirilmagan talabalar (soft-delete filtri) — Telegram
+/// bog'laganlik shart emas: xabar har kimning ilova qutisiga tushadi, Telegram bog'langanlarga qo'shimcha bot orqali. Profil → guruh → yo'nalish → kafedra → fakultet zanjiri LEFT JOIN — zanjiri to'liq bo'lmagan
 /// talaba ham ro'yxatda (akademik maydonlari null), lekin fakultet/yo'nalish/guruh/kurs filtriga tushmaydi.
 /// Ro'yxat (<see cref="GetMessageRecipientsQuery"/>) va auditoriyani resolve qilish (<see cref="CreateMessageCommand"/>)
 /// AYNAN shu manba va filtrdan foydalanadi — admin ko'rgan ro'yxat bilan yuborilgan ro'yxat bir xil.</summary>
@@ -17,7 +17,7 @@ internal static class MessageRecipientQueries
 {
     public static IQueryable<RecipientSource> Source(IApplicationDbContext db)
         => from u in db.Users.AsNoTracking()
-           where u.Role == UserRole.Student && u.IsActive && u.TelegramUserId != null
+           where u.Role == UserRole.Student && u.IsActive
            join p in db.StudentProfiles on u.Id equals p.UserId into profiles
            from p in profiles.DefaultIfEmpty()
            join g in db.StudentGroups on p.StudentGroupId equals g.Id into groups

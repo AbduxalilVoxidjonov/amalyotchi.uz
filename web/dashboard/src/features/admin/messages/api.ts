@@ -17,7 +17,7 @@ import type {
  *                                             → Paged<MessageRecipientRow> (pageSize 1..500)
  * GET  /api/admin/messages/recipients/groups?facultyId&directionId&course → RecipientGroupOption[]
  * POST /api/admin/messages                    → 201 MessageSummary · 400 (bo'sh/uzun matn,
- *                                               auditoriyada Telegram ulangan talaba yo'q)
+ *                                               auditoriyada faol talaba yo'q)
  * GET  /api/admin/messages?page&pageSize      → Paged<MessageSummary>
  * GET  /api/admin/messages/{id}               → MessageSummary · 404
  * GET  /api/admin/messages/{id}/deliveries?status&q&page&pageSize → Paged<MessageDeliveryRow>

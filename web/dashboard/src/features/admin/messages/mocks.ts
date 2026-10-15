@@ -137,7 +137,15 @@ interface RecipientSeed extends MessageRecipientRow {
   groupId: string | null;
 }
 
-/** Bot bloklangan talabalar (indeks bo'yicha) — xabar yetmaydi. */
+/** Telegram bog'lamagan talabalar (indeks ≥ shu) — xabar faqat ilova qutisida (`appOnly`). */
+const UNLINKED_FROM = 44;
+const RECIPIENT_COUNT = 46;
+const UNLINKED_NAMES = [
+  ['Yoqubov', 'Sardor'],
+  ['Qodirova', 'Malika'],
+] as const;
+
+/** Bot bloklangan talabalar (indeks bo'yicha) — Telegram xabari yetmaydi. */
 const BLOCKED_INDEXES = new Set([6, 19]);
 /** Birinchi urinishda Telegram 429 qaytaradigan talabalar — retry'dan keyin yetkaziladi. */
 const FLAKY_INDEXES = new Set([3, 27]);
@@ -146,9 +154,12 @@ const LINKED_BASE = Date.parse('2026-09-01T09:00:00Z');
 
 function buildRecipients(): RecipientSeed[] {
   const rows: RecipientSeed[] = [];
-  for (let i = 0; i < 44; i += 1) {
+  for (let i = 0; i < RECIPIENT_COUNT; i += 1) {
+    const linked = i < UNLINKED_FROM;
     const pool = i % 2 === 0 ? MALE : FEMALE;
-    const [last, first] = pool[Math.floor(i / 2) % pool.length]!;
+    const [last, first] = linked
+      ? pool[Math.floor(i / 2) % pool.length]!
+      : UNLINKED_NAMES[i - UNLINKED_FROM]!;
     // Oxirgi talaba — guruhga biriktirilmagan (fakultet/guruh "—").
     const group = i === 43 ? null : GROUPS[i % GROUPS.length]!;
     rows.push({
@@ -156,8 +167,10 @@ function buildRecipients(): RecipientSeed[] {
       fullName: `${last} ${first}`,
       // Bitta talabada HEMIS ID yo'q (qo'lda qo'shilgan hisob).
       hemisId: i === 11 ? null : String(341000 + i * 7),
-      telegramUserId: 5_100_000_000 + i * 104_729,
-      telegramLinkedAt: i === 15 ? null : new Date(LINKED_BASE + i * 7.5 * 3_600_000).toISOString(),
+      telegramLinked: linked,
+      telegramUserId: linked ? 5_100_000_000 + i * 104_729 : null,
+      telegramLinkedAt:
+        !linked || i === 15 ? null : new Date(LINKED_BASE + i * 7.5 * 3_600_000).toISOString(),
       botBlocked: BLOCKED_INDEXES.has(i),
       facultyId: group?.facultyId ?? null,
       facultyName: group?.facultyName ?? null,
@@ -204,8 +217,8 @@ function applyFilter(rows: readonly RecipientSeed[], f: RecipientFilter): Recipi
       (!f.groupId || r.groupId === f.groupId) &&
       (!f.course || r.course === f.course) &&
       (!q ||
-        [r.fullName, r.hemisId, String(r.telegramUserId)].some((s) =>
-          s?.toLowerCase().includes(q),
+        [r.fullName, r.hemisId, r.telegramUserId === null ? null : String(r.telegramUserId)].some(
+          (s) => s?.toLowerCase().includes(q),
         )),
   );
 }
@@ -236,6 +249,7 @@ function recount(m: MessageState): void {
     failed: count('failed'),
     blocked: count('blocked'),
     pending: count('pending'),
+    appOnly: count('appOnly'),
   };
 }
 
@@ -244,9 +258,11 @@ function newDeliveries(rows: readonly RecipientSeed[]): DeliveryState[] {
     userId: r.userId,
     fullName: r.fullName,
     hemisId: r.hemisId,
-    status: 'pending',
+    // Telegram'siz — faqat ilova qutisi (navbatga tushmaydi).
+    status: r.telegramLinked ? 'pending' : 'appOnly',
     error: null,
     sentAt: null,
+    readAt: null,
     attempts: 0,
     flaky: FLAKY_INDEXES.has(Number(r.userId.slice('tg-u'.length)) - 1),
   }));
@@ -272,7 +288,7 @@ function deliver(d: DeliveryState, at: string): void {
 function tick(m: MessageState): void {
   if (m.summary.status === 'completed') return;
   if (m.summary.status === 'queued') {
-    m.summary = { ...m.summary, status: 'sending' };
+    m.summary = { ...m.summary, status: m.summary.pending === 0 ? 'completed' : 'sending' };
     return;
   }
   const now = new Date().toISOString();
@@ -307,10 +323,11 @@ function completedMessage(
       failed: 0,
       blocked: 0,
       pending: 0,
+      appOnly: 0,
     },
     deliveries: newDeliveries(rows),
   };
-  m.deliveries.forEach((d) => deliver(d, createdAt));
+  m.deliveries.filter((d) => d.status === 'pending').forEach((d) => deliver(d, createdAt));
   recount(m);
   return m;
 }
@@ -329,7 +346,7 @@ function seedMessages(): MessageState[] {
       'm1',
       '2026-09-20T04:00:00Z',
       'Assalomu alaykum! Amaliyot davri 1-oktabrdan boshlanadi. Korxonangizni ilova orqali tanlang va arizangiz tasdiqlanishini kuting.',
-      'Barcha ulanganlar',
+      'Barcha talabalar',
       mockRecipients,
     ),
   ];
@@ -356,7 +373,7 @@ function audienceLabel(
   input: SendMessageInput['audience'],
   rows: readonly RecipientSeed[],
 ): string {
-  if (input.kind === 'all') return 'Barcha ulanganlar';
+  if (input.kind === 'all') return 'Barcha talabalar';
   if (input.kind === 'selected') {
     return rows.length === 1 ? rows[0]!.fullName : `Tanlangan: ${rows.length} ta`;
   }
@@ -424,7 +441,7 @@ export const messagesHandlers: HttpHandler[] = [
       return problemResponse(
         400,
         "Ma'lumotlar noto'g'ri",
-        "Tanlangan auditoriyada Telegram ulangan talaba yo'q.",
+        "Tanlangan auditoriyada faol talaba yo'q.",
       );
     }
     const m: MessageState = {
@@ -441,10 +458,13 @@ export const messagesHandlers: HttpHandler[] = [
         failed: 0,
         blocked: 0,
         pending: 0,
+        appOnly: 0,
       },
       deliveries: newDeliveries(rows),
     };
     recount(m);
+    // Faqat Telegram'siz qabul qiluvchilar — kutadigan narsa yo'q (backend ham darhol `completed`).
+    if (m.summary.pending === 0) m.summary = { ...m.summary, status: 'completed' };
     messages.unshift(m);
     return HttpResponse.json(m.summary, { status: 201 });
   }),

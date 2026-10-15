@@ -7,7 +7,9 @@ import { PageSizeInput } from '../../students/components/PageSizeInput';
 import type { MessageRecipientRow } from '../types';
 import styles from './Messages.module.css';
 
-export const BOT_BLOCKED_HINT = 'Talaba botni bloklagan yoki ishga tushirmagan — xabar yetmaydi';
+export const BOT_BLOCKED_HINT =
+  'Talaba botni bloklagan yoki ishga tushirmagan — Telegram xabari yetmaydi, ilova qutisiga tushadi';
+export const NO_TELEGRAM_HINT = "Telegram bog'lanmagan — xabar faqat ilova qutisiga tushadi";
 
 /** "412-22 · 3-kurs" + fakultet (ikki qator). Ma'lumot yo'q — "—". */
 function scopeCell(r: MessageRecipientRow): ReactNode {
@@ -21,7 +23,15 @@ function scopeCell(r: MessageRecipientRow): ReactNode {
   );
 }
 
+/** Telegram belgisi: bog'lanmagan · ulangan · bot bloklangan. */
 function statusCell(r: MessageRecipientRow): ReactNode {
+  if (!r.telegramLinked)
+    return (
+      <Badge status="neu" title={NO_TELEGRAM_HINT}>
+        Telegram'siz
+        <span className={styles.srOnly}> — {NO_TELEGRAM_HINT}</span>
+      </Badge>
+    );
   if (!r.botBlocked) return <Badge status="ok">Ulangan</Badge>;
   return (
     <Badge status="bad" title={BOT_BLOCKED_HINT}>
@@ -47,7 +57,7 @@ const BASE_COLUMNS: DataTableColumn<MessageRecipientRow>[] = [
     width: 'minmax(110px,.8fr)',
     mono: true,
     dim: true,
-    render: (r) => String(r.telegramUserId),
+    render: (r) => (r.telegramUserId === null ? DASH : String(r.telegramUserId)),
   },
   {
     key: 'scope',
@@ -57,13 +67,13 @@ const BASE_COLUMNS: DataTableColumn<MessageRecipientRow>[] = [
   },
   {
     key: 'telegramLinkedAt',
-    header: 'Ulangan',
+    header: 'Telegram ulangan',
     width: 'minmax(120px,.8fr)',
     mono: true,
     dim: true,
     render: (r) => formatDateTime(r.telegramLinkedAt),
   },
-  { key: 'status', header: 'Holat', width: 'minmax(130px,.8fr)', render: statusCell },
+  { key: 'status', header: 'Telegram', width: 'minmax(130px,.8fr)', render: statusCell },
 ];
 
 /** Tanlov (Set yoki Map — faqat `has`/`size` kerak). */
@@ -85,7 +95,7 @@ export interface RecipientsTableProps extends TableStateProps<MessageRecipientRo
   emptyDescription?: ReactNode;
 }
 
-/** "Ulanganlar" jadvali: belgilash, qator amali "Xabar yozish", yuqorida ommaviy amallar. */
+/** "Talabalar" jadvali: belgilash, qator amali "Xabar yozish", yuqorida ommaviy amallar. */
 export function RecipientsTable({
   selectedIds,
   onToggleRow,
@@ -134,11 +144,11 @@ export function RecipientsTable({
 
   return (
     <AdminTable
-      aria-label="Telegram ulangan talabalar"
+      aria-label="Xabar qabul qiluvchi talabalar"
       columns={columns}
       rowKey={(r) => r.userId}
       minWidth="1020px"
-      emptyTitle="Telegram ulangan talaba yo'q"
+      emptyTitle="Faol talaba yo'q"
       {...(emptyDescription ? { emptyDescription } : {})}
       filters={filters}
       rowActions={(r) => (

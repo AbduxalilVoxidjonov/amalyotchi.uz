@@ -5,14 +5,14 @@ namespace Amaliyotchi.Application.Features.Admin.Messages;
 
 /// <summary>Xabar tarixidagi auditoriya tavsifi (o'zbekcha, server yasaydi):
 /// <list type="bullet">
-/// <item><c>all</c> → "Barcha ulanganlar";</item>
+/// <item><c>all</c> → "Barcha talabalar";</item>
 /// <item><c>selected</c> → "Tanlangan: 3 ta talaba" (resolve qilingan — haqiqiy qabul qiluvchilar soni);</item>
 /// <item><c>filter</c> → berilgan qismlar " · " bilan: fakultet nomi · yo'nalish · "3-kurs" · guruh · «qidiruv»
-/// (masalan "Axborot texnologiyalari · 3-kurs · 412-22"); hech biri berilmasa — "Barcha ulanganlar".</item>
+/// (masalan "Axborot texnologiyalari · 3-kurs · 412-22"); hech biri berilmasa — "Barcha talabalar".</item>
 /// </list></summary>
 public static class AudienceLabel
 {
-    public const string AllLinked = "Barcha ulanganlar";
+    public const string AllStudents = "Barcha talabalar";
     public const string Separator = " · ";
 
     public static string Build(
@@ -27,7 +27,7 @@ public static class AudienceLabel
         switch (kind)
         {
             case BroadcastAudienceKind.All:
-                return AllLinked;
+                return AllStudents;
             case BroadcastAudienceKind.Selected:
                 return string.Create(CultureInfo.InvariantCulture, $"Tanlangan: {selectedCount} ta talaba");
         }
@@ -44,6 +44,6 @@ public static class AudienceLabel
         if (!string.IsNullOrWhiteSpace(q))
             parts.Add($"«{q.Trim()}»");
 
-        return parts.Count == 0 ? AllLinked : string.Join(Separator, parts);
+        return parts.Count == 0 ? AllStudents : string.Join(Separator, parts);
     }
 }

@@ -8,7 +8,8 @@ using MediatR;
 namespace Amaliyotchi.Application.Features.Admin.Messages;
 
 /// <summary><c>GET /api/admin/messages/recipients?q&amp;facultyId&amp;directionId&amp;groupId&amp;course&amp;page&amp;pageSize</c>
-/// (<c>pageSize</c> ≤ 500) — Telegram ulangan faol talabalar, FISH bo'yicha. <c>q</c>: FISH, HEMIS ID yoki Telegram ID.
+/// (<c>pageSize</c> ≤ 500) — barcha faol talabalar, FISH bo'yicha; Telegram bog'langanligi — <c>telegramLinked</c> belgisi.
+/// <c>q</c>: FISH, HEMIS ID yoki Telegram ID.
 /// Filtr variantlari — <c>GET /api/admin/students/filters</c> va <c>GET /api/admin/messages/recipients/groups</c>.</summary>
 public sealed record GetMessageRecipientsQuery : PagedQuery, IRequest<Paged<MessageRecipientRow>>
 {
@@ -46,7 +47,8 @@ internal sealed class GetMessageRecipientsQueryHandler(IApplicationDbContext db)
                 x.User.Id,
                 x.User.FullName,
                 x.Profile != null ? x.Profile.HemisId : null,
-                x.User.TelegramUserId!.Value,
+                x.User.TelegramUserId != null,
+                x.User.TelegramUserId,
                 x.User.TelegramLinkedAt,
                 x.User.TelegramBotBlockedAt != null,
                 x.Faculty != null ? x.Faculty.Name : null,

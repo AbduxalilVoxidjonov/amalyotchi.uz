@@ -11,7 +11,7 @@ import type {
  *  - `single` — jadval qatoridagi "Xabar yozish" (bitta talaba);
  *  - `selected` — belgilangan talabalar (sahifalar bo'ylab to'plangan id'lar);
  *  - `filter` — joriy filtr/qidiruv bo'yicha (taxminiy son — ro'yxat `total`i);
- *  - `all` — barcha ulanganlar.
+ *  - `all` — barcha faol talabalar.
  */
 export type ComposeTarget =
   | { kind: 'single'; recipient: MessageRecipientRow }
@@ -76,7 +76,7 @@ export function describeFilter(
   return parts.join(' · ');
 }
 
-/** Filtr yoki qidiruv berilganmi (aks holda "Ommaviy xabar" — barcha ulanganlarga). */
+/** Filtr yoki qidiruv berilganmi (aks holda "Ommaviy xabar" — barcha faol talabalarga). */
 export function hasAnyFilter(filter: RecipientFilter): boolean {
   return Boolean(
     filter.q || filter.facultyId || filter.directionId || filter.course || filter.groupId,

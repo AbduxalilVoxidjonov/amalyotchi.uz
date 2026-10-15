@@ -53,6 +53,7 @@ public sealed class BroadcastDeliveryConfiguration : IEntityTypeConfiguration<Br
         builder.HasIndex(x => new { x.MessageId, x.Status });
         // Bir xabar bitta talabaga bir marta.
         builder.HasIndex(x => new { x.MessageId, x.RecipientUserId }).IsUnique();
-        builder.HasIndex(x => x.RecipientUserId);
+        // Talaba qutisi: o'z xabarlari va o'qilmaganlar soni (recipient_user_id, read_at).
+        builder.HasIndex(x => new { x.RecipientUserId, x.ReadAt });
     }
 }

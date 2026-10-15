@@ -8,15 +8,17 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Amaliyotchi.Api.Controllers.Admin;
 
-/// <summary>"Xabarlar": admin Telegram'ni bog'lagan talabalarga bot orqali xabar yuboradi — bittasiga, tanlanganlarga
-/// yoki filtr bo'yicha ommaviy. Yuborishni fon dispetcheri bajaradi (DB-navbat, ≤ 25 xabar/s); bu yerda — navbatga
-/// qo'yish, tarix va yetkazish holati.</summary>
+/// <summary>"Xabarlar": admin faol talabalarga xabar yuboradi — bittasiga, tanlanganlarga yoki filtr bo'yicha ommaviy.
+/// Xabar har bir qabul qiluvchining ilova qutisiga darhol tushadi (<c>/api/student/messages</c>); Telegram bog'langanlarga
+/// qo'shimcha ravishda bot orqali ham yuboriladi — buni fon dispetcheri bajaradi (DB-navbat, ≤ 25 xabar/s). Telegram'siz
+/// talabalarning yetkazishi <c>appOnly</c> holatida yaratiladi va navbatga tushmaydi. Bu yerda — yaratish, tarix va
+/// yetkazish holati.</summary>
 [ApiController]
 [Route("api/admin/messages")]
 [Authorize(Policy = Policies.AdminOnly)]
 public sealed class AdminMessagesController(ISender sender) : ControllerBase
 {
-    /// <summary>Telegram ulangan faol talabalar (FISH bo'yicha): <c>q</c> — FISH, HEMIS ID yoki Telegram ID;
+    /// <summary>Barcha faol talabalar (FISH bo'yicha), <c>telegramLinked</c> belgisi bilan: <c>q</c> — FISH, HEMIS ID yoki Telegram ID;
     /// <c>facultyId</c>, <c>directionId</c>, <c>groupId</c>, <c>course</c> — ixtiyoriy (AND). <c>pageSize</c> ≤ 500.</summary>
     [HttpGet("recipients")]
     [ProducesResponseType<Paged<MessageRecipientRow>>(StatusCodes.Status200OK)]
@@ -26,7 +28,7 @@ public sealed class AdminMessagesController(ISender sender) : ControllerBase
         [FromQuery] GetMessageRecipientsQuery query, CancellationToken cancellationToken)
         => Ok(await sender.Send(query, cancellationToken));
 
-    /// <summary>Guruh tanlagichi: faqat Telegram ulangan talabasi bor guruhlar (<c>{ id, name }[]</c>), nom bo'yicha.</summary>
+    /// <summary>Guruh tanlagichi: faol talabasi bor guruhlar (<c>{ id, name }[]</c>), nom bo'yicha.</summary>
     [HttpGet("recipients/groups")]
     [ProducesResponseType<IReadOnlyList<MessageRecipientGroupOption>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -36,7 +38,7 @@ public sealed class AdminMessagesController(ISender sender) : ControllerBase
         => Ok(await sender.Send(query, cancellationToken));
 
     /// <summary>Yangi xabar: <c>{ text, attachAppButton, audience }</c> → 201 + Location. Matn 1..4000 belgi (trim);
-    /// auditoriyada Telegram ulangan talaba bo'lmasa → 400.</summary>
+    /// auditoriyada faol talaba bo'lmasa → 400.</summary>
     [HttpPost]
     [ProducesResponseType<MessageSummary>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -62,7 +64,7 @@ public sealed class AdminMessagesController(ISender sender) : ControllerBase
     public async Task<ActionResult<MessageSummary>> Get(Guid id, CancellationToken cancellationToken)
         => Ok(await sender.Send(new GetMessageQuery(id), cancellationToken));
 
-    /// <summary>Xabarning yetkazishlari: <c>status</c> (pending|sent|failed|blocked) va <c>q</c> (FISH, HEMIS ID) — ixtiyoriy.</summary>
+    /// <summary>Xabarning yetkazishlari: <c>status</c> (pending|sent|failed|blocked|appOnly) va <c>q</c> (FISH, HEMIS ID) — ixtiyoriy.</summary>
     [HttpGet("{id:guid}/deliveries")]
     [ProducesResponseType<Paged<MessageDeliveryRow>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

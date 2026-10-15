@@ -28,7 +28,7 @@ public sealed class AdminMessagesTests(ApiFixture fixture)
     // ------------------------------------------------------------------ qabul qiluvchilar
 
     [Fact]
-    public async Task Recipients_FaqatUlanganFaolTalabalar_FiltrQSahifalashBotBlocked()
+    public async Task Recipients_BarchaFaolTalabalar_TelegramBelgisi_FiltrQSahifalashBotBlocked()
     {
         var tag = Tag();
         var group = await Factory.CreateGroupAsync(course: 2);
@@ -36,7 +36,7 @@ public sealed class AdminMessagesTests(ApiFixture fixture)
         var a = await Factory.CreateStudentAsync(group: group, fullName: $"{tag} Anvar");
         var b = await Factory.CreateStudentAsync(group: group, fullName: $"{tag} Botir");
         var c = await Factory.CreateStudentAsync(group: otherGroup, fullName: $"{tag} Ziyod");
-        await Factory.CreateStudentAsync(group: group, fullName: $"{tag} Ulanmagan", linkTelegram: false);
+        var u = await Factory.CreateStudentAsync(group: group, fullName: $"{tag} Ulanmagan", linkTelegram: false);
         await Factory.CreateStudentAsync(group: group, fullName: $"{tag} Faolsiz", active: false);
         await Factory.WithDbAsync(async db =>
         {
@@ -51,11 +51,16 @@ public sealed class AdminMessagesTests(ApiFixture fixture)
             => await admin.GetPagedAsync<MessageRecipientRow>($"{Url}/recipients?q={tag}&pageSize=100{query}");
 
         var all = await Get("");
-        all.Total.Should().Be(3, "ulanmagan va faolsiz talaba ro'yxatda yo'q");
-        all.Items.Select(x => x.UserId).Should().Equal(a.Id, b.Id, c.Id); // FISH bo'yicha
+        all.Total.Should().Be(4, "Telegram'siz talaba ham ro'yxatda, faolsiz — yo'q");
+        all.Items.Select(x => x.UserId).Should().Equal(a.Id, b.Id, u.Id, c.Id); // FISH bo'yicha
         var rowB = all.Items.Single(x => x.UserId == b.Id);
         rowB.BotBlocked.Should().BeTrue();
+        rowB.TelegramLinked.Should().BeTrue();
         rowB.TelegramUserId.Should().Be(b.TelegramId);
+        var rowU = all.Items.Single(x => x.UserId == u.Id);
+        (rowU.TelegramLinked, rowU.TelegramUserId, rowU.TelegramLinkedAt, rowU.BotBlocked)
+            .Should().Be((false, (long?)null, (DateTimeOffset?)null, false));
+        rowU.GroupName.Should().Be(group.GroupName);
         rowB.HemisId.Should().Be(bHemis);
         rowB.GroupName.Should().Be(group.GroupName);
         rowB.Course.Should().Be(2);
@@ -63,9 +68,9 @@ public sealed class AdminMessagesTests(ApiFixture fixture)
         rowB.DirectionName.Should().NotBeNullOrEmpty();
         all.Items.Single(x => x.UserId == a.Id).BotBlocked.Should().BeFalse();
 
-        (await Get($"&groupId={group.GroupId}")).Items.Select(x => x.UserId).Should().BeEquivalentTo([a.Id, b.Id]);
+        (await Get($"&groupId={group.GroupId}")).Items.Select(x => x.UserId).Should().BeEquivalentTo([a.Id, b.Id, u.Id]);
         (await Get("&course=4")).Items.Select(x => x.UserId).Should().Equal(c.Id);
-        (await Get($"&facultyId={group.FacultyId}")).Total.Should().Be(3);
+        (await Get($"&facultyId={group.FacultyId}")).Total.Should().Be(4);
         (await Get($"&directionId={otherGroup.DirectionId}")).Items.Select(x => x.UserId).Should().Equal(c.Id);
 
         // q: Telegram ID (aniq) va HEMIS ID — teg'siz.
@@ -75,31 +80,41 @@ public sealed class AdminMessagesTests(ApiFixture fixture)
         byHemis.Items.Select(x => x.UserId).Should().Contain(b.Id);
 
         var page = await admin.GetPagedAsync<MessageRecipientRow>($"{Url}/recipients?q={tag}&pageSize=2&page=2");
-        page.Total.Should().Be(3);
-        page.Items.Select(x => x.UserId).Should().Equal(c.Id);
+        page.Total.Should().Be(4);
+        page.Items.Select(x => x.UserId).Should().Equal(u.Id, c.Id);
 
-        // JSON shakli: telegramUserId — son, botBlocked — boolean.
+        // JSON shakli: telegramUserId — son (bog'lanmaganda null), telegramLinked/botBlocked — boolean.
         using var json = JsonDocument.Parse(await admin.GetStringAsync($"{Url}/recipients?q={a.TelegramId}"));
         var item = json.RootElement.GetProperty("items")[0];
         item.GetProperty("telegramUserId").ValueKind.Should().Be(JsonValueKind.Number);
+        item.GetProperty("telegramLinked").ValueKind.Should().Be(JsonValueKind.True);
         item.GetProperty("botBlocked").ValueKind.Should().Be(JsonValueKind.False);
         item.TryGetProperty("telegramLinkedAt", out _).Should().BeTrue();
+        using var unlinkedJson = JsonDocument.Parse(await admin.GetStringAsync($"{Url}/recipients?q={tag}%20Ulanmagan"));
+        var unlinkedItem = unlinkedJson.RootElement.GetProperty("items")[0];
+        unlinkedItem.GetProperty("telegramUserId").ValueKind.Should().Be(JsonValueKind.Null);
+        unlinkedItem.GetProperty("telegramLinked").ValueKind.Should().Be(JsonValueKind.False);
     }
 
     [Fact]
-    public async Task RecipientGroups_FaqatUlanganTalabasiBorGuruhlar()
+    public async Task RecipientGroups_FaolTalabasiBorGuruhlar_TelegramShartEmas()
     {
         var withLinked = await Factory.CreateGroupAsync(course: 3);
         var onlyUnlinked = await Factory.CreateGroupAsync(facultyId: withLinked.FacultyId, course: 3);
+        var onlyInactive = await Factory.CreateGroupAsync(facultyId: withLinked.FacultyId, course: 3);
         await Factory.CreateStudentAsync(group: withLinked);
         await Factory.CreateStudentAsync(group: onlyUnlinked, linkTelegram: false);
+        await Factory.CreateStudentAsync(group: onlyInactive, active: false);
 
         var admin = await Factory.LoginAsAdminAsync();
         var response = await admin.GetAsync($"{Url}/recipients/groups?facultyId={withLinked.FacultyId}&course=3");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var groups = (await response.Content.ReadAsync<List<MessageRecipientGroupOption>>())!;
 
-        groups.Should().ContainSingle().Which.Should().Be(new MessageRecipientGroupOption(withLinked.GroupId, withLinked.GroupName));
+        groups.Should().BeEquivalentTo([
+            new MessageRecipientGroupOption(withLinked.GroupId, withLinked.GroupName),
+            new MessageRecipientGroupOption(onlyUnlinked.GroupId, onlyUnlinked.GroupName)
+        ]);
         (await admin.GetAsync($"{Url}/recipients/groups?course=9")).StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
@@ -125,16 +140,16 @@ public sealed class AdminMessagesTests(ApiFixture fixture)
         (await admin.PostJsonAsync(Url, new { text = "Salom", attachAppButton = false, audience = new { kind = "everyone" } }))
             .StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        // Auditoriya bo'sh: mavjud bo'lmagan va ulanmagan id'lar.
-        var unlinked = await Factory.CreateStudentAsync(linkTelegram: false);
+        // Auditoriya bo'sh: mavjud bo'lmagan va faolsiz id'lar.
+        var inactive = await Factory.CreateStudentAsync(active: false);
         var empty = await admin.PostJsonAsync(Url, new
         {
             text = "Salom",
             attachAppButton = false,
-            audience = new { kind = "selected", userIds = new[] { Guid.NewGuid(), unlinked.Id } }
+            audience = new { kind = "selected", userIds = new[] { Guid.NewGuid(), inactive.Id } }
         });
         empty.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await Detail(empty)).Should().Be("Tanlangan auditoriyada Telegram ulangan talaba yo'q.");
+        (await Detail(empty)).Should().Be("Tanlangan auditoriyada faol talaba yo'q.");
 
         var emptyFilter = await admin.PostJsonAsync(Url, new
         {
@@ -157,10 +172,11 @@ public sealed class AdminMessagesTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Create_Selected_TakrorVaUlanmaganTashlanadi_201LocationVaAudit()
+    public async Task Create_Selected_TakrorVaFaolsizTashlanadi_TelegramsizAppOnly_201LocationVaAudit()
     {
         var a = await Factory.CreateStudentAsync();
         var unlinked = await Factory.CreateStudentAsync(linkTelegram: false);
+        var inactive = await Factory.CreateStudentAsync(active: false);
         var adminUser = await Factory.CreateAdminAsync("Xabar Admin");
         var admin = await Factory.LoginAsync(adminUser);
 
@@ -168,7 +184,7 @@ public sealed class AdminMessagesTests(ApiFixture fixture)
         {
             text = "  Ertaga 9:00 da yig'ilish  ",
             attachAppButton = true,
-            audience = new { kind = "selected", userIds = new[] { a.Id, a.Id, unlinked.Id, Guid.NewGuid() } }
+            audience = new { kind = "selected", userIds = new[] { a.Id, a.Id, unlinked.Id, inactive.Id, Guid.NewGuid() } }
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
@@ -177,21 +193,29 @@ public sealed class AdminMessagesTests(ApiFixture fixture)
 
         summary.Text.Should().Be("Ertaga 9:00 da yig'ilish");
         summary.AttachAppButton.Should().BeTrue();
-        summary.AudienceLabel.Should().Be("Tanlangan: 1 ta talaba");
+        summary.AudienceLabel.Should().Be("Tanlangan: 2 ta talaba");
         summary.CreatedByName.Should().Be("Xabar Admin");
-        summary.Status.Should().Be(BroadcastMessageStatus.Queued);
-        (summary.Total, summary.Pending, summary.Sent, summary.Failed, summary.Blocked).Should().Be((1, 1, 0, 0, 0));
+        summary.Status.Should().Be(BroadcastMessageStatus.Queued, "holat faqat Telegram yetkazishlari bo'yicha");
+        (summary.Total, summary.Pending, summary.Sent, summary.Failed, summary.Blocked, summary.AppOnly)
+            .Should().Be((2, 1, 0, 0, 0, 1));
 
         using (var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync()))
+        {
             json.RootElement.GetProperty("status").GetString().Should().Be("queued");
+            json.RootElement.GetProperty("appOnly").GetInt32().Should().Be(1);
+        }
 
         var deliveries = await Factory.WithDbAsync(db => db.BroadcastDeliveries.Where(d => d.MessageId == summary.Id).ToListAsync());
-        deliveries.Should().ContainSingle().Which.ChatId.Should().Be(a.TelegramId);
+        deliveries.Should().HaveCount(2);
+        var linkedRow = deliveries.Single(d => d.RecipientUserId == a.Id);
+        (linkedRow.ChatId, linkedRow.Status).Should().Be((a.TelegramId, BroadcastDeliveryStatus.Pending));
+        var appOnlyRow = deliveries.Single(d => d.RecipientUserId == unlinked.Id);
+        (appOnlyRow.ChatId, appOnlyRow.Status).Should().Be(((long?)null, BroadcastDeliveryStatus.AppOnly));
 
         var audit = await Factory.WithDbAsync(db => db.AuditLogs.SingleAsync(l =>
             l.Action == AuditAction.BroadcastMessageCreated && l.EntityId == summary.Id.ToString()));
         audit.UserId.Should().Be(adminUser.Id);
-        audit.Changes.Should().Contain("Tanlangan: 1 ta talaba");
+        audit.Changes.Should().Contain("Tanlangan: 2 ta talaba");
 
         var get = await admin.GetAsync($"{Url}/{summary.Id}");
         get.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -204,7 +228,7 @@ public sealed class AdminMessagesTests(ApiFixture fixture)
         var group = await Factory.CreateGroupAsync(course: 3);
         var s1 = await Factory.CreateStudentAsync(group: group);
         var s2 = await Factory.CreateStudentAsync(group: group);
-        await Factory.CreateStudentAsync(group: group, linkTelegram: false);
+        var s3 = await Factory.CreateStudentAsync(group: group, linkTelegram: false);
         await Factory.CreateStudentAsync(group: group, active: false);
         var admin = await Factory.LoginAsAdminAsync();
 
@@ -216,20 +240,23 @@ public sealed class AdminMessagesTests(ApiFixture fixture)
         });
         filter.StatusCode.Should().Be(HttpStatusCode.Created, await filter.Content.ReadAsStringAsync());
         var filtered = (await filter.Content.ReadAsync<MessageSummary>())!;
-        filtered.Total.Should().Be(2);
+        (filtered.Total, filtered.Pending, filtered.AppOnly).Should().Be((3, 2, 1));
         var facultyName = await Factory.WithDbAsync(db => db.Faculties.Where(f => f.Id == group.FacultyId).Select(f => f.Name).SingleAsync());
         filtered.AudienceLabel.Should().Be($"{facultyName} · 3-kurs · {group.GroupName}");
         var recipients = await Factory.WithDbAsync(db =>
             db.BroadcastDeliveries.Where(d => d.MessageId == filtered.Id).Select(d => d.RecipientUserId).ToListAsync());
-        recipients.Should().BeEquivalentTo([s1.Id, s2.Id]);
+        recipients.Should().BeEquivalentTo([s1.Id, s2.Id, s3.Id]);
 
-        var expectedAll = await Factory.WithDbAsync(db => db.Users.CountAsync(u =>
+        var expectedAll = await Factory.WithDbAsync(db => db.Users.CountAsync(u => u.Role == UserRole.Student && u.IsActive));
+        var expectedLinked = await Factory.WithDbAsync(db => db.Users.CountAsync(u =>
             u.Role == UserRole.Student && u.IsActive && u.TelegramUserId != null));
         var all = await admin.PostJsonAsync(Url, new { text = "Hammaga", attachAppButton = false, audience = new { kind = "all" } });
         all.StatusCode.Should().Be(HttpStatusCode.Created);
         var allSummary = (await all.Content.ReadAsync<MessageSummary>())!;
-        allSummary.AudienceLabel.Should().Be("Barcha ulanganlar");
+        allSummary.AudienceLabel.Should().Be("Barcha talabalar");
         allSummary.Total.Should().Be(expectedAll);
+        allSummary.Pending.Should().Be(expectedLinked, "Telegram navbatiga faqat bog'langanlar tushadi");
+        allSummary.AppOnly.Should().Be(expectedAll - expectedLinked);
 
         // Tarix: yangi birinchi.
         var history = await admin.GetPagedAsync<MessageSummary>($"{Url}?pageSize=2");
@@ -405,6 +432,34 @@ public sealed class AdminMessagesTests(ApiFixture fixture)
         var row = (await DeliveriesAsync(summary.Id)).Single();
         row.Status.Should().Be(BroadcastDeliveryStatus.Failed);
         row.Error.Should().Be("Bot tokeni sozlanmagan");
+    }
+
+    [Fact]
+    public async Task Telegramsiz_AppOnly_NavbatgaTushmaydi_DarholCompleted_RetryTegmaydi()
+    {
+        await DrainAsync();
+        var tag = Tag();
+        var group = await Factory.CreateGroupAsync();
+        var unlinked = await Factory.CreateStudentAsync(group: group, fullName: $"{tag} Ilovachi", linkTelegram: false);
+        var admin = await Factory.LoginAsAdminAsync();
+
+        var summary = await CreateAsync(admin, "Faqat ilovada", false, unlinked.Id);
+        summary.Status.Should().Be(BroadcastMessageStatus.Completed, "Telegram yetkazishi yo'q — kutadigan narsa yo'q");
+        (summary.Total, summary.AppOnly, summary.Pending, summary.Sent, summary.Failed, summary.Blocked)
+            .Should().Be((1, 1, 0, 0, 0, 0));
+
+        (await Dispatcher.RunOnceAsync()).Claimed.Should().Be(0, "app-only qator navbatga tushmaydi");
+
+        var rows = await admin.GetPagedAsync<MessageDeliveryRow>($"{Url}/{summary.Id}/deliveries?status=appOnly");
+        var row = rows.Items.Should().ContainSingle().Subject;
+        (row.UserId, row.Status, row.Error, row.SentAt, row.ReadAt)
+            .Should().Be((unlinked.Id, BroadcastDeliveryStatus.AppOnly, (string?)null, (DateTimeOffset?)null, (DateTimeOffset?)null));
+        using (var json = JsonDocument.Parse(await admin.GetStringAsync($"{Url}/{summary.Id}/deliveries")))
+            json.RootElement.GetProperty("items")[0].GetProperty("status").GetString().Should().Be("appOnly");
+
+        var retried = await admin.PostAsync($"{Url}/{summary.Id}/retry", null);
+        retried.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await retried.Content.ReadAsync<MessageSummary>()).Should().BeEquivalentTo(summary);
     }
 
     [Fact]

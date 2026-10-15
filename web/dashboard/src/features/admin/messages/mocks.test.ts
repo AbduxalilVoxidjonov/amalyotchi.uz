@@ -9,7 +9,12 @@ describe('messages mock', () => {
       attachAppButton: true,
       audience: { kind: 'all' },
     });
-    expect(created).toMatchObject({ status: 'queued', total: mockRecipients.length, pending: 44 });
+    expect(created).toMatchObject({
+      status: 'queued',
+      total: mockRecipients.length,
+      pending: 44,
+      appOnly: 2,
+    });
 
     const seen = new Set<string>();
     let current = created;
@@ -28,6 +33,18 @@ describe('messages mock', () => {
     }
     // Bloklaganlar qayta yuborilmaydi; 429 bo'lganlar ikkinchi urinishda yetkaziladi.
     expect(after).toMatchObject({ status: 'completed', sent: 42, failed: 0, blocked: 2 });
+  });
+
+  it('faqat Telegram’siz talabalar — navbatsiz, darhol yakunlangan (appOnly)', async () => {
+    const unlinked = mockRecipients.filter((r) => !r.telegramLinked).map((r) => r.userId);
+    const created = await messagesApi.send({
+      text: 'Ilovaga',
+      attachAppButton: false,
+      audience: { kind: 'selected', userIds: unlinked },
+    });
+    expect(created).toMatchObject({ total: 2, appOnly: 2, pending: 0 });
+    const detail = await messagesApi.detail(created.id);
+    expect(detail).toMatchObject({ status: 'completed', sent: 0, appOnly: 2 });
   });
 
   it('auditoriyada hech kim yo‘q — 400', async () => {

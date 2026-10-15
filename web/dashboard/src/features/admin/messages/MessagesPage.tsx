@@ -16,7 +16,7 @@ import type { MessageRecipientRow, MessageSummary, RecipientFilter } from './typ
 import { useRecipientListParams } from './useRecipientListParams';
 
 const TABS = [
-  { value: 'linked', label: 'Ulanganlar' },
+  { value: 'linked', label: 'Talabalar' },
   { value: 'sent', label: 'Yuborilganlar' },
 ] as const;
 
@@ -26,8 +26,10 @@ type MessagesTab = (typeof TABS)[number]['value'];
 type Selection = ReadonlyMap<string, MessageRecipientRow>;
 
 /**
- * Admin · Xabarlar (`/admin/messages`): ikki varaq — "Ulanganlar" (Telegram ulangan talabalar,
- * tanlash va xabar yozish) va "Yuborilganlar" (`?tab=sent`, yetkazish holati bilan).
+ * Admin · Xabarlar (`/admin/messages`): ikki varaq — "Talabalar" (barcha faol talabalar, Telegram
+ * bog'langanligi belgi sifatida; tanlash va xabar yozish) va "Yuborilganlar" (`?tab=sent`, yetkazish
+ * holati bilan). Xabar har bir qabul qiluvchining ilova qutisiga tushadi, Telegram bog'langanlarga — bot
+ * orqali ham.
  *
  * Tanlov sahifa holatida (varaqlar almashganda ham saqlanadi) va sahifalar/filtrlar o'zgarganda
  * TOZALANMAYDI: admin turli guruhlardan talabalarni filtr almashtirib yig'ishi mumkin, id bo'yicha
@@ -56,8 +58,11 @@ export function MessagesPage() {
   function handleSent(summary: MessageSummary) {
     setTarget(null);
     setSelection(new Map());
+    const telegram = summary.total - summary.appOnly;
     const state: MessageFlashState = {
-      flash: `Xabar navbatga qo'yildi — ${summary.total} ta talabaga yuboriladi.`,
+      flash:
+        `Xabar ${summary.total} ta talabaning ilova qutisiga yuborildi` +
+        (telegram > 0 ? `, ${telegram} tasiga Telegram orqali ham yuboriladi.` : '.'),
     };
     navigate(messageHref(summary.id), { state });
   }
@@ -103,7 +108,7 @@ interface RecipientsPanelProps {
   onCompose: (target: ComposeTarget) => void;
 }
 
-/** "Ulanganlar": qidiruv + bog'liq filtrlar (URL'da) + jadval + tanlov. */
+/** "Talabalar": qidiruv + bog'liq filtrlar (URL'da) + jadval + tanlov. */
 function RecipientsPanel({ selection, onSelectionChange, onCompose }: RecipientsPanelProps) {
   const list = useRecipientListParams();
   const query = useRecipientsQuery(list.params);
@@ -205,7 +210,7 @@ function RecipientsPanel({ selection, onSelectionChange, onCompose }: Recipients
       emptyDescription={
         hasFilters ? (
           <>
-            Tanlangan filtrlar bo'yicha Telegram ulangan talaba topilmadi.
+            Tanlangan filtrlar bo'yicha faol talaba topilmadi.
             <span className={styles.emptyAction}>
               <Button size="xs" onClick={clearFilters}>
                 Filtrlarni tozalash
@@ -213,7 +218,7 @@ function RecipientsPanel({ selection, onSelectionChange, onCompose }: Recipients
             </span>
           </>
         ) : list.search ? undefined : (
-          "Talabalar Telegram bot orqali HEMIS ID bilan kirgach, shu ro'yxatda paydo bo'ladi."
+          "Faol talabalar shu ro'yxatda ko'rinadi."
         )
       }
     />
@@ -222,7 +227,7 @@ function RecipientsPanel({ selection, onSelectionChange, onCompose }: Recipients
 
 const SENT_PAGE_SIZE = 20;
 
-/** "Yuborilganlar": sahifa `?spage=` (ulanganlar sahifasi `page` bilan aralashmasin). */
+/** "Yuborilganlar": sahifa `?spage=` (talabalar sahifasi `page` bilan aralashmasin). */
 function SentPanel() {
   const [params, setParams] = useSearchParams();
   const page = Math.max(1, Math.floor(Number(params.get('spage'))) || 1);

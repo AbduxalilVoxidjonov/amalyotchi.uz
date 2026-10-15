@@ -95,8 +95,17 @@ public sealed class BroadcastDispatcher(
                     continue;
                 }
 
+                // Telegram'siz (app-only) qatorlar navbatga tushmaydi; bu — faqat buzilgan ma'lumotdan himoya.
+                if (delivery.ChatId is not { } chatId)
+                {
+                    delivery.MarkFailed("Talaba Telegram bog'lamagan");
+                    failed++;
+                    await db.SaveChangesAsync(CancellationToken.None);
+                    continue;
+                }
+
                 await WaitForRateAsync(settings.MessagesPerSecond, cancellationToken);
-                var result = await messenger.SendTextAsync(delivery.ChatId, message.Text, message.AttachAppButton, cancellationToken);
+                var result = await messenger.SendTextAsync(chatId, message.Text, message.AttachAppButton, cancellationToken);
                 var at = clock.UtcNow;
 
                 switch (result.Outcome)

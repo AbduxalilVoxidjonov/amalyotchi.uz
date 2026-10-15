@@ -43,7 +43,8 @@ internal static class MessageSummaries
             var failed = Count(BroadcastDeliveryStatus.Failed);
             var blocked = Count(BroadcastDeliveryStatus.Blocked);
             var pending = Count(BroadcastDeliveryStatus.Pending);
-            var total = sent + failed + blocked + pending;
+            var appOnly = Count(BroadcastDeliveryStatus.AppOnly);
+            var telegramTotal = sent + failed + blocked + pending;
 
             return new MessageSummary(
                 m.Id,
@@ -52,8 +53,8 @@ internal static class MessageSummaries
                 m.CreatedBy is { } by && authors.TryGetValue(by, out var name) ? name : UnknownAuthor,
                 m.AudienceLabel,
                 m.AttachAppButton,
-                BroadcastStatusRule.For(total, pending),
-                total, sent, failed, blocked, pending);
+                BroadcastStatusRule.For(telegramTotal, pending),
+                telegramTotal + appOnly, sent, failed, blocked, pending, appOnly);
         }).ToList();
     }
 

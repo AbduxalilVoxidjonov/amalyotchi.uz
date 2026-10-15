@@ -10,7 +10,7 @@ public enum BroadcastAudienceKind
     /// <summary>Filtr bo'yicha: <c>q</c>, fakultet, yo'nalish, guruh, kurs.</summary>
     Filter = 1,
 
-    /// <summary>Telegram ulangan barcha faol talabalar.</summary>
+    /// <summary>Barcha faol talabalar (Telegram bog'laganlik shart emas — Telegram'sizlarga faqat ilova qutisida).</summary>
     All = 2
 }
 
@@ -28,7 +28,11 @@ public enum BroadcastDeliveryStatus
 
     /// <summary>Talaba botni bloklagan / botni ishga tushirmagan / hisobi o'chirilgan (403, 400 chat not found).
     /// Qayta yuborish (<c>retry</c>) bularga tegmaydi.</summary>
-    Blocked = 3
+    Blocked = 3,
+
+    /// <summary>Talaba Telegram bog'lamagan — xabar faqat ilova qutisida (yaratilgan zahoti yakuniy holat). Telegram
+    /// navbatiga tushmaydi, dispetcher va <c>retry</c> bularga tegmaydi.</summary>
+    AppOnly = 4
 }
 
 /// <summary>Xabarning umumiy holati — yetkazishlar sonidan hisoblanadi (<see cref="BroadcastStatusRule"/>), saqlanmaydi.</summary>
@@ -44,7 +48,8 @@ public enum BroadcastMessageStatus
     Completed = 2
 }
 
-/// <summary>Xabar holati qoidasi: navbatdagi (<c>pending</c>) yetkazishlar jami bilan teng (hech biri yuborilmagan) →
+/// <summary>Xabar holati qoidasi (faqat Telegram yetkazishlari bo'yicha — <c>appOnly</c> qatorlar hisobga kirmaydi):
+/// navbatdagi (<c>pending</c>) yetkazishlar jami bilan teng (hech biri yuborilmagan) →
 /// <see cref="BroadcastMessageStatus.Queued"/>; <c>pending &gt; 0</c> → <see cref="BroadcastMessageStatus.Sending"/>;
 /// aks holda <see cref="BroadcastMessageStatus.Completed"/>.</summary>
 public static class BroadcastStatusRule

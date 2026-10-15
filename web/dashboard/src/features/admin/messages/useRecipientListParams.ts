@@ -38,7 +38,7 @@ function parseCourse(raw: string | null): string {
 }
 
 /**
- * "Ulanganlar" ro'yxati holati URL'da (talabalar sahifasidagi `useStudentListParams` bilan bir xil
+ * "Talabalar" (qabul qiluvchilar) ro'yxati holati URL'da (talabalar sahifasidagi `useStudentListParams` bilan bir xil
  * qoidalar): qidiruv 300ms debounce, sahifa hajmi 1..500 (`size`, sukut bo'lsa URL'da yo'q),
  * filtr/qidiruv o'zgarsa — 1-sahifa. Yozuvlar `replace` bilan (tarix to'lmaydi).
  * Qaytaradigan shakli `useListParams()` bilan mos (`tableState()` ga beriladi).

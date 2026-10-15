@@ -1,19 +1,23 @@
 import type { ListParams } from '../shared/types';
 
 /**
- * Admin · Xabarlar — Telegram'ni HEMIS ID bilan bog'lagan talabalarga bot orqali xabar yuborish.
+ * Admin · Xabarlar — faol talabalarga xabar yuborish. Xabar har bir qabul qiluvchining mobil ilova
+ * qutisiga tushadi; Telegram bog'langanlarga qo'shimcha ravishda bot orqali ham yuboriladi.
  * Backend kontrakti: `GET/POST /api/admin/messages...` (§ api.ts). Sanalar — ISO satr.
  */
 
-/** `GET /api/admin/messages/recipients` qatori — Telegram ulangan talaba. */
+/** `GET /api/admin/messages/recipients` qatori — faol talaba (Telegram bog'langanligi — belgi). */
 export interface MessageRecipientRow {
   /** Talabaning `User.Id`. */
   userId: string;
   fullName: string;
   hemisId: string | null;
-  telegramUserId: number;
+  /** Telegram bog'langan — xabar bot orqali ham yuboriladi; aks holda faqat ilova qutisida. */
+  telegramLinked: boolean;
+  /** Bog'lanmagan bo'lsa null. */
+  telegramUserId: number | null;
   telegramLinkedAt: string | null;
-  /** Talaba botni bloklagan yoki ishga tushirmagan — xabar yetmaydi. */
+  /** Talaba botni bloklagan yoki ishga tushirmagan — Telegram xabari yetmaydi (ilova qutisiga baribir tushadi). */
   botBlocked: boolean;
   facultyName: string | null;
   directionName: string | null;
@@ -44,7 +48,7 @@ export interface RecipientGroupParams {
   course?: number;
 }
 
-/** Auditoriya: tanlanganlar · filtr bo'yicha · barcha ulanganlar. */
+/** Auditoriya: tanlanganlar · filtr bo'yicha · barcha faol talabalar. */
 export type MessageAudience =
   | { kind: 'selected'; userIds: string[] }
   | ({ kind: 'filter' } & RecipientFilter)
@@ -63,13 +67,17 @@ export interface SendMessageInput {
 
 export type MessageStatus = 'queued' | 'sending' | 'completed';
 
-/** Yuborilgan xabar (ro'yxat, tafsilot, yuborish/retry javobi). `total = sent + failed + blocked + pending`. */
+/**
+ * Yuborilgan xabar (ro'yxat, tafsilot, yuborish/retry javobi).
+ * `total = sent + failed + blocked + pending + appOnly` — barcha qabul qiluvchilar (ilova qutisi);
+ * `appOnly` — Telegram bog'lamagan, xabar faqat ilovada. `status` faqat Telegram yetkazishlari bo'yicha.
+ */
 export interface MessageSummary {
   id: string;
   text: string;
   createdAt: string;
   createdByName: string;
-  /** Server yasagan auditoriya tavsifi ("Tanlangan: 12 ta", "Barcha ulanganlar" ...). */
+  /** Server yasagan auditoriya tavsifi ("Tanlangan: 12 ta", "Barcha talabalar" ...). */
   audienceLabel: string;
   attachAppButton: boolean;
   status: MessageStatus;
@@ -78,9 +86,11 @@ export interface MessageSummary {
   failed: number;
   blocked: number;
   pending: number;
+  appOnly: number;
 }
 
-export type DeliveryStatus = 'pending' | 'sent' | 'failed' | 'blocked';
+/** `appOnly` — Telegram'siz talaba: xabar faqat ilova qutisida (yakuniy holat, navbatga tushmaydi). */
+export type DeliveryStatus = 'pending' | 'sent' | 'failed' | 'blocked' | 'appOnly';
 
 /** `GET /api/admin/messages/{id}/deliveries` qatori. */
 export interface MessageDeliveryRow {
@@ -90,6 +100,8 @@ export interface MessageDeliveryRow {
   status: DeliveryStatus;
   error: string | null;
   sentAt: string | null;
+  /** Talaba ilova qutisida o'qigan vaqt (null — o'qilmagan). */
+  readAt: string | null;
 }
 
 export interface DeliveryListParams extends ListParams {
@@ -113,6 +125,7 @@ export const DELIVERY_STATUS_LABEL: Record<
   sent: { label: 'Yetkazildi', kind: 'ok' },
   failed: { label: 'Xato', kind: 'bad' },
   blocked: { label: 'Bloklangan', kind: 'late' },
+  appOnly: { label: 'Faqat ilovada', kind: 'neu' },
 };
 
 /** Ro'yxat/tafsilot hali yakunlanmagan — avtomatik yangilanadi. */

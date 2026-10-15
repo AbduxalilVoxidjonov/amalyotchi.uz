@@ -6,6 +6,7 @@ const row: MessageRecipientRow = {
   userId: 'u1',
   fullName: 'Aliyev Akmal',
   hemisId: '341030',
+  telegramLinked: true,
   telegramUserId: 5100000000,
   telegramLinkedAt: null,
   botBlocked: false,

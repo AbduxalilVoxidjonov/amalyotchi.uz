@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Amaliyotchi.Application.Features.Admin.Messages;
 
 /// <summary><c>GET /api/admin/messages/recipients/groups?facultyId&amp;directionId&amp;course</c> — guruh tanlagichi uchun:
-/// faqat Telegram ulangan faol talabasi bor guruhlar, nom bo'yicha. Filtrlar ixtiyoriy (AND).</summary>
+/// faol talabasi bor guruhlar, nom bo'yicha. Filtrlar ixtiyoriy (AND).</summary>
 public sealed record GetMessageRecipientGroupsQuery : IRequest<IReadOnlyList<MessageRecipientGroupOption>>
 {
     public Guid? FacultyId { get; init; }

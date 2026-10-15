@@ -1167,7 +1167,7 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("attempts");
 
-                    b.Property<long>("ChatId")
+                    b.Property<long?>("ChatId")
                         .HasColumnType("bigint")
                         .HasColumnName("chat_id");
 
@@ -1183,6 +1183,10 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("NextAttemptAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("next_attempt_at");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("read_at");
 
                     b.Property<Guid>("RecipientUserId")
                         .HasColumnType("uuid")
@@ -1203,15 +1207,15 @@ namespace Amaliyotchi.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_broadcast_deliveries");
 
-                    b.HasIndex("RecipientUserId")
-                        .HasDatabaseName("ix_broadcast_deliveries_recipient_user_id");
-
                     b.HasIndex("MessageId", "RecipientUserId")
                         .IsUnique()
                         .HasDatabaseName("ix_broadcast_deliveries_message_id_recipient_user_id");
 
                     b.HasIndex("MessageId", "Status")
                         .HasDatabaseName("ix_broadcast_deliveries_message_id_status");
+
+                    b.HasIndex("RecipientUserId", "ReadAt")
+                        .HasDatabaseName("ix_broadcast_deliveries_recipient_user_id_read_at");
 
                     b.HasIndex("Status", "NextAttemptAt")
                         .HasDatabaseName("ix_broadcast_deliveries_status_next_attempt_at");

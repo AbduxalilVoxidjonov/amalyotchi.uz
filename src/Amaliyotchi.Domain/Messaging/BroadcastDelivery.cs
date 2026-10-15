@@ -3,8 +3,14 @@ using Amaliyotchi.Domain.Exceptions;
 
 namespace Amaliyotchi.Domain.Messaging;
 
-/// <summary>Xabarning bitta talabaga yetkazilishi — DB-navbat qatori. Fon dispetcheri <see cref="BroadcastDeliveryStatus.Pending"/>
-/// va <see cref="NextAttemptAt"/> o'tgan qatorlarni oladi. <see cref="ChatId"/> — yaratish paytidagi Telegram id snapshot'i.
+/// <summary>Xabarning bitta talabaga yetkazilishi. Ikki vazifasi bor:
+/// <list type="bullet">
+/// <item><b>Ilova qutisi (inbox)</b> — har qabul qiluvchi uchun bitta qator; talaba qutisi shu qatorlardan o'qiladi,
+/// o'qilganlik — <see cref="ReadAt"/>. Qator xabar bilan bir tranzaksiyada yaratiladi — Telegram yetkazilishini kutmaydi.</item>
+/// <item><b>Telegram DB-navbati</b> — fon dispetcheri <see cref="BroadcastDeliveryStatus.Pending"/> va <see cref="NextAttemptAt"/>
+/// o'tgan qatorlarni oladi. <see cref="ChatId"/> — yaratish paytidagi Telegram id snapshot'i; talaba Telegram bog'lamagan
+/// bo'lsa null va holat darhol <see cref="BroadcastDeliveryStatus.AppOnly"/> (yakuniy) — navbatga hech qachon tushmaydi.</item>
+/// </list>
 /// Yuqori hajmli texnik yozuv — audit jurnaliga tushmaydi (<see cref="IAuditExempt"/>).</summary>
 public sealed class BroadcastDelivery : BaseEntity, IAuditExempt
 {
@@ -20,7 +26,9 @@ public sealed class BroadcastDelivery : BaseEntity, IAuditExempt
 
     public Guid MessageId { get; private set; }
     public Guid RecipientUserId { get; private set; }
-    public long ChatId { get; private set; }
+    /// <summary>Telegram chat id (yaratish paytidagi snapshot). null — talaba Telegram bog'lamagan
+    /// (<see cref="BroadcastDeliveryStatus.AppOnly"/>).</summary>
+    public long? ChatId { get; private set; }
     public BroadcastDeliveryStatus Status { get; private set; }
 
     /// <summary>Muvaffaqiyatsiz (vaqtinchalik xato) urinishlar soni. 429 (rate limit) hisoblanmaydi.</summary>
@@ -35,7 +43,12 @@ public sealed class BroadcastDelivery : BaseEntity, IAuditExempt
     /// <summary>Dispetcher shu vaqtdan keyin oladi (backoff, 429 <c>retry_after</c>, ijara).</summary>
     public DateTimeOffset NextAttemptAt { get; private set; }
 
-    public static BroadcastDelivery Create(Guid messageId, Guid recipientUserId, long chatId, DateTimeOffset now)
+    /// <summary>Talaba xabarni ilova qutisida o'qigan vaqt (null — o'qilmagan). Telegram holatidan mustaqil.</summary>
+    public DateTimeOffset? ReadAt { get; private set; }
+
+    /// <summary><paramref name="chatId"/> berilsa — Telegram navbatiga (<see cref="BroadcastDeliveryStatus.Pending"/>);
+    /// null bo'lsa — faqat ilova qutisi (<see cref="BroadcastDeliveryStatus.AppOnly"/>, yakuniy holat).</summary>
+    public static BroadcastDelivery Create(Guid messageId, Guid recipientUserId, long? chatId, DateTimeOffset now)
     {
         if (messageId == Guid.Empty || recipientUserId == Guid.Empty)
             throw new DomainException("Xabar yoki qabul qiluvchi ko'rsatilmagan.");
@@ -45,9 +58,15 @@ public sealed class BroadcastDelivery : BaseEntity, IAuditExempt
             MessageId = messageId,
             RecipientUserId = recipientUserId,
             ChatId = chatId,
-            Status = BroadcastDeliveryStatus.Pending,
+            Status = chatId is null ? BroadcastDeliveryStatus.AppOnly : BroadcastDeliveryStatus.Pending,
             NextAttemptAt = now
         };
+    }
+
+    /// <summary>Ilova qutisida o'qildi. Idempotent: birinchi o'qilgan vaqt saqlanadi.</summary>
+    public void MarkRead(DateTimeOffset at)
+    {
+        ReadAt ??= at;
     }
 
     public void MarkSent(DateTimeOffset at, long? telegramMessageId)

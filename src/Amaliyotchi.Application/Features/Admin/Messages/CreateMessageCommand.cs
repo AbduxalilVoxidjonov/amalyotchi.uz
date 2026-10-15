@@ -13,9 +13,11 @@ using ValidationException = Amaliyotchi.Application.Common.Exceptions.Validation
 namespace Amaliyotchi.Application.Features.Admin.Messages;
 
 /// <summary><c>POST /api/admin/messages</c> → 201 <see cref="MessageSummary"/>. Auditoriya server tomonda resolve qilinadi
-/// (shu paytdagi holat snapshot'i): faqat Telegram ulangan faol talabalar (<see cref="MessageRecipientQueries"/>);
-/// <c>selected</c> dagi ulanmagan/mavjud bo'lmagan id'lar jim tashlanadi, takrorlar olib tashlanadi. Natija 0 → 400.
-/// Har qabul qiluvchi uchun <see cref="BroadcastDelivery"/> (<c>pending</c>) — yuborishni fon dispetcheri bajaradi.</summary>
+/// (shu paytdagi holat snapshot'i): barcha faol talabalar (<see cref="MessageRecipientQueries"/>);
+/// <c>selected</c> dagi faolsiz/mavjud bo'lmagan id'lar jim tashlanadi, takrorlar olib tashlanadi. Natija 0 → 400.
+/// Har qabul qiluvchi uchun bitta <see cref="BroadcastDelivery"/> — u talabaning ilova qutisidagi xabar ham:
+/// Telegram bog'langan → <c>pending</c> (bot orqali yuborishni fon dispetcheri bajaradi), bog'lanmagan → <c>appOnly</c>
+/// (faqat ilova qutisi, navbatga tushmaydi).</summary>
 public sealed record CreateMessageCommand(string Text, bool AttachAppButton, MessageAudienceInput? Audience)
     : IRequest<MessageSummary>;
 
@@ -60,7 +62,7 @@ public sealed class CreateMessageCommandValidator : AbstractValidator<CreateMess
 internal sealed class CreateMessageCommandHandler(IApplicationDbContext db, IAuditWriter audit, IClock clock)
     : IRequestHandler<CreateMessageCommand, MessageSummary>
 {
-    public const string EmptyAudience = "Tanlangan auditoriyada Telegram ulangan talaba yo'q.";
+    public const string EmptyAudience = "Tanlangan auditoriyada faol talaba yo'q.";
 
     /// <summary>Audit yozuviga matnning shuncha belgisi tushadi.</summary>
     public const int AuditTextPreview = 200;
@@ -88,6 +90,7 @@ internal sealed class CreateMessageCommandHandler(IApplicationDbContext db, IAud
             {
                 audience = label,
                 recipients = recipients.Count,
+                telegram = recipients.Count(r => r.ChatId is not null),
                 attachAppButton = message.AttachAppButton,
                 textLength = message.Text.Length,
                 text = preview
@@ -156,11 +159,11 @@ internal sealed class CreateMessageCommandHandler(IApplicationDbContext db, IAud
     private static async Task<List<Recipient>> Load(IQueryable<RecipientSource> source, CancellationToken cancellationToken)
     {
         var rows = await source
-            .Select(x => new { x.User.Id, ChatId = x.User.TelegramUserId!.Value })
+            .Select(x => new { x.User.Id, ChatId = x.User.TelegramUserId })
             .Distinct()
             .ToListAsync(cancellationToken);
         return rows.Select(r => new Recipient(r.Id, r.ChatId)).ToList();
     }
 
-    private sealed record Recipient(Guid UserId, long ChatId);
+    private sealed record Recipient(Guid UserId, long? ChatId);
 }

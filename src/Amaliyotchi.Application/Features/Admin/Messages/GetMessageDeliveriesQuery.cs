@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Amaliyotchi.Application.Features.Admin.Messages;
 
 /// <summary><c>GET /api/admin/messages/{id}/deliveries?status&amp;q&amp;page&amp;pageSize</c> (<c>pageSize</c> ≤ 500) — yetkazishlar,
-/// FISH bo'yicha. <c>status</c> ixtiyoriy; <c>q</c>: FISH yoki HEMIS ID. Xabar topilmasa → 404.
+/// FISH bo'yicha. <c>status</c> ixtiyoriy (<c>appOnly</c> — Telegram'siz, faqat ilova qutisida); <c>q</c>: FISH yoki HEMIS ID. Xabar topilmasa → 404.
 /// Talaba keyinroq o'chirilgan/faolsizlantirilgan bo'lsa ham qator ko'rinadi (tarix).</summary>
 public sealed record GetMessageDeliveriesQuery : PagedQuery, IRequest<Paged<MessageDeliveryRow>>
 {
@@ -62,7 +62,8 @@ internal sealed class GetMessageDeliveriesQueryHandler(IApplicationDbContext db)
                 x.Profile != null ? x.Profile.HemisId : null,
                 x.Delivery.Status,
                 x.Delivery.Error,
-                x.Delivery.SentAt))
+                x.Delivery.SentAt,
+                x.Delivery.ReadAt))
             .ToPagedAsync(request, cancellationToken);
     }
 }
