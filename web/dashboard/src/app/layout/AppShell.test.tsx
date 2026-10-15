@@ -52,19 +52,21 @@ describe('AppShell', () => {
     const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
     const ops = opsNavCounts();
     const withBadge = (label: string, n: number) => (n > 0 ? `${label}${n}` : label);
-    // Bo'limlar: faqat aktiv ("Asosiy") ochiq; qolganlari yopiq.
+    // Bo'limlar: sukut bo'yicha hammasi yopiq (faqat bosilganda ochiladi).
     expect(
       within(nav)
         .getAllByRole('button')
         .map((b) => [b.textContent?.replace(/[\d\u2009]/g, ''), b.getAttribute('aria-expanded')]),
     ).toEqual([
-      ['Asosiy', 'true'],
+      ['Asosiy', 'false'],
       ['Talabalar', 'false'],
       ['Tuzilma', 'false'],
       ['Amaliyot', 'false'],
       ['Aloqa va hisobot', 'false'],
       ['Tizim', 'false'],
     ]);
+    expect(within(nav).queryAllByRole('link')).toHaveLength(0);
+    await userEvent.click(within(nav).getByRole('button', { name: /Asosiy/ }));
     await waitFor(() =>
       expect(
         within(nav)
@@ -198,6 +200,7 @@ describe('AppShell', () => {
     loginAs(1);
     renderApp('/admin/today');
     const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
+    await expandAll(nav);
     expect(
       within(nav)
         .getAllByRole('link')
@@ -249,6 +252,7 @@ describe('AppShell', () => {
     loginAs(0);
     const router = renderApp('/admin/today');
     const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
+    await userEvent.click(within(nav).getByRole('button', { name: /Asosiy/ }));
     expect(within(nav).getByRole('link', { name: /Bugun/ })).toHaveAttribute(
       'aria-current',
       'page',
@@ -270,14 +274,13 @@ describe('AppShell', () => {
     expect(screen.getByRole('navigation', { name: 'Asosiy' })).toBeInTheDocument();
   });
 
-  it("aktiv sahifa bo'limi avtomatik ochiq; qidiruv → Enter → birinchi natija", async () => {
+  it("aktiv sahifa bo'limi ham yopiq (bosilganda ochiladi); qidiruv → Enter → birinchi natija", async () => {
     loginAs(0);
     const router = renderApp('/admin/students');
     const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
-    expect(within(nav).getByRole('button', { name: /Talabalar/ })).toHaveAttribute(
-      'aria-expanded',
-      'true',
-    );
+    const studentsBtn = within(nav).getByRole('button', { name: /Talabalar/ });
+    expect(studentsBtn).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(studentsBtn);
     expect(within(nav).getByRole('link', { name: /Talabalar/ })).toHaveAttribute(
       'aria-current',
       'page',
@@ -293,12 +296,10 @@ describe('AppShell', () => {
     await userEvent.keyboard('{Enter}');
     await waitFor(() => expect(router.state.location.pathname).toBe('/admin/faculties'));
     expect(search).toHaveValue('');
-    // Yangi aktiv bo'lim ochildi.
-    await waitFor(() =>
-      expect(within(nav).getByRole('button', { name: /Tuzilma/ })).toHaveAttribute(
-        'aria-expanded',
-        'true',
-      ),
+    // Yangi aktiv bo'lim avtomatik ochilmaydi.
+    expect(within(nav).getByRole('button', { name: /Tuzilma/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
     );
   });
 

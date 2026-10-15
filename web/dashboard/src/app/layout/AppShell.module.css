@@ -28,19 +28,19 @@
 .actionsSlot:empty {
   display: none;
 }
-/* ❓ Responsive — dizaynda yo'q. ≤900px: sidebar drawer (fixed), backdrop. */
+/* Sidebar — drawer (fixed, ☰ bilan ochiladi); ochiqligida backdrop. */
 .backdrop {
   display: none;
+}
+.backdrop[data-open='true'] {
+  display: block;
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 21, 18, 0.45);
+  z-index: calc(var(--z-drawer) - 1);
 }
 @media (max-width: 900px) {
   .content {
     padding: 18px 20px 48px;
-  }
-  .backdrop[data-open='true'] {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(16, 21, 18, 0.45);
-    z-index: calc(var(--z-drawer) - 1);
   }
 }

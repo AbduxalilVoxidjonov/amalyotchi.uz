@@ -37,6 +37,7 @@ describe('AdminsPage (/admin/admins, v3.28)', () => {
   it("bosh admin: sidebar'da 'Adminlar', ro'yxat, bosh admin belgisi va (siz)", async () => {
     renderAs(0);
     const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
+    await userEvent.click(within(nav).getByRole('button', { name: /Tizim/ }));
     expect(within(nav).getByRole('link', { name: 'Adminlar' })).toHaveAttribute(
       'aria-current',
       'page',
@@ -56,6 +57,8 @@ describe('AdminsPage (/admin/admins, v3.28)', () => {
     const router = renderAs(1);
     await waitFor(() => expect(router.state.location.pathname).toBe('/admin'));
     const nav = await screen.findByRole('navigation', { name: 'Asosiy' });
+    await userEvent.click(within(nav).getByRole('button', { name: /Tizim/ }));
+    expect(within(nav).getByRole('link', { name: 'Audit jurnali' })).toBeInTheDocument();
     expect(within(nav).queryByRole('link', { name: 'Adminlar' })).not.toBeInTheDocument();
   });
 

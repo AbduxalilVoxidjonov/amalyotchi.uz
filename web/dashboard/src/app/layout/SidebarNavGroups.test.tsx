@@ -47,27 +47,29 @@ describe('SidebarNavGroups', () => {
     expect(btn).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it("aktiv sahifa bo'limi ochiq (saqlangan 'yopiq' holatdan qat'i nazar)", () => {
-    window.localStorage.setItem(NAV_GROUPS_STORAGE_KEY, JSON.stringify({ system: false }));
+  it("sukut: barcha bo'limlar yopiq, aktiv sahifa bo'limi ham — faqat bosilganda ochiladi", async () => {
     const { groupBtn } = setup('/admin/audit');
+    for (const name of [/Asosiy/, /Talabalar/, /Tuzilma/, /Amaliyot/, /Aloqa/, /Tizim/]) {
+      expect(groupBtn(name)).toHaveAttribute('aria-expanded', 'false');
+    }
+    await userEvent.click(groupBtn(/Tizim/));
     expect(groupBtn(/Tizim/)).toHaveAttribute('aria-expanded', 'true');
-    expect(groupBtn(/Asosiy/)).toHaveAttribute('aria-expanded', 'true');
-    expect(groupBtn(/Amaliyot/)).toHaveAttribute('aria-expanded', 'false');
+    expect(groupBtn(/Asosiy/)).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('ochiq/yopiq holat localStorage’da saqlanadi va qayta tiklanadi', async () => {
     const first = setup('/admin');
     await userEvent.click(first.groupBtn(/Amaliyot/));
     await userEvent.click(first.groupBtn(/Asosiy/));
+    await userEvent.click(first.groupBtn(/Asosiy/));
     expect(JSON.parse(window.localStorage.getItem(NAV_GROUPS_STORAGE_KEY)!)).toMatchObject({
       practice: true,
       main: false,
     });
-    // Asosiy — aktiv bo'lim; qayta yuklanganda baribir ochiq. Amaliyot — saqlangan holat.
     first.unmount();
     const second = setup('/admin');
     expect(second.groupBtn(/Amaliyot/)).toHaveAttribute('aria-expanded', 'true');
-    expect(second.groupBtn(/Asosiy/)).toHaveAttribute('aria-expanded', 'true');
+    expect(second.groupBtn(/Asosiy/)).toHaveAttribute('aria-expanded', 'false');
   });
 
   it("buzilgan / mavjud bo'lmagan storage — xatosiz, sukut holati", () => {
@@ -79,7 +81,7 @@ describe('SidebarNavGroups', () => {
       throw new Error('blocked');
     });
     const { groupBtn } = setup('/admin');
-    expect(groupBtn(/Asosiy/)).toHaveAttribute('aria-expanded', 'true');
+    expect(groupBtn(/Asosiy/)).toHaveAttribute('aria-expanded', 'false');
     expect(groupBtn(/Talabalar/)).toHaveAttribute('aria-expanded', 'false');
     getItem.mockRestore();
     setItem.mockRestore();

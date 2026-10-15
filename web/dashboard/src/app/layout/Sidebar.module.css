@@ -6,10 +6,25 @@
   color: var(--color-dark-fg);
   display: flex;
   flex-direction: column;
-  position: sticky;
-  top: 0;
   height: 100vh;
   height: 100dvh;
+  /* Drawer: sukut bo'yicha yopiq, Topbar'dagi ☰ bosilganda ochiladi (barcha kengliklarda). */
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: var(--z-drawer);
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition:
+    transform 0.18s ease,
+    visibility 0s linear 0.18s;
+}
+/* Yopiq drawer'dagi havolalar Tab bilan fokuslanmasin — visibility ochilishda darhol qaytadi. */
+.sidebar[data-open='true'] {
+  transform: translateX(0);
+  visibility: visible;
+  transition: transform 0.18s ease;
 }
 .brand {
   padding: var(--sidebar-brand-pad);
@@ -66,36 +81,25 @@
   text-overflow: ellipsis;
 }
 .close {
-  display: none;
+  display: inline-flex;
+  position: absolute;
+  top: 14px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border: var(--border-w) solid var(--color-dark-btn-bd);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-dark-link);
+  font-size: var(--fs-lg);
+  line-height: 1;
+  cursor: pointer;
 }
-/* ❓ Drawer rejimi (≤900px) — dizaynda yo'q */
-@media (max-width: 900px) {
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    z-index: var(--z-drawer);
-    transform: translateX(-100%);
-    transition: transform 0.18s ease;
-  }
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
   .sidebar[data-open='true'] {
-    transform: translateX(0);
-  }
-  .close {
-    display: inline-flex;
-    position: absolute;
-    top: 14px;
-    right: 12px;
-    width: 30px;
-    height: 30px;
-    align-items: center;
-    justify-content: center;
-    border: var(--border-w) solid var(--color-dark-btn-bd);
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--color-dark-link);
-    font-size: var(--fs-lg);
-    line-height: 1;
+    transition: none;
   }
 }

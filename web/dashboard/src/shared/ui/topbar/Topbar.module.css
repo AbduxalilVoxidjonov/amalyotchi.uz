@@ -53,9 +53,10 @@
   border-radius: var(--radius-md);
   white-space: nowrap;
 }
-/* ❓ Hamburger — dizaynda yo'q, faqat ≤900px */
+/* ❓ Hamburger — dizaynda yo'q; sidebar drawer'ini ochadi */
 .menu {
-  display: none;
+  display: inline-flex;
+  cursor: pointer;
   align-items: center;
   justify-content: center;
   width: 36px;
@@ -79,9 +80,6 @@
   }
   .title {
     font-size: var(--fs-3xl);
-  }
-  .menu {
-    display: inline-flex;
   }
   .clock {
     display: none;

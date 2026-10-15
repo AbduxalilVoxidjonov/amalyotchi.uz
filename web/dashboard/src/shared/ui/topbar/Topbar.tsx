@@ -11,7 +11,7 @@ export interface TopbarProps extends Omit<HTMLAttributes<HTMLElement>, 'title'> 
   clock?: ReactNode;
   /** O'ng tomondagi tugmalar (Eksport ...). */
   actions?: ReactNode;
-  /** ❓ Mobil: hamburger tugmasi (≤900px). Berilmasa ko'rsatilmaydi. */
+  /** ❓ Hamburger tugmasi (sidebar drawer'ini ochadi). Berilmasa ko'rsatilmaydi. */
   onMenuClick?: (() => void) | undefined;
   menuOpen?: boolean;
 }

@@ -39,7 +39,7 @@ export function SidebarNavGroups({ groups, onNavigate, onSearchShortcut }: Sideb
   const [query, setQuery] = useState('');
 
   const active = activeGroupId(groups, pathname);
-  const { isOpen, toggle } = useNavGroupsOpen(active);
+  const { isOpen, toggle } = useNavGroupsOpen();
 
   const searching = query.trim() !== '';
   const visible = useMemo(() => filterNavGroups(groups, query), [groups, query]);

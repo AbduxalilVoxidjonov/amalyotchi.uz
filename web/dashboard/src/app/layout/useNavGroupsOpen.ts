@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { NavGroupId } from '../nav';
 
 export const NAV_GROUPS_STORAGE_KEY = 'amaliyotchi.sidebar.groups';
-
-/** Saqlangan holat yo'q bo'limlar uchun sukut: faqat "Asosiy" ochiq. */
-const DEFAULT_OPEN: ReadonlySet<string> = new Set<NavGroupId>(['main']);
 
 type OpenMap = Record<string, boolean>;
 
@@ -31,30 +27,20 @@ function writeStored(map: OpenMap): void {
 }
 
 /**
- * Sidebar bo'limlarining ochiq/yopiq holati (localStorage'da). Aktiv sahifa joylashgan bo'lim
- * birinchi render'da va aktiv bo'lim o'zgarganda avtomatik ochiladi.
+ * Sidebar bo'limlarining ochiq/yopiq holati (localStorage'da). Sukut bo'yicha barcha bo'limlar
+ * yopiq — faqat sarlavha bosilganda ochiladi (aktiv sahifa bo'limi ham avtomatik ochilmaydi).
  */
-export function useNavGroupsOpen(activeGroup: NavGroupId | undefined) {
-  const [open, setOpen] = useState<OpenMap>(() => {
-    const stored = readStored();
-    return activeGroup ? { ...stored, [activeGroup]: true } : stored;
-  });
-  const [prevActive, setPrevActive] = useState(activeGroup);
-
-  // Aktiv bo'lim o'zgarishi — render paytida holatni moslashtirish (effektsiz, ortiqcha render yo'q).
-  if (activeGroup !== prevActive) {
-    setPrevActive(activeGroup);
-    if (activeGroup && open[activeGroup] !== true) setOpen({ ...open, [activeGroup]: true });
-  }
+export function useNavGroupsOpen() {
+  const [open, setOpen] = useState<OpenMap>(readStored);
 
   useEffect(() => {
     writeStored(open);
   }, [open]);
 
-  const isOpen = useCallback((id: string) => open[id] ?? DEFAULT_OPEN.has(id), [open]);
+  const isOpen = useCallback((id: string) => open[id] === true, [open]);
 
   const toggle = useCallback(
-    (id: string) => setOpen((prev) => ({ ...prev, [id]: !(prev[id] ?? DEFAULT_OPEN.has(id)) })),
+    (id: string) => setOpen((prev) => ({ ...prev, [id]: prev[id] !== true })),
     [],
   );
 

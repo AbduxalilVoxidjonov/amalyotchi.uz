@@ -11,7 +11,7 @@ import { Sidebar } from './Sidebar';
 import { useClock } from './useClock';
 
 /**
- * Kirgan foydalanuvchi qobig'i (SPEC-SCREENS §2): sidebar + sticky Topbar + content.
+ * Kirgan foydalanuvchi qobig'i (SPEC-SCREENS §2): sidebar (drawer, ☰ bilan ochiladi) + sticky Topbar + content.
  * `RequireRole` ichida layout route sifatida ishlatiladi; sahifalar `<Outlet/>` orqali.
  * Sahifa sarlavhasi/amallari: `usePageHeader()`.
  */
@@ -35,18 +35,21 @@ export function AppShell() {
   const crumb = override.crumb ?? navCrumb(nav.data);
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
-  // Qidiruv yorlig'i: drawer rejimida (≤900px) sidebar ekrandan tashqarida — avval ochiladi.
-  const openMenuForSearch = useCallback(() => {
-    try {
-      if (window.matchMedia('(max-width: 900px)').matches) setMenuOpen(true);
-    } catch {
-      // matchMedia yo'q (eski brauzer/test muhiti) — desktop deb hisoblanadi.
-    }
-  }, []);
+  // Qidiruv yorlig'i: sidebar drawer — yopiq bo'lsa avval ochiladi.
+  const openMenuForSearch = useCallback(() => setMenuOpen(true), []);
   useEffect(() => {
     // Marshrut o'zgarganda drawer yopiladi.
     setMenuOpen(false);
   }, [location.pathname]);
+  useEffect(() => {
+    // Esc — ochiq drawer'ni yopadi (qidiruv maydoni Esc'ni o'zi ushlaydi).
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.defaultPrevented) setMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
 
   const ctx = useMemo(() => ({ override, setOverride, actionsEl }), [override, actionsEl]);
 
