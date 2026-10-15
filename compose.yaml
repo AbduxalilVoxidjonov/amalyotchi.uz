@@ -3,6 +3,10 @@
 # va maxfiy qiymatlar (deploy/.env) o'zgarmaydi.
 # Lokal demo (demo seed, host portlar) uchun ildizdan emas, to'g'ridan-to'g'ri:
 #   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.dev.yml up -d --build
+# Loyiha nomi deploy/docker-compose.yml dagi bilan BIR XIL bo'lishi shart: `include` uni meros qilmaydi va nomsiz
+# compose papka nomidan (amalyotchiuz) yangi, bo'sh volume'lar yaratadi — eski baza ko'rinmay qoladi.
+name: amaliyotchi
+
 include:
   - path: deploy/docker-compose.yml
     env_file: deploy/.env
